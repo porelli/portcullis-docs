@@ -20,8 +20,11 @@ import yaml
 
 
 def load_manifests(source_dir: Path) -> list[dict]:
-    """Load all manifest.yaml files from templates/."""
+    """Load all manifest.yaml files. Checks templates/ subdir first, then root."""
     templates_dir = source_dir / "templates"
+    if not templates_dir.is_dir():
+        # Templates repo has apps at root level (no templates/ subdir)
+        templates_dir = source_dir
     if not templates_dir.is_dir():
         print(f"ERROR: {templates_dir} not found", file=sys.stderr)
         sys.exit(1)

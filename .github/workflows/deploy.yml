@@ -14,9 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone Portcullis repo (for manifests)
-        run: |
-          git clone --depth=1 https://github.com/porelli/portcullis.git /tmp/portcullis
+      - name: Clone templates repo (for manifest-based catalog)
+        uses: actions/checkout@v4
+        with:
+          repository: porelli/portcullis-templates
+          path: /tmp/portcullis-templates
 
       - uses: actions/setup-python@v5
         with:
@@ -26,7 +28,7 @@ jobs:
         run: pip install mkdocs-material pyyaml
 
       - name: Generate app catalog from manifests
-        run: python scripts/generate-app-docs.py --source /tmp/portcullis
+        run: python scripts/generate-app-docs.py --source /tmp/portcullis-templates
 
       - name: Build and deploy
         run: mkdocs gh-deploy --force
