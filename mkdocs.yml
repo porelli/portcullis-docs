@@ -84,6 +84,7 @@ nav:
     - Manifest Reference: guides/manifest-reference.md
     - SAML Integration: guides/saml-app.md
     - Header Auth Pattern: guides/header-auth-app.md
+    - Third-Party Apps: guides/third-party-apps.md
   - Operations:
     - Testing & CI: operations/testing.md
     - Groups & Access Control: operations/groups.md
