@@ -68,6 +68,18 @@ graph TB
 | **PostgreSQL** | Database backend for Keycloak. |
 | **Vault PKI** | Private certificate authority. Issues short-lived (24-hour) client certificates for mTLS authentication via the PIV slot on YubiKeys. |
 
+## Repository Structure
+
+Portcullis is organized as four separate repositories, each with a distinct responsibility:
+
+- **Core repo** ([porelli/portcullis](https://github.com/porelli/portcullis)) -- Contains the `docker-compose.yml` for all core services (Traefik, Keycloak, LLDAP, Vault, oauth2-proxy, group-gate), bootstrap and helper scripts (`scripts/`), Traefik static and dynamic configuration (`traefik/`), Keycloak realm export, and the enrollment UI (`enroll/`). This is the only repo you need to clone to deploy Portcullis.
+
+- **Hub repo** ([porelli/portcullis-hub](https://github.com/porelli/portcullis-hub)) -- The management web UI. Built and published as a container image at `ghcr.io/porelli/portcullis-hub`. The core `docker-compose.yml` pulls this image automatically -- no manual build step is required.
+
+- **Templates repo** ([porelli/portcullis-templates](https://github.com/porelli/portcullis-templates)) -- Houses the 22 app templates (each with a `manifest.yaml` and `compose.yml`). The Hub automatically clones this repo on first startup as the default marketplace source. New templates are contributed here and synced to running instances via the Hub UI.
+
+- **Docs repo** ([porelli/portcullis-docs](https://github.com/porelli/portcullis-docs)) -- This documentation site, built with MkDocs Material. App catalog pages are auto-generated from the template manifests.
+
 ## Authentication Flows
 
 Portcullis supports four authentication methods. Each app declares its method in its `manifest.yaml`.
@@ -185,11 +197,19 @@ When `MTLS_ENABLED=false` in `.env`, all three tiers behave like `public` -- no 
 
 ## Network Topology
 
-All services run on a shared Docker network (`portcullis`). Traefik is the only service exposed to the internet (ports 80 and 443). All inter-service communication happens over the Docker network.
+Portcullis uses a two-network architecture to isolate apps from core services. Traefik bridges between the networks and is the only service exposed to the internet (ports 80 and 443).
+
+- **`portcullis` network** -- Core services only (Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub). Apps cannot reach these services directly.
+- **`portcullis-proxy` network** -- Traefik and app frontend services. This is how Traefik discovers and routes to app containers.
+- **Per-app internal networks** -- Each app's compose project creates its own default network. Internal services (databases, caches, workers) live here, isolated from all other apps.
+
+Each app runs as its own Docker Compose project (`portcullis-<app-id>`). Frontend services join both `default` (for internal communication) and `portcullis-proxy` (for Traefik routing). Internal services only join `default`.
 
 ```mermaid
-graph LR
-    subgraph Docker Network: portcullis
+graph TB
+    Internet -->|:80/:443| T
+
+    subgraph "Network: portcullis (core)"
         T[Traefik :80/:443]
         KC[Keycloak :8080]
         LL[LLDAP :3890/:17170]
@@ -197,17 +217,42 @@ graph LR
         PG[PostgreSQL :5432]
         O2[oauth2-proxy :4180]
         GG[group-gate :8080]
-        Apps[App Containers]
+        Hub[Hub :3000]
     end
 
-    Internet -->|:80/:443| T
+    subgraph "Network: portcullis-proxy (routing)"
+        T
+        AppA_FE[App A Frontend]
+        AppB_FE[App B Frontend]
+        AppC_FE[App C Frontend]
+    end
+
+    subgraph "portcullis-appA (isolated)"
+        AppA_FE
+        AppA_DB[(App A Database)]
+    end
+
+    subgraph "portcullis-appB (isolated)"
+        AppB_FE
+        AppB_DB[(App B Database)]
+    end
+
+    subgraph "portcullis-appC (isolated)"
+        AppC_FE
+    end
+
     T --- O2
     T --- GG
-    T --- Apps
-    Apps --- KC
+    T --- AppA_FE
+    T --- AppB_FE
+    T --- AppC_FE
+    AppA_FE --- AppA_DB
+    AppB_FE --- AppB_DB
     KC --- LL
     KC --- PG
     O2 --- KC
 ```
+
+Traefik is connected to both the `portcullis` network (for forward-auth checks via oauth2-proxy and group-gate) and the `portcullis-proxy` network (for routing to app frontends). Native OIDC apps that need to reach Keycloak do so over HTTPS via the public URL, not via the internal network.
 
 DNS is configured as a wildcard record (`*.portcullis.example.com`), so all subdomains resolve to the same server IP. Traefik routes each subdomain to the correct container based on Docker labels.

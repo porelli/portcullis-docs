@@ -9,12 +9,16 @@ Get Portcullis running from zero to a working authentication gateway.
 - **A server** with ports 80 and 443 open (VPS, home server, or local machine)
 - **A YubiKey** (optional for initial setup, required for WebAuthn authentication)
 
-## Step 1: Clone the Repository
+## Step 1: Clone the Core Repository
+
+Clone only the core repo -- this contains everything needed to run the gateway:
 
 ```bash
 git clone git@github.com:porelli/portcullis.git
 cd portcullis
 ```
+
+The Hub image is pulled automatically from `ghcr.io/porelli/portcullis-hub` (no build step needed), and the app templates are auto-cloned from `porelli/portcullis-templates` by the Hub on first startup.
 
 ## Step 2: Run Bootstrap
 

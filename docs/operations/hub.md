@@ -1,6 +1,6 @@
 # Hub Management
 
-The Hub is Portcullis's web-based dashboard for managing apps. It provides a visual interface for enabling apps, configuring settings, viewing logs, and performing administrative tasks.
+The Hub is Portcullis's web-based dashboard for managing apps. It provides a visual interface for enabling apps, configuring settings, viewing logs, and performing administrative tasks. The Hub image is published at `ghcr.io/porelli/portcullis-hub` and pulled automatically by the core `docker-compose.yml` -- no manual build is required.
 
 Access the Hub at `https://hub.<your-domain>`.
 
@@ -114,22 +114,48 @@ Useful for debugging configuration issues, checking file permissions, or running
 
 Restart all containers in the app's compose stack. This is a full `down` + `up` cycle, not just a container restart, so compose changes and env var updates take effect.
 
+## Per-App Isolation
+
+The Hub runs each app as an isolated Docker Compose project with its own network namespace and environment.
+
+### How It Works
+
+- **Separate compose project** -- Each app runs under the project name `portcullis-<app-id>` (e.g., `portcullis-jellyfin`). This means each app has its own set of containers and default network, fully isolated from other apps.
+- **Separate network** -- App frontend services join the `portcullis-proxy` external network (shared with Traefik for routing) and the app's own default network (for internal services like databases). Apps cannot communicate with each other or with core services directly.
+- **Separate .env** -- The Hub generates a per-app `.env` file containing the app's settings, secrets, and core variables (like `PORTCULLIS_DOMAIN`). These are stored in the Hub data directory and passed to Docker Compose at deploy time.
+
+### Migration from Shared to Isolated
+
+When the Hub starts, it automatically detects apps that were previously running under the shared `portcullis` project and migrates them to the new isolated architecture. This involves:
+
+1. Stopping the app's containers in the old shared project
+2. Creating a per-app `.env` file with the app's existing settings
+3. Restarting the app under its own `portcullis-<app-id>` project
+
+No manual intervention is required. Volumes with explicit `name:` fields are preserved across the migration.
+
+### Expert Tab and Per-App .env
+
+The Expert tab's Environment Variables section now edits the per-app `.env` file (not the root `.env`). Changes made here only affect the selected app. Core variables like `PORTCULLIS_DOMAIN` are inherited from the root configuration and shown as read-only.
+
 ## Template Sources
 
-The Hub reads app templates from the `templates/` directory. Each subdirectory is an app with a `manifest.yaml` and `compose.yml`.
+The Hub manages app templates through configurable template sources. Each source is a Git repository containing app directories with a `manifest.yaml` and `compose.yml`.
 
-### Built-in Templates
+### Default Source
 
-Portcullis ships with 22 built-in templates covering common self-hosted applications across categories like media, productivity, monitoring, security, and networking.
+On first startup, the Hub automatically clones the [porelli/portcullis-templates](https://github.com/porelli/portcullis-templates) repository and registers it as the default template source named "portcullis". This provides 22 built-in templates covering common self-hosted applications across categories like media, productivity, monitoring, security, and networking.
+
+To update the built-in templates, click **Sync** on the "portcullis" source in the Hub UI to pull the latest changes from the repository.
 
 ### Community Templates
 
-You can add additional template sources by placing app directories in the `templates/` folder. Each must contain:
+You can add additional template sources by registering Git repositories in the Hub. Each repository should contain app directories with:
 
 - `manifest.yaml` -- App metadata and configuration (see [Manifest Reference](../guides/manifest-reference.md))
 - `compose.yml` -- Docker Compose services
 
-The Hub detects new templates automatically and adds them to the catalog.
+The Hub clones and merges templates from all configured sources into the catalog.
 
 ## Common Tasks
 

@@ -23,6 +23,17 @@ Traefik sits at the edge as a reverse proxy, terminating TLS and optionally requ
 
 Apps choose their auth method: forward-auth for apps without SSO support, native OIDC for apps that speak OpenID Connect, header-auth for apps that trust upstream identity headers, or public for apps that need no authentication.
 
+## Repositories
+
+Portcullis is split across four repositories:
+
+| Repository | Purpose | Link |
+|-----------|---------|------|
+| **portcullis** | Core stack: Traefik, Keycloak, LLDAP, Vault, oauth2-proxy, group-gate, enrollment UI, bootstrap scripts | [porelli/portcullis](https://github.com/porelli/portcullis) |
+| **portcullis-hub** | Management UI for enabling apps, viewing logs, and configuring settings. Published as `ghcr.io/porelli/portcullis-hub`. | [porelli/portcullis-hub](https://github.com/porelli/portcullis-hub) |
+| **portcullis-templates** | 22 app templates (manifest + compose) that serve as the default Hub marketplace | [porelli/portcullis-templates](https://github.com/porelli/portcullis-templates) |
+| **portcullis-docs** | This documentation site | [porelli/portcullis-docs](https://github.com/porelli/portcullis-docs) |
+
 ## Quick Links
 
 - [Quick Start](setup/quickstart.md) -- Get Portcullis running in minutes
