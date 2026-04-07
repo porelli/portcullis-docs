@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: porelli/portcullis-templates
-          path: /tmp/portcullis-templates
+          path: portcullis-templates
 
       - uses: actions/setup-python@v5
         with:
@@ -28,7 +28,7 @@ jobs:
         run: pip install mkdocs-material pyyaml
 
       - name: Generate app catalog from manifests
-        run: python scripts/generate-app-docs.py --source /tmp/portcullis-templates
+        run: python scripts/generate-app-docs.py --source portcullis-templates
 
       - name: Build and deploy
         run: mkdocs gh-deploy --force
