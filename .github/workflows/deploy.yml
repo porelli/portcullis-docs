@@ -1,0 +1,32 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone Portcullis repo (for manifests)
+        run: |
+          git clone --depth=1 https://github.com/porelli/portcullis.git /tmp/portcullis
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install mkdocs-material pyyaml
+
+      - name: Generate app catalog from manifests
+        run: python scripts/generate-app-docs.py --source /tmp/portcullis
+
+      - name: Build and deploy
+        run: mkdocs gh-deploy --force

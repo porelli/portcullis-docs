@@ -1,0 +1,90 @@
+site_name: Portcullis
+site_description: Self-hosted YubiKey authentication gateway
+site_url: https://porelli.github.io/portcullis-docs/
+repo_url: https://github.com/porelli/portcullis
+repo_name: porelli/portcullis
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Setup:
+    - Quick Start: setup/quickstart.md
+    - DNS Configuration: setup/dns.md
+    - TLS & mTLS: setup/certificates.md
+  - App Catalog:
+    - Overview: apps/index.md
+    - 🤖 LiteLLM: apps/litellm.md
+    - 🗃 CloudBeaver: apps/cloudbeaver.md
+    - 🦊 GitLab: apps/gitlab.md
+    - 💰 Actual Budget: apps/actual-budget.md
+    - 💸 Firefly III: apps/firefly-iii.md
+    - 📷 Immich: apps/immich.md
+    - 📺 Jellyfin: apps/jellyfin.md
+    - 🎬 Plex: apps/plex.md
+    - 📊 Grafana: apps/grafana.md
+    - 💾 Scrutiny: apps/scrutiny.md
+    - 🛡 AdGuard Home: apps/adguard.md
+    - 🚫 Pi-hole: apps/pihole.md
+    - 📝 DokuWiki: apps/dokuwiki.md
+    - 📋 Kanboard: apps/kanboard.md
+    - ☁ Nextcloud: apps/nextcloud.md
+    - 📖 Wiki.js: apps/wiki.md
+    - 📄 Docs Site: apps/docs.md
+    - 🖥 Apache Guacamole: apps/guacamole.md
+    - 🔒 Vault UI: apps/vault-ui.md
+    - 🔐 Vaultwarden: apps/vaultwarden.md
+    - 🌐 Headscale: apps/headscale.md
+    - 🐦 NetBird: apps/netbird.md
+  - Guides:
+    - Adding an App: guides/adding-an-app.md
+    - Manifest Reference: guides/manifest-reference.md
+    - SAML Integration: guides/saml-app.md
+    - Header Auth Pattern: guides/header-auth-app.md
+  - Operations:
+    - Testing & CI: operations/testing.md
+    - Groups & Access Control: operations/groups.md
+    - Hub Management: operations/hub.md
