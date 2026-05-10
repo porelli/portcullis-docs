@@ -95,9 +95,9 @@ def generate_app_page(app: dict, output_dir: Path):
     desc = app.get("description", "")
     category = app.get("category", "")
     tags = app.get("tags", [])
-    conflicts = app.get("conflicts", [])
     auth = app.get("auth", {})
     settings = app.get("settings", [])
+    ports = app.get("ports", [])
     env_vars = app.get("env", [])
     clients = app.get("keycloak_clients", [])
     urls = app.get("urls", [])
@@ -111,10 +111,6 @@ def generate_app_page(app: dict, output_dir: Path):
         f"**Tags:** {', '.join(f'`{t}`' for t in tags)}",
         "",
     ]
-
-    if conflicts:
-        lines.append(f"!!! warning \"Conflicts with: {', '.join(conflicts)}\"")
-        lines.append("")
 
     # Auth section
     lines.append("## Authentication")
@@ -161,6 +157,28 @@ def generate_app_page(app: dict, output_dir: Path):
             mount = target.get("mount", "") if target else ""
             extra = f" → `{mount}`" if mount else ""
             lines.append(f"| **{label}** | `{stype}` | {sdesc}{extra} |")
+        lines.append("")
+
+    # Ports
+    if ports:
+        lines.append("## Host Ports")
+        lines.append("")
+        lines.append("Ports this app binds on the host. Collisions with other enabled apps block enable; each binding can be rebound or disabled from the Hub UI.")
+        lines.append("")
+        lines.append("| Port | Protocol | Default | Container | Required | Notes |")
+        lines.append("|------|----------|---------|-----------|----------|-------|")
+        for p in ports:
+            label = p.get("label", p.get("key", ""))
+            proto = (p.get("protocol") or "tcp").lower()
+            default = p.get("range") or p.get("default", "")
+            container = p.get("container", "—")
+            required = ":white_check_mark:" if p.get("required") else ":x:"
+            notes = []
+            if p.get("network_mode_host"):
+                notes.append("host network")
+            if p.get("range"):
+                notes.append(f"range `{p['range']}`")
+            lines.append(f"| **{label}** | `{proto}` | `{default}` | `{container}` | {required} | {', '.join(notes) or '—'} |")
         lines.append("")
 
     # Environment variables

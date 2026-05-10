@@ -5,8 +5,6 @@
 **Category:** networking  
 **Tags:** `dns`, `adblock`, `privacy`, `filtering`
 
-!!! warning "Conflicts with: adguard"
-
 ## Authentication
 
 | Property | Value |
@@ -20,6 +18,15 @@
 
 !!! info "Auth Notes"
     No SSO support. Has its own web password. Access gated by group-gate middleware.
+
+## Host Ports
+
+Ports this app binds on the host. Collisions with other enabled apps block enable; each binding can be rebound or disabled from the Hub UI.
+
+| Port | Protocol | Default | Container | Required | Notes |
+|------|----------|---------|-----------|----------|-------|
+| **DNS (TCP)** | `tcp` | `53` | `53` | :white_check_mark: | — |
+| **DNS (UDP)** | `udp` | `53` | `53` | :white_check_mark: | — |
 
 ## Environment Variables
 

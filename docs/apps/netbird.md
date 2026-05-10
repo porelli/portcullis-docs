@@ -5,8 +5,6 @@
 **Category:** vpn  
 **Tags:** `vpn`, `wireguard`, `mesh`, `zero-trust`
 
-!!! warning "Conflicts with: headscale"
-
 ## Authentication
 
 | Property | Value |
@@ -20,6 +18,16 @@
 
 !!! info "Auth Notes"
     Dashboard uses OIDC. Management API validates JWT audience. No group-based access restriction — all OIDC users can access dashboard.
+
+## Host Ports
+
+Ports this app binds on the host. Collisions with other enabled apps block enable; each binding can be rebound or disabled from the Hub UI.
+
+| Port | Protocol | Default | Container | Required | Notes |
+|------|----------|---------|-----------|----------|-------|
+| **STUN/TURN** | `udp` | `3478` | `3478` | :white_check_mark: | host network |
+| **TURNS (TLS)** | `tcp` | `5349` | `5349` | :white_check_mark: | host network |
+| **TURN media relays** | `udp` | `49152-65535` | `—` | :white_check_mark: | host network, range `49152-65535` |
 
 ## Environment Variables
 

@@ -11,9 +11,10 @@ Every app template includes a `manifest.yaml` file that describes the app to the
 | `icon` | string | Yes | Unicode emoji for the app card (e.g., `"\U0001F4CA"`) |
 | `category` | string | Yes | Category for grouping in the catalog |
 | `tags` | list of strings | Yes | Searchable tags |
-| `conflicts` | list of strings | No | App IDs that conflict with this app (e.g., `pihole` conflicts with `adguard`) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`, `networking`, `ai`
+
+Host-port collisions between apps are detected from the `ports:` section (see below); there is no manual conflict list.
 
 ## auth
 
@@ -93,6 +94,70 @@ settings:
 ```
 
 When the user sets this to `/mnt/media/movies` in the Hub, the compose file gets an additional bind mount: `/mnt/media/movies:/data/movies`.
+
+## ports
+
+Declares host port bindings the app needs. The Hub:
+
+1. Refuses to enable an app if any of its ports are already claimed by an enabled app.
+2. Surfaces each port as an editable field in the Hub UI so users can rebind or disable it.
+3. Writes the effective bindings into the per-app compose override at enable-time — so `compose.yml` itself should **not** contain a `ports:` block for anything declared here.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `key` | string | Yes | Env var name used for the user-overridable host port |
+| `label` | string | Yes | UI label (e.g., `DNS (TCP)`) |
+| `description` | string | No | Help text shown under the label |
+| `container` | int | Conditional | Container-side port. Required unless `range` is set. |
+| `protocol` | string | Yes | `tcp` or `udp` |
+| `default` | int | Conditional | Default host port. Required unless `range` is set. |
+| `bind` | string | No | Default bind address (default: `0.0.0.0`) |
+| `required` | boolean | No | If `false`, the user can clear the host port to disable the binding. Default: `false` |
+| `service` | string | Yes | Compose service this port belongs to |
+| `network_mode_host` | boolean | No | The service uses `network_mode: host`. Ports are claimed globally and can't be rebound via override. Default: `false` |
+| `range` | string | No | Inclusive port range like `"49152-65535"`. Used for things like TURN media relays. Incompatible with user rebinding. |
+
+Example — a DNS resolver with separate TCP/UDP bindings:
+
+```yaml
+ports:
+  - key: ADGUARD_DNS_TCP_HOST
+    label: DNS (TCP)
+    description: Resolver port for TCP-based queries
+    container: 53
+    protocol: tcp
+    default: 53
+    required: true
+    service: adguard
+  - key: ADGUARD_DNS_UDP_HOST
+    label: DNS (UDP)
+    container: 53
+    protocol: udp
+    default: 53
+    required: true
+    service: adguard
+```
+
+Example — a TURN relay using host networking plus a UDP media range:
+
+```yaml
+ports:
+  - key: COTURN_STUN_PORT
+    label: STUN/TURN
+    container: 3478
+    protocol: udp
+    default: 3478
+    required: true
+    service: coturn
+    network_mode_host: true
+  - key: COTURN_MEDIA_RANGE
+    label: TURN media relays
+    protocol: udp
+    range: "49152-65535"
+    required: true
+    service: coturn
+    network_mode_host: true
+```
 
 ## env
 
@@ -202,7 +267,6 @@ description: Free and open-source media server -- movies, TV, music, live TV
 icon: "\U0001F4FA"
 category: media
 tags: [media, movies, tv, music, streaming, opensource]
-conflicts: []
 
 auth:
   method: native-oidc
@@ -270,7 +334,6 @@ description: Network-wide ad blocking via DNS sinkhole
 icon: "\U0001F6AB"
 category: networking
 tags: [dns, adblock, privacy, filtering]
-conflicts: [adguard]
 
 auth:
   method: forward-auth
@@ -280,6 +343,22 @@ auth:
   access_group: users_pihole
   admin_group: admin_pihole
   notes: No SSO support. Has its own web password. Access gated by group-gate middleware.
+
+ports:
+  - key: PIHOLE_DNS_TCP_HOST
+    label: DNS (TCP)
+    container: 53
+    protocol: tcp
+    default: 53
+    required: true
+    service: pihole
+  - key: PIHOLE_DNS_UDP_HOST
+    label: DNS (UDP)
+    container: 53
+    protocol: udp
+    default: 53
+    required: true
+    service: pihole
 
 env:
   - key: PIHOLE_WEBPASSWORD

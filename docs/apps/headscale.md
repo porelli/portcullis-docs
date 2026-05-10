@@ -5,8 +5,6 @@
 **Category:** vpn  
 **Tags:** `vpn`, `wireguard`, `mesh`, `tailscale`
 
-!!! warning "Conflicts with: netbird"
-
 ## Authentication
 
 | Property | Value |
