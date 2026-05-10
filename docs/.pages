@@ -1,0 +1,7 @@
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Setup: setup
+  - App Catalog: apps
+  - Guides: guides
+  - Operations: operations

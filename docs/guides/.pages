@@ -1,0 +1,6 @@
+nav:
+  - Adding an App: adding-an-app.md
+  - Manifest Reference: manifest-reference.md
+  - SAML Integration: saml-app.md
+  - Header Auth Pattern: header-auth-app.md
+  - Third-Party Apps: third-party-apps.md

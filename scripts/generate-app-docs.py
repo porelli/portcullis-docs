@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Generate app catalog documentation from Portcullis manifest files.
 
-Reads templates/*/manifest.yaml from the main Portcullis repo and generates:
-  - docs/apps/index.md  (overview table)
-  - docs/apps/<app>.md  (per-app detail page)
+Reads manifest.yaml files from the templates repo and generates:
+  - docs/apps/index.md    (overview table)
+  - docs/apps/<app>.md    (per-app detail page)
+  - docs/apps/.pages      (ordered nav list, consumed by mkdocs-awesome-pages-plugin)
+
+Does NOT modify mkdocs.yml. The awesome-pages plugin reads .pages files in each
+docs directory to build the site nav, so we generate apps/.pages and let the
+plugin handle the rest.
 
 Usage:
-  python scripts/generate-app-docs.py [--source /path/to/portcullis]
-
-Default source: ../midway (sibling directory) or environment PORTCULLIS_REPO.
+  python scripts/generate-app-docs.py [--source /path/to/portcullis-templates]
 """
 
 import os
@@ -207,54 +210,37 @@ def generate_app_page(app: dict, output_dir: Path):
     (output_dir / f"{app_id}.md").write_text("\n".join(lines))
 
 
-def update_mkdocs_nav(apps: list[dict], mkdocs_path: Path):
-    """Update mkdocs.yml nav to include all generated app pages.
+def generate_apps_pages(apps: list[dict], output_dir: Path):
+    """Write docs/apps/.pages for the awesome-pages plugin.
 
-    Uses text replacement instead of YAML parsing because mkdocs.yml
-    contains Python-specific tags (!!python/name) that safe_load can't handle.
+    Lists the overview page first, then each app page in (category, name) order
+    with the icon prepended to the display title.
     """
-    # Build nav YAML block for apps
-    nav_lines = ["  - App Catalog:", "    - Overview: apps/index.md"]
+    lines = ["nav:", "  - Overview: index.md"]
     for app in sorted(apps, key=lambda a: (a.get("category", ""), a.get("name", ""))):
         app_id = app["_id"]
         name = app.get("name", app_id)
         icon = app.get("icon", "")
-        nav_lines.append(f"    - {icon} {name}: apps/{app_id}.md")
-
-    # Read mkdocs.yml and replace the App Catalog section
-    content = mkdocs_path.read_text()
-    lines = content.split("\n")
-    new_lines = []
-    skip = False
-    for line in lines:
-        if line.strip().startswith("- App Catalog:"):
-            skip = True
-            new_lines.extend(nav_lines)
-            continue
-        if skip:
-            # Skip until next top-level nav item (- Something:) or end
-            if line.startswith("  - ") and not line.startswith("    "):
-                skip = False
-                new_lines.append(line)
-            continue
-        new_lines.append(line)
-
-    mkdocs_path.write_text("\n".join(new_lines))
-    print(f"  Updated mkdocs.yml nav with {len(nav_lines) - 1} app pages")
+        title = f"{icon} {name}".strip()
+        lines.append(f"  - {title}: {app_id}.md")
+    (output_dir / ".pages").write_text("\n".join(lines) + "\n")
+    print(f"  Generated apps/.pages ({len(apps)} entries)")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Portcullis app catalog docs")
     parser.add_argument(
         "--source",
-        default=os.environ.get("PORTCULLIS_REPO", str(Path(__file__).parent.parent.parent / "midway")),
-        help="Path to the Portcullis repo (default: ../midway)",
+        default=os.environ.get(
+            "PORTCULLIS_TEMPLATES",
+            str(Path(__file__).parent.parent.parent / "portcullis-templates"),
+        ),
+        help="Path to the portcullis-templates repo (default: ../portcullis-templates)",
     )
     args = parser.parse_args()
 
     source_dir = Path(args.source)
     docs_dir = Path(__file__).parent.parent / "docs" / "apps"
-    mkdocs_path = Path(__file__).parent.parent / "mkdocs.yml"
 
     print(f"Source: {source_dir}")
     print(f"Output: {docs_dir}")
@@ -269,7 +255,7 @@ def main():
         generate_app_page(app, docs_dir)
         print(f"  Generated apps/{app['_id']}.md")
 
-    update_mkdocs_nav(apps, mkdocs_path)
+    generate_apps_pages(apps, docs_dir)
     print("Done!")
 
 

@@ -25,7 +25,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install mkdocs-material pyyaml
+        run: pip install mkdocs-material mkdocs-awesome-pages-plugin pyyaml
 
       - name: Generate app catalog from manifests
         run: python scripts/generate-app-docs.py --source portcullis-templates

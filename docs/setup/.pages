@@ -1,0 +1,4 @@
+nav:
+  - Quick Start: quickstart.md
+  - DNS Configuration: dns.md
+  - TLS & mTLS: certificates.md

@@ -1,0 +1,24 @@
+nav:
+  - Overview: index.md
+  - 🤖 LiteLLM: litellm.md
+  - 🗃 CloudBeaver: cloudbeaver.md
+  - 🦊 GitLab: gitlab.md
+  - 💰 Actual Budget: actual-budget.md
+  - 💸 Firefly III: firefly-iii.md
+  - 📷 Immich: immich.md
+  - 📺 Jellyfin: jellyfin.md
+  - 🎬 Plex: plex.md
+  - 📊 Grafana: grafana.md
+  - 💾 Scrutiny: scrutiny.md
+  - 🛡 AdGuard Home: adguard.md
+  - 🚫 Pi-hole: pihole.md
+  - 📝 DokuWiki: dokuwiki.md
+  - 📋 Kanboard: kanboard.md
+  - ☁ Nextcloud: nextcloud.md
+  - 📖 Wiki.js: wiki.md
+  - 📄 Docs Site: docs.md
+  - 🖥 Apache Guacamole: guacamole.md
+  - 🔒 Vault UI: vault-ui.md
+  - 🔐 Vaultwarden: vaultwarden.md
+  - 🌐 Headscale: headscale.md
+  - 🐦 NetBird: netbird.md

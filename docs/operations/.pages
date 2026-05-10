@@ -1,0 +1,4 @@
+nav:
+  - Testing & CI: testing.md
+  - Groups & Access Control: groups.md
+  - Hub Management: hub.md
