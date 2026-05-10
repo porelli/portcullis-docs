@@ -1,4 +1,5 @@
 nav:
   - Testing & CI: testing.md
   - Groups & Access Control: groups.md
+  - Authentication Policies: auth-policies.md
   - Hub Management: hub.md
