@@ -126,9 +126,9 @@ services:
       OIDC_CLIENT_ID: myapp
       OIDC_CLIENT_SECRET: "${MYAPP_OIDC_SECRET}"
       # If using ACME staging, the app needs to trust the staging CA
-      SSL_CERT_FILE: /certs/ca-bundle-with-staging.crt
+      SSL_CERT_FILE: /certs/ca-bundle.crt
     volumes:
-      - ./certs/ca-bundle-with-staging.crt:/certs/ca-bundle-with-staging.crt:ro
+      - ./certs/ca-bundle.crt:/certs/ca-bundle.crt:ro
     networks:
       - default
       - portcullis-proxy
@@ -210,16 +210,16 @@ If your app makes HTTPS calls to Keycloak (common for native OIDC apps), it need
 
 ```yaml
 volumes:
-  - ./certs/ca-bundle-with-staging.crt:/certs/ca-bundle-with-staging.crt:ro
+  - ./certs/ca-bundle.crt:/certs/ca-bundle.crt:ro
 ```
 
 Then configure the app to use it. Common patterns:
 
 | Runtime | Environment Variable |
 |---------|---------------------|
-| Node.js | `NODE_EXTRA_CA_CERTS=/certs/ca-bundle-with-staging.crt` |
-| Go | `SSL_CERT_FILE=/certs/ca-bundle-with-staging.crt` |
-| Python (requests) | `REQUESTS_CA_BUNDLE=/certs/ca-bundle-with-staging.crt` |
+| Node.js | `NODE_EXTRA_CA_CERTS=/certs/ca-bundle.crt` |
+| Go | `SSL_CERT_FILE=/certs/ca-bundle.crt` |
+| Python (requests) | `REQUESTS_CA_BUNDLE=/certs/ca-bundle.crt` |
 | Java | Mount into Java truststore |
 | Generic | `SSL_CERT_FILE` or `CURL_CA_BUNDLE` |
 

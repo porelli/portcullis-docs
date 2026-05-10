@@ -158,7 +158,7 @@ If you're using Let's Encrypt staging (`ACME_STAGING=true`), your app needs to t
 services:
   myapp:
     volumes:
-      - /path/to/portcullis/certs/ca-bundle-with-staging.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - /path/to/portcullis/certs/ca-bundle.crt:/etc/ssl/certs/ca-certificates.crt:ro
     environment:
       # For Node.js apps:
       NODE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
