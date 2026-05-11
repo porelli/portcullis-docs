@@ -60,7 +60,7 @@ User is logged in with password (`amr=[pwd]`). Opens Jellyfin with policy `mtls-
 
 ### Step-up on forward-auth apps
 
-oauth2-proxy is shared across every forward-auth app, so it can't request per-app `acr_values` on its own. Instead, `group-gate` inspects the access token's `acr` and `amr` claims and returns a 403 with a link back to `/oauth2/start?acr_values=<needed>` when the session is under-level. One extra click for the user.
+oauth2-proxy ≥ 7.10 accepts per-request `acr_values` via the `loginURLParameters` alpha-config setting, which is what Portcullis runs. When `group-gate` detects a session that doesn't satisfy the app's policy, it returns a 403 whose HTML auto-redirects the user through `/oauth2/sign_out` and then `/oauth2/start?acr_values=<needed>`. oauth2-proxy forwards the `acr_values` param to Keycloak, triggering the matching LoA conditional subflow. If the user doesn't have the required factor yet (e.g. WebAuthn not enrolled), the 403 page also surfaces a "No hardware key yet?" link to the Keycloak account console at `https://auth.<domain>/realms/portcullis/account/account-security/signing-in` where they can register a security key and retry.
 
 ### Public app
 
@@ -94,7 +94,7 @@ If you enable a password-including policy on an app before any user has a passwo
 
 ## Caveats
 
-- **`acr_values` is advisory at Keycloak.** The OIDC spec treats it as a hint; Keycloak only hard-rejects when a client requests via the `claims` parameter with `essential: true`. Portcullis doesn't use that, so **`group-gate` always verifies `acr`/`amr` itself** for forward-auth apps. Trust lives in group-gate, not in Keycloak's acceptance of the request.
+- **`acr_values` is advisory at Keycloak.** The OIDC spec treats it as a hint; Keycloak only hard-rejects when a client requests via the `claims` parameter with `essential: true`. Portcullis uses the LoA conditional executors instead, which hard-fail when the user can't satisfy the level (e.g., asking for `hwk` with no enrolled key → "invalid username or password" at the Keycloak login form). `group-gate` *also* verifies `acr`/`amr` from the issued token as a belt-and-braces check — trust doesn't depend on Keycloak honoring the request.
 - **Session LoA accumulates.** Once a user steps up to LoA 3 via mTLS, every subsequent app within the same session sees `acr=mtls` and `amr ⊇ [mtls, ...]`. Stricter apps pass without additional prompts. Loosening policies mid-session doesn't downgrade the session.
 - **`max_age` in the LoA conditions** is 10 hours (matching the session lifespan). Lower this in `realm-export.json` if you want the re-prompt window to be shorter.
 
