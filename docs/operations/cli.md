@@ -33,9 +33,12 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`up`](#up) | Start or update the core stack and wait until it is healthy |
 | | [`down`](#down) | Stop the core stack. Volumes and secrets are kept |
 | | [`upgrade`](#upgrade) | Back up, pull, re-run the idempotent setup steps, restart |
-| | [`status`](#status) | Health overview (`--json` for machines) |
-| | [`backup`](#backup) | Back up `.env`, `certs/`, `secrets/` and volumes to `backups/` |
-| | [`restore`](#restore) | Restore a backup |
+| | [`status`](#status) | Health overview (`--json` for machines, `--textfile` for Prometheus) |
+| | [`version`](#version) | Core version and the Hub image in use |
+| Backups | [`backup`](#backup) | Consistent backup to `backups/` (`--offsite`: also restic, encrypted) |
+| | [`backup verify`](#backup-verify) | `restic check` + restore + sanity checks (or `--local`) |
+| | [`backup schedule`](#backup-schedule) | systemd timer for daily backups |
+| | [`restore`](#restore) | Restore a local or off-host (`--from-offsite`) backup |
 | Configuration | [`config apply`](#config-apply) | Apply `ACME_STAGING` / `MTLS_ENABLED`, rebuild the CA bundle |
 | | [`config init`](#config-init) | Keep your settings in `config/`, a separate git repo |
 | | [`dns setup`](#dns-setup) | Create A/AAAA records for the domain and its wildcard |
@@ -65,7 +68,7 @@ portcullis init [--domain DOMAIN] [--email EMAIL] [--dns-provider NAME]
 First-time setup. It creates `.env` (mode `0600`) with every secret randomly
 generated: the Postgres password, the Keycloak admin password, the LLDAP admin
 password and JWT secret, the forward-auth client and cookie secrets, and
-`HUB_PROXY_SECRET`. Then it runs these steps in order:
+`HUB_PROXY_SECRET`, and `BACKUP_PASSWORD` for off-host backups. Then it runs these steps in order:
 
 1. DNS records (`dns setup`)
 2. Vault init, unseal and enroll AppRole (`vault init`)
@@ -122,8 +125,8 @@ portcullis upgrade [--skip-backup]
 
 Updates a running installation after `git pull`:
 
-1. Generates any missing `HUB_PROXY_SECRET`, `FORWARD_AUTH_*` or `LLDAP_JWT_SECRET`. Other secrets must already be in `.env`.
-2. Backs up `.env`, `certs/`, `secrets/` and the volumes (`portcullis backup`).
+1. Generates any missing `HUB_PROXY_SECRET`, `FORWARD_AUTH_*`, `LLDAP_JWT_SECRET` or `BACKUP_PASSWORD`. Other secrets must already be in `.env`.
+2. Creates a local backup (`portcullis backup`: Vault snapshot, `pg_dump`, volumes, `.env`, `certs/`, `secrets/`).
 3. Pulls images.
 4. Re-runs the idempotent setup steps: `vault init`, `pki setup` (client role incl. `CLIENT_CERT_TTL`, Keycloak truststore) and the CA bundle.
 5. Runs `docker compose up -d --build` and waits for health.
@@ -138,7 +141,7 @@ See [Upgrading](upgrading.md).
 ### status
 
 ```
-portcullis status [--json]
+portcullis status [--json | --textfile]
 ```
 
 Prints a health overview:
@@ -154,46 +157,125 @@ Otherwise it exits 0.
 | Option | Meaning |
 |--------|---------|
 | `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` |
+| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, CA and per-user client-cert expiry. Run it after every scheduled backup (the systemd unit does) |
+
+### version
+
+```
+portcullis version [--json]
+```
+
+Prints the core version and the Hub image in use:
+
+- **Core version.** The `VERSION` file of a release tarball, else `git describe` of the checkout.
+- **Hub image.** `HUB_IMAGE` from `.env` or the environment, else the default pinned in `docker-compose.yml`, plus the image of the running Hub container if there is one.
+
+| Option | Meaning |
+|--------|---------|
+| `--json` | Machine-readable output |
+
+---
+
+## Backups
+
+See [Backups](backups.md) for the full picture.
 
 ### backup
 
 ```
-portcullis backup [--list]
+portcullis backup [--offsite] [--list [--json]]
 ```
 
-Creates a local backup in `backups/<timestamp>/` (mode `0700`). It contains
-`.env`, `certs/`, `secrets/` (Vault root token and unseal key),
-`keycloak/realm-export.json`, `headscale/config.yaml` and the `postgres_data`,
-`lldap_data` and `vault_data` volumes. Vault is stopped for the few seconds the
-raft copy takes.
+Creates a consistent backup in `backups/<timestamp>/` (mode `0700`) while
+everything keeps running. It contains:
 
-!!! danger "The backup can decrypt the CA"
-    It holds the unseal key and the root token. Protect it like the keys
-    themselves.
+- a Vault raft snapshot
+- a `pg_dump` of the Keycloak database
+- the LLDAP, Hub and ACME volumes (SQLite via its online backup API)
+- `.env`, `certs/`, `secrets/`, `config/` and the config files
+- `MANIFEST.json` with the sha256 of every file
+
+It keeps the newest `BACKUP_KEEP_LOCAL` (default 7) local backups.
+
+!!! danger "The backup contains the Vault root token and unseal key"
+    It can decrypt the CA and every secret. Protect it like the keys.
 
 | Option | Meaning |
 |--------|---------|
-| `--list` | List existing backups |
+| `--offsite` | Also upload it to the restic repository `BACKUP_REPOSITORY`, encrypted with `BACKUP_PASSWORD`, then apply the retention `BACKUP_KEEP_DAILY/WEEKLY/MONTHLY` (7/4/6). Keep that password **offline**: without it the off-host copies are useless, with it they are the keys to everything |
+| `--list` | List local backups. With `--offsite`, list the restic snapshots; `--json` prints restic's JSON |
 
-Off-host backups and monitoring are documented in the core repo
-(`docs/` in [porelli/portcullis](https://github.com/porelli/portcullis)).
+### backup verify
+
+```
+portcullis backup verify [--snapshot ID]
+portcullis backup verify --local [DIR]
+```
+
+**Off-host (default).** Runs `restic check`, reading
+`BACKUP_VERIFY_READ_DATA` (default 10%) of the pack data. Then it restores the
+latest snapshot (or `ID`) into a temporary directory and checks it.
+
+**`--local`.** Checks a local backup instead: `DIR`, by default the newest in
+`backups/`.
+
+The checks:
+
+- every file matches `MANIFEST.json`, and `.env` / `secrets/` are complete
+- `vault.snap` is a raft snapshot (`meta.json`, `state.bin`, `SHA256SUMS` ok)
+- `postgres.dump` restores into a throwaway Postgres container (no network) and contains the Keycloak realms
+- the LLDAP database opens, passes `integrity_check` and has users
+- every volume archive is readable
+
+Exits non-zero if anything fails.
+
+### backup schedule
+
+```
+portcullis backup schedule --systemd [--on-calendar SPEC] [--output DIR]
+```
+
+Prints, or writes to `DIR`, a systemd service and timer. They run
+`portcullis backup --offsite` (just `backup` while `BACKUP_REPOSITORY` is
+unset) as the current user, followed by `portcullis status --textfile`. The
+user must be able to run docker.
+
+| Option | Meaning |
+|--------|---------|
+| `--systemd` | Generate systemd units (the only scheduler supported) |
+| `--on-calendar SPEC` | systemd `OnCalendar` (default `*-*-* 03:15:00`, plus up to 30 minutes random delay) |
+| `--output DIR` | Write `portcullis-backup.service` / `.timer` into `DIR` and print the install commands |
 
 ### restore
 
 ```
 portcullis restore [--yes] <backup-dir>
-portcullis restore --list
+portcullis restore [--yes] --from-offsite [SNAPSHOT]
+portcullis restore --list [--offsite]
 ```
 
-Stops Portcullis, restores `.env`, `certs/`, `secrets/`, the config files and
-the volumes from a backup made by `portcullis backup` or `portcullis upgrade`,
-then starts everything again. The current `.env`, `secrets/` and `certs/` are
-saved to `backups/pre-restore-<timestamp>/` first.
+Stops Portcullis and restores a backup made by `portcullis backup` or
+`upgrade`:
+
+- `.env`, `certs/`, `secrets/` and the config files
+- the Vault data: the raft snapshot is restored into a fresh Vault, which then unseals with the backed-up key
+- the Keycloak database: `pg_restore` into a fresh Postgres
+- the LLDAP, Hub and ACME volumes
+
+Then everything is started again. The backup's checksums are verified first.
+The current `.env`, `secrets/` and `certs/` are saved to
+`backups/pre-restore-<timestamp>/`.
+
+`--from-offsite` restores `SNAPSHOT` (default: latest) from
+`BACKUP_REPOSITORY`. On a new host without `.env`, export `BACKUP_REPOSITORY`,
+`BACKUP_PASSWORD` and the provider credentials first. The `.env` comes from
+the backup.
 
 | Option | Meaning |
 |--------|---------|
 | `-y`, `--yes` | Do not ask for confirmation |
-| `--list` | List available backups |
+| `--from-offsite` | Restore from the restic repository |
+| `--list` | List local backups (`--offsite`: restic snapshots) |
 
 ---
 
@@ -277,6 +359,7 @@ Idempotent. It is run by `portcullis init`, `upgrade` and `restore`.
 2. If Vault is uninitialised, runs `vault operator init` with **one** key share. The output goes to `secrets/vault-init.json` (`0600`). The unseal key goes to `secrets/vault-unseal/unseal-key` (`0640`, group of the vault user). That file is mounted read-only into vault, which auto-unseals on every start.
 3. Unseals Vault if it is sealed and waits until the raft node is active.
 4. Enables AppRole and writes the `portcullis-enroll` policy (`vault/policies/enroll.hcl`) and role. The enroll role-id and secret-id go to `secrets/enroll/` (`0640`, group 10002 = the enroll user), which is mounted read-only into enroll.
+5. Writes the `portcullis-metrics` policy (`vault/policies/metrics.hcl`: read `sys/metrics`) and keeps a token with only that policy in `secrets/monitoring/prometheus/vault-token` for Prometheus ([monitoring profile](monitoring.md)). The token is recreated when it has less than a year left.
 
 !!! warning "Keep an offline copy of `secrets/vault-init.json`"
     Losing it together with the host means losing the CA.
