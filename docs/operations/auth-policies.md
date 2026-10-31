@@ -46,6 +46,15 @@ Examples:
 
 **Global default** — the *Settings* tab exposes the default policy that every app without an override uses. Changing it affects all apps whose per-app policy is unset.
 
+!!! warning "Fresh installs have no default policy"
+    Until you save a global default, the default is empty. group-gate then
+    applies no factor requirement: any Keycloak login, including a password,
+    satisfies every app that has no override. Group checks and forward-auth
+    still apply. The Hub also puts those apps' routers on the `public@file` TLS
+    tier, so no client certificate is requested on their subdomains. Set the
+    default (e.g. `any of [mtls, webauthn]`) as one of the first steps after
+    installation.
+
 The **safety score** next to each policy is a cosmetic sum: 0 for public, LoA for a single factor, LoA + 0.5 per extra required factor for AND policies.
 
 ## What happens when a user hits an app
@@ -60,11 +69,11 @@ User is logged in with password (`amr=[pwd]`). Opens Jellyfin with policy `mtls-
 
 ### Step-up on forward-auth apps
 
-oauth2-proxy ≥ 7.10 accepts per-request `acr_values` via the `loginURLParameters` alpha-config setting, which is what Portcullis runs. When `group-gate` detects a session that doesn't satisfy the app's policy, it returns a 403 whose HTML auto-redirects the user through `/oauth2/sign_out` and then `/oauth2/start?acr_values=<needed>`. oauth2-proxy forwards the `acr_values` param to Keycloak, triggering the matching LoA conditional subflow. If the user doesn't have the required factor yet (e.g. WebAuthn not enrolled), the 403 page also surfaces a "No hardware key yet?" link to the Keycloak account console at `https://auth.<domain>/realms/portcullis/account/account-security/signing-in` where they can register a security key and retry.
+oauth2-proxy ≥ 7.10 accepts per-request `acr_values` via the `loginURLParameters` alpha-config setting, which is what Portcullis runs (allowed values `pwd`, `hwk`, `mtls`, plus `prompt=login`). When `group-gate` detects a session that doesn't satisfy the app's policy, it returns a 403 "Additional authentication required" page. The page carries the URL in an `X-Stepup-URL` header and auto-redirects after 2 seconds to `/oauth2/start?acr_values=<needed>&prompt=login&rd=<app>`. There is no sign-out: `prompt=login` makes Keycloak re-run the flow instead of short-circuiting on its SSO cookie, and `acr_values` selects the matching LoA conditional subflow. The new token reflects the step-up. If the user doesn't have the required factor yet (e.g. WebAuthn not enrolled), the 403 page also surfaces a "No hardware key yet?" link to the Keycloak account console at `https://auth.<domain>/realms/portcullis/account/account-security/signing-in` where they can register a security key and retry.
 
-### Public app
+### Public policy
 
-Policy with no factors produces a router with `tls.options: public@file` and no forward-auth middleware. Requests reach the app without authentication.
+A policy with no factors means group-gate requires **no particular factor**, and the Hub sets the router's tier to `public@file`. The Hub only changes `tls.options`. The template's middlewares stay as they are, so a forward-auth app still requires a Keycloak login and its group. An app is only reachable without logging in if its template has no forward-auth middleware (`auth.method: public`).
 
 ## Traefik TLS tier
 
@@ -76,7 +85,17 @@ The policy also drives the TLS tier on each router via a Hub-generated compose o
 | mTLS-only, or `all of [..., mtls]` | `protected@file` | Requires client cert at TLS handshake |
 | Everything else | `authaware@file` | Client cert tolerated but not required |
 
-The tier change is emitted as a per-router `traefik.http.routers.<name>.tls.options` label in `${HUB_DATA_DIR}/overrides/<app>.override.yml`. Base `compose.yml` files in templates are untouched.
+The tier change is emitted as a per-router `traefik.http.routers.<name>.tls.options` label in `${HUB_DATA_DIR}/overrides/<app>.override.yml`, for every router of the app. Base `compose.yml` files in templates are untouched. Changing the global default restarts only the inheriting apps whose tier actually changed.
+
+## Where policies are published
+
+The Hub writes per-app policies into `group-gate-policy.json` **keyed by every subdomain the app routes** (never by template ID); apps that inherit the default publish nothing and group-gate uses the file's `default`. A policy with an unknown factor or op makes group-gate deny the request (fail closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
+
+For native-OIDC apps the policy also sets the Keycloak client's `default.acr.values`, so Keycloak prompts for the right level at login.
+
+## mTLS binding
+
+`amr=mtls` in a token only proves a certificate was used at login. When a policy is satisfied **only** through `mtls` (`mtls` alone, `all` including `mtls`, or `any` where `mtls` is the only factor in the token), group-gate additionally requires the current request to present an unrevoked client certificate whose CN equals the token's `preferred_username`. Otherwise the user gets the step-up page. A session opened with a since-revoked certificate, or replayed from a browser without the key, stops working at once. See [TLS & mTLS](../setup/certificates.md#mtls-binding-group-gate).
 
 ## Enforcement map
 
@@ -84,7 +103,7 @@ The tier change is emitted as a per-router `traefik.http.routers.<name>.tls.opti
 |-------|--------|----------|----------|------|------------------|-----------------|
 | Traefik | `public` | `authaware` | `authaware` | `protected` | `protected` if `mtls` in set | `authaware` unless mTLS-only |
 | Keycloak | none | LoA 1 flow | LoA 2 flow | LoA 3 flow | highest LoA + step-up | lowest LoA (any satisfies) |
-| group-gate | allow all | require `pwd ∈ amr` | require `hwk ∈ amr` | require `mtls ∈ amr` | require all factors in `amr` | require `amr ∩ factors ≠ ∅` |
+| group-gate | no factor check | require `pwd ∈ amr` | require `hwk ∈ amr` | require `mtls ∈ amr` + mTLS binding | require all factors in `amr` (+ binding if `mtls`) | require `amr ∩ factors ≠ ∅` (+ binding if only `mtls` matched) |
 
 ## LLDAP passwords
 
@@ -110,4 +129,4 @@ Your browser may not be sending the client certificate. Check that the cert is i
 The session cookie expired (8 hours idle / 12 hours max by default). Re-authenticate.
 
 **AND policy keeps failing with `amr=["pwd"]` even after a WebAuthn step-up**
-Check that the `acr` client scope is attached to the app's Keycloak client and that the `acr loa level` protocol mapper has `Add to access token = true`. `configure-keycloak.sh` does this by default; a manually-created client may be missing it.
+Check that the `acr` client scope is attached to the app's Keycloak client and that the `acr loa level` protocol mapper has `Add to access token = true`. `./portcullis keycloak configure` does this for `portcullis-forward-auth`, and the Hub attaches the `acr` and `groups` scopes to every client it registers; a manually-created client may be missing them.

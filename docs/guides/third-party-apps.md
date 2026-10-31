@@ -47,31 +47,30 @@ networks:
 
 ### Group enforcement
 
-Add your app's subdomain to `scripts/group-gate-map.conf` in the core repo:
+Add your app's subdomain to `group-gate/group-gate-map.conf` in the core checkout:
 
 ```
 myapp=users_myapp
 ```
 
-Then create the group in LLDAP and restart group-gate:
+Then create the group in LLDAP and add users to it. group-gate re-reads the map file on every request, so no restart is needed. If you skip this step, any authenticated Portcullis user can access the app (group-gate logs `ALLOW-UNMAPPED`).
 
-```bash
-# Create group in LLDAP (via API or web UI)
-# Add users to the group
-# Restart group-gate to pick up the new mapping
-docker compose -p portcullis up -d --force-recreate group-gate
-```
+!!! note "Use a subdomain no Hub app uses"
+    group-gate keys everything by subdomain. If a Hub-enabled app routes the same subdomain, the Hub's `groups` entry overrides the map file. Hosts outside `<label>.<PORTCULLIS_DOMAIN>` are always denied by group-gate. Core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`) cannot be reused.
 
-If you skip this step, any authenticated Portcullis user can access the app.
+`client-headers@file` must come **before** `portcullis-groups@docker`, so group-gate sees the client certificate and can enforce revocation. For admin-only paths, use a separate `PathPrefix` router; per-path groups (`path_groups`) are only published by the Hub for templates.
 
 ### Passing user identity
 
-The authenticated user's email is available to your app via the `X-Forwarded-User` header (set by the group-gate middleware). Many apps support "trusted header" authentication:
+The authenticated user's LLDAP username is available to your app in the `X-Forwarded-User` header (set by the group-gate middleware), the email in `X-Forwarded-Email` and the groups in `X-Auth-Request-Groups`. Identify users by the username: LLDAP users can edit their own email. Many apps support "trusted header" authentication.
+
+!!! danger "Trust the header only from Traefik"
+    Every container on `portcullis-proxy` can connect to your app directly. Configure the app to accept identity headers only from `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`), never from the whole subnet. See [Header Auth Pattern → Header Security](header-auth-app.md#header-security).
 
 | App Framework | Config |
 |--------------|--------|
-| **Grafana** | `GF_AUTH_PROXY_ENABLED=true`, `GF_AUTH_PROXY_HEADER_NAME=X-Forwarded-User` |
-| **Kanboard** | `REVERSE_PROXY_AUTH=true`, header `REMOTE_USER` |
+| **Grafana** | `GF_AUTH_PROXY_ENABLED=true`, `GF_AUTH_PROXY_HEADER_NAME=X-Forwarded-User`, `GF_AUTH_PROXY_HEADER_PROPERTY=username`, `GF_AUTH_PROXY_WHITELIST=172.31.250.2` |
+| **Kanboard** | `REVERSE_PROXY_AUTH=true`, `REVERSE_PROXY_USER_HEADER=HTTP_X_FORWARDED_USER`, `TRUSTED_PROXY_NETWORKS=172.31.250.2/32` |
 | **Firefly III** | `AUTHENTICATION_GUARD=remote_user_guard` |
 | **Generic** | Read `X-Forwarded-User` header in your app |
 
@@ -101,7 +100,8 @@ curl -s http://localhost:8080/admin/realms/portcullis/clients \
     "secret": "your-client-secret-here",
     "redirectUris": ["https://myapp.yourdomain.com/callback"],
     "standardFlowEnabled": true,
-    "directAccessGrantsEnabled": false
+    "directAccessGrantsEnabled": false,
+    "defaultClientScopes": ["openid", "profile", "email", "acr", "groups"]
   }'
 ```
 
@@ -213,7 +213,7 @@ Your app gets its own containers, network, and lifecycle — completely independ
 | Per-app settings UI | Yes | Edit compose/env directly |
 | Status/logs in Hub | Yes | `docker compose logs` |
 | Keycloak client auto-registration | Yes | Manual registration |
-| Group-gate mapping | Via manifest | Edit `group-gate-map.conf` |
+| Group-gate mapping | Via manifest (`access_group`, `admin_paths`) | Edit `group-gate/group-gate-map.conf` |
 | Auth badges in UI | Yes | N/A |
 
 For apps you manage frequently or share with others, consider [creating a proper template](adding-an-app.md). For one-off apps or quick experiments, the third-party approach is simpler.

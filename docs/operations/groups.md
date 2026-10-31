@@ -31,7 +31,7 @@ Keycloak (identity provider)
   v  OIDC groups claim
 oauth2-proxy (forward auth)
   |
-  v  X-Forwarded-Groups header
+  v  X-Auth-Request-Groups header
 group-gate (access check)
   |
   v  subdomain -> required group mapping
@@ -47,35 +47,149 @@ App (allowed or denied)
 
 ## group-gate and the Subdomain Map
 
-group-gate is a lightweight forward-auth middleware that maps subdomains to required groups. It combines two sources, both re-read on every request:
+group-gate is the forward-auth service behind the `portcullis-groups@docker`
+middleware. It maps **subdomains** to required groups. Two sources are merged,
+and both are re-read on every request:
 
-1. **`group-gate-map.conf`** (core repo, `scripts/`) holds static entries, mainly for core services:
+1. **`group-gate/group-gate-map.conf`** in the core repo (mounted read-only
+   into group-gate) holds static entries, mainly for the core services:
 
     ```
-    # subdomain = required_group
-    auth = lldap_admin
-    hub = lldap_admin
-    grafana = users_grafana
+    # subdomain=required_group
+    auth=lldap_admin
+    hub=lldap_admin
+    grafana=users_grafana
     ```
 
-2. **The Hub's `group-gate-policy.json`** has a `groups` map that the Hub writes whenever apps are enabled or disabled. For every enabled template with `auth.group_access: true`, it maps each subdomain the template routes to the manifest's `auth.access_group`.
+    Edits take effect on the next request; no restart is needed.
 
-    For example, Nextcloud routes `cloud.<domain>` and declares `users_nextcloud`, so it yields `cloud = users_nextcloud`.
+2. **The Hub's `group-gate-policy.json`** (version 2, on the `hub_data` volume)
+   has a `groups` map. The Hub rewrites it whenever an app is enabled,
+   disabled or reconfigured. For every **enabled** template with
+   `auth.group_access: true`, each subdomain the template routes maps to the
+   manifest's `auth.access_group`. For example, Nextcloud routes
+   `cloud.<domain>` and declares `users_nextcloud`, so it yields
+   `cloud = users_nextcloud`. Hub entries add to or override the map file for
+   app subdomains.
 
-For core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`), the map file always wins. A template can never relax them, and they default to `lldap_admin` even if missing from the map file.
+**Keys are subdomains only.** Policies, groups and path rules are never keyed
+by template ID, because an ID could equal another app's subdomain. The Hub
+refuses to enable a template that routes a subdomain another enabled app
+already routes, and rejects templates whose `Host()` rules it can't fully
+resolve (see [Hub → Template rules](hub.md#template-rules-enforced-by-the-hub)).
 
-When a request arrives at `grafana.<domain>`, group-gate:
+**Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`) always
+come from the map file. The Hub never publishes them, and group-gate ignores
+them in the policy file. If they are missing from the map file they default to
+`lldap_admin`.
 
-1. **Normalizes the host** -- it takes the host from `X-Forwarded-Host`, lowercases it, and strips any port and trailing dot. With `PORTCULLIS_DOMAIN` set, the host must be exactly `<label>.<PORTCULLIS_DOMAIN>`; anything else gets a `403`. Without this, `HUB.<domain>` would have missed the `hub` entry, because Traefik matches hosts case-insensitively.
-2. **Checks the auth policy** -- it applies the Hub's per-app auth policy (mTLS / WebAuthn / password) if one is set. A malformed policy (unknown factor or operator) **denies** access rather than falling back to public.
-3. **Looks up the group** -- it finds the required group (`users_grafana`) for the subdomain.
-4. **Compares groups** -- it reads the user's groups from `X-Auth-Request-Groups` (set by oauth2-proxy), splits them on commas only, and requires an exact match.
-5. **Responds** -- it returns `200 OK` and echoes `X-Auth-Request-User`, `X-Auth-Request-Groups` and `X-Forwarded-User` to the backend, or `403 Forbidden`.
+### What group-gate checks
 
-If a subdomain has no mapping, group-gate allows any authenticated user and logs `ALLOW-UNMAPPED`. This is the passthrough for apps without group-based access.
+When a request for `grafana.<domain>` arrives, group-gate runs these checks in
+order and stops at the first failure:
 
-!!! warning "Upgrading"
-    Apps whose manifest sets `group_access: true` now really require their `access_group` once the updated Hub writes the policy file. Before upgrading, add existing users to those groups in LLDAP, notably `users_nextcloud` and `users_guacamole`. Previously these apps were reachable by any logged-in user.
+1. **Host.** It takes the host from `X-Forwarded-Host`, lowercases it, and
+   strips any port and trailing dot. The host must be exactly
+   `<label>.<PORTCULLIS_DOMAIN>`; anything else gets a 403. Traefik matches
+   hosts case-insensitively, so without normalisation `HUB.<domain>` would
+   miss the `hub` entry.
+2. **Reserved group.** A user whose groups include `__portcullis_deny__` is
+   denied.
+3. **Revocation.** If the request carries a client certificate (via
+   `client-headers@file`, which must come before `portcullis-groups@docker`),
+   its serial must not be revoked. See [TLS & mTLS](../setup/certificates.md#revocation).
+4. **Auth policy.** If the app has a policy (or there is a global default),
+   the session's `acr`/`amr` must satisfy it. Otherwise group-gate returns the
+   step-up page. Policies satisfied only through `mtls` also need the current
+   request's certificate to match the user (mTLS binding). See
+   [Authentication Policies](auth-policies.md).
+5. **Group.** It looks up the subdomain's required group (`users_grafana`) and
+   compares it with `X-Auth-Request-Groups` (set by oauth2-proxy). The header
+   is split on commas only, and the match must be exact.
+6. **Path rules.** If the subdomain has `path_groups`, the group of the matching
+   path rule is required **in addition** (see below).
+7. **Allow.** It returns `200 OK` and sets `X-Forwarded-User` /
+   `X-Auth-Request-User` (the LLDAP username), `X-Forwarded-Email` /
+   `X-Auth-Request-Email` and `X-Auth-Request-Groups` for the backend.
+   Identity is always the username, never the user-editable email.
+   Otherwise it returns `403 Forbidden`.
+
+**Fail closed.** These all deny the request instead of falling back to
+"public":
+
+- a policy file that exists but can't be parsed
+- a `version` newer than group-gate understands
+- an unknown factor, op or rule shape
+
+If a subdomain has no mapping at all, group-gate allows any authenticated user
+and logs `ALLOW-UNMAPPED`. This is the passthrough for apps without group-based
+access.
+
+### The reserved group `__portcullis_deny__`
+
+The Hub publishes `groups[sub] = "__portcullis_deny__"` for subdomains it knows
+are routed but can't attribute a config to. That happens when:
+
+- an enabled app has neither a template nor a stored snapshot
+- a `portcullis-<id>` project runs without being enabled
+
+Nobody is a member of that group, so every request to those subdomains is
+denied ("The configuration of … is unavailable"). A user who *claims*
+membership is denied everywhere.
+
+!!! danger "Never create an LLDAP group named `__portcullis_deny__`"
+    Membership would be treated as tampering and deny that user on every app.
+
+See [Hub → Fail-closed behaviour](hub.md#fail-closed-behaviour).
+
+### Path rules (`path_groups` and `admin_paths`)
+
+Some apps keep an admin area on a path of the same subdomain, e.g.
+Vaultwarden's `/admin`. A template lists such prefixes in its manifest:
+
+```yaml
+auth:
+  admin_group: admin_vaultwarden
+  admin_paths: ["/admin"]
+```
+
+For every subdomain of an enabled template, the Hub publishes
+`path_groups[sub] = [{"prefix": "/admin", "group": "admin_vaultwarden"}]`. On
+requests under that prefix, group-gate then requires `admin_group` **in
+addition** to the subdomain's group.
+
+Matching:
+
+- **What is matched.** The path from `X-Forwarded-Uri` with the query and
+  fragment stripped. It is percent-decoded **once**, `//` is collapsed, and dot
+  segments (`/./`, `/../`) are resolved.
+- **Ambiguous paths are denied.** If an encoded slash, backslash or NUL
+  (`%2F`, `%5C`, `%00`) is still present after that one decode, or the path has
+  control characters, the request is denied outright. Different backends read
+  such paths differently.
+- **Deny-biased variants.** A rule applies if it matches **any** of: the
+  primary form, the fully decoded form, `\` read as `/`, `;` path parameters
+  stripped. Each is compared both case-sensitively and case-insensitively. So
+  `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` all hit the `/admin` rule
+  (CI's browser test checks exactly these).
+- **Segment-boundary prefixes.** `/admin` matches `/admin` and `/admin/x`, but
+  not `/administrator`. The longest matching prefix wins. If different variants
+  hit rules with different groups, all of those groups are required.
+
+!!! note "Only routers with group-gate are covered"
+    Path rules only work on routers whose middlewares include
+    `portcullis-auth@docker,portcullis-groups@docker`. For a native-OIDC app,
+    the template routes the admin path through its own higher-priority
+    `PathPrefix` router with forward-auth (`validate.py` in the templates repo
+    checks that such a router exists).
+
+### `/authenticated`: any signed-in user
+
+group-gate also serves `/authenticated`, used by the core middleware
+`portcullis-self@docker`. It runs every check except the subdomain group check
+(step 5): host, revocation, policy, path rules, and a signed-in user. Core uses
+it for `enroll.<domain>/self`, where every user may renew **their own**
+certificate without being in `lldap_admin`.
 
 ## Per-App Enforcement
 
@@ -86,21 +200,17 @@ How group access is enforced depends on the auth method:
 The Traefik middleware chain handles everything:
 
 ```
-portcullis-auth@docker  -->  portcullis-groups@docker  -->  App
-(oauth2-proxy)               (group-gate)
+client-headers@file --> portcullis-auth@docker --> portcullis-groups@docker --> App
+(client cert info)      (oauth2-proxy)             (group-gate)
 ```
 
-Both oauth2-proxy and group-gate run as Traefik forward-auth middleware. The app itself is unaware of groups.
+Both oauth2-proxy and group-gate run as Traefik forward-auth middleware. The app itself is unaware of groups (header-auth apps receive them in `X-Auth-Request-Groups`).
 
 ### Native OIDC Apps
 
-Native OIDC apps receive the user's groups in the OIDC token from Keycloak. Some apps can enforce group-based access internally:
+Native OIDC apps receive the user's groups in the `groups` claim (the Hub attaches the `groups` client scope to every client it registers). Some apps enforce group-based access themselves, e.g. Jellyfin's SSO plugin requires `users_jellyfin` and maps `admin_jellyfin` to admin. Each app page in the [App Catalog](../apps/index.md) says what it does.
 
-- **Jellyfin**: The SSO-Auth plugin checks for `users_jellyfin` in the groups claim and maps `admin_jellyfin` to the admin role
-- **Immich**: Group claims are available but not yet enforced
-- **Vaultwarden**: No group-based restriction
-
-For native OIDC apps that do not enforce groups themselves, you can optionally add the `portcullis-groups@docker` middleware to their Traefik router for external enforcement.
+Apps that can't restrict OIDC logins by group (GitLab, LiteLLM) put only their interactive login paths behind forward-auth + group-gate on a higher-priority `PathPrefix` router, and keep their API router without forward-auth. Never put `portcullis-auth@docker` on the host-wide router of a native-OIDC app: it would break API clients and mobile apps.
 
 ### Public Apps
 
@@ -187,7 +297,7 @@ curl -s -X POST \
 
 To give user `alice` access to Grafana:
 
-1. Ensure the `users_grafana` group exists in LLDAP (it is created automatically when Grafana is enabled in the Hub)
+1. Create the `users_grafana` group in LLDAP if it doesn't exist yet (the Hub does not create groups)
 2. Add `alice` to the `users_grafana` group in LLDAP
 3. Wait for Keycloak sync (or trigger manually)
 4. `alice` can now access `https://grafana.<your-domain>`
