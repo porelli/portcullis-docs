@@ -173,38 +173,31 @@ Unlike HTTP-01 challenges (which require port 80 access for each hostname), DNS-
 
 This is why Portcullis needs your DNS provider API token -- it creates and cleans up the challenge TXT record automatically.
 
-## Multiple Domains
+## One domain per installation
 
-Portcullis is built around **one** base domain. group-gate denies (403) every
-host that is not exactly `<label>.<PORTCULLIS_DOMAIN>`, and the Hub rejects
-templates that route any other domain, so a second domain can only serve
-routers that don't use `portcullis-groups@docker` (e.g. public pages, or apps
-with their own native OIDC login).
+A Portcullis installation serves exactly **one** base domain,
+`PORTCULLIS_DOMAIN`, and every app lives at `<subdomain>.${PORTCULLIS_DOMAIN}`.
+This is enforced, not just a default:
 
-If you need that anyway:
+- group-gate denies every request whose host is not exactly
+  `<label>.${PORTCULLIS_DOMAIN}`, because it looks policies and groups up by
+  that label
+- the Hub rejects templates whose routers use any other domain
+  ([Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate))
+- Traefik requests one wildcard certificate (`${PORTCULLIS_DOMAIN}` and
+  `*.${PORTCULLIS_DOMAIN}`)
+- oauth2-proxy's cookie and redirect whitelist cover `.${PORTCULLIS_DOMAIN}` only
+- Keycloak's hostname is `auth.${PORTCULLIS_DOMAIN}`
 
-1. Add the wildcard DNS records for the second domain.
-2. Traefik's static configuration comes only from the `TRAEFIK_*` environment
-   variables in `docker-compose.yml`. Add a second certificate domain in
-   `config/docker-compose.override.yml` (and the DNS provider credentials for
-   it, if it is hosted elsewhere):
+**To serve a second domain, run a second installation.** Supporting several
+domains in one installation would need all of the following:
 
-    ```yaml
-    services:
-      traefik:
-        environment:
-          TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_DOMAINS_1_MAIN: internal.corp.io
-          TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_DOMAINS_1_SANS: "*.internal.corp.io"
-    ```
-
-3. Use the full hostname in the service's labels:
-
-    ```yaml
-    labels:
-      traefik.http.routers.myapp.rule: Host(`myapp.internal.corp.io`)
-    ```
-
-4. Run `./portcullis up`.
+- group-gate keyed by full host, or by a domain list
+- the Hub's host validation and policy file keyed the same way
+- a certificate and DNS records per domain
+- oauth2-proxy cookies per domain: a session cookie can't span unrelated
+  domains, so users would sign in once per domain
+- Keycloak redirect URIs for each domain
 
 ## Local Development (No Public Domain)
 
