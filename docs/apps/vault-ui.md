@@ -1,6 +1,6 @@
 # 🔒 Vault UI
 
-> Vault web interface — mTLS only (high security)
+> PLACEHOLDER / EXPERIMENTAL: mTLS-only (protected tier) demo route; currently runs SFTPGo, not a Vault UI
 
 **Category:** security  
 **Tags:** `vault`, `secrets`, `pki`

@@ -17,7 +17,7 @@
 | **Admin Group** | `admin_kanboard` |
 
 !!! info "Auth Notes"
-    Reverse proxy auth with X-Forwarded-User header. Auto-creates users on first login. Admin role set manually in Kanboard UI. Access gated by group-gate.
+    Reverse proxy auth with X-Forwarded-User header, honoured only from Traefik (TRUSTED_PROXY_NETWORKS = PORTCULLIS_TRAEFIK_IP). Auto-creates users on first login. Admin role set manually in Kanboard UI. Access gated by group-gate.
 
 ## Access URLs
 

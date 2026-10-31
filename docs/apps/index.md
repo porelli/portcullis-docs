@@ -5,7 +5,7 @@ All apps available in Portcullis with their authentication capabilities.
 | App | Category | Auth Method | SSO | Group Access | Group Admin |
 |-----|----------|-------------|-----|-------------|-------------|
 | 🤖 [LiteLLM](litellm.md) | ai | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
-| 🗃 [CloudBeaver](cloudbeaver.md) | devops | `forward-auth` | :x: No | :white_check_mark: | :x: |
+| 🗃 [CloudBeaver](cloudbeaver.md) | devops | `header-auth` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🦊 [GitLab](gitlab.md) | devops | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
 | 💰 [Actual Budget](actual-budget.md) | finance | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
 | 💸 [Firefly III](firefly-iii.md) | finance | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
@@ -18,10 +18,10 @@ All apps available in Portcullis with their authentication capabilities.
 | 🚫 [Pi-hole](pihole.md) | networking | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📝 [DokuWiki](dokuwiki.md) | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📋 [Kanboard](kanboard.md) | productivity | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
-| ☁ [Nextcloud](nextcloud.md) | productivity | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
+| ☁ [Nextcloud](nextcloud.md) | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📖 [Wiki.js](wiki.md) | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📄 [Docs Site](docs.md) | public | `public` | :x: No | :x: | :x: |
-| 🖥 [Apache Guacamole](guacamole.md) | remote-access | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
+| 🖥 [Apache Guacamole](guacamole.md) | remote-access | `header-auth` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🔒 [Vault UI](vault-ui.md) | security | `mtls` | :x: No | :x: | :x: |
 | 🔐 [Vaultwarden](vaultwarden.md) | security | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
 | 🌐 [Headscale](headscale.md) | vpn | `native-oidc` | :white_check_mark: Yes | :x: | :x: |

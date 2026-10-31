@@ -43,32 +43,39 @@ App (allowed or denied)
 1. **LLDAP** stores users and groups. An admin creates groups and assigns users to them.
 2. **Keycloak** federates from LLDAP via its LDAP user storage provider. Groups are synced periodically (and can be triggered manually).
 3. **oauth2-proxy** authenticates users via Keycloak's OIDC endpoint. The ID token includes a `groups` claim with the user's LLDAP groups.
-4. **group-gate** receives the `X-Forwarded-Groups` header (set by oauth2-proxy) and checks whether the user belongs to the required group for the requested subdomain.
+4. **group-gate** receives the `X-Auth-Request-Groups` header (set by oauth2-proxy) and checks whether the user belongs to the required group for the requested subdomain.
 
 ## group-gate and the Subdomain Map
 
-group-gate is a lightweight middleware that maps subdomains to required groups. It reads its configuration from `group-gate-map.conf`:
+group-gate is a lightweight forward-auth middleware that maps subdomains to required groups. It combines two sources, both re-read on every request:
 
-```
-# subdomain = required_group
-grafana = users_grafana
-pihole = users_pihole
-adguard = users_adguard
-media = users_jellyfin
-photos = users_immich
-passwords = users_vaultwarden
-```
+1. **`group-gate-map.conf`** (core repo, `scripts/`) holds static entries, mainly for core services:
+
+    ```
+    # subdomain = required_group
+    auth = lldap_admin
+    hub = lldap_admin
+    grafana = users_grafana
+    ```
+
+2. **The Hub's `group-gate-policy.json`** has a `groups` map that the Hub writes whenever apps are enabled or disabled. For every enabled template with `auth.group_access: true`, it maps each subdomain the template routes to the manifest's `auth.access_group`.
+
+    For example, Nextcloud routes `cloud.<domain>` and declares `users_nextcloud`, so it yields `cloud = users_nextcloud`.
+
+For core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`), the map file always wins. A template can never relax them, and they default to `lldap_admin` even if missing from the map file.
 
 When a request arrives at `grafana.<domain>`, group-gate:
 
-1. Extracts the subdomain (`grafana`) from the `Host` header
-2. Looks up the required group (`users_grafana`) in the map
-3. Reads the user's groups from the `X-Forwarded-Groups` header
-4. Returns `200 OK` if the user is in the group, or `403 Forbidden` if not
+1. **Normalizes the host** -- it takes the host from `X-Forwarded-Host`, lowercases it, and strips any port and trailing dot. With `PORTCULLIS_DOMAIN` set, the host must be exactly `<label>.<PORTCULLIS_DOMAIN>`; anything else gets a `403`. Without this, `HUB.<domain>` would have missed the `hub` entry, because Traefik matches hosts case-insensitively.
+2. **Checks the auth policy** -- it applies the Hub's per-app auth policy (mTLS / WebAuthn / password) if one is set. A malformed policy (unknown factor or operator) **denies** access rather than falling back to public.
+3. **Looks up the group** -- it finds the required group (`users_grafana`) for the subdomain.
+4. **Compares groups** -- it reads the user's groups from `X-Auth-Request-Groups` (set by oauth2-proxy), splits them on commas only, and requires an exact match.
+5. **Responds** -- it returns `200 OK` and echoes `X-Auth-Request-User`, `X-Auth-Request-Groups` and `X-Forwarded-User` to the backend, or `403 Forbidden`.
 
-If a subdomain is not in the map, group-gate allows the request (passthrough for apps without group-based access).
+If a subdomain has no mapping, group-gate allows any authenticated user and logs `ALLOW-UNMAPPED`. This is the passthrough for apps without group-based access.
 
-The map is generated automatically by the Hub when apps are enabled or disabled.
+!!! warning "Upgrading"
+    Apps whose manifest sets `group_access: true` now really require their `access_group` once the updated Hub writes the policy file. Before upgrading, add existing users to those groups in LLDAP, notably `users_nextcloud` and `users_guacamole`. Previously these apps were reachable by any logged-in user.
 
 ## Per-App Enforcement
 

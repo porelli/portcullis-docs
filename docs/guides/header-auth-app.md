@@ -147,9 +147,31 @@ Some apps do not support trusted header authentication at all. For these, you ha
 
 ## Header Security
 
-The `X-Forwarded-User` header is set by oauth2-proxy based on the authenticated OIDC token -- it cannot be spoofed by end users. Traefik strips any client-provided `X-Forwarded-*` headers before forwarding to oauth2-proxy.
+Clients on the internet can't spoof `X-Forwarded-User`. Traefik's forward-auth middleware deletes the header from every incoming request and only re-adds the value oauth2-proxy and group-gate return.
 
-However, ensure that backend apps only accept connections from the Docker network, not directly from the internet. If an app container exposed a port to the host, an attacker could send requests with a fake `X-Forwarded-User` header.
+Containers are a different matter. Every app frontend shares the `portcullis-proxy` network, so any compromised container on it could connect to your app directly and claim to be any user. **A header-auth app must therefore accept identity headers only from Traefik.**
+
+Core gives Traefik a fixed address for this. The `portcullis-proxy` network has the subnet `PORTCULLIS_PROXY_SUBNET` (default `172.31.250.0/24`), and Traefik always sits at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`). Both are in the core `.env`, and the Hub copies them into an app's env when its compose file references them. Use the default form so CI and older installs still resolve:
+
+```yaml
+environment:
+  GF_AUTH_PROXY_WHITELIST: ${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}            # Grafana
+  TRUSTED_PROXY_NETWORKS: ${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}/32          # Kanboard
+```
+
+If an app has no proxy allowlist (Firefly III, Guacamole, CloudBeaver), block the header in front of it. The built-in templates show three ways to do that:
+
+| Pattern | Example | How |
+|---------|---------|-----|
+| App's own web server | Firefly III | An nginx rule returns 403 when `X-Forwarded-User` comes from any peer other than Traefik |
+| Servlet container | Guacamole | A Tomcat RewriteValve does the same check |
+| Gate container | CloudBeaver | The app stays off `portcullis-proxy`. A small nginx `*-gate` service is the only thing Traefik can reach; it rejects spoofed identity headers and strips extra role/team headers |
+
+Never use "trust everything" values such as `"**"`, `0.0.0.0/0` or `::/0`.
+
+The template test helpers check both sides. `assert_traefik_only_trust <compose> <SETTING>` checks the allowlist statically. `assert_spoofed_identity_rejected <url>` sends a forged `X-Forwarded-User` from the CI host (which is never Traefik) and expects a 403.
+
+Also make sure the app doesn't publish its HTTP port on the host: a published port would bypass both Traefik and the allowlist.
 
 ## Troubleshooting
 

@@ -3,3 +3,4 @@ nav:
   - Groups & Access Control: groups.md
   - Authentication Policies: auth-policies.md
   - Hub Management: hub.md
+  - Upgrading: upgrading.md

@@ -4,10 +4,10 @@
 Reads manifest.yaml files from the templates repo and generates:
   - docs/apps/index.md    (overview table)
   - docs/apps/<app>.md    (per-app detail page)
-  - docs/apps/.pages      (ordered nav list, consumed by mkdocs-awesome-pages-plugin)
+  - docs/apps/.nav.yml    (ordered nav list, consumed by Zensical's awesome-nav support)
 
-Does NOT modify mkdocs.yml. The awesome-pages plugin reads .pages files in each
-docs directory to build the site nav, so we generate apps/.pages and let the
+Does NOT modify zensical.toml. awesome-nav reads .nav.yml files in each
+docs directory to build the site nav, so we generate apps/.nav.yml and let the
 plugin handle the rest.
 
 Usage:
@@ -229,7 +229,7 @@ def generate_app_page(app: dict, output_dir: Path):
 
 
 def generate_apps_pages(apps: list[dict], output_dir: Path):
-    """Write docs/apps/.pages for the awesome-pages plugin.
+    """Write docs/apps/.nav.yml for awesome-nav.
 
     Lists the overview page first, then each app page in (category, name) order
     with the icon prepended to the display title.
@@ -241,8 +241,8 @@ def generate_apps_pages(apps: list[dict], output_dir: Path):
         icon = app.get("icon", "")
         title = f"{icon} {name}".strip()
         lines.append(f"  - {title}: {app_id}.md")
-    (output_dir / ".pages").write_text("\n".join(lines) + "\n")
-    print(f"  Generated apps/.pages ({len(apps)} entries)")
+    (output_dir / ".nav.yml").write_text("\n".join(lines) + "\n")
+    print(f"  Generated apps/.nav.yml ({len(apps)} entries)")
 
 
 def main():

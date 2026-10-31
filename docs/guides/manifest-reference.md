@@ -200,10 +200,10 @@ Example with a single redirect URI:
 
 ```yaml
 keycloak_clients:
-  - client_id: nextcloud
-    secret_env: NEXTCLOUD_OIDC_SECRET
-    redirect_uri: "https://cloud.{{DOMAIN}}/apps/oidc_login/oidc"
-    name: Nextcloud
+  - client_id: vaultwarden
+    secret_env: VAULTWARDEN_OIDC_SECRET
+    redirect_uri: "https://passwords.{{DOMAIN}}/identity/connect/oidc-signin"
+    name: Vaultwarden
 ```
 
 Example with multiple redirect URIs (e.g., web + mobile app):

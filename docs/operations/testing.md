@@ -9,7 +9,7 @@ There are two GitHub Actions workflows:
 | Workflow | File | What It Tests |
 |----------|------|---------------|
 | **CI** | `.github/workflows/ci.yml` | Core infrastructure: Vault PKI, Keycloak realm, LLDAP, OIDC discovery, mTLS, enrollment UI |
-| **App Auth Tests** | `.github/workflows/app-tests.yml` | Per-app auth integration: forward-auth redirects, OIDC flows, group-gate, container health |
+| **Test Apps** | `.github/workflows/test-apps.yml` (templates repo) | Per-app auth integration: forward-auth redirects, OIDC flows, group-gate, container health |
 
 Both workflows:
 
@@ -18,7 +18,65 @@ Both workflows:
 3. Create test users and LLDAP groups
 4. Run test assertions
 
-The **App Auth Tests** workflow additionally starts Traefik, oauth2-proxy, and group-gate, then brings up each app template individually to verify its authentication integration.
+The **Test Apps** workflow additionally starts Traefik, oauth2-proxy, and group-gate, then brings up each app template individually to verify its authentication integration.
+
+### What triggers which app test
+
+The templates workflow only tests apps affected by the push:
+
+- A change under `<app>/` tests that app.
+- A change to `tests/apps/<app>.sh` tests that app.
+- A change to `tests/lib.sh` tests every app.
+
+### Infra image cache
+
+Core images (Traefik, Keycloak, Vault, LLDAP, oauth2-proxy, Postgres, …) are pre-pulled once per run and cached.
+
+- **Image list** -- read from the core repo with `docker compose config --images`, excluding the locally built `portcullis-enroll` and the floating Hub image.
+- **Cache key** -- a hash of that list. Bumping any image tag in core automatically invalidates the cache, so CI can never run against stale versions.
+
+### Generated secrets in tests
+
+The Hub generates every manifest `env:` entry with `generate: random`, and templates reference those with `${VAR:?}`, so they fail loudly if a value is missing. `tests/lib.sh` mirrors the Hub here: before each compose call it exports a random value for any such variable that isn't already set.
+
+### Core unit tests
+
+The core repo also has fast tests that need no containers:
+
+- `python3 -m pytest tests/` (`test_group_gate.py`) covers group-gate:
+    - host normalization and the case/port bypass regression
+    - the merge of `group-gate-map.conf` with the Hub's `groups`
+    - fail-closed policies
+    - certificate revocation, by serial list and by a real openssl-generated CRL
+- `bash tests/test_shell_libs.sh` tests the shell libraries against stub `docker`/`vault` commands:
+    - `portcullis-proxy` subnet/range/Traefik-IP validation, and network recreation including every failure path and recovery
+    - `revoke-cert.sh --sync`, which must never empty the list when Vault fails
+    - `setup-vault-pki.sh` idempotency, including resuming a partial run
+- `cd enroll && go test ./...` covers:
+    - CSR subject/SAN validation
+    - the admin requirement and the content-type check
+    - Vault AppRole login, token caching and re-login
+
+In CI these run as the `unit-tests` job. The `build-and-test` job then boots the stack and additionally verifies:
+
+- **Vault**
+    - init, unseal and the permissions on `secrets/`
+    - a second `vault-init.sh` run changes nothing
+    - after a Vault restart it auto-unseals and the CA is unchanged
+    - the enroll AppRole can only sign, list and read certs
+- **mTLS**
+    - requests with no cert, or a cert from another CA, are rejected
+    - cert info, including the serial, reaches the backend
+    - requests arrive from the static Traefik IP
+- **Revocation** end to end, once through `revoke-cert.sh` and once through Vault's CRL alone
+- **Enroll** UI and the signing path (these steps now fail the job instead of printing INFO)
+
+### Header-auth tests (templates repo)
+
+`tests/lib.sh` provides two assertions for apps that trust identity headers:
+
+- `assert_traefik_only_trust <compose> <SETTING>` checks statically that the trust setting uses `${PORTCULLIS_TRAEFIK_IP:-…}` and that nothing in the compose file trusts every peer (`"**"`, `0.0.0.0/0`, `::/0`).
+- `assert_spoofed_identity_rejected <url> [expected]` sends a forged `X-Forwarded-User` from the CI host, which is never Traefik.
 
 ## Test Structure
 
@@ -121,19 +179,19 @@ sudo apt install act
 ### List Available Jobs
 
 ```bash
-act -l -W .github/workflows/app-tests.yml
+act -l -W .github/workflows/test-apps.yml   # run from portcullis-templates
 ```
 
 ### Run All App Tests
 
 ```bash
-act -W .github/workflows/app-tests.yml
+act -W .github/workflows/test-apps.yml -s PORTCULLIS_PAT=<token>
 ```
 
 ### Run a Specific Job
 
 ```bash
-act -j app-auth-tests -W .github/workflows/app-tests.yml
+act -j test -W .github/workflows/test-apps.yml -s PORTCULLIS_PAT=<token>
 ```
 
 ### Run the Infrastructure CI

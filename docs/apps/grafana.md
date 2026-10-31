@@ -17,7 +17,7 @@
 | **Admin Group** | `admin_grafana` |
 
 !!! info "Auth Notes"
-    Proxy auth with X-Forwarded-User header. Auto-creates users as Viewer role. Admin role requires manual promotion in Grafana. Access gated by group-gate.
+    Proxy auth with X-Forwarded-User header, accepted only from Traefik (GF_AUTH_PROXY_WHITELIST = PORTCULLIS_TRAEFIK_IP). Auto-creates users as Viewer role. Admin role requires manual promotion in Grafana. Access gated by group-gate.
 
 ## Access URLs
 

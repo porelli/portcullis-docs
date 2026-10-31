@@ -40,11 +40,15 @@ The script will prompt you for:
 1. **Generates secrets** -- Random passwords for Keycloak, PostgreSQL, LLDAP, oauth2-proxy, and other services
 2. **Creates `.env`** -- Writes all configuration to a single environment file
 3. **Starts core services** -- Brings up PostgreSQL, Vault, LLDAP, and Keycloak
-4. **Initializes Vault PKI** -- Creates root and intermediate CAs for client certificate issuance
-5. **Configures Keycloak** -- Imports the Portcullis realm with WebAuthn flows, X.509 authenticator, and LLDAP federation
-6. **Registers OIDC clients** -- Creates the oauth2-proxy client in Keycloak
-7. **Starts Traefik** -- Brings up the reverse proxy with ACME certificate request
-8. **Starts auth services** -- Brings up oauth2-proxy, group-gate, and the Hub
+4. **Initializes Vault** -- Runs `scripts/vault-init.sh`. This initializes Vault (server mode, persistent raft storage), writes the root token and unseal key to `secrets/` (gitignored, mode 0600), and creates the least-privilege AppRole used by the enrollment service. Vault unseals itself automatically on every start from then on.
+5. **Initializes Vault PKI** -- Creates root and intermediate CAs for client certificate issuance
+6. **Configures Keycloak** -- Imports the Portcullis realm with WebAuthn flows, X.509 authenticator, and LLDAP federation
+7. **Registers OIDC clients** -- Creates the oauth2-proxy client in Keycloak
+8. **Starts Traefik** -- Brings up the reverse proxy with ACME certificate request
+9. **Starts auth services** -- Brings up oauth2-proxy, group-gate, and the Hub
+
+!!! warning "Back up `secrets/` now"
+    `secrets/vault-init.json` holds the Vault root token and unseal key. Losing it means losing the CA, and every client certificate with it. Keep an offline copy.
 
 ## Step 3: Wait for Certificates
 

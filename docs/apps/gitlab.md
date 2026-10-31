@@ -13,11 +13,11 @@
 | **SSO** | :white_check_mark: Yes |
 | **Group Access** | :x: |
 | **Group Admin** | :x: |
-| **Access Group** | `users_gitea` |
-| **Admin Group** | `admin_gitea` |
+| **Access Group** | `users_gitlab` |
+| **Admin Group** | `admin_gitlab` |
 
 !!! info "Auth Notes"
-    Full OIDC with Keycloak. User provisioning and role mapping possible via OIDC claims but not yet configured.
+    Full OIDC with Keycloak. No forward-auth in front of GitLab so git-over-HTTPS, the API and CI runners work with personal access tokens. Any realm user can sign in (accounts auto-created); group restriction and role mapping via OIDC claims not yet configured.
 
 ## Environment Variables
 

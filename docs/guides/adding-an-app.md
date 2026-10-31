@@ -1,6 +1,9 @@
 # Adding an App
 
-This guide walks through creating a new app template for Portcullis. App templates live in the [porelli/portcullis-templates](https://github.com/porelli/portcullis-templates) repository under `templates/<app-id>/` and consist of a manifest file and a Docker Compose file.
+This guide walks through creating a new app template for Portcullis. App templates live in the [porelli/portcullis-templates](https://github.com/porelli/portcullis-templates) repository, one directory per app at the repo root (`<app-id>/`), and consist of a manifest file and a Docker Compose file.
+
+!!! note "Mounting support files"
+    If your compose file bind-mounts files that ship with the template (config templates, entrypoint scripts), reference them as `./templates/<app-id>/<file>`. Compose resolves relative paths against the **core checkout on the host**, and before every `compose up` the Hub copies your template directory to `<core>/templates/<app-id>/`. A path like `./config.yml` would resolve to the core repo, not your template.
 
 ## Overview
 
@@ -21,7 +24,7 @@ Clone the templates repo (if you haven't already) and create a directory for you
 ```bash
 git clone git@github.com:porelli/portcullis-templates.git
 cd portcullis-templates
-mkdir -p templates/myapp
+mkdir myapp
 ```
 
 ## Step 2: Create manifest.yaml
@@ -231,6 +234,7 @@ Then configure the app to use it. Common patterns:
 4. **Check logs**: Review app and Traefik logs for errors
 
 ```bash
+# Run from the core checkout (where the Hub publishes ./templates/<app-id>/)
 # Check container status (use the per-app project name)
 docker compose -p portcullis-myapp -f templates/myapp/compose.yml ps
 
@@ -283,8 +287,8 @@ After testing locally, push your template to the templates repo and sync via the
 
 ## Checklist
 
-- [ ] `templates/myapp/manifest.yaml` created with correct auth method
-- [ ] `templates/myapp/compose.yml` with Traefik labels and correct middleware
+- [ ] `myapp/manifest.yaml` created with correct auth method
+- [ ] `myapp/compose.yml` with Traefik labels and correct middleware
 - [ ] Keycloak clients listed in manifest (for native OIDC apps)
 - [ ] Staging CA bundle mounted (for apps that call Keycloak over HTTPS)
 - [ ] App tested manually via the Hub

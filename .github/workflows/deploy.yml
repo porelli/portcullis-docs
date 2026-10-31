@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # The app catalog is generated from portcullis-templates at build time, so
+  # rebuild daily to pick up template changes without a docs-repo push.
+  schedule:
+    - cron: '17 4 * * *'
 
 permissions:
   contents: write
@@ -12,23 +16,32 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Clone templates repo (for manifest-based catalog)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: porelli/portcullis-templates
           path: portcullis-templates
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install mkdocs-material mkdocs-awesome-pages-plugin pyyaml
+        # Zensical is pre-1.0: pin exactly and bump deliberately.
+        run: pip install 'zensical==0.0.74' 'ghp-import==2.1.0' pyyaml
 
       - name: Generate app catalog from manifests
         run: python scripts/generate-app-docs.py --source portcullis-templates
 
-      - name: Build and deploy
-        run: mkdocs gh-deploy --force
+      - name: Build
+        run: zensical build --strict --clean
+
+      # Same mechanism `mkdocs gh-deploy` used: force-push site/ to gh-pages.
+      - name: Deploy to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          ghp-import --no-jekyll --push --force --no-history \
+            --message "Deploy ${GITHUB_SHA::7}" site

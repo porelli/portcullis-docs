@@ -78,7 +78,7 @@ Portcullis is organized as four separate repositories, each with a distinct resp
 
 - **Templates repo** ([porelli/portcullis-templates](https://github.com/porelli/portcullis-templates)) -- Houses the 22 app templates (each with a `manifest.yaml` and `compose.yml`). The Hub automatically clones this repo on first startup as the default marketplace source. New templates are contributed here and synced to running instances via the Hub UI.
 
-- **Docs repo** ([porelli/portcullis-docs](https://github.com/porelli/portcullis-docs)) -- This documentation site, built with MkDocs Material. App catalog pages are auto-generated from the template manifests.
+- **Docs repo** ([porelli/portcullis-docs](https://github.com/porelli/portcullis-docs)) -- This documentation site, built with [Zensical](https://zensical.org) (the successor of MkDocs Material). App catalog pages are auto-generated from the template manifests.
 
 ## Authentication Flows
 
@@ -200,7 +200,7 @@ When `MTLS_ENABLED=false` in `.env`, all three tiers behave like `public` -- no 
 Portcullis uses a two-network architecture to isolate apps from core services. Traefik bridges between the networks and is the only service exposed to the internet (ports 80 and 443).
 
 - **`portcullis` network** -- Core services only (Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub). Apps cannot reach these services directly.
-- **`portcullis-proxy` network** -- Traefik and app frontend services. This is how Traefik discovers and routes to app containers.
+- **`portcullis-proxy` network** -- Traefik and app frontend services. This is how Traefik discovers and routes to app containers. It has a fixed subnet (`PORTCULLIS_PROXY_SUBNET`, default `172.31.250.0/24`), and Traefik always sits at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`). Other containers get addresses from `PORTCULLIS_PROXY_IP_RANGE`. Header-auth apps trust identity headers only from that Traefik address, so other containers on the network can't impersonate users.
 - **Per-app internal networks** -- Each app's compose project creates its own default network. Internal services (databases, caches, workers) live here, isolated from all other apps.
 
 Each app runs as its own Docker Compose project (`portcullis-<app-id>`). Frontend services join both `default` (for internal communication) and `portcullis-proxy` (for Traefik routing). Internal services only join `default`.
