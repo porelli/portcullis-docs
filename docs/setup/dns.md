@@ -102,35 +102,50 @@ If your provider's environment variables are not already listed in `docker-compo
 
 ## Step 3: Configure Portcullis
 
-### First-Time Setup (Bootstrap)
+### First-time setup
 
-The bootstrap script will prompt for your domain and DNS provider:
+`./portcullis init` asks for your domain and DNS provider (credentials are read
+from the environment or a hidden prompt), writes them to `.env` and, for the
+providers it knows, creates the records from Step 1 for you:
 
 ```bash
-./scripts/bootstrap.sh
+./portcullis init
 ```
 
-### Updating an Existing Installation
+### Creating or checking the records later
+
+```bash
+./portcullis dns setup           # create/update A (and AAAA) for <domain> and *.<domain>
+./portcullis dns setup --check   # only compare what resolves (via 1.1.1.1) with the public IP
+```
+
+`dns setup` supports `cloudflare`, `porkbun`, `digitalocean`, `hetzner` and
+`route53` (needs the `aws` CLI). For other providers it prints the records to
+create by hand. See the [CLI Reference](../operations/cli.md#dns-setup).
+
+### Changing the provider or credentials
 
 Edit `.env`:
 
 ```bash
-PORTCULLIS_DOMAIN=portcullis.example.com
 ACME_EMAIL=admin@example.com
 DNS_PROVIDER=porkbun
 PORKBUN_API_KEY=pk1_...
 PORKBUN_SECRET_API_KEY=sk1_...
-LLDAP_BASE_DN=dc=portcullis,dc=example,dc=com
 ```
 
-Then restart services:
+Then restart the stack so Traefik picks up the new environment:
 
 ```bash
-docker compose down
-docker compose up -d
+./portcullis up
 ```
 
-Traefik will automatically request and renew the wildcard certificate.
+Traefik requests and renews the wildcard certificate automatically.
+
+!!! warning "Changing the domain"
+    `PORTCULLIS_DOMAIN` is baked into the Keycloak realm (redirect URIs, hostname),
+    `LLDAP_BASE_DN`, the server certificate and every enabled app's config. Pick
+    it before `init`; changing it later means a new install.
 
 ## Step 4: Verify
 
@@ -160,47 +175,52 @@ This is why Portcullis needs your DNS provider API token -- it creates and clean
 
 ## Multiple Domains
 
-To serve apps under multiple domains (e.g., `portcullis.example.com` and `internal.corp.io`):
+Portcullis is built around **one** base domain. group-gate denies (403) every
+host that is not exactly `<label>.<PORTCULLIS_DOMAIN>`, and the Hub rejects
+templates that route any other domain, so a second domain can only serve
+routers that don't use `portcullis-groups@docker` (e.g. public pages, or apps
+with their own native OIDC login).
 
-1. Add wildcard DNS records for both domains
-2. Update `traefik/traefik.yml` to request certificates for both:
+If you need that anyway:
 
-```yaml
-entryPoints:
-  websecure:
-    address: ":443"
-    http:
-      tls:
-        certResolver: letsencrypt
-        domains:
-          - main: "portcullis.example.com"
-            sans:
-              - "*.portcullis.example.com"
-          - main: "internal.corp.io"
-            sans:
-              - "*.internal.corp.io"
-```
+1. Add the wildcard DNS records for the second domain.
+2. Traefik's static configuration comes only from the `TRAEFIK_*` environment
+   variables in `docker-compose.yml`. Add a second certificate domain in
+   `config/docker-compose.override.yml` (and the DNS provider credentials for
+   it, if it is hosted elsewhere):
 
-3. Use the full hostname in service labels:
+    ```yaml
+    services:
+      traefik:
+        environment:
+          TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_DOMAINS_1_MAIN: internal.corp.io
+          TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_DOMAINS_1_SANS: "*.internal.corp.io"
+    ```
 
-```yaml
-labels:
-  traefik.http.routers.myapp.rule: Host(`myapp.internal.corp.io`)
-```
+3. Use the full hostname in the service's labels:
+
+    ```yaml
+    labels:
+      traefik.http.routers.myapp.rule: Host(`myapp.internal.corp.io`)
+    ```
+
+4. Run `./portcullis up`.
 
 ## Local Development (No Public Domain)
 
 For local development without a real domain or ACME:
 
-1. Set `PORTCULLIS_DOMAIN=portcullis.local` in `.env`
-2. Run the Vault PKI setup with `--with-server-cert` to generate a self-signed wildcard certificate
-3. Add entries to `/etc/hosts`:
+1. Run `./portcullis init --domain portcullis.local --dns-provider none`. `init`
+   already issues a self-signed `*.portcullis.local` server certificate from the
+   internal PKI (`certs/server.crt`; `./portcullis pki setup --with-server-cert`
+   recreates it)
+2. Add entries to `/etc/hosts`:
 
 ```
 127.0.0.1  auth.portcullis.local hub.portcullis.local directory.portcullis.local traefik.portcullis.local
 ```
 
-4. Import `certs/root-ca.crt` into your browser or OS trust store to avoid certificate warnings
+3. Import `certs/root-ca.crt` into your browser or OS trust store to avoid certificate warnings
 
 !!! note
     mTLS with client certificates works the same way locally. The only difference is the server certificate is self-signed instead of from Let's Encrypt.

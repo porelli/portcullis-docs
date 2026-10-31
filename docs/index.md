@@ -19,7 +19,7 @@ Portcullis puts a unified authentication layer in front of all your self-hosted 
 
 ## How It Works
 
-Traefik sits at the edge as a reverse proxy, terminating TLS and optionally requesting client certificates. Behind it, oauth2-proxy and group-gate enforce authentication and per-app access. Keycloak acts as the identity provider, federating users from LLDAP (a lightweight LDAP directory). Vault PKI issues short-lived client certificates for mTLS.
+Traefik sits at the edge as a reverse proxy, terminating TLS and optionally requesting client certificates. Behind it, oauth2-proxy and group-gate enforce authentication and per-app access. Keycloak acts as the identity provider, federating users from LLDAP (a lightweight LDAP directory). Vault PKI issues client certificates (30 days, self-service renewal) for mTLS, and revocation is checked on every request.
 
 Apps choose their auth method: forward-auth for apps without SSO support, native OIDC for apps that speak OpenID Connect, header-auth for apps that trust upstream identity headers, or public for apps that need no authentication.
 
@@ -29,7 +29,7 @@ Portcullis is split across four repositories:
 
 | Repository | Purpose | Link |
 |-----------|---------|------|
-| **portcullis** | Core stack: Traefik, Keycloak, LLDAP, Vault, oauth2-proxy, group-gate, enrollment UI, bootstrap scripts | [porelli/portcullis](https://github.com/porelli/portcullis) |
+| **portcullis** | Core stack: Traefik, Keycloak, LLDAP, Vault, oauth2-proxy, group-gate, enrollment UI and the `./portcullis` admin CLI | [porelli/portcullis](https://github.com/porelli/portcullis) |
 | **portcullis-hub** | Management UI for enabling apps, viewing logs, and configuring settings. Published as `ghcr.io/porelli/portcullis-hub`. | [porelli/portcullis-hub](https://github.com/porelli/portcullis-hub) |
 | **portcullis-templates** | 22 app templates (manifest + compose) that serve as the default Hub marketplace | [porelli/portcullis-templates](https://github.com/porelli/portcullis-templates) |
 | **portcullis-docs** | This documentation site | [porelli/portcullis-docs](https://github.com/porelli/portcullis-docs) |
@@ -44,3 +44,5 @@ Portcullis is split across four repositories:
 - [Adding an App](guides/adding-an-app.md) -- Create your own app template
 - [Groups & Access Control](operations/groups.md) -- Manage who can access what
 - [Hub Management](operations/hub.md) -- Use the web UI to manage everything
+- [CLI Reference](operations/cli.md) -- Every `./portcullis` command
+- [Security & Hardening](operations/hardening.md) -- Socket proxies, networks, header trust, threat model
