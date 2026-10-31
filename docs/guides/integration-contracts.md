@@ -49,7 +49,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "default":  {"factors": ["webauthn"], "op": ""},
   "policies": {"<subdomain>": {"factors": ["mtls", "webauthn"], "op": "any|all"}},
   "groups":   {"<subdomain>": "<required LLDAP group>"},
@@ -57,13 +57,21 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
     "<subdomain>": [{"prefix": "/admin", "group": "<LLDAP group>"}]
   },
   "public_paths": {
-    "<subdomain>": ["/dist", "/s/{token}"]
+    "<subdomain>": {
+      "paths": [{"path": "/s/{token}", "match": "prefix"}, {"path": "/dist", "match": "static"}],
+      "token_pattern": "^[A-Za-z0-9-]{1,32}$",
+      "static_extensions": ["css", "js", "..."],
+      "credential_headers": ["Authorization", "Proxy-Authorization"],
+      "credential_cookies": ["nc_token"],
+      "credential_query": []
+    }
   }
 }
 ```
 
 - **`factors`** is a subset of `mtls`, `webauthn` and `password`. `op` is `any` or `all`, and is ignored when there is at most one factor. An empty factor list means public.
-- **Unknown values fail closed.** An unknown factor, op or key shape, a file that exists but can't be parsed, or a `version` newer than group-gate supports (currently 2) makes group-gate deny the request.
+- **Unknown values fail closed.** An unknown factor, op or key shape, a file that exists but can't be parsed, or a `version` newer than group-gate supports (currently 3) makes group-gate deny the request.
+- **Version 3** (the Hub always writes 3) adds the `public_paths` shape below. group-gate accepts versions 1–3 for its checks, but its public guard serves **only** version 3. A group-gate that knows only version 2 denies every request on a version-3 file, so **the Hub and core must be upgraded together**.
 - **Keys are subdomains only.** group-gate looks everything up by the request's subdomain, so `policies`, `groups` and `path_groups` are keyed by the lowercase subdomains that **enabled** templates route — never by template ID, which could equal another app's subdomain.
 - **Routing must be fully visible.** The Hub parses every `traefik.http.routers.*.rule` label in a template's compose file and only accepts literal `Host(\`<sub>.${PORTCULLIS_DOMAIN…}\`)` hosts. It rejects any template with `HostRegexp`/`HostHeader`/`HostSNI`, other domains, variables in the label, routers without a rule, TCP routers, or a rule branch that is not restricted by `Host()`. A host the Hub can't see would get no policy and no group (fail open).
 - **`policies`** has an entry for each subdomain of an enabled template that has a per-app policy. Templates that inherit the default publish nothing; group-gate falls back to `default`.
@@ -75,7 +83,10 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
     - It is a prefix match on segment boundaries (`/admin` matches `/admin` and `/admin/x`, not `/administrator`). The longest matching prefix wins.
 - **Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) are never taken from this file. `group-gate-map.conf` in core owns them.
     - `metrics` (Grafana of core's optional [monitoring](../operations/monitoring.md) profile) is a core subdomain too, in group-gate, the Hub (`policy.CoreSubdomains`) and the templates validator.
-- **`public_paths`** (informational) lists, per subdomain, the prefixes an enabled app's public router opens (§5), `{token}` kept in place of the listed share tokens (tokens are secrets and stay in the Hub's `state.yaml`). Requests to those paths never reach group-gate. group-gate ignores unknown top-level keys (`load_policy_file` reads `version`, `default`, `policies`, `groups`, `path_groups` only), so the key is safe for it; it exists for visibility and monitoring. Missing-template snapshots keep publishing it.
+- **`public_paths`** is, per subdomain, the configuration of core's public guard (§5) for an enabled app whose public router exists:
+    - `paths`: `{path, match}` patterns. `match` is `prefix` (segment boundary), `exact` or `static` (files below `path`: dot-free directories, a file name with one of `static_extensions`). One whole segment may be `{token}`, which matches one segment that `token_pattern` (anchored) accepts. Listed share tokens are published as `{token}`: tokens are secrets and stay in the Hub's `state.yaml`; Traefik's rule routes only the listed ones.
+    - `credential_headers` (always including `Authorization` and `Proxy-Authorization`), `credential_cookies`, `credential_query`: credentials the guard refuses.
+    - Any unknown key, malformed pattern or bad regex makes the guard deny. Missing-template snapshots keep publishing the entry (the containers keep their public router).
 - **Older files.** A file without `version`, `groups`, `path_groups` or `public_paths` is valid and is treated as empty for the missing keys.
 
 ## 5. Hub ⇄ Traefik
@@ -94,10 +105,16 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 - **Order.** On the Hub router, `hub-proxy-secret@docker` comes **after** `portcullis-auth@docker,portcullis-groups@docker`, so the secret is never sent to oauth2-proxy or group-gate.
 - **TLS tier per host.** Traefik selects TLS options per SNI host, so every router of a host must carry the same `tls.options`; on a mismatch Traefik uses its default options and answers `421 Misdirected Request`. The Hub writes one tier for all routers of an app: `public@file`, `authaware@file` or `protected@file` from the policy, except that `protected@file` becomes `authaware@file` for **all** of the app's routers while its public router exists (`policy.HostTier`).
 - **Public router.** When an app's public exceptions are on and open at least one path, the Hub's override adds, on the `public_access.service` (default: the only routed service):
-    - `traefik.http.routers.portcullis-public-<app>`: rule `` Host(`<host>`) && (<entries>) && !HeaderRegexp(`Cookie`, `<credential cookies>`) && !QueryRegexp(`<param>`, `.*`) `` over the app's hosts on that service. Entries: `` Path(`p`) || PathPrefix(`p/`) `` for prefixes (and each listed `{token}` expansion), `` Path(`p`) `` for `exact` paths, and for other supporting paths `` PathRegexp(`^p(/[A-Za-z0-9_~@+-]+)*/[A-Za-z0-9_~@+-][A-Za-z0-9._~@+-]*\.(<static extensions>)$`) `` (written with compose's `$$`). Then `entrypoints: websecure`, the host's tier, a priority above every router of the app (explicit priorities, and rule length plus 253 per `${…}` for implicit ones), the service's single Traefik service;
-    - middlewares `portcullis-public-strip-<app>@docker,rate-limit@file,security-headers@file` (`rate-limit` and `security-headers` come from core's `traefik/dynamic/middlewares.yml`). No `portcullis-auth`, no `portcullis-groups`;
+    - `traefik.http.routers.portcullis-public-<app>`: rule `` Host(`<host>`) && (<entries>) `` over the app's hosts on that service. Entries: `` Path(`p`) || PathPrefix(`p/`) `` for prefixes (and each listed `{token}` expansion), `` Path(`p`) `` for `exact` paths, and for other supporting paths `` PathRegexp(`^p(/[A-Za-z0-9_~@+-]+)*/[A-Za-z0-9_~@+-][A-Za-z0-9._~@+-]*\.(<static extensions>)$`) `` (written with compose's `$$`). Then `entrypoints: websecure`, the host's tier, a priority above every router of the app (explicit priorities, and rule length plus 253 per `${…}` for implicit ones), the service's single Traefik service;
+    - middlewares `portcullis-public-guard@docker,portcullis-public-strip-<app>@docker,rate-limit@file,security-headers@file` (`rate-limit` and `security-headers` come from core's `traefik/dynamic/middlewares.yml`). No `portcullis-auth`, no `portcullis-groups`;
     - `traefik.http.middlewares.portcullis-public-strip-<app>.headers.customrequestheaders.<H>: ""` for each core identity header (`X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-Groups`, `X-Forwarded-Preferred-Username`, `X-Forwarded-Access-Token`, `X-Auth-Request-User`, `-Email`, `-Groups`, `-Preferred-Username`, `-Access-Token`, `Remote-User`, `-Email`, `-Groups`, `-Name`), `Authorization`, `Proxy-Authorization`, each `auth.identity_headers` and `public_access.credential_headers` entry, each also with `_` for `-`. Without forward-auth nothing else deletes client copies; core's entrypoints also drop alias headers (`aliasHeadersStrategy=delete`).
-    - No core component is involved: credential cookies and query parameters are excluded by the rule itself (Traefik's `HeaderRegexp` tests every `Cookie` value), so such requests fall through to the app's gated router.
+- **Public guard (core).** `portcullis-public-guard@docker` is a forwardAuth middleware defined on group-gate (`http://group-gate:8080/public-guard`, no `authResponseHeaders`). It runs first, so it sees the request before the strip middleware. It answers 403 (no redirect) unless:
+    - the policy file is version 3 and has a `public_paths` entry for the request's subdomain (never a core subdomain);
+    - `X-Forwarded-Uri` has no `#`, no encoded `/`, `\`, NUL or `#` in the path, and every normalised form of the path (decoded once, `//` collapsed, dot-segments resolved; as for `path_groups`) is inside a published pattern;
+    - no request header is a credential header (case-insensitive, `_` read as `-`);
+    - no cookie (every `Cookie` header, split on `;` and `,`) and no query key (everything after the first `?`, split on `&` and `;`) names a credential. Names are compared case-insensitively after PHP's mangling (php-src `main/php_variables.c`, `php_register_variable_ex`: leading spaces dropped, ` ` and `.` become `_`, `name[…]` is `name`, an unclosed `[` becomes `_`, NUL ends the name), both raw and percent- / `+`-decoded; a name that isn't valid UTF-8 after decoding (overlong forms) or has control characters is refused.
+
+    On allow it returns 200 without identity headers. Its logs mask token-like path segments and show query parameter names only.
 - **Exposure drift.** The Hub compares every exposure label of each running container (each router's `tls.options`, all `portcullis-public-<app>` router labels and the strip middleware) with what it would render now, `PORTCULLIS_DOMAIN` expanded; any difference is `public_access_mismatch` drift.
 
 ## 6. Docker access
