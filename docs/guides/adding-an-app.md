@@ -72,6 +72,15 @@ CLI clients keep working. Then check **who can log in**:
 
 Give SSO-created users the least-privileged role the app has.
 
+If the app has share links for people without an account (public file
+shares, shared dashboards), declare them in
+[`auth.public_access`](manifest-reference.md#authpublic_access) instead of
+adding an ungated router: the Hub generates the public router when an admin
+turns the exception on. Read the app's routes at the pinned version and keep
+the list narrow: `{token}` paths for per-share listing, static-only
+`supporting` paths, `exact` routes with a justification, and the app's login
+headers, cookies and query parameters in `credential_*`.
+
 ## Step 3: Write `manifest.yaml`
 
 Copy a template with the same auth method and adapt it: `grafana/` for

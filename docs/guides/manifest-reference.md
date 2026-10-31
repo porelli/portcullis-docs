@@ -63,6 +63,8 @@ field.
 | `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>` |
 | `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>` |
 | `admin_paths` | list of path prefixes | No | Paths that additionally require `admin_group` (see below) |
+| `public_access` | object | No | Public path exceptions: share-link paths the Hub can open without forward-auth (see [auth.public_access](#authpublic_access)) |
+| `identity_headers` | list of header names | If `method: header-auth` and `public_access` is set | Headers the app reads the user from (e.g. `X-Forwarded-User`); the Hub strips them on public paths |
 | `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page. Upgrade constraints go here too |
 
 Constraints the schema enforces:
@@ -72,6 +74,9 @@ Constraints the schema enforces:
 - A non-empty `admin_paths` requires `admin_group`.
 - `method: public` requires `group_access: false` and an empty (or missing)
   `admin_paths`.
+- `public_access` is only allowed with `method` `forward-auth`, `header-auth`
+  or `native-oidc`; with `header-auth` it requires a non-empty
+  `identity_headers` (each `^[A-Za-z][A-Za-z0-9-]{0,63}$`, unique).
 
 `access_group` is only *enforced* by group-gate when `group_access: true`.
 Otherwise it is informational.
@@ -123,6 +128,130 @@ auth:
   access_group: users_vaultwarden
   admin_group: admin_vaultwarden
   admin_paths: ["/admin"]
+```
+
+### auth.public_access
+
+Public path exceptions let anonymous visitors use an app's share links
+(Nextcloud `/s/<token>`, Grafana shared dashboards) while the rest of the
+host stays behind Portcullis. The template only **declares** the paths. When
+an admin turns the exception on in the [Hub](../operations/hub.md#public-exceptions),
+the Hub adds one Traefik router for them **without** forward-auth and
+group-gate (contracts §3). A template must never ship such a router in
+`compose.yml`. The app's own auth (share token, share password, expiry) is
+all that protects these paths; see
+[Auth policies → Public exceptions](../operations/auth-policies.md#public-exceptions).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `enabled_by_default` | boolean | No (default `false`) | State of the Hub toggle until an admin chooses |
+| `description` | string, one line, ≤ 500 | No | Shown in the Hub above the warning |
+| `default_mode` | `listed` or `all` | No | `listed`: only shares an admin lists in the Hub; `all`: every share. Default `listed` if a path has `{token}`, else `all`. `listed` needs a `{token}` path |
+| `token_pattern` | anchored regex `^...$`, ≤ 200 | If a path has `{token}` (and only then) | Every listed share token must match it |
+| `credential_headers` | list of header names | No | Headers besides `Authorization` / `Proxy-Authorization` (always stripped) the app logs a user in with, e.g. Immich `x-api-key`; stripped on public paths |
+| `credential_cookies` | list of cookie names | No | Cookies the app logs a user in with (session, remember-me). Requests carrying one don't match the public router, so they go through the app's gated router |
+| `credential_query` | list of parameter names | No | Query parameters the app logs a user in with (e.g. Immich `apiKey`); same effect as `credential_cookies` |
+| `static_extensions` | list of `[a-z0-9]{1,8}` | No | Extra file extensions supporting paths may serve (default: `avif css eot gif ico jpeg jpg js map mjs otf png svg ttf webp woff woff2`). Script extensions (`php`, `phtml`, `cgi`, `py`, `jsp`, …) are refused |
+| `service` | compose service | No | Service the public router targets. Default: the only service with HTTP routers |
+| `paths` | list, 1–20 | Yes | See below |
+
+Each `paths` item:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `prefix` | path | Yes | Segment-boundary prefix: `/s` matches `/s` and `/s/...`, not `/sx`. Letters, digits and `. _ ~ -` per segment, optional trailing `/`; one whole segment may be `{token}`. Not `/` itself; no wildcards, `..`, `//`, `%`, `?`, `#`, `$`, quotes or backticks |
+| `description` | string, one line, ≤ 200 | Yes | What the path is for (shown in the Hub and on the app page) |
+| `supporting` | boolean | No | Token-free path the share page needs. Opened in both modes, and **only for static files** below it unless `exact`. Can't have `{token}` |
+| `exact` | boolean | No | Opens only this path itself (`Path`, no subpaths): a single app route or file the page needs. Requires `justification`; can't have `{token}`; the broad list does not apply |
+| `broad` | boolean | No | Acknowledges a prefix on the broad list; requires `justification` |
+| `justification` | string | If `broad: true` or `exact: true` | Why the broad prefix / exact route is needed |
+
+What each mode opens:
+
+| Path kind | Mode `listed` | Mode `all` |
+|-----------|---------------|------------|
+| `{token}` path, e.g. `/s/{token}` | `/s/<t>` for each listed token `<t>` | `/s` (up to the segment before `{token}`) |
+| `supporting: true` | static files under the prefix (see below) | same |
+| `supporting: true` + `exact: true` | the exact path | same |
+| other token-free paths | no | segment-boundary prefix (or the exact path with `exact: true`) |
+
+Static files means Traefik's `PathRegexp` of the prefix, dot-free directory
+segments and a file name ending in a static extension, e.g.
+`/dist/core-common.js` or `/core/img/actions/a.svg`, but not `/dist/`,
+`/dist/a`, `/dist/a.php` or `/dist/x.php/a.js`. An app route that only
+accepts extension-less paths is therefore never reached through a
+supporting path.
+
+Logins never ride the public router: `Authorization`, `Proxy-Authorization`
+and `credential_headers` are deleted, and the rule ends in
+`` && !HeaderRegexp(`Cookie`, …) `` / `` && !QueryRegexp(`<param>`, `.*`) ``
+for `credential_cookies` / `credential_query`. The cookie match is
+case-insensitive and also catches percent-encoded names and PHP's
+`.`/space/`[` → `_` mangling. Such requests fall through to the app's
+gated router.
+
+In mode `listed` with no listed share, nothing is opened and no router is
+generated.
+
+Rules (schema, `tests/validate.py` and the Hub):
+
+- **Broad prefixes** need `broad: true` and a `justification`: `/api`, `/apps`,
+  `/index.php`, `/ocs`, `/ocs/v1.php`, `/ocs/v2.php`, `/remote.php`,
+  `/remote.php/dav`, `/remote.php/webdav`, `/public.php`, `/dav`, `/webdav`,
+  `/graphql`, `/rest`, `/v1`, `/v2`, `/v3`, `/auth`, `/login`, `/user`,
+  `/users`, `/account`, `/settings`, `/identity`, `/sso`, `/oidc`, and any
+  bare `/<name>.php`. A `{token}` path is checked on its mode-`all` extent
+  (`/api/{token}` is broad).
+- **Never public**: anything overlapping `/oauth2`, `/admin` or
+  `/.well-known`, or the app's `admin_paths`.
+- **No overlap with other routers**: a prefix (mode-`all` extent) may not
+  overlap a `Path`/`PathPrefix` of another router on the app's hosts (login
+  gates, admin routers, API splits). Traefik's `PathPrefix` is a plain string
+  prefix, so `PathPrefix(`/login`)` overlaps `/logins`.
+- **Analysable routing only**: routers on the app's hosts may use only
+  `Host`, `Path`, `PathPrefix`, `Method`, `Header`, `HeaderRegexp`, `Query`,
+  `QueryRegexp` and `ClientIP`, without negation. `PathRegexp`, negated
+  matchers or unknown matchers make the Hub refuse the template's public
+  plan (it can't prove there is no overlap).
+- **`token_pattern`** must be anchored and compile, and must reject `""`,
+  `.`, `..`, `a/b`, `/`, backticks, spaces, `%2F`, `${X}`, `)` and newlines.
+  The Hub additionally requires tokens of `[A-Za-z0-9._~-]{1,128}`.
+- **Routing names**: routers and middlewares named `portcullis-public-*` are
+  reserved for the Hub.
+- **Service**: with several routed services, set `service`. If it defines
+  several Traefik services, exactly one host-wide router on it must name one.
+
+- **Supporting prefixes are directories**: a supporting prefix whose last
+  segment looks like a file (`/custom.css`) must be `exact`.
+
+Set `enabled_by_default: true` only when turning the exception on opens
+nothing by itself (mode `listed`) and can't weaken the host. Example
+(Nextcloud, abridged):
+
+```yaml
+auth:
+  method: forward-auth
+  public_access:
+    enabled_by_default: true
+    default_mode: listed
+    description: Public share links for people without a Portcullis account.
+    token_pattern: '^[A-Za-z0-9-]{1,32}$'
+    credential_cookies: [nc_username, nc_token, nc_session_id]
+    paths:
+      - prefix: "/s/{token}"          # quote: { } in flow style is YAML syntax
+        description: Share page, password form, download and direct preview
+      - prefix: "/public.php/dav/files/{token}"
+        description: Public WebDAV of the share
+      - prefix: /dist
+        description: Compiled JS/CSS
+        supporting: true                # static files only
+      - prefix: /core/mimeicon
+        description: File-type icon for files without a preview
+        supporting: true
+        exact: true
+        justification: "#[PublicPage] route that only redirects to a static icon"
+      - prefix: /apps/text/public
+        description: Markdown viewer sessions (token in the body, so only in mode all)
 ```
 
 ## settings
@@ -393,6 +522,13 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - `portcullis-auth@docker` and `portcullis-groups@docker` always appear together, in that order
 - forward-auth and header-auth routers use them; native-OIDC host-wide routers don't
 - each `admin_paths` entry is served by a gated router
+
+**Public exceptions** (`auth.public_access`)
+
+- only for `forward-auth`, `header-auth` and `native-oidc`; header-auth apps list `identity_headers`, and every identity-like `X-…`/`Remote-…` header in `compose.yml` must be among them
+- the prefix, broad, never-public, overlap, matcher and `token_pattern` rules of [auth.public_access](#authpublic_access)
+- `exact` paths have a `justification` and no `{token}`; supporting prefixes don't name a file
+- no router or middleware named `portcullis-public-*`
 
 **Header trust**
 
