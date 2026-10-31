@@ -148,9 +148,9 @@ all that protects these paths; see
 | `description` | string, one line, ≤ 500 | No | Shown in the Hub above the warning |
 | `default_mode` | `listed` or `all` | No | `listed`: only shares an admin lists in the Hub; `all`: every share. Default `listed` if a path has `{token}`, else `all`. `listed` needs a `{token}` path |
 | `token_pattern` | anchored regex `^...$`, ≤ 200 | If a path has `{token}` (and only then) | Every listed share token must match it |
-| `credential_headers` | list of header names | No | Headers besides `Authorization` / `Proxy-Authorization` (always stripped) the app logs a user in with, e.g. Immich `x-api-key`; stripped on public paths |
-| `credential_cookies` | list of cookie names | No | Cookies the app logs a user in with (session, remember-me). Requests carrying one don't match the public router, so they go through the app's gated router |
-| `credential_query` | list of parameter names | No | Query parameters the app logs a user in with (e.g. Immich `apiKey`); same effect as `credential_cookies` |
+| `credential_headers` | list of header names | No | Headers besides `Authorization` / `Proxy-Authorization` (always refused) the app logs a user in with, e.g. Immich `x-api-key` |
+| `credential_cookies` | list of cookie names | No | Cookies the app logs a user in with (session, remember-me, render keys) |
+| `credential_query` | list of parameter names | No | Query parameters the app logs a user in with (e.g. Immich `apiKey`, Grafana `auth_token`) |
 | `static_extensions` | list of `[a-z0-9]{1,8}` | No | Extra file extensions supporting paths may serve (default: `avif css eot gif ico jpeg jpg js map mjs otf png svg ttf webp woff woff2`). Script extensions (`php`, `phtml`, `cgi`, `py`, `jsp`, …) are refused |
 | `service` | compose service | No | Service the public router targets. Default: the only service with HTTP routers |
 | `paths` | list, 1–20 | Yes | See below |
@@ -162,7 +162,7 @@ Each `paths` item:
 | `prefix` | path | Yes | Segment-boundary prefix: `/s` matches `/s` and `/s/...`, not `/sx`. Letters, digits and `. _ ~ -` per segment, optional trailing `/`; one whole segment may be `{token}`. Not `/` itself; no wildcards, `..`, `//`, `%`, `?`, `#`, `$`, quotes or backticks |
 | `description` | string, one line, ≤ 200 | Yes | What the path is for (shown in the Hub and on the app page) |
 | `supporting` | boolean | No | Token-free path the share page needs. Opened in both modes, and **only for static files** below it unless `exact`. Can't have `{token}` |
-| `exact` | boolean | No | Opens only this path itself (`Path`, no subpaths): a single app route or file the page needs. Requires `justification`; can't have `{token}`; the broad list does not apply |
+| `exact` | boolean | No | Opens only this path itself (`Path`, no subpaths): a single app route or file the page needs. Requires `justification`; can't have `{token}`. A path on the broad list (an exact `/index.php` is still the whole front controller) also needs `broad: true` |
 | `broad` | boolean | No | Acknowledges a prefix on the broad list; requires `justification` |
 | `justification` | string | If `broad: true` or `exact: true` | Why the broad prefix / exact route is needed |
 
@@ -182,13 +182,13 @@ segments and a file name ending in a static extension, e.g.
 accepts extension-less paths is therefore never reached through a
 supporting path.
 
-Logins never ride the public router: `Authorization`, `Proxy-Authorization`
-and `credential_headers` are deleted, and the rule ends in
-`` && !HeaderRegexp(`Cookie`, …) `` / `` && !QueryRegexp(`<param>`, `.*`) ``
-for `credential_cookies` / `credential_query`. The cookie match is
-case-insensitive and also catches percent-encoded names and PHP's
-`.`/space/`[` → `_` mangling. Such requests fall through to the app's
-gated router.
+Logins never ride the public router: core's public guard (contracts §5)
+answers 403 to requests carrying `Authorization`, `Proxy-Authorization`,
+a `credential_headers` header, a `credential_cookies` cookie or a
+`credential_query` parameter. Cookie and query names are compared
+case-insensitively after PHP's name mangling (leading spaces dropped, ` `
+and `.` become `_`, `name[…]` is `name`), raw and percent-decoded. List
+**every** way the app authenticates a request at the pinned version.
 
 In mode `listed` with no listed share, nothing is opened and no router is
 generated.

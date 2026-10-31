@@ -71,18 +71,26 @@ What it can't do:
   forward-auth headers, `Remote-*` and the template's `identity_headers`
   (and their `_` forms) are deleted, so a header-auth app (Grafana) can't be
   told who the visitor is;
-- carry a login past the hardware key: `Authorization`,
-  `Proxy-Authorization` and the template's `credential_headers` are deleted,
-  and requests with its `credential_cookies` (matched loosely: any case,
-  percent-encoded, PHP name mangling) or `credential_query` don't match the
-  public router, so a stolen app password, API key or remember-me cookie
-  still meets forward-auth. A plain session cookie the template doesn't list
+- carry a login past the hardware key: core's public guard (group-gate
+  `/public-guard`, first middleware of every public router) answers 403 to
+  requests with `Authorization`, `Proxy-Authorization`, the template's
+  `credential_headers`, `credential_cookies` or `credential_query`. Cookie
+  and query names are normalised the way PHP does (php-src
+  `php_register_variable_ex`: leading spaces, ` `/`.` → `_`, `name[…]`,
+  NUL), raw and percent-decoded, case-insensitively; non-UTF-8 names are
+  refused. It also denies any path outside the published patterns, a `#`,
+  and encoded `/`, `\`, NUL or `#`. A plain session cookie the template doesn't list
   (Nextcloud's `oc<instanceid>`, needed for share passwords and CSRF) is
   passed; it only reaches share-scoped routes and static files there;
 - be opened by a template on its own: the Hub generates the router, only
   while an admin (or a template default that opens nothing until an admin
   lists a share) has it on, and reports any running exposure label that
   differs from what it would render as drift.
+
+Trade-off: an app user signed in with a remember-me cookie gets the
+guard's 403 on a public link in the same browser (open it in a private
+window). The guard's version-3 requirement means the Hub and core are
+upgraded together.
 
 Not everything with a share feature can be scoped: Vaultwarden Send needs the
 web vault at `/` and the password-login token endpoint, and Kanboard's router

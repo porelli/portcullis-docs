@@ -108,11 +108,12 @@ on, the Hub adds a router `portcullis-public-<app>` for those paths only:
   `X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-*`, `X-Auth-Request-*`,
   `Remote-*`, plus the template's `identity_headers`, each also in its
   `_` form), so a header-auth app can't be told who the visitor is;
-- logins don't ride it: `Authorization`, `Proxy-Authorization` and the
-  template's `credential_headers` are deleted, and requests carrying the
-  app's login cookies or credential query parameters don't match the public
-  router at all, so a stolen password, API key or session still has to pass
-  forward-auth (and the hardware key) on forward-auth apps;
+- its first middleware, `portcullis-public-guard@docker` (group-gate
+  `/public-guard`), re-checks the path against the published patterns and
+  answers 403 to requests carrying `Authorization`, `Proxy-Authorization` or
+  the template's credential headers, cookies or query parameters (names
+  normalised the way PHP does), so a stolen password, API key or session
+  can't get past the hardware key there;
 - supporting paths serve static files only (by extension), plus single
   `exact` routes the template justifies;
 - in mode `listed`, only the share tokens an admin listed are routed; any

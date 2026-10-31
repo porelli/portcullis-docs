@@ -149,9 +149,11 @@ block (bordered in amber):
 - a red warning: requests to these paths skip Portcullis entirely (no
   forward-auth, no group-gate, no hardware key); only the app's own checks
   (share token, share password, expiry) apply;
-- what is stripped or kept out: `Authorization`, `Proxy-Authorization`,
-  identity headers, and requests carrying the app's login cookies or
-  credential query parameters (they stay behind the gateway);
+- what is refused or stripped: core's public guard answers 403 to requests
+  carrying `Authorization`, `Proxy-Authorization` or the app's login
+  headers, cookies or query parameters (an app user signed in with
+  "remember me" opens shares in a private window), and the Hub strips
+  identity headers;
 - if the app's policy requires a client certificate at the TLS handshake
   (`protected@file`), an amber warning that **all** of the app's routers use
   `authaware@file` while a public path is open. For native-OIDC apps it adds
@@ -232,7 +234,7 @@ running/total container count, and buttons for the allowed actions:
 | `running_not_enabled` | Containers of `portcullis-<id>` run, but the app is not enabled (the message adds "its public-exception router bypasses forward-auth" if they carry one) | **Stop & remove** (`stop`: compose down). **Enable** (`adopt`: mark it enabled and compose up) when a template with that ID exists |
 | `stopped_not_enabled` | Stopped containers left behind by an app that is not enabled | **Stop & remove** (`stop`) |
 | `template_missing` | Enabled, but no valid template provides it any more (source removed, template deleted or now invalid) | **Disable** (`disable`) |
-| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware) differs from what the Hub renders now — a widened rule, a dropped credential exclusion, a missing middleware, a stale or missing public router (e.g. after a failed restart, a template change or an Expert override edit) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
+| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware) differs from what the Hub renders now — a widened rule, a missing guard or other middleware, a stale or missing public router (e.g. after a failed restart, a template change or an Expert override edit) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
 
 Destructive actions ask for confirmation. **Re-check** runs a reconcile
 immediately. Apps that are in the middle of an operation are skipped.
@@ -408,7 +410,7 @@ sources you trust.
   credentials** and does no LDAP lookups. The signed-in user shown in the
   header is `X-Forwarded-User` as-is, i.e. the LLDAP username.
 - **Timeouts.** compose up 15 min, compose down 5 min, shell 15 min, git 5 min.
-- **Policy file.** The Hub writes `group-gate-policy.json` (version 2)
+- **Policy file.** The Hub writes `group-gate-policy.json` (version 3)
   atomically to `hub_data`. It is keyed **by subdomain only**:
     - `policies` for apps with an override (apps that inherit publish nothing;
       group-gate uses `default`)

@@ -63,7 +63,7 @@ and both are re-read on every request:
 
     Edits take effect on the next request; no restart is needed.
 
-2. **The Hub's `group-gate-policy.json`** (version 2, on the `hub_data` volume)
+2. **The Hub's `group-gate-policy.json`** (version 3, on the `hub_data` volume)
    has a `groups` map. The Hub rewrites it whenever an app is enabled,
    disabled or reconfigured. For every **enabled** template with
    `auth.group_access: true`, each subdomain the template routes maps to the
