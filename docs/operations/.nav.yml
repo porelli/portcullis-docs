@@ -1,6 +1,8 @@
 nav:
   - CLI Reference: cli.md
-  - Upgrading: upgrading.md
+  - Upgrading & Releases: upgrading.md
+  - Backups: backups.md
+  - Monitoring: monitoring.md
   - Security & Hardening: hardening.md
   - Groups & Access Control: groups.md
   - Authentication Policies: auth-policies.md

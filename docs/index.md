@@ -45,4 +45,5 @@ Portcullis is split across four repositories:
 - [Groups & Access Control](operations/groups.md) -- Manage who can access what
 - [Hub Management](operations/hub.md) -- Use the web UI to manage everything
 - [CLI Reference](operations/cli.md) -- Every `./portcullis` command
+- [Backups](operations/backups.md) and [Monitoring](operations/monitoring.md) -- Off-host restic backups, Prometheus/Grafana/alerts
 - [Security & Hardening](operations/hardening.md) -- Socket proxies, networks, header trust, threat model
