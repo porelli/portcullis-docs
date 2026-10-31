@@ -343,15 +343,9 @@ Fill in the checklist of the PR template. What CI does:
 | Workflow | When | What |
 |----------|------|------|
 | **Lint** (`lint.yml`) | Every push and PR, **including forks** (no secrets) | `validate.py`, `docker compose config` for every template, shellcheck, actionlint |
-| **Test Apps** (`test-apps.yml`) | Push to `main`, PRs from branches of the repo, manual runs | Boots core at the ref in `.core-ref`, then runs `tests/apps/<app>.sh` for every changed template |
+| **Test Apps** (`test-apps.yml`) | Push to `main`, every PR **including forks** (no secrets), manual runs | Boots core at the ref in `.core-ref`, then runs `tests/apps/<app>.sh` for every changed template |
 
-**Fork PRs get lint only at first.** The integration job needs a secret to
-clone core, and GitHub never gives secrets to workflows triggered by a fork's
-pull request. So **Test Apps is skipped with a notice** instead of failing.
-After reviewing your change, a maintainer runs **Actions → Test Apps → Run
-workflow** with `pr = <your PR number>`. That run tests exactly the reviewed
-commit, and aborts if the PR head moved. Push new commits and the maintainer
-re-runs it. The workflow deliberately avoids `pull_request_target`. Details:
+**Fork PRs get the full integration tests automatically**: core is public and cloned without a token, and no job references a secret. Your PR is tested against the core version in the base branch's `.core-ref`. The workflow deliberately avoids `pull_request_target`. Details:
 [Testing & CI](../operations/testing.md#templates-ci).
 
 After the merge, the docs site regenerates the [App Catalog](../apps/index.md)

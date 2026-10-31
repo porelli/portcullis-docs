@@ -205,19 +205,16 @@ per job:
 
 | Job | Secrets | What it does |
 |-----|---------|--------------|
-| `gate` | Checks availability only | Decides whether the run may proceed. A **fork PR** has no secrets, so the run is skipped with a notice (not a failure). For a manual run with `pr = <n>`, it resolves the PR head commit to test |
+| `gate` | none | Resolves what to test. Fork PRs run like any other PR (core is public; no job uses a secret), with `.core-ref` taken from the PR's base. For a manual run with `pr = <n>`, it resolves the PR head commit to test |
 | `changes` | none | Verifies the commit under test. Picks the apps: changed `<app>/` directories and changed `tests/apps/<app>.sh`. A change to `tests/lib.sh`, `.github/` or `.core-ref` tests **all** apps. With no usable base, all apps are tested |
-| `fetch-core` | `PORTCULLIS_PAT` (the **only** job that references it) | Checks out nothing from the PR except `.core-ref`, read from a trusted commit (for a dispatched PR run: the PR's *base*, so a PR can't point CI at another core ref). Clones core at that ref, resolves the infra image list with `docker compose config --images` against a throwaway `.env` from `portcullis init --env-only` (failing on an empty list), packs core as an artifact, and writes the infra image cache |
+| `fetch-core` | none | Checks out nothing from the PR except `.core-ref`, read from a trusted commit (for PR runs: the PR's *base*, so a PR can't point CI at another core ref). Clones the public core repo anonymously at that ref, resolves the infra image list with `docker compose config --images` against a throwaway `.env` from `portcullis init --env-only` (failing on an empty list), packs core as an artifact, and writes the infra image cache |
 | `app-images` (matrix per app, push to `main` only) | none | Never runs for PRs or manual runs. For each tested app whose test boots it, reads the image list from its `compose.yml` (`tests/app-images.sh`), pulls the pinned images and writes that app's image cache (key: hash of the list). Starts no container |
 | `test` (matrix per app) | none | Downloads core by artifact ID with digest verification. Writes no cache. Loads the cached infra and app images as **untrusted**: removes every name a tarball sets, then binds each image (core's and the app's) with a `docker pull` of its `tag@sha256` pin. The pull checks the manifest against the pinned digest and reuses a loaded image only if its ID (the hash of its config, which pins every layer) is the one that manifest names; otherwise it downloads the image fresh. Boots infra through the core CLI (`vault init`, `pki setup --with-server-cert`, `keycloak configure`, `oidc register`), checks Traefik got its static IP, and runs the app's test |
 
 Every job has a read-only `contents: read` token. The workflow deliberately does
-**not** use `pull_request_target`, which would run fork code with secrets and a
-write token.
+**not** use `pull_request_target`, which would run fork code with a write token.
 
-**Fork PRs.** After reviewing the diff, a maintainer runs **Actions → Test Apps
-→ Run workflow** with `pr = <number>`. The run tests exactly the reviewed
-commit, and aborts if the PR head moved.
+**Fork PRs** get the full integration tests automatically. A maintainer can re-run one with **Actions → Test Apps → Run workflow**, `pr = <number>`. That run tests exactly the PR's head commit, and aborts if the head moved.
 
 **`.core-ref`** holds the core ref the templates are tested against: a tag such
 as `v1.4.0`, or `main` during development (today: `main`). Changing it
@@ -293,7 +290,7 @@ Docker:
 ```bash
 act -l -W .github/workflows/test-apps.yml                     # list jobs (templates repo)
 act -j lint -W .github/workflows/lint.yml                      # static checks, no secrets
-act -W .github/workflows/test-apps.yml -s PORTCULLIS_PAT=<token>
+act -W .github/workflows/test-apps.yml                         # integration (no secrets needed)
 act -W .github/workflows/ci.yml                                # core CI (core repo)
 ```
 
