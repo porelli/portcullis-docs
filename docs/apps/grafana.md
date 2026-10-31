@@ -28,8 +28,7 @@ When an admin turns them on in the Hub, these paths skip forward-auth and group-
 
 **Default:** on, mode `listed`  
 **Share token:** `^([0-9a-f]{32}|[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$`  
-**Login headers stripped:** `Authorization`, `Proxy-Authorization`  
-**Requests with login credentials stay gated:** cookie `grafana_session`  
+**Refused by the public guard (login credentials):** header `Authorization`, header `Proxy-Authorization`, header `X-Access-Token`, header `X-Grafana-Id`, cookie `grafana_session`, cookie `renderKey`, query `auth_token`  
 **Identity headers stripped:** `X-Forwarded-User` (plus the core ones)  
 
 | Prefix | Opened | Description |

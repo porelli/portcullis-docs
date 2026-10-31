@@ -247,11 +247,9 @@ def generate_app_page(app: dict, output_dir: Path):
         lines.append(f"**Default:** {'on' if pa.get('enabled_by_default') else 'off'}, mode `{mode}`  ")
         if pa.get("token_pattern"):
             lines.append(f"**Share token:** `{pa['token_pattern']}`  ")
-        creds = ["`Authorization`", "`Proxy-Authorization`"] + [f"`{h}`" for h in pa.get("credential_headers") or []]
-        lines.append(f"**Login headers stripped:** {', '.join(creds)}  ")
-        if pa.get("credential_cookies") or pa.get("credential_query"):
-            ex = [f"cookie `{c}`" for c in pa.get("credential_cookies") or []] + [f"query `{q}`" for q in pa.get("credential_query") or []]
-            lines.append(f"**Requests with login credentials stay gated:** {', '.join(ex)}  ")
+        creds = ["header `Authorization`", "header `Proxy-Authorization`"] + [f"header `{h}`" for h in pa.get("credential_headers") or []]
+        creds += [f"cookie `{c}`" for c in pa.get("credential_cookies") or []] + [f"query `{q}`" for q in pa.get("credential_query") or []]
+        lines.append(f"**Refused by the public guard (login credentials):** {', '.join(creds)}  ")
         if auth.get("identity_headers"):
             lines.append(f"**Identity headers stripped:** {', '.join(f'`{h}`' for h in auth['identity_headers'])} (plus the core ones)  ")
         lines.append("")

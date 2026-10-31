@@ -28,8 +28,7 @@ When an admin turns them on in the Hub, these paths skip forward-auth and group-
 
 **Default:** on, mode `listed`  
 **Share token:** `^[A-Za-z0-9-]{1,32}$`  
-**Login headers stripped:** `Authorization`, `Proxy-Authorization`  
-**Requests with login credentials stay gated:** cookie `nc_username`, cookie `nc_token`, cookie `nc_session_id`  
+**Refused by the public guard (login credentials):** header `Authorization`, header `Proxy-Authorization`, cookie `nc_username`, cookie `nc_token`, cookie `nc_session_id`  
 
 | Prefix | Opened | Description |
 |--------|--------|-------------|

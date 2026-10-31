@@ -27,8 +27,7 @@ Shared links (/share/&lt;key&gt;, /s/&lt;slug&gt;) for visitors without a client
 When an admin turns them on in the Hub, these paths skip forward-auth and group-gate (see [Public exceptions](../operations/auth-policies.md#public-exceptions)).
 
 **Default:** off, mode `all`  
-**Login headers stripped:** `Authorization`, `Proxy-Authorization`, `x-api-key`, `x-immich-user-token`, `x-immich-session-token`  
-**Requests with login credentials stay gated:** cookie `immich_access_token`, cookie `immich_maintenance_token`, query `apiKey`, query `sessionKey`  
+**Refused by the public guard (login credentials):** header `Authorization`, header `Proxy-Authorization`, header `x-api-key`, header `x-immich-user-token`, header `x-immich-session-token`, cookie `immich_access_token`, cookie `immich_maintenance_token`, query `apiKey`, query `sessionKey`  
 
 | Prefix | Opened | Description |
 |--------|--------|-------------|
