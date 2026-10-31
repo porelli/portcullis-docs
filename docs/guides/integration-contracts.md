@@ -68,7 +68,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 - **`path_groups`** comes from enabled templates that declare `auth.admin_paths` (a list of path prefixes). Each prefix requires `auth.admin_group`, **in addition** to the subdomain's group.
     - Matching uses group-gate's normalized `X-Forwarded-Uri` path: percent-decoded once, `//` collapsed, dot-segments resolved.
     - It is a prefix match on segment boundaries (`/admin` matches `/admin` and `/admin/x`, not `/administrator`). The longest matching prefix wins.
-- **Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`) are never taken from this file. `group-gate-map.conf` in core owns them.
+- **Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) are never taken from this file. `group-gate-map.conf` in core owns them.
     - Core's group-gate additionally reserves `metrics` (Grafana of core's optional monitoring profile). The Hub (`policy.CoreSubdomains`) and the templates validator (`CORE_SUBDOMAINS`) still list only the five above, so they must be extended to match.
 - **Older files.** A file without `version`, `groups` or `path_groups` is valid and is treated as empty for the missing keys.
 
