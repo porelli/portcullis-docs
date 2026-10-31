@@ -4,8 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # The app catalog is generated from portcullis-templates at build time, so
-  # rebuild daily to pick up template changes without a docs-repo push.
+  # Sent by portcullis-templates on every push to main (contracts §7).
+  repository_dispatch:
+    types: [templates-updated]
+  # Fallback in case a dispatch was missed (e.g. DOCS_DISPATCH_TOKEN unset).
   schedule:
     - cron: '17 4 * * *'
 
