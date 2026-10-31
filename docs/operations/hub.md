@@ -40,7 +40,9 @@ Before anything starts, the Hub refuses to enable the app if:
 
 It then generates the per-app `.env` and compose override, copies the template
 directory to `<core>/templates/<app-id>/`, registers the template's Keycloak
-clients and runs `docker compose up`. The app is recorded as enabled only after
+clients (a client ID owned by another template or by nobody provable aborts
+the enable with HTTP 409, see [Keycloak clients](#keycloak-clients)) and runs
+`docker compose up`. The app is recorded as enabled only after
 `compose up` succeeds. Then the Hub publishes its group, admin paths and policy
 to group-gate.
 
@@ -133,6 +135,10 @@ containers.
 ## Settings tab (global)
 
 - **Default access policy.** Applies to every app without its own policy.
+  **Until an admin saves one, the default is WebAuthn** (hardware key): apps
+  without their own policy get `authaware@file` and Keycloak steps up to LoA 2.
+  You can still choose a public default explicitly. That choice is stored and
+  honoured, and differs from "never set".
   Changing it re-applies it to every enabled app that inherits it, and
   restarts only the apps whose Traefik TLS tier actually changed. Saving an
   unchanged default does nothing.
@@ -217,7 +223,7 @@ label in `compose.yml` and rejects the template if:
 - a router has no rule, or a `traefik.enable=true` service has no HTTP router.
   Traefik would then apply its default rule
 - it declares a TCP router, which would bypass forward-auth
-- it routes a core subdomain (`auth`, `traefik`, `hub`, `directory`, `enroll`)
+- it routes a core subdomain (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`)
 
 ## Keycloak clients
 
@@ -241,10 +247,14 @@ Hub updates its secret, redirect URIs, ACR and scopes only if:
   origin is a plain `http(s)` URL without wildcards whose host is one of the
   template's own `<sub>.<domain>` hosts.
 
-Anything else fails closed: the existing client is left untouched and the Hub
-logs a warning (`failed to register client …`). The app still starts, but its
-OIDC login won't work until you resolve the clash, e.g. by deleting or tagging
-the foreign client in Keycloak.
+Anything else fails closed. The existing client is left untouched and the
+enable is **refused with HTTP 409** (`client "<id>" …` belongs to someone else).
+The app is not started, because it would be wired to a secret and redirect URIs
+it doesn't own. Resolve the clash in Keycloak, e.g. by deleting the foreign
+client or choosing another `client_id`. Other registration errors, such as
+Keycloak being unreachable, are logged as warnings, and the app still starts.
+
+
 Core and built-in clients are reserved and never touched:
 `portcullis-forward-auth`, `admin-cli`, `account`, `account-console`,
 `broker`, `realm-management` and `security-admin-console`.
@@ -315,9 +325,11 @@ sources you trust.
   filesystem. It writes only `/data` (the `hub_data` volume), `/project/templates`
   (chowned to 10001 by `./portcullis up`) and tmpfs. `secrets/` and `backups/`
   of the core checkout are masked with empty tmpfs mounts.
-- **Outbound calls.** The Keycloak admin API and LLDAP are called with Go's
+- **Outbound calls.** The Hub only calls the Keycloak admin API, with Go's
   HTTP client: 20 s timeout, TLS verification, no shelling out to `curl`.
-  Credentials never appear in process arguments.
+  Credentials never appear in process arguments. The Hub has **no LLDAP
+  credentials** and does no LDAP lookups. The signed-in user shown in the
+  header is `X-Forwarded-User` as-is, i.e. the LLDAP username.
 - **Timeouts.** compose up 15 min, compose down 5 min, shell 15 min, git 5 min.
 - **Policy file.** The Hub writes `group-gate-policy.json` (version 2)
   atomically to `hub_data`. It is keyed **by subdomain only**:
@@ -336,9 +348,11 @@ sources you trust.
 | `X.Y.Z`, `X.Y`, `X`, `sha-<short>` | A release tag `vX.Y.Z` is pushed |
 | `edge` | Every push to `main` |
 
-There is **no `latest` tag**. Core defaults to
-`HUB_IMAGE=ghcr.io/porelli/portcullis-hub:edge`. For production, pin a release
+There is **no `latest` tag**. On core `main`, `HUB_IMAGE` defaults to
+`ghcr.io/porelli/portcullis-hub:edge`. A core release pins a released Hub tag
+by digest, and `release.yml` enforces that. If you override it, pin a release
 by tag **and** digest in `.env`, then run `./portcullis up`.
+`./portcullis version` shows which image is configured and which one runs.
 
 Images are multi-arch (amd64, arm64) and carry SBOM and provenance attestations.
 Each one is signed with cosign (keyless, GitHub OIDC). Verify a tag before you

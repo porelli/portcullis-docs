@@ -48,7 +48,8 @@ All options are in the [CLI Reference](../operations/cli.md#init).
 1. **Writes `.env`** (mode `0600`) with every secret randomly generated:
    `POSTGRES_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `LLDAP_ADMIN_PASSWORD`,
    `LLDAP_JWT_SECRET`, `FORWARD_AUTH_CLIENT_SECRET`,
-   `FORWARD_AUTH_COOKIE_SECRET` and `HUB_PROXY_SECRET`. Docker compose refuses
+   `FORWARD_AUTH_COOKIE_SECRET`, `HUB_PROXY_SECRET`, and `BACKUP_PASSWORD`
+   (encrypts off-host backups). Docker compose refuses
    to start if any of them is missing, so there are no default passwords. An
    existing `.env` is kept; only empty or missing secrets are filled in.
 2. **Creates DNS records** for `<domain>` and `*.<domain>` pointing at this
@@ -80,7 +81,9 @@ image pull), fix it and run `./portcullis init` again.
     Losing it together with the host means losing the CA, and every client
     certificate with it. Anyone who has it can unseal Vault. Keep an offline
     copy, and treat backups made by `./portcullis backup` the same way: they
-    contain `secrets/` and `.env`.
+    contain `secrets/` and `.env`. Store `BACKUP_PASSWORD` offline too:
+    without it, off-host backups can't be restored after losing the host
+    (see [Backups](../operations/backups.md)).
 
 ### Settings in `.env` worth knowing
 
@@ -93,7 +96,10 @@ image pull), fix it and run `./portcullis init` again.
 | `MTLS_ENABLED` | `true` | Request YubiKey client certificates. See [TLS & mTLS](certificates.md) |
 | `CLIENT_CERT_TTL` | `720h` | Client certificate lifetime (30 days) |
 | `HUB_PROXY_SECRET` | generated | Shared secret Traefik adds to every request to the Hub. The Hub refuses to start without it (at least 32 characters) |
-| `HUB_IMAGE` | `ghcr.io/porelli/portcullis-hub:edge` | Hub image. `edge` is the latest build of the Hub's `main`. For production, pin a release tag with its digest, e.g. `ghcr.io/porelli/portcullis-hub:1.2.3@sha256:…` (see [Hub image tags](../operations/hub.md#image-tags-and-verification)) |
+| `HUB_IMAGE` | `ghcr.io/porelli/portcullis-hub:edge` on core `main` | Hub image. `edge` is the latest build of the Hub's `main`; a core release pins a released tag by digest. If you override it, use a released tag with its digest, e.g. `ghcr.io/porelli/portcullis-hub:1.2.3@sha256:…` (see [Upgrading & Releases](../operations/upgrading.md#hub-image)) |
+| `BACKUP_PASSWORD` | generated | restic repository password for `./portcullis backup --offsite`. Keep an offline copy; never rotate it |
+| `BACKUP_REPOSITORY` | unset | restic repository for off-host backups (`s3:`, `b2:`, `rest:`, …). See [Backups](../operations/backups.md) |
+| `COMPOSE_PROFILES` | unset | `monitoring` enables Prometheus, Alertmanager and Grafana at `metrics.<domain>`. See [Monitoring](../operations/monitoring.md) |
 | `HUB_SHARED_ENV` | empty | Extra variable names the Hub may pass to templates. Core secrets are refused |
 | `PORTCULLIS_PROXY_SUBNET` | `172.31.250.0/24` | Fixed subnet of the shared `portcullis-proxy` network |
 | `PORTCULLIS_PROXY_IP_RANGE` | `172.31.250.128/25` | Dynamic addresses for app containers. Must be inside the subnet and must not contain Traefik's IP |
@@ -127,7 +133,10 @@ docker compose logs -f traefik 2>&1 | grep -i acme
 Open `https://directory.<your-domain>` and log in as `admin` with
 `LLDAP_ADMIN_PASSWORD` from `.env`.
 
-1. Click **Create user** and enter username, email and name.
+1. Click **Create user** and enter username, email and name. The **username**
+   is the user's identity everywhere (it can't be changed later). The email is
+   only profile data: users can edit it themselves, so it is never used to
+   identify or link accounts.
 2. Set a temporary password. It is needed for the first login, before a security key is registered.
 3. Add the user to the groups of the apps they need, e.g. `users_grafana`.
    Members of `lldap_admin` can reach the core admin UIs (Hub, enrollment,
@@ -145,10 +154,11 @@ Keycloak reads users and groups from LLDAP through its LDAP federation.
    Hub's **Settings → Users** list, so Keycloak asks for it at the next login.
 4. Future logins need only a YubiKey tap.
 
-!!! tip "Make hardware keys mandatory"
-    A fresh install has no global access policy, so any Keycloak login,
-    including a password, satisfies the apps. Set the global default in the Hub
-    (**Settings → Default access policy**) to WebAuthn, or "any of mTLS /
+!!! note "Hardware keys are required by default"
+    Until you save a global default in the Hub (**Settings → Default access
+    policy**), every app requires **WebAuthn**: after a password login, users
+    are stepped up to their security key. Register a key (step 3) before you
+    open an app. To also accept YubiKey PIV certificates, save "any of mTLS /
     WebAuthn". See [Authentication Policies](../operations/auth-policies.md).
 
 ## Step 6: Enable your first app
@@ -182,12 +192,15 @@ Certificates last 30 days. Users renew their own at
 ./portcullis status                # health
 ./portcullis up / down             # start / stop the core stack
 git pull && ./portcullis upgrade   # update (backs up first)
-./portcullis backup                # local backup to backups/
+./portcullis backup --offsite      # backup, also to restic (schedule it: backup schedule --systemd)
+./portcullis version               # core version + Hub image
 ```
 
 ## Next steps
 
 - [CLI Reference](../operations/cli.md)
+- [Backups](../operations/backups.md): set up off-host backups and the systemd timer
+- [Monitoring](../operations/monitoring.md)
 - [DNS Configuration](dns.md)
 - [TLS & mTLS](certificates.md)
 - [Architecture](../architecture.md) and [Security & Hardening](../operations/hardening.md)
