@@ -15,9 +15,27 @@
 | **Group Admin** | :x: |
 | **Access Group** | `users_cloudbeaver` |
 | **Admin Group** | `admin_cloudbeaver` |
+| **Subdomain** | `db` |
 
 !!! info "Auth Notes"
     Access gated by forward-auth + group-gate. CloudBeaver's reverseProxy auth provider logs users in from X-Forwarded-User and trusts team/role headers from any peer with no allowlist, so CloudBeaver is kept off portcullis-proxy behind a small nginx gate (cloudbeaver-gate) that rejects (403) X-Forwarded-User from anything but Traefik (PORTCULLIS_TRAEFIK_IP) and strips the X-User/X-Team/X-Role/X-Role-TE/name headers. Roles and connections are managed in CloudBeaver.
+
+## Routing
+
+Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one derived from the app's [access policy](../operations/auth-policies.md#traefik-tls-tier).
+
+| Router | Host | Paths | TLS tier | Forward-auth + group-gate |
+|--------|------|-------|----------|---------------------------|
+| `cloudbeaver` | `db.<domain>` | all | `authaware@file` | :white_check_mark: |
+
+## Images
+
+Pinned by version tag and digest; Dependabot proposes updates.
+
+| Service | Image | Digest |
+|---------|-------|--------|
+| `cloudbeaver` | `dbeaver/cloudbeaver:26.2.3` | `sha256:0c875296f85f…` |
+| `cloudbeaver-gate` | `nginx:1.31.8-alpine` | `sha256:785835ea65db…` |
 
 ## Access URLs
 

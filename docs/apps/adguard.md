@@ -15,9 +15,26 @@
 | **Group Admin** | :x: |
 | **Access Group** | `users_adguard` |
 | **Admin Group** | `admin_adguard` |
+| **Subdomain** | `adguard` |
 
 !!! info "Auth Notes"
     No SSO support. Has its own local admin password set during setup wizard. Access gated by group-gate middleware.
+
+## Routing
+
+Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one derived from the app's [access policy](../operations/auth-policies.md#traefik-tls-tier).
+
+| Router | Host | Paths | TLS tier | Forward-auth + group-gate |
+|--------|------|-------|----------|---------------------------|
+| `adguard` | `adguard.<domain>` | all | `authaware@file` | :white_check_mark: |
+
+## Images
+
+Pinned by version tag and digest; Dependabot proposes updates.
+
+| Service | Image | Digest |
+|---------|-------|--------|
+| `adguard` | `adguard/adguardhome:v0.107.79` | `sha256:aba9e3bf0613…` |
 
 ## Host Ports
 

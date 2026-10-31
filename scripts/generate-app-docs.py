@@ -15,6 +15,7 @@ Usage:
 """
 
 import os
+import re
 import sys
 import argparse
 from pathlib import Path
@@ -40,8 +41,82 @@ def load_manifests(source_dir: Path) -> list[dict]:
         with open(manifest_path) as f:
             manifest = yaml.safe_load(f)
         manifest["_id"] = entry.name
+        compose_path = entry / "compose.yml"
+        manifest["_compose"] = {}
+        if compose_path.is_file():
+            with open(compose_path) as f:
+                manifest["_compose"] = yaml.safe_load(f) or {}
         apps.append(manifest)
     return apps
+
+
+# ── compose.yml parsing (routing + images) ─────────────────────────────
+
+HOST_RE = re.compile(r"Host\(\s*`([^`]*)`\s*\)")
+PATH_RE = re.compile(r"PathPrefix\(\s*`([^`]*)`\s*\)")
+ROUTER_RE = re.compile(r"^traefik\.http\.routers\.([^.]+)\.(.+)$")
+DOMAIN_VAR_RE = re.compile(r"\$\{PORTCULLIS_DOMAIN[^}]*\}")
+
+
+def _labels(svc: dict) -> dict:
+    raw = (svc or {}).get("labels") or {}
+    if isinstance(raw, list):
+        out = {}
+        for item in raw:
+            k, _, v = str(item).partition("=")
+            out[k.strip()] = v.strip()
+        return out
+    return {str(k): str(v) for k, v in raw.items()}
+
+
+def compose_routers(compose: dict) -> list[dict]:
+    """[{service, name, hosts, paths, tls, middlewares}] for every HTTP router."""
+    routers = []
+    for sname, svc in sorted((compose.get("services") or {}).items()):
+        per = {}
+        for k, v in _labels(svc).items():
+            m = ROUTER_RE.match(k)
+            if m:
+                per.setdefault(m.group(1), {})[m.group(2)] = v
+        for rname, attrs in sorted(per.items()):
+            rule = attrs.get("rule", "")
+            hosts = [DOMAIN_VAR_RE.sub("<domain>", h) for h in HOST_RE.findall(rule)]
+            mws = [m.strip() for m in attrs.get("middlewares", "").split(",") if m.strip()]
+            routers.append({
+                "service": sname,
+                "name": rname,
+                "hosts": hosts,
+                "paths": PATH_RE.findall(rule),
+                "tls": attrs.get("tls.options", ""),
+                "middlewares": mws,
+            })
+    return routers
+
+
+def compose_images(compose: dict) -> list[tuple[str, str, str]]:
+    """[(service, image name:tag, digest)]."""
+    out = []
+    for sname, svc in sorted((compose.get("services") or {}).items()):
+        image = str((svc or {}).get("image") or "")
+        if not image:
+            continue
+        ref, _, digest = image.partition("@")
+        out.append((sname, ref, digest))
+    return out
+
+
+def subdomains(app: dict) -> list[str]:
+    subs = []
+    for r in compose_routers(app.get("_compose") or {}):
+        for h in r["hosts"]:
+            sub = h.split(".", 1)[0] if h.endswith(".<domain>") else h
+            if sub not in subs:
+                subs.append(sub)
+    return subs
+
+
+def md_cell(text: str) -> str:
+    return str(text).replace("|", "\\|").replace("\n", " ")
 
 
 def sso_badge(sso_val) -> str:
@@ -62,9 +137,14 @@ def generate_index(apps: list[dict], output_dir: Path):
         "# App Catalog",
         "",
         "All apps available in Portcullis with their authentication capabilities.",
+        "Each app is reachable at `<subdomain>.<your-domain>`.",
         "",
-        "| App | Category | Auth Method | SSO | Group Access | Group Admin |",
-        "|-----|----------|-------------|-----|-------------|-------------|",
+        "These pages are generated from the `manifest.yaml` and `compose.yml` files in",
+        "[porelli/portcullis-templates](https://github.com/porelli/portcullis-templates);",
+        "see the [Manifest Reference](../guides/manifest-reference.md) for the fields.",
+        "",
+        "| App | Subdomain | Category | Auth Method | SSO | Group Access | Group Admin |",
+        "|-----|-----------|----------|-------------|-----|-------------|-------------|",
     ]
 
     for app in sorted(apps, key=lambda a: (a.get("category", ""), a.get("name", ""))):
@@ -78,8 +158,9 @@ def generate_index(apps: list[dict], output_dir: Path):
         group = bool_badge(auth.get("group_access", False))
         admin = bool_badge(auth.get("group_admin", False))
 
+        subs = ", ".join(f"`{x}`" for x in subdomains(app)) or "—"
         lines.append(
-            f"| {icon} [{name}]({app_id}.md) | {category} | `{method}` | {sso} | {group} | {admin} |"
+            f"| {icon} [{name}]({app_id}.md) | {subs} | {category} | `{method}` | {sso} | {group} | {admin} |"
         )
 
     lines.append("")
@@ -134,11 +215,49 @@ def generate_app_page(app: dict, output_dir: Path):
         lines.append(f"| **Access Group** | `{access_group}` |")
     if admin_group:
         lines.append(f"| **Admin Group** | `{admin_group}` |")
+    admin_paths = auth.get("admin_paths") or []
+    if admin_paths:
+        paths = ", ".join(f"`{p}`" for p in admin_paths)
+        lines.append(f"| **Admin Paths** | {paths} (require `{admin_group}` in addition to access) |")
+    subs = subdomains(app)
+    if subs:
+        lines.append(f"| **Subdomain** | {', '.join(f'`{x}`' for x in subs)} |")
     lines.append("")
 
     if notes:
-        lines.append(f"!!! info \"Auth Notes\"")
-        lines.append(f"    {notes}")
+        lines.append('!!! info "Auth Notes"')
+        for line in str(notes).strip().splitlines():
+            lines.append(f"    {line}" if line.strip() else "")
+        lines.append("")
+
+    # Routing (from compose.yml)
+    routers = compose_routers(app.get("_compose") or {})
+    if routers:
+        lines.append("## Routing")
+        lines.append("")
+        lines.append("Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one derived from the app's [access policy](../operations/auth-policies.md#traefik-tls-tier).")
+        lines.append("")
+        lines.append("| Router | Host | Paths | TLS tier | Forward-auth + group-gate |")
+        lines.append("|--------|------|-------|----------|---------------------------|")
+        for r in routers:
+            hosts = ", ".join(f"`{h}`" for h in r["hosts"]) or "—"
+            paths = ", ".join(f"`{p}`" for p in r["paths"]) or "all"
+            gated = "portcullis-auth@docker" in r["middlewares"] and "portcullis-groups@docker" in r["middlewares"]
+            tls = f"`{r['tls']}`" if r["tls"] else "—"
+            lines.append(f"| `{md_cell(r['name'])}` | {hosts} | {paths} | {tls} | {bool_badge(gated)} |")
+        lines.append("")
+
+    images = compose_images(app.get("_compose") or {})
+    if images:
+        lines.append("## Images")
+        lines.append("")
+        lines.append("Pinned by version tag and digest; Dependabot proposes updates.")
+        lines.append("")
+        lines.append("| Service | Image | Digest |")
+        lines.append("|---------|-------|--------|")
+        for svc, ref, digest in images:
+            short = f"`{digest[:19]}…`" if digest else ":warning: not pinned"
+            lines.append(f"| `{svc}` | `{ref}` | {short} |")
         lines.append("")
 
     # Settings section
@@ -156,7 +275,12 @@ def generate_app_page(app: dict, output_dir: Path):
             target = s.get("target", {})
             mount = target.get("mount", "") if target else ""
             extra = f" → `{mount}`" if mount else ""
-            lines.append(f"| **{label}** | `{stype}` | {sdesc}{extra} |")
+            opts = s.get("options") or []
+            if opts:
+                extra += " Options: " + ", ".join(f"`{o}`" for o in opts)
+            if s.get("default") not in (None, ""):
+                extra += f" (default `{s['default']}`)"
+            lines.append(f"| **{label}** | `{stype}` | {md_cell(sdesc)}{extra} |")
         lines.append("")
 
     # Ports
@@ -185,7 +309,7 @@ def generate_app_page(app: dict, output_dir: Path):
     if env_vars:
         lines.append("## Environment Variables")
         lines.append("")
-        lines.append("Auto-generated by the Hub on first enable:")
+        lines.append("Per-app variables in the generated `.env`; `random` ones are generated by the Hub on first enable:")
         lines.append("")
         lines.append("| Variable | Description | Generation |")
         lines.append("|----------|-------------|------------|")
