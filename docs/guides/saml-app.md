@@ -23,13 +23,14 @@ Create a Docker Compose file for the app (or use its template from the catalog).
 ```yaml
 services:
   nextcloud:
-    image: nextcloud:29-apache
+    image: nextcloud:<version>-apache@sha256:<digest>   # pin tag + digest
     environment:
       NEXTCLOUD_ADMIN_USER: admin
-      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-changeme}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:?generated}   # never ship a default password
       NEXTCLOUD_TRUSTED_DOMAINS: "nextcloud.${PORTCULLIS_DOMAIN}"
     networks:
-      - portcullis
+      - default
+      - portcullis-proxy
     labels:
       traefik.enable: "true"
       traefik.http.routers.nextcloud.rule: "Host(`nextcloud.${PORTCULLIS_DOMAIN}`)"
@@ -39,9 +40,11 @@ services:
       traefik.http.services.nextcloud.loadbalancer.server.port: "80"
 
 networks:
-  portcullis:
+  portcullis-proxy:
     external: true
 ```
+
+Apps join `portcullis-proxy` (shared with Traefik), never the core `portcullis` network.
 
 Note: SAML apps handle their own authentication flow with Keycloak, so they do not need the `portcullis-auth@docker` forward-auth middleware.
 

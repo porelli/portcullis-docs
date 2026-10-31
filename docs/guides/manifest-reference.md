@@ -1,86 +1,176 @@
 # Manifest Reference
 
-Every app template includes a `manifest.yaml` file that describes the app to the Hub. This page documents every field in the manifest schema.
+Every app template has a `manifest.yaml` that describes the app to the Hub.
+This page documents every field of the schema.
 
-## Top-Level Fields
+The authoritative definition is the JSON Schema (draft 2020-12)
+[`schema/manifest.schema.json`](https://github.com/porelli/portcullis-templates/blob/main/schema/manifest.schema.json)
+in the templates repo. The Hub enforces the same rules and skips templates that
+fail them (see [Integration Contracts §3](integration-contracts.md#3-template-layout)).
+Rules that need the compose file, the filesystem or several templates at once
+are checked by `tests/validate.py` (see [Validation](#validation)).
+
+For editor completion, start the manifest with:
+
+```yaml
+# yaml-language-server: $schema=../schema/manifest.schema.json
+```
+
+## Conventions
+
+Several types recur throughout the schema:
+
+| Type | Rule |
+|------|------|
+| *single line* | A string without control characters (U+0000–U+001F, U+007F) |
+| *env key* | `^[A-Za-z_][A-Za-z0-9_]{0,127}$`. It becomes a key in the per-app `.env` |
+| *group* | An LLDAP group name: `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` |
+| *service* | A service name from the template's `compose.yml`: `^[a-zA-Z0-9][a-zA-Z0-9_.-]*$` |
+| `{{DOMAIN}}` | In `urls` and redirect URIs, replaced with `PORTCULLIS_DOMAIN` |
+
+**No other keys are allowed.** Every object in the schema sets
+`additionalProperties: false`, so a typo is an error, not a silently ignored
+field.
+
+## Top-level fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Display name shown in the Hub |
-| `description` | string | Yes | One-line description of what the app does |
-| `icon` | string | Yes | Unicode emoji for the app card (e.g., `"\U0001F4CA"`) |
-| `category` | string | Yes | Category for grouping in the catalog |
-| `tags` | list of strings | Yes | Searchable tags |
+| `name` | single line, 1–64 chars | Yes | Display name shown in the Hub |
+| `description` | single line, 1–200 chars | Yes | One-line description of what the app does |
+| `icon` | single line, 1–16 chars | Yes | Unicode emoji for the app card, e.g. `"\U0001F4CA"` |
+| `category` | `^[a-z][a-z0-9-]{0,31}$` | Yes | Catalog category |
+| `tags` | list of unique strings `^[a-z0-9][a-z0-9.+-]{0,31}$` | Yes | Searchable tags (lowercase) |
+| `auth` | object | Yes | See [auth](#auth) |
+| `settings` | list | No | See [settings](#settings) |
+| `ports` | list | No | See [ports](#ports) |
+| `env` | list | No | See [env](#env) |
+| `keycloak_clients` | list | No; required (at least one) for `native-oidc` | See [keycloak_clients](#keycloak_clients) |
+| `config_files` | list | No | See [config_files](#config_files) |
+| `urls` | list | No | See [urls](#urls) |
 
-**Categories in use:** `monitoring`, `media`, `productivity`, `security`, `networking`, `ai`
-
-Host-port collisions between apps are detected from the `ports:` section (see below); there is no manual conflict list.
+**Categories in use:** `monitoring`, `media`, `productivity`, `security`,
+`networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
 
 ## auth
 
-Defines how the app authenticates users.
-
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `method` | string | Yes | Auth method: `forward-auth`, `native-oidc`, `header-auth`, or `public` |
-| `sso` | boolean or string | Yes | Whether single sign-on is supported. `true`, `false`, or `partial` |
-| `group_access` | boolean | Yes | Whether access is restricted by LLDAP group membership |
-| `group_admin` | boolean | Yes | Whether the app maps an LLDAP group to its admin role |
-| `access_group` | string | Yes | LLDAP group name required for access (e.g., `users_grafana`) |
-| `admin_group` | string | Yes | LLDAP group name for admin privileges (e.g., `admin_grafana`) |
-| `notes` | string | No | Free-text notes about the auth integration |
+| `method` | enum | Yes | `native-oidc`, `forward-auth`, `header-auth`, `mtls`, `custom` or `public` (see below) |
+| `sso` | `true`, `false` or `"partial"` | Yes | Whether single sign-on is supported |
+| `group_access` | boolean | Yes | group-gate restricts the app's subdomains to `access_group` |
+| `group_admin` | boolean | Yes | The app maps `admin_group` to its admin role |
+| `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>` |
+| `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>` |
+| `admin_paths` | list of path prefixes | No | Paths that additionally require `admin_group` (see below) |
+| `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page. Upgrade constraints go here too |
 
-### Auth Methods
+Constraints the schema enforces:
 
-**`forward-auth`** -- The app has no SSO support. oauth2-proxy handles authentication, and group-gate enforces group membership. The app itself sees no auth headers unless combined with header-auth patterns.
+- `group_access: true` requires `access_group`.
+- `group_admin: true` requires `admin_group`.
+- A non-empty `admin_paths` requires `admin_group`.
+- `method: public` requires `group_access: false` and an empty (or missing)
+  `admin_paths`.
 
-**`native-oidc`** -- The app has built-in OpenID Connect support and redirects to Keycloak directly. Requires a `keycloak_clients` entry.
+`access_group` is only *enforced* by group-gate when `group_access: true`.
+Otherwise it is informational.
 
-**`header-auth`** -- The app accepts a trusted identity header (typically `X-Forwarded-User`) set by oauth2-proxy after forward authentication. This is a variant of forward-auth where the app also reads the authenticated user's identity.
+### Auth methods
 
-**`public`** -- No authentication required. The app is accessible to anyone.
+| `method` | Meaning | Router middlewares |
+|----------|---------|--------------------|
+| `native-oidc` | The app talks OIDC to Keycloak itself. Needs `keycloak_clients` | **No** `portcullis-auth` on the host-wide router. Login or admin paths may use a separate `PathPrefix` router with forward-auth |
+| `forward-auth` | oauth2-proxy + group-gate in front. The app has its own login, or none | `portcullis-auth@docker,portcullis-groups@docker` |
+| `header-auth` | Forward-auth, and the app also trusts `X-Forwarded-User` from Traefik (and only from Traefik) | `portcullis-auth@docker,portcullis-groups@docker` |
+| `mtls` | Client certificate at the TLS layer | `tls.options: protected@file`, no forward-auth |
+| `custom` | App-specific account system, e.g. plex.tv | None |
+| `public` | No authentication | None |
 
-### SSO Values
+See [Choosing an auth method](https://github.com/porelli/portcullis-templates/blob/main/CONTRIBUTING.md#choosing-an-auth-method)
+in the templates repo's contributing guide.
 
-- `true` -- Full SSO. User authenticates once in Keycloak and is automatically logged into the app.
-- `false` -- No SSO. The app has its own login form. Forward auth just gates access; the user must log in separately.
-- `partial` -- Partial SSO. The app auto-creates users from headers but may require additional setup (e.g., role assignment).
+### SSO values
+
+- `true`: the user authenticates once in Keycloak and is logged into the app automatically.
+- `false`: the app has its own login form. Forward-auth only gates access, and the user logs in again.
+- `"partial"`: the app auto-creates users from the identity, but needs extra setup, e.g. role assignment.
+
+### admin_paths
+
+`admin_paths` lists path prefixes on the app's subdomains that need
+`admin_group` **in addition** to the subdomain's group. The Hub publishes them
+as group-gate `path_groups` (see [Groups → Path rules](../operations/groups.md#path-rules-path_groups-and-admin_paths)).
+
+Each item must:
+
+- match `^/[A-Za-z0-9._~%!$&'()*+,;=:@/-]*$`, be at most 256 characters, and be unique in the list
+- not contain `..` or `//`, and have no `.` segment (`/./`, a trailing `/.`)
+
+Matching is a segment-boundary prefix match: `/admin` matches `/admin` and
+`/admin/x`, but not `/administrator`.
+
+Path rules only take effect on routers that use `portcullis-groups@docker`.
+`validate.py` therefore fails if no router with
+`portcullis-auth@docker,portcullis-groups@docker` serves each listed path.
+
+```yaml
+auth:
+  method: native-oidc
+  sso: true
+  group_access: false
+  group_admin: false
+  access_group: users_vaultwarden
+  admin_group: admin_vaultwarden
+  admin_paths: ["/admin"]
+```
 
 ## settings
 
-Optional list of user-configurable settings shown in the Hub. Settings are typically used for host paths (media libraries) or feature toggles.
+User-configurable settings shown in the Hub. Each `key` becomes a key in the
+per-app `.env`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `key` | string | Yes | Environment variable name or unique identifier |
-| `label` | string | Yes | Human-readable label shown in the Hub |
-| `description` | string | Yes | Help text explaining what this setting controls |
-| `type` | string | Yes | Input type (see below) |
-| `required` | boolean | No | Whether the setting must be filled. Default: `false` |
-| `default` | string | No | Default value |
-| `options` | list of objects | No | For `select` type: `{value: "...", label: "..."}` |
-| `target` | object | No | Where to mount a path setting (see below) |
+| `key` | env key | Yes | Variable name |
+| `label` | single line, non-empty | Yes | Label shown in the Hub |
+| `type` | enum | Yes | `text`, `path`, `paths`, `boolean` or `select` |
+| `description` | string | No | Help text |
+| `required` | boolean | No | The setting must be filled in |
+| `default` | string without control chars | No | Default value |
+| `options` | list of strings without control chars | Required (at least one) for `select` | The choices of a `select` |
+| `target` | object | No | Bind-mount target for `path` / `paths` (see below) |
 
-### Setting Types
+### Setting types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `text` | Free-form text input | API keys, custom names |
-| `path` | Single host directory path | `/mnt/media/movies` |
-| `paths` | Multiple host directory paths | Multiple media folders |
+| Type | Input | Example |
+|------|-------|---------|
+| `text` | Free-form text | API keys, custom names |
+| `path` | One host directory | `/mnt/media/movies` |
+| `paths` | Several host directories | Several media folders |
 | `boolean` | On/off toggle | Feature flags |
-| `select` | Dropdown from predefined options | Theme selection |
+| `select` | Dropdown of `options` | Log level |
 
-### target (for path settings)
+`options` is a **list of plain strings**. Each string is both the stored value
+and the label:
 
-When `type` is `path` or `paths`, the `target` field specifies which container and mount point to bind the host path to:
+```yaml
+settings:
+  - key: MYAPP_LOG_LEVEL
+    label: Log level
+    type: select
+    options: [info, debug, warn]
+    default: info
+```
+
+### target
+
+For `path` and `paths`, `target` says where the host path is mounted:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `service` | string | Yes | Docker Compose service name |
-| `mount` | string | Yes | Container path to mount at |
-
-Example:
+| `service` | service | Yes | Compose service to mount into |
+| `mount` | `^/[^:]*$` (absolute, no `:`, no control chars) | Yes | Container path |
 
 ```yaml
 settings:
@@ -93,63 +183,41 @@ settings:
       mount: /data/movies
 ```
 
-When the user sets this to `/mnt/media/movies` in the Hub, the compose file gets an additional bind mount: `/mnt/media/movies:/data/movies`.
+When the user sets it to `/mnt/media/movies`, the Hub's per-app override gets
+the bind mount `"/mnt/media/movies:/data/movies"`.
 
 ## ports
 
-Declares host port bindings the app needs. The Hub:
+Host port bindings the app needs (for non-HTTP protocols such as DNS or TURN;
+HTTP always goes through Traefik). The Hub:
 
-1. Refuses to enable an app if any of its ports are already claimed by an enabled app.
-2. Surfaces each port as an editable field in the Hub UI so users can rebind or disable it.
-3. Writes the effective bindings into the per-app compose override at enable-time — so `compose.yml` itself should **not** contain a `ports:` block for anything declared here.
+1. Refuses to enable the app if one of its ports is already claimed by another enabled app.
+2. Shows each port as an editable field, so users can rebind it or (if not `required`) disable it.
+3. Writes the effective bindings into the per-app compose override. `compose.yml` must **not** publish these ports itself.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `key` | string | Yes | Env var name used for the user-overridable host port |
-| `label` | string | Yes | UI label (e.g., `DNS (TCP)`) |
-| `description` | string | No | Help text shown under the label |
-| `container` | int | Conditional | Container-side port. Required unless `range` is set. |
-| `protocol` | string | Yes | `tcp` or `udp` |
-| `default` | int | Conditional | Default host port. Required unless `range` is set. |
-| `bind` | string | No | Default bind address (default: `0.0.0.0`) |
-| `required` | boolean | No | If `false`, the user can clear the host port to disable the binding. Default: `false` |
-| `service` | string | Yes | Compose service this port belongs to |
-| `network_mode_host` | boolean | No | The service uses `network_mode: host`. Ports are claimed globally and can't be rebound via override. Default: `false` |
-| `range` | string | No | Inclusive port range like `"49152-65535"`. Used for things like TURN media relays. Incompatible with user rebinding. |
-
-Example — a DNS resolver with separate TCP/UDP bindings:
+| `key` | env key | Yes | Variable holding the user-overridable host port |
+| `label` | single line, non-empty | Yes | UI label, e.g. `DNS (TCP)` |
+| `protocol` | `tcp` or `udp` | Yes | |
+| `service` | service | Yes | Compose service the port belongs to |
+| `container` | integer 1–65535 | Yes, unless `range` is set | Container-side port |
+| `default` | integer 1–65535 | Yes, unless `range` is set | Default host port |
+| `range` | `"low-high"` | No | Inclusive port range, e.g. `"49152-65535"`. Mutually exclusive with `container` and `default`; can't be rebound |
+| `bind` | IPv4 or IPv6 address | No | Default bind address (default `0.0.0.0`) |
+| `required` | boolean | No | If not `true`, the user can clear the host port to disable the binding |
+| `description` | string | No | Help text |
+| `network_mode_host` | boolean | No | The service uses `network_mode: host`. Ports are claimed globally and can't be rebound |
 
 ```yaml
 ports:
   - key: ADGUARD_DNS_TCP_HOST
     label: DNS (TCP)
-    description: Resolver port for TCP-based queries
     container: 53
     protocol: tcp
     default: 53
     required: true
     service: adguard
-  - key: ADGUARD_DNS_UDP_HOST
-    label: DNS (UDP)
-    container: 53
-    protocol: udp
-    default: 53
-    required: true
-    service: adguard
-```
-
-Example — a TURN relay using host networking plus a UDP media range:
-
-```yaml
-ports:
-  - key: COTURN_STUN_PORT
-    label: STUN/TURN
-    container: 3478
-    protocol: udp
-    default: 3478
-    required: true
-    service: coturn
-    network_mode_host: true
   - key: COTURN_MEDIA_RANGE
     label: TURN media relays
     protocol: udp
@@ -161,52 +229,48 @@ ports:
 
 ## env
 
-List of environment variables the app needs. The Hub generates random values for variables with `generate: random` during initial setup.
+Per-app environment variables.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `key` | string | Yes | Environment variable name |
-| `description` | string | Yes | What this variable is for |
-| `generate` | string | No | `random` to auto-generate, `none` or omit for manual. Default: `none` |
-| `required` | boolean | No | Whether the variable must have a value. Default: `false` |
+| `key` | env key | Yes | Variable name |
+| `description` | non-empty string | Yes | What it is for |
+| `generate` | `random`, `none` or `""` | No | `random`: the Hub generates 32 hex characters on first enable and writes them to the per-app `.env` |
+| `required` | boolean | No | The variable must have a value |
 
-Example:
+Secrets (passwords, OIDC client secrets, app keys) must be `generate: random`
+entries. Never hard-code a secret in `compose.yml`. A variable that
+`compose.yml` references as required (`${VAR:?...}`) must be an `env` entry with
+`generate: random`, because that is all the Hub writes.
 
 ```yaml
 env:
-  - key: JELLYFIN_ADMIN_PASSWORD
-    description: Jellyfin admin password
+  - key: VAULTWARDEN_ADMIN_TOKEN
+    description: Vaultwarden admin panel token
     generate: random
-  - key: JELLYFIN_OIDC_SECRET
-    description: Jellyfin OIDC client secret
+  - key: VAULTWARDEN_OIDC_SECRET
+    description: Vaultwarden OIDC client secret
     generate: random
 ```
 
 ## keycloak_clients
 
-List of OIDC clients to register in Keycloak when the app is enabled. Required for `native-oidc` apps.
+OIDC clients the Hub registers in Keycloak when the app is enabled. Required
+(at least one) for `native-oidc`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `client_id` | string | Yes | Keycloak client identifier |
-| `secret_env` | string | Yes | Name of the env var holding the client secret |
-| `redirect_uri` | string | Conditional | Single redirect URI (use this or `redirect_uris`) |
-| `redirect_uris` | list of strings | Conditional | Multiple redirect URIs |
-| `name` | string | Yes | Display name in Keycloak |
+| `client_id` | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | Yes | Keycloak client ID. Core clients such as `portcullis-forward-auth` are reserved |
+| `secret_env` | env key | Yes | The `env` entry (with `generate: random`) holding the client secret |
+| `name` | single line, non-empty | Yes | Display name in Keycloak |
+| `redirect_uri` | URI | Exactly one of the two | A single redirect URI |
+| `redirect_uris` | list of URIs (at least one) | Exactly one of the two | Several redirect URIs |
 
-The `{{DOMAIN}}` placeholder in redirect URIs is replaced with the value of `PORTCULLIS_DOMAIN`.
+Redirect URIs must match `^[a-z][a-z0-9+.-]*://\S+$`, so custom schemes such
+as `app.immich:///oauth-callback` work. `{{DOMAIN}}` is replaced.
 
-Example with a single redirect URI:
-
-```yaml
-keycloak_clients:
-  - client_id: vaultwarden
-    secret_env: VAULTWARDEN_OIDC_SECRET
-    redirect_uri: "https://passwords.{{DOMAIN}}/identity/connect/oidc-signin"
-    name: Vaultwarden
-```
-
-Example with multiple redirect URIs (e.g., web + mobile app):
+The Hub tags each client with the template that owns it, and attaches the
+`acr` and `groups` scopes (see [Hub → Keycloak clients](../operations/hub.md#keycloak-clients)).
 
 ```yaml
 keycloak_clients:
@@ -221,47 +285,111 @@ keycloak_clients:
 
 ## config_files
 
-List of configuration files to copy into the app container or volume.
+Files the Hub copies from the template directory into the core checkout when
+the app is enabled.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `src` | string | Yes | Source path relative to the template directory |
-| `dest` | string | Yes | Destination path in the container |
+| `src` | relative path, no `..` segment, no whitespace | Yes | Path relative to the template directory. Must exist (`validate.py`) |
+| `dest` | non-empty, no `..` segment | Yes | Destination relative to the core checkout. Must stay inside it and not at its top level |
 
-Example:
-
-```yaml
-config_files:
-  - src: config/settings.json
-    dest: /app/config/settings.json
-```
+The Hub already copies the whole template directory to
+`<core>/templates/<app-id>/` before every `compose up`. Mounting
+`./templates/<app-id>/<file>` is usually all you need, and every built-in
+template uses `config_files: []`.
 
 ## urls
 
-Links displayed in the Hub for quick access to the app.
+Links shown in the Hub.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `label` | string | Yes | Link text |
-| `url` | string | Yes | URL template (supports `{{DOMAIN}}` placeholder) |
-
-Example:
+| `label` | single line, non-empty | Yes | Link text |
+| `url` | `^https?://\S+$` | Yes | URL, with `{{DOMAIN}}` replaced |
 
 ```yaml
 urls:
-  - label: Dashboard
-    url: "https://grafana.{{DOMAIN}}"
-  - label: Admin Panel
-    url: "https://grafana.{{DOMAIN}}/admin"
+  - label: Vault
+    url: "https://passwords.{{DOMAIN}}"
 ```
+
+## Validation
+
+Run the validator from the templates repo:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r tests/requirements.txt
+.venv/bin/python tests/validate.py            # all templates
+.venv/bin/python tests/validate.py my-app     # one template (cross-template checks still run)
+.venv/bin/python tests/validate.py --strict   # warnings fail too
+```
+
+It prints one line per problem with a hint. Exit codes: `0` OK, `1` rule
+violations, `2` usage or setup error. Besides the schema, it checks:
+
+**Layout**
+
+- the directory name is a valid app ID (`^[a-z0-9][a-z0-9_-]{0,63}$`)
+- the files are named exactly `manifest.yaml` and `compose.yml`
+- `tests/apps/<app-id>.sh` exists
+- the directory is listed in `.github/dependabot.yml`
+- `.core-ref` holds exactly one ref
+
+**Manifest**
+
+- no key is declared twice across `env`, `settings` and `ports`, and none shadows a core variable
+- every `secret_env` is an `env` entry with `generate: random`
+- port `bind` values are IPs and `range` values are valid
+- `config_files` sources exist
+
+**Networks and volumes**
+
+- Traefik-routed services use `networks: [default, portcullis-proxy]`, and internal services stay off `portcullis-proxy`
+- `portcullis-proxy` is declared `external: true`, and no other networks are used
+- volumes declare `name: portcullis_<volume>`, unique across templates and never external
+
+**Variables**
+
+- core variables use their default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`
+- every other variable is declared in the manifest
+- required `${VAR:?}` variables are `generate: random` env entries
+
+**Services**
+
+- no `ports:`, `build:`, `container_name:` or `env_file:`
+- every image is pinned `tag@sha256:digest`, and floating tags (`latest`, `16-alpine`, ...) are rejected
+
+**Bind mounts**
+
+- only `./templates/<app-id>/<file>` (the file must exist) and `./certs/ca-bundle.crt:<path>:ro`
+- never `./scripts/` or another template's files
+
+**Routers**
+
+- every router has a rule of the form `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) ``, and no core subdomain
+- `entrypoints: websecure`, and `tls.options` one of `authaware@file`, `public@file`, `protected@file` (`mtls` apps need `protected@file`)
+- `security-headers@file` is in the middlewares
+- `portcullis-auth@docker` and `portcullis-groups@docker` always appear together, in that order
+- forward-auth and header-auth routers use them; native-OIDC host-wide routers don't
+- each `admin_paths` entry is served by a gated router
+
+**Header trust**
+
+- header-auth apps restrict identity headers to Traefik's IP
+- nothing trusts `**`, `0.0.0.0/0`, `::/0` or the proxy subnet
+
+**Cross-template**
+
+- no subdomain or volume name is used by two templates
 
 ---
 
-## Complete Example
+## Complete example
 
-Here is a complete manifest for a native OIDC app with settings, environment variables, and a Keycloak client:
+A native-OIDC app with path settings, generated secrets and a Keycloak client:
 
 ```yaml
+# yaml-language-server: $schema=../schema/manifest.schema.json
 name: Jellyfin
 description: Free and open-source media server -- movies, TV, music, live TV
 icon: "\U0001F4FA"
@@ -277,8 +405,7 @@ auth:
   admin_group: admin_jellyfin
   notes: >
     SSO-Auth plugin with group enforcement. Users must be in access_group
-    to log in. Members of admin_group get Jellyfin admin. Configured
-    automatically by setup sidecar.
+    to log in. Members of admin_group get Jellyfin admin.
 
 settings:
   - key: JELLYFIN_MOVIES_PATH
@@ -288,20 +415,6 @@ settings:
     target:
       service: jellyfin
       mount: /data/movies
-  - key: JELLYFIN_TV_PATH
-    label: TV Shows folder
-    description: Host path to your TV shows library
-    type: path
-    target:
-      service: jellyfin
-      mount: /data/tv
-  - key: JELLYFIN_MUSIC_PATH
-    label: Music folder
-    description: Host path to your music library
-    type: path
-    target:
-      service: jellyfin
-      mount: /data/music
 
 env:
   - key: JELLYFIN_ADMIN_PASSWORD
@@ -316,7 +429,6 @@ keycloak_clients:
     secret_env: JELLYFIN_OIDC_SECRET
     redirect_uris:
       - "https://media.{{DOMAIN}}/sso/OID/redirect/keycloak"
-      - "http://media.{{DOMAIN}}/sso/OID/redirect/keycloak"
     name: Jellyfin
 
 config_files: []
@@ -326,7 +438,7 @@ urls:
     url: "https://media.{{DOMAIN}}"
 ```
 
-And a simpler manifest for a forward-auth app with no OIDC:
+A forward-auth app with host ports:
 
 ```yaml
 name: Pi-hole
@@ -372,3 +484,5 @@ urls:
   - label: Dashboard
     url: "https://pihole.{{DOMAIN}}/admin"
 ```
+
+The real manifests of every built-in template are rendered in the [App Catalog](../apps/index.md).
