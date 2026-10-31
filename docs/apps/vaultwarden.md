@@ -11,7 +11,7 @@
 |----------|-------|
 | **Method** | `native-oidc` |
 | **SSO** | :white_check_mark: Yes |
-| **Group Access** | :x: |
+| **Group Access** | :white_check_mark: |
 | **Group Admin** | :x: |
 | **Access Group** | `users_vaultwarden` |
 | **Admin Group** | `admin_vaultwarden` |
@@ -19,7 +19,7 @@
 | **Subdomain** | `passwords` |
 
 !!! info "Auth Notes"
-    Native SSO via OpenID Connect. Users still need a master password for vault encryption. The admin panel (/admin) sits behind forward-auth + group-gate and, through auth.admin_paths, requires membership of admin_vaultwarden; Vaultwarden's ADMIN_TOKEN (VAULTWARDEN_ADMIN_TOKEN) is still required on top, keep it secret. No group-based access restriction on the vault itself. Identity: SSO accounts are keyed on the OIDC subject (issuer + sub); SSO_SIGNUPS_MATCH_EMAIL stays false, so an SSO login is never attached to an existing registered account by email (LLDAP emails are user-editable). The Keycloak client uses email_verified_claim: false (scope email-unverified: email claim, no email_verified), which Vaultwarden accepts with SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION, so new users sign up with SSO on their first login and then set a master password. A user whose email collides with an existing account is refused, never merged. Don't invite people by email (org or /admin invitations) before their first SSO login: Vaultwarden attaches an invited, not yet registered account to whichever SSO user first presents that (user-editable) email; invite existing users, and confirm org members only after checking who they are.
+    Native SSO via OpenID Connect. Users still need a master password for vault encryption. The SSO start and callback paths (/identity/connect/authorize, /identity/connect/oidc-signin) sit behind forward-auth + group-gate, so only members of users_vaultwarden can sign in or get an account by SSO (Vaultwarden has no OIDC group restriction); the API, the token exchange and the Bitwarden clients are not gated. Removing a user from users_vaultwarden blocks new SSO logins, not sessions or devices already signed in (deactivate the user in /admin for that). The admin panel (/admin) is also behind forward-auth + group-gate and, through auth.admin_paths, requires admin_vaultwarden on top of users_vaultwarden; Vaultwarden's ADMIN_TOKEN (VAULTWARDEN_ADMIN_TOKEN) is still required, keep it secret. Identity: SSO accounts are keyed on the OIDC subject (issuer + sub); SSO_SIGNUPS_MATCH_EMAIL stays false, so an SSO login is never attached to an existing registered account by email (LLDAP emails are user-editable). The Keycloak client uses email_verified_claim: false (scope email-unverified: email claim, no email_verified), which Vaultwarden accepts with SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION, so new users sign up with SSO on their first login and then set a master password. SIGNUPS_ALLOWED is false (accounts only via SSO) and INVITATIONS_ALLOWED is false: an email invitation would create a placeholder account that Vaultwarden hands to the first SSO user presenting that email. Organisations can therefore only add users who have already signed in; check the member's name (their LLDAP username) before confirming them, since the email they were found by is user-editable. Don't use the /admin "Invite user" button (it ignores INVITATIONS_ALLOWED and creates such a placeholder). A user whose email collides with an existing account is refused, never merged.
 
 ## Routing
 
@@ -29,6 +29,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `vaultwarden` | `passwords.<domain>` | all | `authaware@file` | :x: |
 | `vaultwarden-admin` | `passwords.<domain>` | `/admin` | `authaware@file` | :white_check_mark: |
+| `vaultwarden-sso` | `passwords.<domain>` | `/identity/connect/authorize`, `/identity/connect/oidc-signin` | `authaware@file` | :white_check_mark: |
 
 ## Images
 
