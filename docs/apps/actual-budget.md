@@ -18,7 +18,7 @@
 | **Subdomain** | `budget` |
 
 !!! info "Auth Notes"
-    OpenID login with auto-register. No native group/role support — all SSO users get equal access.
+    OpenID login with auto-register. No native group/role support — all SSO users get equal access. Identity: Actual keys users on preferred_username (falling back to login, email, sub only when that claim is absent); Keycloak always sends it via the profile scope, so accounts follow the immutable LLDAP username, never the user-editable email.
 
 ## Routing
 

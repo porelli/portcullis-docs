@@ -18,7 +18,7 @@
 | **Subdomain** | `media` |
 
 !!! info "Auth Notes"
-    SSO-Auth plugin with group enforcement. Users must be in access_group to log in. Members of admin_group get Jellyfin admin. Configured automatically by setup sidecar.
+    SSO-Auth plugin with group enforcement. Users must be in access_group to log in. Members of admin_group get Jellyfin admin. Configured automatically by setup sidecar. Identity: the plugin creates and matches Jellyfin users by preferred_username (the immutable LLDAP username; DefaultUsernameClaim) and never sees the email (no email scope). An SSO login whose username equals an existing local Jellyfin user (e.g. the LLDAP "admin" and the local admin created by setup) is linked to it.
 
 ## Routing
 

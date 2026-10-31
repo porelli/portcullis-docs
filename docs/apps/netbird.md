@@ -18,7 +18,7 @@
 | **Subdomain** | `netbird` |
 
 !!! info "Auth Notes"
-    Dashboard uses OIDC. Management API validates JWT audience. No group-based access restriction — all OIDC users can access dashboard. Upgrades: netbird-management and netbird-signal are pinned to the same release and must move together (the dashboard has its own version line); follow the upstream upgrade notes and do not skip releases with migrations.
+    Dashboard uses OIDC. Management API validates JWT audience. No group-based access restriction — all OIDC users can access dashboard. Identity: management keys users on the token's sub (AuthUserIDClaim; no IdP manager, so nothing is matched by email). Upgrades: netbird-management and netbird-signal are pinned to the same release and must move together (the dashboard has its own version line); follow the upstream upgrade notes and do not skip releases with migrations.
 
 ## Routing
 

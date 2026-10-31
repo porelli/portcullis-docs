@@ -18,7 +18,7 @@
 | **Subdomain** | `remote` |
 
 !!! info "Auth Notes"
-    Forward-auth + group-gate, then Guacamole's header extension trusts X-Forwarded-User from oauth2-proxy (accounts auto-created with no permissions). The extension has no proxy allowlist, so a Tomcat RewriteValve rejects (403) any request carrying X-Forwarded-User that does not come from Traefik (PORTCULLIS_TRAEFIK_IP). The built-in guacadmin account gets a random password (GUACAMOLE_ADMIN_PASSWORD) on first boot; set GUACAMOLE_ADMIN_USER before first enable to make that SSO user the administrator instead. Connection permissions are managed in the Guacamole UI. Changing either value after the database is initialized has no effect. Upgrades: guacamole, guacamole-init and guacd are pinned to the same release and must move together; apply the upstream database schema upgrade scripts for each release in between before starting the new one.
+    Forward-auth + group-gate, then Guacamole's header extension trusts X-Forwarded-User, the immutable LLDAP username (never the user-editable email); accounts are auto-created with no permissions. The extension has no proxy allowlist, so a Tomcat RewriteValve rejects (403) any request carrying X-Forwarded-User that does not come from Traefik (PORTCULLIS_TRAEFIK_IP). The built-in guacadmin account gets a random password (GUACAMOLE_ADMIN_PASSWORD) on first boot; set GUACAMOLE_ADMIN_USER before first enable to make that LLDAP user (by username, not email) the administrator instead. Accounts created when the header carried the email are named after it; rename them in the Guacamole UI. Connection permissions are managed in the Guacamole UI. Changing either value after the database is initialized has no effect. Upgrades: guacamole, guacamole-init and guacd are pinned to the same release and must move together; apply the upstream database schema upgrade scripts for each release in between before starting the new one.
 
 ## Routing
 
@@ -45,7 +45,7 @@ User-configurable options available in the Hub UI:
 
 | Setting | Type | Description |
 |---------|------|-------------|
-| **Administrator SSO username** | `text` | SSO username (as sent in X-Forwarded-User) that becomes the Guacamole administrator. Applied only on first database initialization. Leave empty to keep a local guacadmin account with a random password.  |
+| **Administrator LLDAP username** | `text` | LLDAP username (as sent in X-Forwarded-User; not the email) that becomes the Guacamole administrator. Applied only on first database initialization. Leave empty to keep a local guacadmin account with a random password.  |
 
 ## Environment Variables
 

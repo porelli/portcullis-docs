@@ -18,7 +18,7 @@
 | **Subdomain** | `photos` |
 
 !!! info "Auth Notes"
-    Full OIDC with auto-register and auto-launch; password login is disabled while OIDC is configured. Promote an SSO user to admin with `docker exec <immich-server container> immich-admin grant-admin`. roleClaim available but not yet mapped to groups. Upgrades: immich-server and immich-machine-learning are pinned to the same release and must always move together; read the upstream release notes for breaking changes and keep immich-db on the image upstream specifies.
+    Full OIDC with auto-register and auto-launch; password login is disabled while OIDC is configured. Promote an SSO user to admin with `docker exec <immich-server container> immich-admin grant-admin`. roleClaim available but not yet mapped to groups. Identity: OAuth users are keyed on the OIDC sub. Immich also links a login to an existing user with the same email and cannot be told not to, while LLDAP emails are user-editable; so on every start a one-shot job (immich-lock-local-users) gives local, unlinked users (such as the initial admin@portcullis.local) a placeholder OAuth id, and Immich then refuses the email link. Do not create local users in the Immich UI (they are only locked at the next restart); let users sign in with SSO instead. A user who unlinks OAuth in their settings is locked out of SSO until an admin clears the placeholder. Upgrades: immich-server and immich-machine-learning are pinned to the same release and must always move together; read the upstream release notes for breaking changes and keep immich-db on the image upstream specifies.
 
 ## Routing
 
@@ -36,6 +36,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 |---------|-------|--------|
 | `immich-db` | `ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0` | `sha256:1a078b237c1d…` |
 | `immich-init` | `alpine:3.24.3` | `sha256:be2656061b53…` |
+| `immich-lock-local-users` | `ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0` | `sha256:1a078b237c1d…` |
 | `immich-machine-learning` | `ghcr.io/immich-app/immich-machine-learning:v3.3.5` | `sha256:5b28c9352c83…` |
 | `immich-redis` | `redis:7.4.12-alpine` | `sha256:8da19c7399dc…` |
 | `immich-server` | `ghcr.io/immich-app/immich-server:v3.3.5` | `sha256:485d546a2e31…` |
