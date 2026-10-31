@@ -130,6 +130,19 @@ After the browser tests, the job enables the **monitoring profile** and checks:
 On failure, screenshots, HTML, traces and service logs are uploaded as
 artifacts. The test needs a live stack and is not collected by pytest.
 
+### Caching
+
+Core CI caches what it safely can. Caches are written only on pushes to `main`.
+
+- **Infra and monitoring images:** cached by the local composite action `.github/actions/cached-images`.
+    - The cache key is a hash of each job's pinned image list. Refs without a digest are refused.
+    - After `docker load`, every name set by the tarball is removed. Each ref is then re-pulled by its pinned digest (with retry and backoff), so the engine reuses a loaded image only if its content-addressed ID matches the registry's config digest.
+- **enroll image:** buildx layer cache (`type=gha`).
+- **Go:** module and build cache through `setup-go`, with `go mod verify`.
+- **Python:** pip and Playwright browsers, cached on the pinned requirements file.
+
+The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most once a minute.
+
 ### Releases (`release.yml`)
 
 Runs on `v*` tags:
