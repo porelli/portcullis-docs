@@ -236,6 +236,12 @@ clients in the `portcullis` realm. Each client gets:
 - the default client scopes `openid`, `profile`, `email`, plus **`acr`** (puts
   `acr`/`amr` in tokens for step-up) and **`groups`** (claim `groups` with
   plain group names, so apps can map `users_<app>` / `admin_<app>`)
+- with `email_verified_claim: false` in the manifest, **`email-unverified`**
+  instead of `email` (claim `email`, no `email_verified`; created by
+  `./portcullis keycloak configure`). The Hub attaches it first, then removes
+  `email` from the client's default and optional scopes, on create and on every
+  reconcile; without the realm scope it logs an error and leaves `email` in
+  place ([contract §8](../guides/integration-contracts.md#8-keycloak-clients-core-hub-templates))
 
 **Ownership.** Each client the Hub creates is tagged with the attribute
 `portcullis.hub.template=<template-id>`. When the client already exists, the

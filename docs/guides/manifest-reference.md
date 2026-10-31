@@ -265,12 +265,33 @@ OIDC clients the Hub registers in Keycloak when the app is enabled. Required
 | `name` | single line, non-empty | Yes | Display name in Keycloak |
 | `redirect_uri` | URI | Exactly one of the two | A single redirect URI |
 | `redirect_uris` | list of URIs (at least one) | Exactly one of the two | Several redirect URIs |
+| `email_verified_claim` | boolean | No (default `true`) | `false`: the client gets the `email-unverified` scope instead of `email`, so tokens carry `email` but no `email_verified` claim. For apps that refuse `email_verified=false` but accept the claim being absent (Vaultwarden). The app must then not request the `email` scope |
 
 Redirect URIs must match `^[a-z][a-z0-9+.-]*://\S+$`, so custom schemes such
 as `app.immich:///oauth-callback` work. `{{DOMAIN}}` is replaced.
 
 The Hub tags each client with the template that owns it, and attaches the
 `acr` and `groups` scopes (see [Hub → Keycloak clients](../operations/hub.md#keycloak-clients)).
+
+**`email_verified_claim`.** Keycloak never trusts the LLDAP email (users can
+edit it), so the built-in `email` scope always sends `email_verified: false`.
+Some apps refuse that value. With `email_verified_claim: false` the Hub
+attaches core's `email-unverified` scope instead (the `email` claim only) and
+removes `email` from the client. Keycloak rejects a request for a scope the
+client doesn't have (`invalid_scope`), so drop `email` from the scopes the app
+requests; `tests/validate.py` checks `*SCOPE*` environment variables. The
+email is still unverified: identity stays `sub` / `preferred_username`, and
+the app must never link accounts by email
+([contract §8](integration-contracts.md#8-keycloak-clients-core-hub-templates)).
+
+```yaml
+keycloak_clients:
+  - client_id: vaultwarden
+    secret_env: VAULTWARDEN_OIDC_SECRET
+    redirect_uri: "https://passwords.{{DOMAIN}}/identity/connect/oidc-signin"
+    name: Vaultwarden
+    email_verified_claim: false
+```
 
 ```yaml
 keycloak_clients:

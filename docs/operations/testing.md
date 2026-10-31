@@ -69,6 +69,7 @@ the internal PKI) and verifies:
     - the WebAuthn policy
     - the `portcullis-forward-auth` client
     - LLDAP users show up through the federation
+    - the `email-unverified` scope has exactly one mapper (`email`), also after a second `keycloak configure`; a throwaway direct-grant client with that scope instead of `email` gets `email` but no `email_verified` in the ID token, access token and userinfo, while the built-in `email` scope sends `email_verified: false`
 - **mTLS**
     - requests with no cert, or a cert from another CA, are rejected
     - cert info, including the serial, reaches the backend
