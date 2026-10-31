@@ -18,21 +18,24 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Clone templates repo (for manifest-based catalog)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: porelli/portcullis-templates
           path: portcullis-templates
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
+          # pip's download cache, keyed on the pinned requirements.txt. Only
+          # this repo's own pushes, schedules and dispatches run here.
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        # Zensical is pre-1.0: pin exactly and bump deliberately.
-        run: pip install 'zensical==0.0.74' 'ghp-import==2.1.0' pyyaml
+        run: pip install --disable-pip-version-check -r requirements.txt
 
       - name: Generate app catalog from manifests
         run: python scripts/generate-app-docs.py --source portcullis-templates

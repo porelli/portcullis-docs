@@ -54,8 +54,8 @@ The generator writes `docs/apps/.nav.yml` (the nav for that directory) but does 
 ### Preview
 
 ```bash
-# Python >= 3.10; Zensical is pre-1.0, so use the version pinned in deploy.yml
-pip install 'zensical==0.0.74' pyyaml
+# Python >= 3.10; requirements.txt pins what CI installs (Zensical is pre-1.0)
+pip install -r requirements.txt
 zensical serve            # http://localhost:8000
 zensical build --strict   # what CI runs
 ```
@@ -96,4 +96,5 @@ Push to `main` (or the daily schedule, which picks up template changes) → GitH
 | `docs/operations/` | Operations guides (edit manually): CLI reference, upgrading & releases, backups, monitoring, security & hardening, groups, auth policies, Hub, testing |
 | `docs/guides/integration-contracts.md` | Single source of truth for the interfaces between the four repos |
 | `.github/workflows/deploy.yml` | GitHub Pages deployment |
+| `requirements.txt` | Pinned build deps (zensical, ghp-import, PyYAML); CI's pip cache keys on it, Dependabot bumps it |
 
