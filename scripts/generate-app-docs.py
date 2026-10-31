@@ -14,6 +14,7 @@ Usage:
   python scripts/generate-app-docs.py [--source /path/to/portcullis-templates]
 """
 
+import html
 import os
 import re
 import sys
@@ -228,6 +229,49 @@ def generate_app_page(app: dict, output_dir: Path):
         lines.append('!!! info "Auth Notes"')
         for line in str(notes).strip().splitlines():
             lines.append(f"    {line}" if line.strip() else "")
+        lines.append("")
+
+    # Public exceptions (auth.public_access)
+    pa = auth.get("public_access")
+    if isinstance(pa, dict):
+        has_token = any("{token}" in str(p.get("prefix", "")) for p in pa.get("paths") or [])
+        mode = pa.get("default_mode") or ("listed" if has_token else "all")
+        lines.append("## Public Exceptions")
+        lines.append("")
+        if pa.get("description"):
+            lines.append(md_cell(html.escape(str(pa["description"]).strip(), quote=False)))
+            lines.append("")
+        lines.append("When an admin turns them on in the Hub, these paths skip forward-auth and group-gate "
+                     "(see [Public exceptions](../operations/auth-policies.md#public-exceptions)).")
+        lines.append("")
+        lines.append(f"**Default:** {'on' if pa.get('enabled_by_default') else 'off'}, mode `{mode}`  ")
+        if pa.get("token_pattern"):
+            lines.append(f"**Share token:** `{pa['token_pattern']}`  ")
+        creds = ["`Authorization`", "`Proxy-Authorization`"] + [f"`{h}`" for h in pa.get("credential_headers") or []]
+        lines.append(f"**Login headers stripped:** {', '.join(creds)}  ")
+        if pa.get("credential_cookies") or pa.get("credential_query"):
+            ex = [f"cookie `{c}`" for c in pa.get("credential_cookies") or []] + [f"query `{q}`" for q in pa.get("credential_query") or []]
+            lines.append(f"**Requests with login credentials stay gated:** {', '.join(ex)}  ")
+        if auth.get("identity_headers"):
+            lines.append(f"**Identity headers stripped:** {', '.join(f'`{h}`' for h in auth['identity_headers'])} (plus the core ones)  ")
+        lines.append("")
+        lines.append("| Prefix | Opened | Description |")
+        lines.append("|--------|--------|-------------|")
+        for p in pa.get("paths") or []:
+            prefix = str(p.get("prefix", ""))
+            if "{token}" in prefix:
+                kind = "per listed share; mode `all`: every share"
+            elif p.get("supporting"):
+                kind = "always (supporting)"
+            else:
+                kind = "mode `all` only"
+            if p.get("exact"):
+                kind += f"; this exact path only: {md_cell(html.escape(str(p.get('justification', '')), quote=False))}"
+            elif p.get("supporting"):
+                kind += "; static files only"
+            if p.get("broad"):
+                kind += f"; broad: {md_cell(html.escape(str(p.get('justification', '')), quote=False))}"
+            lines.append(f"| `{md_cell(prefix)}` | {kind} | {md_cell(html.escape(str(p.get('description', '')), quote=False))} |")
         lines.append("")
 
     # Routing (from compose.yml)

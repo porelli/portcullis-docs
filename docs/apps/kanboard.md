@@ -18,7 +18,7 @@
 | **Subdomain** | `kanboard` |
 
 !!! info "Auth Notes"
-    Reverse proxy auth: users are matched on X-Forwarded-User, the immutable LLDAP username, honoured only from Traefik (TRUSTED_PROXY_NETWORKS = PORTCULLIS_TRAEFIK_IP). X-Forwarded-Email (user-editable) only fills the profile email and is ignored from other peers too. Auto-creates users on first login. The LLDAP user named in "Kanboard admin username" (KANBOARD_ADMIN_USER, default admin = LLDAP's built-in admin) gets the Kanboard admin role; other roles are set in the Kanboard UI. Access gated by group-gate. Accounts created when the header carried the email are named after it; rename them to the LLDAP username in Kanboard.
+    No public exceptions: Kanboard's router reads ?controller=&action= before the path (app/Core/Http/Router.php), so any public prefix would reach every APP_PUBLIC action, local password login included. Reverse proxy auth: users are matched on X-Forwarded-User, the immutable LLDAP username, honoured only from Traefik (TRUSTED_PROXY_NETWORKS = PORTCULLIS_TRAEFIK_IP). X-Forwarded-Email (user-editable) only fills the profile email and is ignored from other peers too. Auto-creates users on first login. The LLDAP user named in "Kanboard admin username" (KANBOARD_ADMIN_USER, default admin = LLDAP's built-in admin) gets the Kanboard admin role; other roles are set in the Kanboard UI. Access gated by group-gate. Accounts created when the header carried the email are named after it; rename them to the LLDAP username in Kanboard.
 
 ## Routing
 
