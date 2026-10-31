@@ -7,7 +7,7 @@ Portcullis is a collection of services that work together to provide unified aut
 ```mermaid
 graph TB
     subgraph Internet
-        User[User / Browser]
+        User[User / Browser<br/>+ YubiKey]
     end
 
     subgraph Portcullis
@@ -15,7 +15,7 @@ graph TB
 
         subgraph Auth Layer
             OAuth2[oauth2-proxy<br/>Forward Auth]
-            GroupGate[group-gate<br/>Access Control]
+            GroupGate[group-gate<br/>Groups, paths, policy,<br/>revocation]
         end
 
         subgraph Identity
@@ -26,6 +26,14 @@ graph TB
 
         subgraph PKI
             Vault[Vault PKI<br/>Certificate Authority]
+            Enroll[Enrollment UI]
+        end
+
+        subgraph Management
+            Hub[Hub<br/>App Catalog]
+            SPH[socket-proxy-hub]
+            SPT[socket-proxy-traefik]
+            Docker[(Docker Engine)]
         end
 
         subgraph Applications
@@ -36,49 +44,62 @@ graph TB
         end
     end
 
-    User -->|HTTPS| Traefik
-    User -.->|mTLS client cert| Traefik
+    User -->|HTTPS + optional client cert| Traefik
 
     Traefik -->|forward-auth| OAuth2
     OAuth2 -->|OIDC| Keycloak
-    Traefik -->|group check| GroupGate
+    Traefik -->|forward-auth| GroupGate
+    GroupGate -.->|CRL| Vault
+    GroupGate -.->|reads policy file| Hub
+    Traefik -->|portcullis-auth network<br/>client cert header| Keycloak
 
     Traefik --> AppFA
     Traefik --> AppOIDC
     Traefik --> AppHeader
     Traefik --> AppPublic
+    Traefik -->|+ proxy secret| Hub
+    Traefik --> Enroll
 
     AppOIDC -->|OIDC| Keycloak
 
     Keycloak -->|LDAP federation| LLDAP
     Keycloak --> Postgres
+    Keycloak -.->|CRL| Vault
+    Enroll -->|AppRole: sign CSR| Vault
 
-    Vault -.->|issue client certs| User
+    Traefik -->|read-only| SPT
+    Hub -->|compose / Engine API| SPH
+    SPT --> Docker
+    SPH --> Docker
+    Hub -->|clients| Keycloak
 ```
 
 ### Component Roles
 
 | Component | Role |
 |-----------|------|
-| **Traefik** | Reverse proxy. Terminates TLS, routes requests by subdomain, applies middleware chains, optionally requests client certificates. |
-| **oauth2-proxy** | Forward authentication. Intercepts requests to protected apps, redirects unauthenticated users to Keycloak, and sets identity headers on success. |
-| **group-gate** | Per-app access control. Checks the authenticated user's groups against the required group for each subdomain. Returns 403 if the user lacks access. |
-| **Keycloak** | Identity provider. Handles WebAuthn (FIDO2) authentication, issues OIDC/SAML tokens, manages auth flows, and federates users from LLDAP. |
-| **LLDAP** | Lightweight LDAP directory. Stores users and groups. Provides a web UI for user management. Keycloak syncs users and groups from LLDAP. |
+| **Traefik** | Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests client certificates. Reads Docker labels through its read-only socket proxy. |
+| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with per-request `acr_values` for step-up), and returns identity headers and the access token on success. |
+| **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the app's auth policy (`acr`/`amr`, mTLS binding), the subdomain's required group and `path_groups`. Returns 403 or a step-up page. |
+| **Keycloak** | Identity provider. WebAuthn (FIDO2), X.509 (YubiKey PIV) login with CRL checks, password, Level-of-Authentication step-up, OIDC/SAML for apps. Federates users from LLDAP. |
+| **LLDAP** | Lightweight LDAP directory. Stores users and groups and has a web UI (`directory.<domain>`). |
 | **PostgreSQL** | Database backend for Keycloak. |
-| **Vault PKI** | Private certificate authority. Issues short-lived (24-hour) client certificates for mTLS authentication via the PIV slot on YubiKeys. |
+| **Vault PKI** | Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL. |
+| **Enrollment UI** | `enroll.<domain>`: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at `/self`. Signs CSRs through a least-privilege Vault AppRole. |
+| **Hub** | `hub.<domain>`: app catalog. Runs each enabled template as its own compose project, registers Keycloak clients, writes the group-gate policy file, reports drift. |
+| **Socket proxies** | `socket-proxy-traefik` (read-only) and `socket-proxy-hub` (what compose needs): the only containers that mount the Docker socket. See [Security & Hardening](operations/hardening.md#docker-socket-proxies). |
 
 ## Repository Structure
 
-Portcullis is organized as four separate repositories, each with a distinct responsibility:
+Portcullis is organized as four separate repositories, each with a distinct responsibility. Their interfaces are defined in [Integration Contracts](guides/integration-contracts.md).
 
-- **Core repo** ([porelli/portcullis](https://github.com/porelli/portcullis)) -- Contains the `docker-compose.yml` for all core services (Traefik, Keycloak, LLDAP, Vault, oauth2-proxy, group-gate), bootstrap and helper scripts (`scripts/`), Traefik static and dynamic configuration (`traefik/`), Keycloak realm export, and the enrollment UI (`enroll/`). This is the only repo you need to clone to deploy Portcullis.
+- **Core repo** ([porelli/portcullis](https://github.com/porelli/portcullis)) -- `docker-compose.yml` for all core services, the `./portcullis` admin CLI (libraries in `scripts/lib/`), group-gate (`group-gate/`), the enrollment UI (`enroll/`), Traefik dynamic configuration (`traefik/`), Vault configuration (`vault/`) and the Keycloak realm export. This is the only repo you need to clone to deploy Portcullis.
 
-- **Hub repo** ([porelli/portcullis-hub](https://github.com/porelli/portcullis-hub)) -- The management web UI. Built and published as a container image at `ghcr.io/porelli/portcullis-hub`. The core `docker-compose.yml` pulls this image automatically -- no manual build step is required.
+- **Hub repo** ([porelli/portcullis-hub](https://github.com/porelli/portcullis-hub)) -- The management web UI, published as a signed container image at `ghcr.io/porelli/portcullis-hub` (selected with `HUB_IMAGE`).
 
-- **Templates repo** ([porelli/portcullis-templates](https://github.com/porelli/portcullis-templates)) -- Houses the 22 app templates (each with a `manifest.yaml` and `compose.yml`). The Hub automatically clones this repo on first startup as the default marketplace source. New templates are contributed here and synced to running instances via the Hub UI.
+- **Templates repo** ([porelli/portcullis-templates](https://github.com/porelli/portcullis-templates)) -- The app templates (`<app-id>/manifest.yaml` + `compose.yml`), the manifest JSON Schema and the template validator. The Hub clones it on first startup as the default template source. Accepts outside contributions.
 
-- **Docs repo** ([porelli/portcullis-docs](https://github.com/porelli/portcullis-docs)) -- This documentation site, built with [Zensical](https://zensical.org) (the successor of MkDocs Material). App catalog pages are auto-generated from the template manifests.
+- **Docs repo** ([porelli/portcullis-docs](https://github.com/porelli/portcullis-docs)) -- This documentation site, built with [Zensical](https://zensical.org). App catalog pages are generated from the template manifests.
 
 ## Authentication Flows
 
@@ -86,7 +107,9 @@ Portcullis supports four authentication methods. Each app declares its method in
 
 ### Forward Auth (oauth2-proxy + group-gate)
 
-Used by apps that have no native SSO support (Pi-hole, DokuWiki, Scrutiny, etc.). Traefik delegates authentication to oauth2-proxy before the request reaches the app.
+Used by apps that have no native SSO support (Pi-hole, DokuWiki, Scrutiny, etc.). Traefik delegates authentication to oauth2-proxy and authorization to group-gate before the request reaches the app. The router's middleware chain is `client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file`; `client-headers@file` must come first so group-gate sees the client certificate (for revocation and the mTLS binding).
+
+If the session does not satisfy the app's [access policy](operations/auth-policies.md), group-gate answers with a 403 step-up page that redirects to `/oauth2/start?acr_values=<needed>&prompt=login`, and Keycloak prompts for the missing factor.
 
 ```mermaid
 sequenceDiagram
@@ -111,9 +134,10 @@ sequenceDiagram
     O-->>U: Set session cookie, redirect to app
     U->>T: GET https://pihole.example.com (with cookie)
     T->>O: Forward auth check
-    O-->>T: 200 OK (headers: X-Forwarded-User, X-Forwarded-Groups)
-    T->>G: Group check (subdomain=pihole, groups from header)
-    G-->>T: 200 OK (user is in users_pihole)
+    O-->>T: 200 OK (X-Auth-Request-*, access token)
+    T->>G: Check (host, groups, access token, URI, client cert info)
+    Note over G: revocation, policy (acr/amr), group users_pihole, path_groups
+    G-->>T: 200 OK (X-Forwarded-User, X-Auth-Request-Groups)
     T->>A: Forward request
     A-->>U: App response
 ```
@@ -143,7 +167,7 @@ sequenceDiagram
 
 ### Header Auth
 
-Used by apps that accept a trusted identity header from the reverse proxy (Grafana, Kanboard, Firefly III). The user authenticates via forward auth, and the app reads the `X-Forwarded-User` header.
+Used by apps that accept a trusted identity header from the reverse proxy (Grafana, Kanboard, Firefly III, Guacamole, CloudBeaver). The user authenticates via forward auth, and the app reads `X-Forwarded-User` (the LLDAP username, set by group-gate; the email travels separately in `X-Forwarded-Email`). The app accepts that header only from Traefik's fixed IP, so other containers on `portcullis-proxy` cannot impersonate users.
 
 ```mermaid
 sequenceDiagram
@@ -156,32 +180,39 @@ sequenceDiagram
     U->>T: GET https://grafana.example.com
     Note over T,O: Forward auth (same as above)
     T->>O: Forward auth check
-    O-->>T: 200 OK (X-Forwarded-User: alice)
+    O-->>T: 200 OK
     T->>G: Group check
-    G-->>T: 200 OK
-    T->>A: Forward request with X-Forwarded-User: alice
-    A-->>U: App logs in user "alice" automatically
+    G-->>T: 200 OK (X-Forwarded-User: alice)
+    T->>A: Request from PORTCULLIS_TRAEFIK_IP with X-Forwarded-User
+    A-->>U: App logs in alice automatically
 ```
 
 ### mTLS (Client Certificate)
 
-When mTLS is enabled, Traefik can authenticate users via X.509 client certificates stored in the PIV slot of their YubiKey. This happens at the TLS layer, before any HTTP processing.
+When mTLS is enabled, the browser presents the X.509 certificate stored in the YubiKey's PIV slot during the TLS handshake. Traefik verifies it against the Portcullis CA chain, but **does not check revocation**; that happens in group-gate and Keycloak.
 
 ```mermaid
 sequenceDiagram
     participant U as User + YubiKey
     participant T as Traefik
     participant K as Keycloak
+    participant G as group-gate
     participant A as App
 
-    U->>T: TLS handshake (presents client cert)
-    T->>T: Verify cert against Vault CA chain
-    Note over T: Extract CN from cert
-    T->>A: Forward request with X-Forwarded-Tls-Client-Cert-Info
-    A-->>U: App response (user authenticated by cert)
+    U->>T: TLS handshake (client cert)
+    T->>T: Verify chain against certs/ca-chain.crt
+    U->>T: GET https://auth.example.com/... (login)
+    T->>K: via portcullis-auth, X-Forwarded-Tls-Client-Cert (PEM)
+    Note over K: trusts the header only from Traefik's IP,<br/>re-validates chain + EKU, checks Vault CRL (fail closed)
+    K-->>U: Session with amr=mtls (LoA 3)
+    U->>T: GET https://app.example.com (cookie + client cert)
+    T->>G: forward-auth with X-Forwarded-Tls-Client-Cert-Info
+    Note over G: serial not revoked? policy needs mtls only?<br/>then cert CN must equal preferred_username
+    G-->>T: 200 OK
+    T->>A: Forward request
 ```
 
-If the app also uses Keycloak, the X.509 authenticator in Keycloak's browser flow can map the certificate CN to a user identity, skipping the WebAuthn prompt entirely.
+Routers on the `protected` tier without forward-auth (e.g. the Vault UI template) rely on the TLS handshake alone: there the certificate works until it expires. See [TLS & mTLS](setup/certificates.md#revocation).
 
 ## TLS Tiers
 
@@ -193,66 +224,79 @@ Traefik is configured with three TLS option sets. Each app chooses its tier base
 | **authaware** | `VerifyClientCertIfGiven` | Optional -- verified if present, WebAuthn fallback if not | Most apps (default for forward-auth and OIDC apps) |
 | **public** | `NoClientCert` | Not requested | Public-facing apps, apps that manage their own auth |
 
-When `MTLS_ENABLED=false` in `.env`, all three tiers behave like `public` -- no client certificates are requested for any app.
+When `MTLS_ENABLED=false` in `.env`, all three tiers behave like `public` -- no client certificates are requested for any app. Routers that relied on `protected` alone become unauthenticated.
+
+For apps the Hub sets the tier from the app's access policy, not from the template (see [Authentication Policies](operations/auth-policies.md#traefik-tls-tier)).
 
 ## Network Topology
 
-Portcullis uses a two-network architecture to isolate apps from core services. Traefik bridges between the networks and is the only service exposed to the internet (ports 80 and 443).
+Traefik is the only service exposed to the internet (ports 80 and 443). It is attached to every network it has to reach; nothing else bridges them.
 
-- **`portcullis` network** -- Core services only (Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub). Apps cannot reach these services directly.
-- **`portcullis-proxy` network** -- Traefik and app frontend services. This is how Traefik discovers and routes to app containers. It has a fixed subnet (`PORTCULLIS_PROXY_SUBNET`, default `172.31.250.0/24`), and Traefik always sits at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`). Other containers get addresses from `PORTCULLIS_PROXY_IP_RANGE`. Header-auth apps trust identity headers only from that Traefik address, so other containers on the network can't impersonate users.
-- **Per-app internal networks** -- Each app's compose project creates its own default network. Internal services (databases, caches, workers) live here, isolated from all other apps.
+- **`portcullis`** -- Core services: Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub, enroll. Apps are not on it and cannot reach these services directly.
+- **`portcullis-proxy`** -- Traefik and app frontend services; Traefik's docker provider routes over it. Fixed subnet (`PORTCULLIS_PROXY_SUBNET`, default `172.31.250.0/24`), Traefik always at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`), other containers from `PORTCULLIS_PROXY_IP_RANGE` (which excludes Traefik's IP). Header-auth apps trust identity headers only from Traefik's address.
+- **`portcullis-auth`** -- Internal network with only Traefik (fixed `PORTCULLIS_AUTH_TRAEFIK_IP`, default `172.31.251.2`) and Keycloak. Keycloak accepts proxy headers -- including the forwarded client certificate for X.509 login -- only from that address.
+- **`socket-proxy-traefik`, `socket-proxy-hub`** -- Internal networks, each shared by one client and its Docker socket proxy.
+- **Per-app networks** -- Each app's compose project (`portcullis-<app-id>`) has its own `default` network. Internal services (databases, caches, workers) live only there, isolated from all other apps.
 
-Each app runs as its own Docker Compose project (`portcullis-<app-id>`). Frontend services join both `default` (for internal communication) and `portcullis-proxy` (for Traefik routing). Internal services only join `default`.
+Frontend services join both `default` and `portcullis-proxy`; internal services only `default`.
 
 ```mermaid
 graph TB
     Internet -->|:80/:443| T
 
-    subgraph "Network: portcullis (core)"
-        T[Traefik :80/:443]
+    subgraph core ["Network: portcullis (core)"]
         KC[Keycloak :8080]
         LL[LLDAP :3890/:17170]
         V[Vault :8200]
-        PG[PostgreSQL :5432]
+        PG[(PostgreSQL :5432)]
         O2[oauth2-proxy :4180]
         GG[group-gate :8080]
-        Hub[Hub :3000]
+        Hub[Hub :8888]
+        EN[enroll :8443]
     end
 
-    subgraph "Network: portcullis-proxy (routing)"
-        T
+    subgraph auth ["Network: portcullis-auth (internal)"]
+        T[Traefik :80/:443<br/>172.31.250.2 / 172.31.251.2]
+    end
+
+    subgraph sock ["Socket proxy networks (internal)"]
+        SPT[socket-proxy-traefik<br/>read-only]
+        SPH[socket-proxy-hub]
+    end
+
+    subgraph proxy ["Network: portcullis-proxy (routing)"]
         AppA_FE[App A Frontend]
         AppB_FE[App B Frontend]
-        AppC_FE[App C Frontend]
     end
 
-    subgraph "portcullis-appA (isolated)"
-        AppA_FE
+    subgraph appA ["portcullis-appA (isolated)"]
         AppA_DB[(App A Database)]
     end
 
-    subgraph "portcullis-appB (isolated)"
-        AppB_FE
+    subgraph appB ["portcullis-appB (isolated)"]
         AppB_DB[(App B Database)]
     end
 
-    subgraph "portcullis-appC (isolated)"
-        AppC_FE
-    end
-
-    T --- O2
-    T --- GG
-    T --- AppA_FE
-    T --- AppB_FE
-    T --- AppC_FE
+    T ---|portcullis| O2
+    T ---|portcullis| GG
+    T ---|portcullis| Hub
+    T ---|portcullis| EN
+    T ===|portcullis-auth| KC
+    T ---|portcullis-proxy| AppA_FE
+    T ---|portcullis-proxy| AppB_FE
+    T --- SPT
+    Hub --- SPH
     AppA_FE --- AppA_DB
     AppB_FE --- AppB_DB
     KC --- LL
     KC --- PG
     O2 --- KC
+    GG --- V
+    EN --- V
 ```
 
-Traefik is connected to both the `portcullis` network (for forward-auth checks via oauth2-proxy and group-gate) and the `portcullis-proxy` network (for routing to app frontends). Native OIDC apps that need to reach Keycloak do so over HTTPS via the public URL, not via the internal network.
+[Security & Hardening](operations/hardening.md#networks) lists every network's members and addressing rules.
+
+Native OIDC apps that need to reach Keycloak do so over HTTPS via the public URL (`https://auth.<domain>`), not via the internal network.
 
 DNS is configured as a wildcard record (`*.portcullis.example.com`), so all subdomains resolve to the same server IP. Traefik routes each subdomain to the correct container based on Docker labels.

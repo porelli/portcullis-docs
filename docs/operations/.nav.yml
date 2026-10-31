@@ -1,6 +1,8 @@
 nav:
-  - Testing & CI: testing.md
+  - CLI Reference: cli.md
+  - Upgrading: upgrading.md
+  - Security & Hardening: hardening.md
   - Groups & Access Control: groups.md
   - Authentication Policies: auth-policies.md
   - Hub Management: hub.md
-  - Upgrading: upgrading.md
+  - Testing & CI: testing.md
