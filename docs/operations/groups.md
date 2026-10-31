@@ -78,7 +78,7 @@ refuses to enable a template that routes a subdomain another enabled app
 already routes, and rejects templates whose `Host()` rules it can't fully
 resolve (see [Hub → Template rules](hub.md#template-rules-enforced-by-the-hub)).
 
-**Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`) always
+**Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) always
 come from the map file. The Hub never publishes them, and group-gate ignores
 them in the policy file. If they are missing from the map file they default to
 `lldap_admin`.
@@ -111,7 +111,8 @@ order and stops at the first failure:
 7. **Allow.** It returns `200 OK` and sets `X-Forwarded-User` /
    `X-Auth-Request-User` (the LLDAP username), `X-Forwarded-Email` /
    `X-Auth-Request-Email` and `X-Auth-Request-Groups` for the backend.
-   Identity is always the username, never the user-editable email.
+   Identity is always the immutable LLDAP username, never the user-editable
+   email. Apps must never create, match or link accounts by email.
    Otherwise it returns `403 Forbidden`.
 
 **Fail closed.** These all deny the request instead of falling back to

@@ -37,7 +37,7 @@ When a user enables the app, the Hub:
 The app ID is lowercase and matches `^[a-z0-9][a-z0-9_-]{0,63}$`, e.g.
 `uptime-kuma`. It is the directory name and the compose project scope. Pick a
 subdomain no other template routes. Core subdomains (`auth`, `traefik`, `hub`,
-`directory`, `enroll`) are off limits. The Hub refuses to enable two apps that
+`directory`, `enroll`, `metrics`) are off limits. The Hub refuses to enable two apps that
 route the same subdomain.
 
 ```bash

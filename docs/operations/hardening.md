@@ -10,6 +10,7 @@ the network layout, header trust and threat model.
 | Asset / boundary | Threat | Mitigation |
 |------------------|--------|------------|
 | Logins | Phishing, password reuse | WebAuthn (FIDO2) and PIV client certificates. Both are bound to the origin or the TLS handshake. Per-app [policies](auth-policies.md) can require them |
+| User identity | A user changes their own LLDAP email to someone else's | Identity is the immutable username everywhere; email is never used to authorise or link accounts |
 | Identity headers (`X-Forwarded-User`, client-cert headers) | Spoofed by an internet client | Traefik deletes client-supplied `X-Forwarded-*` and cert headers on the entrypoint, and forward-auth replaces the identity headers |
 | Identity headers | Spoofed by another container on `portcullis-proxy` | Header-auth apps trust only Traefik's fixed IP (`PORTCULLIS_TRAEFIK_IP`). Keycloak trusts proxy headers only from Traefik's fixed IP on the internal `portcullis-auth` network |
 | Hub (runs compose, so it is effectively host root) | Reached without passing forward-auth | Requires `lldap_admin` and the `X-Portcullis-Proxy-Secret` header, which only Traefik adds |
@@ -73,6 +74,8 @@ graph LR
 | `portcullis-auth` | Traefik and Keycloak only (`internal: true`) | `PORTCULLIS_AUTH_SUBNET` (`172.31.251.0/28`), range `PORTCULLIS_AUTH_IP_RANGE` (`172.31.251.8/29`), Traefik at `PORTCULLIS_AUTH_TRAEFIK_IP` (`172.31.251.2`) | The only path from which Keycloak accepts proxy headers, including the forwarded client cert for X.509 login |
 | `socket-proxy-traefik` | Traefik + its socket proxy (`internal: true`) | Docker default | Read-only Docker API for Traefik |
 | `socket-proxy-hub` | Hub + its socket proxy (`internal: true`) | Docker default | Docker API for the Hub |
+| `monitoring` (profile `monitoring`, `internal: true`) | Prometheus, Alertmanager, Grafana, blackbox, textfile exporter | Docker default | Scraping and dashboards. Prometheus and blackbox also join `portcullis`, Grafana joins `portcullis-proxy` (routed at `metrics.<domain>`) |
+| `alerting` (profile `monitoring`) | Alertmanager | Docker default | Alertmanager's only network with egress, for the receivers |
 | `portcullis-<app>_default` | One app's services | Docker default | App-internal traffic (databases, caches). Isolated from other apps and from core |
 
 CI checks that exactly `keycloak` and `traefik` are on `portcullis-auth`, and
@@ -176,13 +179,15 @@ are refused. `./portcullis up` rewrites the file in place. `secrets/` and
   values oauth2-proxy and group-gate return. A client can't send its own
   `X-Forwarded-User` or `X-Auth-Request-Groups` through.
 - **Identity is the LLDAP username, never the email.** LLDAP lets users edit
-  their own mail, so Keycloak's LDAP federation does not trust it
-  (`trustEmail=false`) and oauth2-proxy keys sessions on `preferred_username`.
-  Apps get `X-Forwarded-User` = username and `X-Forwarded-Email` = email
-  (display only). Every identity header is in the forward-auth middlewares'
-  `authResponseHeaders`, which is what strips client-supplied copies.
-  Native-OIDC apps must key accounts on `sub` / `preferred_username` and must
-  not link existing accounts by email.
+  their own mail, including to someone else's address. So:
+    - Keycloak's LDAP federation does not trust it (`trustEmail=false`, tokens carry `email_verified=false`).
+    - oauth2-proxy keys sessions on `preferred_username` and accepts the unverified email because nothing authorises by it.
+    - Apps get `X-Forwarded-User` / `X-Auth-Request-User` = immutable username, and `X-Forwarded-Email` / `X-Auth-Request-Email` = email (display only).
+    - Every identity header is in the forward-auth middlewares' `authResponseHeaders`, which is what strips client-supplied copies.
+    - enroll and the Hub use `X-Forwarded-User` as-is. The mTLS binding compares the cert CN with `preferred_username`.
+    - Native-OIDC apps must key accounts on `sub` / `preferred_username` and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option.
+
+    **Rule: email is never an identity or account-linking key.**
 - **Header-auth apps** accept identity headers only from
   `${PORTCULLIS_TRAEFIK_IP}`, through the app's proxy allow-list or a small
   gate in front of it. Templates CI checks this statically and with a forged

@@ -56,7 +56,7 @@ myapp=users_myapp
 Then create the group in LLDAP and add users to it. group-gate re-reads the map file on every request, so no restart is needed. If you skip this step, any authenticated Portcullis user can access the app (group-gate logs `ALLOW-UNMAPPED`).
 
 !!! note "Use a subdomain no Hub app uses"
-    group-gate keys everything by subdomain. If a Hub-enabled app routes the same subdomain, the Hub's `groups` entry overrides the map file. Hosts outside `<label>.<PORTCULLIS_DOMAIN>` are always denied by group-gate. Core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`) cannot be reused.
+    group-gate keys everything by subdomain. If a Hub-enabled app routes the same subdomain, the Hub's `groups` entry overrides the map file. Hosts outside `<label>.<PORTCULLIS_DOMAIN>` are always denied by group-gate. Core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) cannot be reused.
 
 `client-headers@file` must come **before** `portcullis-groups@docker`, so group-gate sees the client certificate and can enforce revocation. For admin-only paths, use a separate `PathPrefix` router; per-path groups (`path_groups`) are only published by the Hub for templates.
 

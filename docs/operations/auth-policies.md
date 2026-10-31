@@ -46,14 +46,14 @@ Examples:
 
 **Global default** — the *Settings* tab exposes the default policy that every app without an override uses. Changing it affects all apps whose per-app policy is unset.
 
-!!! warning "Fresh installs have no default policy"
-    Until you save a global default, the default is empty. group-gate then
-    applies no factor requirement: any Keycloak login, including a password,
-    satisfies every app that has no override. Group checks and forward-auth
-    still apply. The Hub also puts those apps' routers on the `public@file` TLS
-    tier, so no client certificate is requested on their subdomains. Set the
-    default (e.g. `any of [mtls, webauthn]`) as one of the first steps after
-    installation.
+!!! note "Fresh installs require hardware keys"
+    Until an admin saves a global default, the Hub uses **WebAuthn** as the
+    default. Every app without its own policy then requires a hardware security
+    key: routers get `authaware@file`, Keycloak steps up to LoA 2, and
+    group-gate requires `hwk` in `amr`. A password-only session gets the
+    step-up page. To also accept YubiKey PIV certificates, save
+    `any of [mtls, webauthn]`. An explicitly saved public default is stored and
+    honoured. It is not the same as "never set".
 
 The **safety score** next to each policy is a cosmetic sum: 0 for public, LoA for a single factor, LoA + 0.5 per extra required factor for AND policies.
 
@@ -92,6 +92,10 @@ The tier change is emitted as a per-router `traefik.http.routers.<name>.tls.opti
 The Hub writes per-app policies into `group-gate-policy.json` **keyed by every subdomain the app routes** (never by template ID); apps that inherit the default publish nothing and group-gate uses the file's `default`. A policy with an unknown factor or op makes group-gate deny the request (fail closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
 
 For native-OIDC apps the policy also sets the Keycloak client's `default.acr.values`, so Keycloak prompts for the right level at login.
+
+## Identity
+
+Policies decide *how* a user signed in; *who* the user is always comes from the immutable LLDAP username (`preferred_username`, `X-Forwarded-User`), never from the email. LLDAP users can edit their own email, so Keycloak does not trust it (`trustEmail=false`) and nothing in Portcullis authorises or links accounts by it. See [Security & Hardening](hardening.md#header-spoofing-protections).
 
 ## mTLS binding
 

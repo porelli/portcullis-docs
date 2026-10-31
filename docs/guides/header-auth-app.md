@@ -65,8 +65,12 @@ After `portcullis-auth@docker` (oauth2-proxy) and `portcullis-groups@docker` (gr
 
 Traefik deletes every one of these from the client's request first and only adds the values the forward-auth services returned (CI's browser test sends spoofed copies and checks they are dropped).
 
-!!! warning "Log users in by username, never by email"
-    LLDAP lets every user edit their own email address, so an email can be set to someone else's. Configure the app to identify users by `X-Forwarded-User` as a **username** and to take the email from `X-Forwarded-Email`. Keycloak does not trust LLDAP's mail (`email_verified=false`).
+!!! warning "Email is never an identity or linking key"
+    `X-Forwarded-User` is the **immutable LLDAP username**. `X-Forwarded-Email` is the user-editable email: LLDAP lets every user change their own address, including to someone else's. That is why Keycloak's LDAP federation has `trustEmail=false` (tokens carry `email_verified=false`) and oauth2-proxy keys sessions on `preferred_username`.
+
+    - Configure the app to identify users by `X-Forwarded-User` as a username.
+    - Use the email for display or notifications at most.
+    - Never let the app create, match or link accounts by email. If a header mapping would let the app match existing accounts by email, leave the email out entirely, as the Grafana template does.
 
 ## Step 2: Configure the App
 
@@ -74,14 +78,15 @@ Each app has its own way of enabling reverse proxy authentication. Here are comm
 
 ### Grafana
 
-Grafana (log in by username, take the email from its own header):
+Grafana, as in the `grafana` template (log in by username only):
 
 ```yaml
 environment:
   GF_AUTH_PROXY_ENABLED: "true"
   GF_AUTH_PROXY_HEADER_NAME: X-Forwarded-User
   GF_AUTH_PROXY_HEADER_PROPERTY: username
-  GF_AUTH_PROXY_HEADERS: Email:X-Forwarded-Email
+  # No GF_AUTH_PROXY_HEADERS email mapping: Grafana's user sync can match
+  # accounts by email, and email is never an identity key.
   GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
   GF_AUTH_PROXY_WHITELIST: ${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}
 ```
