@@ -4,3 +4,4 @@ nav:
   - SAML Integration: saml-app.md
   - Header Auth Pattern: header-auth-app.md
   - Third-Party Apps: third-party-apps.md
+  - Integration Contracts: integration-contracts.md
