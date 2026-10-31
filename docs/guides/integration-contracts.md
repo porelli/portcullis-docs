@@ -46,7 +46,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 {
   "version": 2,
   "default":  {"factors": ["webauthn"], "op": ""},
-  "policies": {"<template-id or subdomain>": {"factors": ["mtls", "webauthn"], "op": "any|all"}},
+  "policies": {"<subdomain>": {"factors": ["mtls", "webauthn"], "op": "any|all"}},
   "groups":   {"<subdomain>": "<required LLDAP group>"},
   "path_groups": {
     "<subdomain>": [{"prefix": "/admin", "group": "<LLDAP group>"}]
@@ -56,7 +56,10 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 
 - **`factors`** is a subset of `mtls`, `webauthn` and `password`. `op` is `any` or `all`, and is ignored when there is at most one factor. An empty factor list means public.
 - **Unknown values fail closed.** An unknown factor, op or key shape makes group-gate deny the request.
-- **`policies`** contains entries keyed by template ID **and** by each lowercase subdomain the template routes (taken from `Host(\`<sub>.${PORTCULLIS_DOMAIN…}\`)` rules). Only enabled templates publish subdomain keys.
+- **Keys are subdomains only.** group-gate looks everything up by the request's subdomain, so `policies`, `groups` and `path_groups` are keyed by the lowercase subdomains that **enabled** templates route — never by template ID, which could equal another app's subdomain.
+- **Routing must be fully visible.** The Hub parses every `traefik.http.routers.*.rule` label in a template's compose file and only accepts literal `Host(\`<sub>.${PORTCULLIS_DOMAIN…}\`)` hosts. It rejects any template with `HostRegexp`/`HostHeader`/`HostSNI`, other domains, variables in the label, routers without a rule, TCP routers, or a rule branch that is not restricted by `Host()`. A host the Hub can't see would get no policy and no group (fail open).
+- **`policies`** has an entry for each subdomain of an enabled template that has a per-app policy. Templates that inherit the default publish nothing; group-gate falls back to `default`.
+- **One owner per subdomain.** The Hub refuses to enable a template that routes a subdomain another enabled template already routes. If a collision still reaches the writer, it publishes the stricter policy (higher LoA, then `all` over `any`), merges path groups, keeps the group of the lowest template ID, and logs the collision.
 - **`groups`** comes from enabled templates with `auth.group_access: true`: subdomain maps to `auth.access_group`.
 - **`path_groups`** comes from enabled templates that declare `auth.admin_paths` (a list of path prefixes). Each prefix requires `auth.admin_group`, **in addition** to the subdomain's group.
     - Matching uses group-gate's normalized `X-Forwarded-Uri` path: percent-decoded once, `//` collapsed, dot-segments resolved.
