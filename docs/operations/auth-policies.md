@@ -87,6 +87,53 @@ The policy also drives the TLS tier on each router via a Hub-generated compose o
 
 The tier change is emitted as a per-router `traefik.http.routers.<name>.tls.options` label in `${HUB_DATA_DIR}/overrides/<app>.override.yml`, for every router of the app. Base `compose.yml` files in templates are untouched. Changing the global default restarts only the inheriting apps whose tier actually changed.
 
+**One tier per host.** Traefik selects TLS options per SNI host, before it
+knows the path, so every router of a host must share one tier. If two routers
+of a host disagree, Traefik falls back to its default TLS options and answers
+`421 Misdirected Request`. The Hub therefore always writes the same tier for
+all of an app's routers, including its [public router](#public-exceptions).
+
+## Public exceptions
+
+Templates can declare share-link paths in
+[`auth.public_access`](../guides/manifest-reference.md#authpublic_access);
+an admin turns them on per app in the [Hub](hub.md#public-exceptions). While
+on, the Hub adds a router `portcullis-public-<app>` for those paths only:
+
+- higher priority than every router of the app, so it wins for its paths;
+- middlewares `portcullis-public-strip-<app>@docker,rate-limit@file,security-headers@file`
+  only: **no forward-auth, no group-gate**, so no login, no group, no
+  hardware key, no step-up and no access policy apply on these paths;
+- the strip middleware deletes client-supplied identity headers (core's
+  `X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-*`, `X-Auth-Request-*`,
+  `Remote-*`, plus the template's `identity_headers`, each also in its
+  `_` form), so a header-auth app can't be told who the visitor is;
+- logins don't ride it: `Authorization`, `Proxy-Authorization` and the
+  template's `credential_headers` are deleted, and requests carrying the
+  app's login cookies or credential query parameters don't match the public
+  router at all, so a stolen password, API key or session still has to pass
+  forward-auth (and the hardware key) on forward-auth apps;
+- supporting paths serve static files only (by extension), plus single
+  `exact` routes the template justifies;
+- in mode `listed`, only the share tokens an admin listed are routed; any
+  other token on the same prefix still goes through forward-auth.
+
+**Exceptions vs mTLS.** A policy of `mtls` alone, or `all` including `mtls`,
+normally gives the host `protected@file`: no client cert, no TLS handshake.
+Anonymous visitors can't present one, so while the public router exists the
+Hub uses `authaware@file` for **all** of the app's routers instead
+(`policy.HostTier`). What still enforces mTLS:
+
+| App type | Gated paths after the downgrade |
+|----------|---------------------------------|
+| `forward-auth` / `header-auth` | group-gate's [mTLS binding](#mtls-binding) requires a valid, unrevoked client certificate matching the user on **every** request, so mTLS stays enforced per request |
+| `native-oidc` (no group-gate on the host-wide router) | mTLS is only enforced **at login**, through the Keycloak `acr` (`mtls`). An existing app session works from a browser without the key |
+| any router without group-gate | loses the handshake check; the Hub lists such routers in the warning |
+
+In mode `listed` with no listed share there is no public router and no
+downgrade. Policies that already give `authaware@file` or `public@file` are
+unchanged.
+
 ## Where policies are published
 
 The Hub writes per-app policies into `group-gate-policy.json` **keyed by every subdomain the app routes** (never by template ID); apps that inherit the default publish nothing and group-gate uses the file's `default`. A policy with an unknown factor or op makes group-gate deny the request (fail closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).

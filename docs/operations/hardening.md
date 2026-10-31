@@ -18,6 +18,7 @@ the network layout, header trust and threat model.
 | Lost or stolen YubiKey cert | Keeps working until expiry | Revocation is checked on every request (group-gate), at Keycloak X.509 login (CRL, fail closed), and by the mTLS binding |
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
 | Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses subdomain collisions and core subdomains, and fails closed on unknown config. Templates CI lints fork PRs without secrets |
+| Public exceptions (share links, off unless an admin turns them on) | Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps | Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; `rate-limit@file`; see [Public exceptions](#public-exceptions) |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
 
@@ -29,6 +30,63 @@ Known limits:
   host (see [TLS & mTLS](../setup/certificates.md#vault-server-mode-auto-unseal-and-approle)).
 - **Routers without `portcullis-groups@docker`** don't get revocation checks.
   They also get no group or path checks.
+
+## Public exceptions
+
+An app's [public exceptions](auth-policies.md#public-exceptions) are the one
+place where Portcullis deliberately lets unauthenticated internet traffic
+reach an app. What a turned-on exception exposes:
+
+- **Every endpoint under each opened prefix**, to anyone, without login,
+  group, hardware key or policy. Only the app's own checks remain (share
+  token, share password, expiry, download limits). In mode `all` that includes
+  guessing share tokens; in mode `listed` only the listed shares are routed,
+  and any other token on the same prefix still goes through forward-auth.
+- **The app's share-password form** (e.g. Nextcloud `/s/<token>/authenticate`)
+  to brute force. Only the app's own brute-force protection and Traefik's
+  `rate-limit@file` (50 req/s average, burst 100, per client IP) limit it. The
+  app must see the real client IP (e.g. Nextcloud's `TRUSTED_PROXIES` =
+  Traefik) or its limiter locks out everyone at once.
+- **Static files under supporting paths** (assets, l10n, theming; matched by
+  extension, e.g. Grafana `/public/plugins` reveals installed plugins), and
+  the few `exact` routes a template justifies. A front controller that
+  routes extension-suffixed paths to code (Nextcloud's
+  `/apps/theming/theme/<id>.css`, `/core/js/oc.js`) still runs those
+  `#[PublicPage]` routes.
+- **Uploads** where the app allows them on a share (Nextcloud file drop via
+  `/public.php/dav`).
+- **The host's TLS tier.** With an mTLS-only policy the host drops from
+  `protected@file` to `authaware@file`: group-gate still enforces the client
+  certificate per request on gated routers, but native-OIDC apps then check it
+  only at login (Keycloak acr), and routers without group-gate not at all.
+
+What it can't do:
+
+- reach paths outside the prefixes: the router matches `Path(p)` /
+  `PathPrefix(p/)` on Traefik's sanitised path (dot-segments resolved), so
+  `/s/x/../../apps/files` is matched as `/apps/files` and stays gated;
+- overlap admin paths, login gates or other routers of the app (the Hub
+  refuses the template), or `/admin`, `/oauth2`, `/.well-known`;
+- carry an identity: `X-Forwarded-User`, `X-Forwarded-Email`, the other
+  forward-auth headers, `Remote-*` and the template's `identity_headers`
+  (and their `_` forms) are deleted, so a header-auth app (Grafana) can't be
+  told who the visitor is;
+- carry a login past the hardware key: `Authorization`,
+  `Proxy-Authorization` and the template's `credential_headers` are deleted,
+  and requests with its `credential_cookies` (matched loosely: any case,
+  percent-encoded, PHP name mangling) or `credential_query` don't match the
+  public router, so a stolen app password, API key or remember-me cookie
+  still meets forward-auth. A plain session cookie the template doesn't list
+  (Nextcloud's `oc<instanceid>`, needed for share passwords and CSRF) is
+  passed; it only reaches share-scoped routes and static files there;
+- be opened by a template on its own: the Hub generates the router, only
+  while an admin (or a template default that opens nothing until an admin
+  lists a share) has it on, and reports any running exposure label that
+  differs from what it would render as drift.
+
+Not everything with a share feature can be scoped: Vaultwarden Send needs the
+web vault at `/` and the password-login token endpoint, and Kanboard's router
+reads `?controller=` before the path, so neither declares public exceptions.
 
 ## Networks
 

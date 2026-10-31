@@ -76,6 +76,9 @@ Each enabled app has four tabs: **Settings**, **Status**, **Logs** and **Expert*
     - `select`: a dropdown of the manifest's options
 - **Host ports** declared in the manifest: rebind them, or clear optional ones
   to disable the binding.
+- The **public exceptions** block, only for apps whose manifest declares
+  [`auth.public_access`](../guides/manifest-reference.md#authpublic_access).
+  See [Public exceptions](#public-exceptions).
 
 Saving restarts the app in the background. Clearing a text field clears the
 value in the app's `.env`.
@@ -116,8 +119,9 @@ containers.
     - it refuses a subdomain that another enabled app already routes
 - **Compose override.** The Hub generates
   `${HUB_DATA_DIR}/overrides/<app>.override.yml` from the settings: bind
-  mounts, host ports, and each router's `tls.options` derived from the access
-  policy. Edits here take precedence over the generated file.
+  mounts, host ports, each router's `tls.options` derived from the access
+  policy, and the public-exception router with its strip middleware when on.
+  Edits here take precedence over the generated file.
 - **Environment variables.** Edit the app's own `.env` (stored in the Hub data
   directory), or add a variable. Names must match `[A-Za-z_][A-Za-z0-9_]*`, and
   values may not contain newlines.
@@ -131,6 +135,70 @@ containers.
 !!! warning
     Editing `compose.yml` can break the app or its Traefik routing. Only do it
     if you understand Docker Compose and Traefik labels.
+
+### Public exceptions
+
+Some apps have share links meant for people without a Portcullis account
+(Nextcloud public shares, Grafana shared dashboards, Immich shared links). If
+the template declares them, the Settings tab shows a **Public exceptions**
+block (bordered in amber):
+
+- the template's description and every declared path with its description
+  and kind: *per share* (`{token}` path), *supporting, always opened*
+  (static assets) or *all shares only*;
+- a red warning: requests to these paths skip Portcullis entirely (no
+  forward-auth, no group-gate, no hardware key); only the app's own checks
+  (share token, share password, expiry) apply;
+- what is stripped or kept out: `Authorization`, `Proxy-Authorization`,
+  identity headers, and requests carrying the app's login cookies or
+  credential query parameters (they stay behind the gateway);
+- if the app's policy requires a client certificate at the TLS handshake
+  (`protected@file`), an amber warning that **all** of the app's routers use
+  `authaware@file` while a public path is open. For native-OIDC apps it adds
+  that mTLS is then only enforced at login (Keycloak acr); for forward-auth /
+  header-auth apps that group-gate still checks the client certificate on
+  every gated request; and it lists routers without group-gate, which lose
+  the handshake check. See
+  [Auth policies → Public exceptions](auth-policies.md#public-exceptions).
+
+Controls:
+
+| Control | Meaning |
+|---------|---------|
+| **Allow public exceptions** | On/off (an explicit admin choice) |
+| **Use the template default** | Forget the choice; the template's `enabled_by_default` applies, also after it changes on a template sync |
+| **Only listed shares / All shares** | Mode, if the template has `{token}` paths. *Only listed*: just the shares below. *All*: every share of the app |
+| **Listed shares** | Each listed token with **Remove**; a text box takes share URLs or bare tokens, one per line |
+
+The Hub extracts the token from a pasted URL (the `{token}` segment of the
+first matching path, e.g. `https://cloud.example.org/s/AbC123/download` →
+`AbC123`), checks it against the template's `token_pattern` and the alphabet
+`[A-Za-z0-9._~-]`, rejects anything else (the save fails with the reason),
+and removes duplicates. At most 200 shares per app (each adds two matchers
+per `{token}` path to one Traefik rule). The status line shows what is open
+(with `{token}`, never the tokens) and on which subdomains, or "No public
+router is generated" — the case in mode *listed* with no share, which also
+keeps the handshake tier.
+
+The list is admin-managed: ordinary app users can't publish a share to the
+internet themselves; they create the share in the app as usual (with its own
+password and expiry) and ask a Hub admin to list it. Remove the token (or
+turn the exception off) to close it again; the app's own share settings keep
+applying either way.
+
+Saving regenerates the override and restarts the app. Any public choice
+(toggle, token list) also pins the mode it was made under, so a later
+template change can't widen it. Fail closed:
+
+- a stored mode the template no longer supports (e.g. *listed* after the
+  template dropped its `{token}` paths) opens **nothing** and shows "public
+  exception disabled … confirm a mode" in the block and as drift;
+- listed tokens the template's `token_pattern` no longer accepts are not
+  routed and are shown as invalid (saving removes them).
+
+The router is generated from the manifest, not shipped in `compose.yml`: only
+the Hub knows whether the exception is on, which shares are listed and which
+TLS tier the host gets, and a template can't open paths by itself.
 
 ## Settings tab (global)
 
@@ -161,9 +229,10 @@ running/total container count, and buttons for the allowed actions:
 | Kind (`kind` in the API) | Meaning | Actions |
 |--------------------------|---------|---------|
 | `enabled_not_running` | Enabled, but no container of the project runs (stopped, or none) | **Start** (`start`: compose up), **Disable** (`disable`) |
-| `running_not_enabled` | Containers of `portcullis-<id>` run, but the app is not enabled | **Stop & remove** (`stop`: compose down). **Enable** (`adopt`: mark it enabled and compose up) when a template with that ID exists |
+| `running_not_enabled` | Containers of `portcullis-<id>` run, but the app is not enabled (the message adds "its public-exception router bypasses forward-auth" if they carry one) | **Stop & remove** (`stop`: compose down). **Enable** (`adopt`: mark it enabled and compose up) when a template with that ID exists |
 | `stopped_not_enabled` | Stopped containers left behind by an app that is not enabled | **Stop & remove** (`stop`) |
 | `template_missing` | Enabled, but no valid template provides it any more (source removed, template deleted or now invalid) | **Disable** (`disable`) |
+| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware) differs from what the Hub renders now — a widened rule, a dropped credential exclusion, a missing middleware, a stale or missing public router (e.g. after a failed restart, a template change or an Expert override edit) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
 
 Destructive actions ask for confirmation. **Re-check** runs a reconcile
 immediately. Apps that are in the middle of an operation are skipped.
@@ -173,7 +242,7 @@ The same is available over the API, which also needs the proxy secret:
 ```text
 GET  /api/drift            latest report: {checked_at, error?, items: [{id, kind, message, running, total, template_exists, actions}]}
 POST /api/drift            re-check now, returns the new report
-POST /api/drift/resolve    {"id": "<app>", "action": "start|disable|stop|adopt"}
+POST /api/drift/resolve    {"id": "<app>", "action": "start|disable|stop|adopt|apply"}
 ```
 
 If Docker is unreachable, the report carries `error` and the UI shows
@@ -183,7 +252,9 @@ If Docker is unreachable, the report carries `error` and the UI shows
 
 Drift must never open access. That is why `state.yaml` keeps a **snapshot**
 (`published`) of each enabled app's last published config: subdomains, access
-group, admin paths and policy override.
+group, admin paths, policy override and the public paths it opened (with
+`{token}`). The containers keep the public router they were started with, so
+the snapshot keeps showing it in the policy file's `public_paths`.
 
 - **Template missing, snapshot present.** If an enabled app's template stops
   loading, the Hub keeps publishing the snapshot to group-gate, so the app
