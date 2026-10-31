@@ -65,7 +65,7 @@ CLI clients keep working. Then check **who can log in**:
 - **It cannot.** Then any Keycloak realm user could sign in. Put only the
   interactive login paths behind forward-auth + group-gate, on a
   higher-priority `PathPrefix` router. Keep the API on the host-wide router
-  without forward-auth. See `gitlab/` and `litellm/`.
+  without forward-auth. See `gitlab/`, `litellm/` and `vaultwarden/`.
 - **It has an admin panel on a path** (e.g. Vaultwarden's `/admin`). Route the
   path through a gated `PathPrefix` router and list it in `auth.admin_paths`.
   group-gate then also requires `admin_group` there.

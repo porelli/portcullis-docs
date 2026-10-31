@@ -186,7 +186,7 @@ are refused. `./portcullis up` rewrites the file in place. `secrets/` and
     - Every identity header is in the forward-auth middlewares' `authResponseHeaders`, which is what strips client-supplied copies.
     - enroll and the Hub use `X-Forwarded-User` as-is. The mTLS binding compares the cert CN with `preferred_username`.
     - Native-OIDC apps must key accounts on `sub` / `preferred_username` and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option.
-    - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before.
+    - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (`INVITATIONS_ALLOWED=false`, `SIGNUPS_ALLOWED=false`) and gates the SSO login paths with group-gate (`users_vaultwarden`).
 
     **Rule: email is never an identity or account-linking key.**
 - **Header-auth apps** accept identity headers only from

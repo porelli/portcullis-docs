@@ -118,7 +118,7 @@ Path rules only take effect on routers that use `portcullis-groups@docker`.
 auth:
   method: native-oidc
   sso: true
-  group_access: false
+  group_access: true
   group_admin: false
   access_group: users_vaultwarden
   admin_group: admin_vaultwarden
