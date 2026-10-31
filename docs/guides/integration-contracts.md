@@ -41,6 +41,7 @@ Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any 
 - **Support files.** Files that ship with a template are bind-mounted as `./templates/<app-id>/<file>`. Compose resolves relative paths against the core checkout on the host. Before every `compose up`, the Hub copies the template directory to `<core>/templates/<app-id>/`; core mounts `./templates` read-write into the Hub at `/project/templates`.
 - **Networks.** Frontends join the external network `portcullis-proxy`; internal services join only `default`. Volumes declare `name: portcullis_<name>`.
 - **Middlewares.** Forward-auth and header-auth routers use `portcullis-auth@docker,portcullis-groups@docker`. Native-OIDC routers must not.
+- **Public exceptions.** A template may declare share-link paths in `auth.public_access` (`enabled_by_default`, `default_mode` `listed|all`, `token_pattern`, `credential_headers`, `credential_cookies`, `credential_query`, `static_extensions`, `service`, `paths[]` with `prefix` (optionally one whole `{token}` segment), `description`, `supporting`, `exact`, `broad` + `justification`); header-auth templates with it also declare `auth.identity_headers`. Fields and rules: [Manifest reference](manifest-reference.md#authpublic_access). The template never ships the public router: the Hub generates it (§5). Router and middleware names starting with `portcullis-public-` are reserved for the Hub.
 
 ## 4. Policy file (Hub → group-gate)
 
@@ -54,6 +55,9 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
   "groups":   {"<subdomain>": "<required LLDAP group>"},
   "path_groups": {
     "<subdomain>": [{"prefix": "/admin", "group": "<LLDAP group>"}]
+  },
+  "public_paths": {
+    "<subdomain>": ["/dist", "/s/{token}"]
   }
 }
 ```
@@ -71,7 +75,8 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
     - It is a prefix match on segment boundaries (`/admin` matches `/admin` and `/admin/x`, not `/administrator`). The longest matching prefix wins.
 - **Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) are never taken from this file. `group-gate-map.conf` in core owns them.
     - `metrics` (Grafana of core's optional [monitoring](../operations/monitoring.md) profile) is a core subdomain too, in group-gate, the Hub (`policy.CoreSubdomains`) and the templates validator.
-- **Older files.** A file without `version`, `groups` or `path_groups` is valid and is treated as empty for the missing keys.
+- **`public_paths`** (informational) lists, per subdomain, the prefixes an enabled app's public router opens (§5), `{token}` kept in place of the listed share tokens (tokens are secrets and stay in the Hub's `state.yaml`). Requests to those paths never reach group-gate. group-gate ignores unknown top-level keys (`load_policy_file` reads `version`, `default`, `policies`, `groups`, `path_groups` only), so the key is safe for it; it exists for visibility and monitoring. Missing-template snapshots keep publishing it.
+- **Older files.** A file without `version`, `groups`, `path_groups` or `public_paths` is valid and is treated as empty for the missing keys.
 
 ## 5. Hub ⇄ Traefik
 
@@ -87,6 +92,13 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
     Traefik guarantees these because each one is listed in the forward-auth middlewares' `authResponseHeaders`, so client copies are deleted. The Hub shows `X-Forwarded-User` as-is and does no LDAP lookup.
 - **Email is never an identity or linking key.** No repo may authorise, create, match or link accounts by email. Native-OIDC templates key accounts on `sub` / `preferred_username`.
 - **Order.** On the Hub router, `hub-proxy-secret@docker` comes **after** `portcullis-auth@docker,portcullis-groups@docker`, so the secret is never sent to oauth2-proxy or group-gate.
+- **TLS tier per host.** Traefik selects TLS options per SNI host, so every router of a host must carry the same `tls.options`; on a mismatch Traefik uses its default options and answers `421 Misdirected Request`. The Hub writes one tier for all routers of an app: `public@file`, `authaware@file` or `protected@file` from the policy, except that `protected@file` becomes `authaware@file` for **all** of the app's routers while its public router exists (`policy.HostTier`).
+- **Public router.** When an app's public exceptions are on and open at least one path, the Hub's override adds, on the `public_access.service` (default: the only routed service):
+    - `traefik.http.routers.portcullis-public-<app>`: rule `` Host(`<host>`) && (<entries>) && !HeaderRegexp(`Cookie`, `<credential cookies>`) && !QueryRegexp(`<param>`, `.*`) `` over the app's hosts on that service. Entries: `` Path(`p`) || PathPrefix(`p/`) `` for prefixes (and each listed `{token}` expansion), `` Path(`p`) `` for `exact` paths, and for other supporting paths `` PathRegexp(`^p(/[A-Za-z0-9_~@+-]+)*/[A-Za-z0-9_~@+-][A-Za-z0-9._~@+-]*\.(<static extensions>)$`) `` (written with compose's `$$`). Then `entrypoints: websecure`, the host's tier, a priority above every router of the app (explicit priorities, and rule length plus 253 per `${…}` for implicit ones), the service's single Traefik service;
+    - middlewares `portcullis-public-strip-<app>@docker,rate-limit@file,security-headers@file` (`rate-limit` and `security-headers` come from core's `traefik/dynamic/middlewares.yml`). No `portcullis-auth`, no `portcullis-groups`;
+    - `traefik.http.middlewares.portcullis-public-strip-<app>.headers.customrequestheaders.<H>: ""` for each core identity header (`X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-Groups`, `X-Forwarded-Preferred-Username`, `X-Forwarded-Access-Token`, `X-Auth-Request-User`, `-Email`, `-Groups`, `-Preferred-Username`, `-Access-Token`, `Remote-User`, `-Email`, `-Groups`, `-Name`), `Authorization`, `Proxy-Authorization`, each `auth.identity_headers` and `public_access.credential_headers` entry, each also with `_` for `-`. Without forward-auth nothing else deletes client copies; core's entrypoints also drop alias headers (`aliasHeadersStrategy=delete`).
+    - No core component is involved: credential cookies and query parameters are excluded by the rule itself (Traefik's `HeaderRegexp` tests every `Cookie` value), so such requests fall through to the app's gated router.
+- **Exposure drift.** The Hub compares every exposure label of each running container (each router's `tls.options`, all `portcullis-public-<app>` router labels and the strip middleware) with what it would render now, `PORTCULLIS_DOMAIN` expanded; any difference is `public_access_mismatch` drift.
 
 ## 6. Docker access
 
