@@ -6,14 +6,14 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml` | `unit-tests`, `build-and-test`, `e2e` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
 
 ## Core CI
 
-Runs on pushes to `main` and on pull requests. Secrets are not configured in
+Runs on pushes to `main`, on pull requests, and as a reusable workflow (`workflow_call`) from `release.yml`. Secrets are not configured in
 the workflow: `./portcullis init --env-only` generates them into `.env`,
 exactly as on a real install. Every step drives the stack through
 `./portcullis`.
@@ -44,6 +44,12 @@ exactly as on a real install. Every step drives the stack through
     - every core image is pinned by digest, and `enroll/Dockerfile` bases too
     - every service has `no-new-privileges`, `cap_drop: ALL` and memory/pid limits
     - Keycloak's `--proxy-trusted-addresses` is Traefik's `portcullis-auth` IP, and only Keycloak and Traefik are on that network
+- **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub, which comes from `HUB_IMAGE`. The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
+- **Monitoring config.** It runs, in the pinned images:
+    - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
+    - `amtool check-config` for a generated Alertmanager config with no receiver, a webhook, ntfy and SMTP
+    - `blackbox_exporter --config.check`
+    - a sanity check of the provisioned dashboard JSON
 - **enroll** `go vet` + `go test` in the pinned Go image: CSR validation, admin requirement, content type, AppRole login and re-login, self-service renewal.
 
 ### `build-and-test` (whole stack)
@@ -83,7 +89,13 @@ the internal PKI) and verifies:
     - answers 403 without the proxy secret
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
 - **Revocation end to end**, once through `./portcullis cert revoke` and once through Vault's CRL alone.
-- **CLI.** `./portcullis status` and `./portcullis backup`.
+- **CLI.** `./portcullis status`.
+- **Backup round-trip.** It runs, in order:
+    - `./portcullis backup` with nothing stopped, then `backup verify --local`. A deliberately damaged backup must fail verification.
+    - `status --textfile`.
+    - `backup --offsite` twice to a local restic repository. The second run must be incremental, and retention must collapse same-day snapshots under `keep-daily`.
+    - `backup verify` (off-host). A wrong `BACKUP_PASSWORD` must fail, and neither the root token nor the `.env` secrets may appear in the encrypted repository.
+    - **Restore into a fresh stack.** Containers, volumes, `.env`, `secrets/`, `certs/` and local backups are all deleted, as on a new host. Then `restore --yes --from-offsite` must bring back an active Vault, the Keycloak realm, the forward-auth client and the LLDAP user.
 
 ### `e2e` (browser)
 
@@ -106,8 +118,40 @@ Scenarios:
 9. A revoked client cert is rejected.
 10. A client cert from a foreign CA is rejected in the TLS handshake.
 
+After the browser tests, the job enables the **monitoring profile** and checks:
+
+- all monitoring services become healthy, and every Prometheus target is up
+- the Vault health probe and the enroll/forward-auth/LLDAP probes succeed
+- group-gate, CRL, backup (textfile), CA-expiry, Traefik and Vault metrics are present
+- the alert rules are loaded, and neither `VaultSealedOrDown` nor `CrlStale` is pending or firing
+- Grafana at `metrics.<domain>` redirects unauthenticated users to sign in, and rejects a forged identity header that doesn't come from Traefik's IP
+
 On failure, screenshots, HTML, traces and service logs are uploaded as
 artifacts. The test needs a live stack and is not collected by pytest.
+
+### Releases (`release.yml`)
+
+Runs on `v*` tags:
+
+1. **`preflight`** checks two things:
+    - The tag is `vMAJOR.MINOR.PATCH` and `CHANGELOG.md` has its `## [X.Y.Z]` section.
+    - The `HUB_IMAGE` default in `docker-compose.yml` is `ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…`, where `vA.B.C` is a published (non-draft, non-prerelease) Hub release and the tag still resolves to that digest.
+2. **`ci`** runs the full `ci.yml` on the tagged commit.
+3. **`release`** builds a reproducible `portcullis-X.Y.Z.tar.gz` (the checkout without `.git`, plus `VERSION`) and its `.sha256`. It then creates the GitHub release with the changelog section, the pinned Hub image and generated notes.
+
+See [Upgrading & Releases](upgrading.md#core-releases).
+
+### Dependabot
+
+`.github/dependabot.yml` proposes weekly, grouped updates for:
+
+- the compose images
+- the enroll Dockerfile and Go modules
+- the GitHub Actions
+- the e2e Python requirements
+
+Image constants in the CLI and inline images in workflows are not covered by
+Dependabot. They are still checked by the pin-enforcement step.
 
 ### Running the core tests locally
 
