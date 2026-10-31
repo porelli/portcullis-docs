@@ -21,7 +21,9 @@ When making changes to any Portcullis repo, update the corresponding docs here:
 | TLS/mTLS change | `docs/setup/certificates.md` |
 | New setup step / `portcullis init` change | `docs/setup/quickstart.md` |
 | New or changed `./portcullis` command or option (core) | `docs/operations/cli.md` — restate the real `./portcullis <cmd> --help` output |
-| `portcullis upgrade`, versioning, release tags | `docs/operations/upgrading.md`, `docs/guides/integration-contracts.md` §1 |
+| `portcullis upgrade`, versioning, release tags, `release.yml`, CHANGELOG | `docs/operations/upgrading.md`, `docs/operations/testing.md`, `docs/guides/integration-contracts.md` §1 |
+| Backups (`portcullis backup/restore`, restic) / monitoring profile (core) | `docs/operations/backups.md`, `docs/operations/monitoring.md` (summaries of core's `docs/backups.md` / `docs/monitoring.md`) |
+| Identity headers (`X-Forwarded-User` = username, `X-Forwarded-Email`) | contracts §5, `docs/guides/header-auth-app.md`, `docs/operations/hardening.md` — email is never an identity key |
 | Socket proxies, container hardening, networks, header trust (core) | `docs/operations/hardening.md`, `docs/architecture.md` |
 | group-gate checks, `path_groups`, deny group (core) | `docs/operations/groups.md`, `docs/operations/auth-policies.md` |
 | Cross-repo interface (policy file, env vars, proxy secret, Docker access) | `docs/guides/integration-contracts.md` **first**, then the pages above |
@@ -63,7 +65,8 @@ zensical build --strict   # what CI runs
 - The project has **no legacy installs**: document the current behaviour only — no migration guides, no "older releases did X".
 - Every operator action goes through `./portcullis <command>`; never document `docker compose` invocations where a CLI command exists, and never reference the removed `scripts/*.sh`.
 - Verify statements against the code in the other three repos (they are the source of truth); report inconsistencies instead of papering over them.
-- Backups / monitoring: the core repo's docs are authoritative; link there.
+- Backups / monitoring: the core repo's `docs/backups.md` / `docs/monitoring.md` are authoritative; the pages here summarise them and must stay in line.
+- One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`.
 
 ### Verify before committing
 
@@ -90,7 +93,7 @@ Push to `main` (or the daily schedule, which picks up template changes) → GitH
 | `docs/architecture.md` | Mermaid diagrams (edit manually) |
 | `docs/setup/` | Setup guides (edit manually) |
 | `docs/guides/` | Developer guides (edit manually) |
-| `docs/operations/` | Operations guides (edit manually): CLI reference, upgrading, security & hardening, groups, auth policies, Hub, testing |
+| `docs/operations/` | Operations guides (edit manually): CLI reference, upgrading & releases, backups, monitoring, security & hardening, groups, auth policies, Hub, testing |
 | `docs/guides/integration-contracts.md` | Single source of truth for the interfaces between the four repos |
 | `.github/workflows/deploy.yml` | GitHub Pages deployment |
 
