@@ -95,6 +95,7 @@ the internal PKI) and verifies:
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
 - **Passkey-only sign-in and setup links.**
     - the browser flow has no password executor, has the identity-provider redirector, a passkey step and LoA 2 = allow-access; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
+    - the LDAP federation has `cachePolicy` `NO_CACHE` (`tests/test_shell_libs.sh` also checks the realm export and that `keycloak configure`'s patch sets it idempotently)
     - the invite identity provider is enabled, hidden, links existing users only (`idp-detect-existing-broker-user`, `idp-auto-link`), back-channel `http://enroll:8445`, PKCE; the service account `portcullis-enroll` has exactly view-users + manage-users
     - `./portcullis invite`: link format, a new link revokes the older one, viewing doesn't consume it, a cross-site redeem is refused, `portcullis-hub` is refused, `admin` is allowed from the server
     - the Hub's invite API (`enroll:8444`, contract §9.4): 201 for a user, 409 for `admin` / `portcullis-hub`, 404 for an unknown user, 401 with a wrong secret; the Hub's copy of the secret matches; the JWKS serves an ES256 key
