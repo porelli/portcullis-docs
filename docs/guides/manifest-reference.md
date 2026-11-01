@@ -60,7 +60,7 @@ field.
 |-------|------|----------|-------------|
 | `method` | enum | Yes | `native-oidc`, `forward-auth`, `header-auth`, `mtls`, `custom` or `public` (see below) |
 | `sso` | `true`, `false` or `"partial"` | Yes | Whether single sign-on is supported |
-| `group_access` | boolean | Yes | group-gate restricts the app's subdomains to `access_group`. For `custom` apps only while Portcullis sign-in is in front of them (`native_login`) |
+| `group_access` | boolean | Yes | group-gate restricts the instance's hostnames to its access group (`access_group` for the default instance). For `custom` apps only while Portcullis sign-in is in front of them (`native_login`) |
 | `group_admin` | boolean | Yes | The app maps `admin_group` to its admin role |
 | `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>`. It is the **default instance's** group; every other instance uses `users_<instance-id>` ([instances](#instances)) |
 | `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>`. The default instance's; other instances use `admin_<instance-id>` |
@@ -152,8 +152,8 @@ Rules (schema and `tests/validate.py`; the Hub checks the first two too):
 
 ### admin_paths
 
-`admin_paths` lists path prefixes on the app's subdomains that need
-`admin_group` **in addition** to the subdomain's group. The Hub publishes them
+`admin_paths` lists path prefixes on the app's hostnames that need
+the admin group **in addition** to the hostname's group. The Hub publishes them
 as group-gate `path_groups` (see [Groups → Path rules](../operations/groups.md#path-rules-path_groups-and-admin_paths)).
 
 Each item must:
@@ -450,7 +450,8 @@ as `app.immich:///oauth-callback` work. `{{DOMAIN}}` and `{{HOST_<ROUTER>}}`
 are replaced; a `multi` template names its own hosts only as
 `{{HOST_<ROUTER>}}` (e.g. `https://{{HOST_IMMICH}}/auth/login`).
 
-The Hub tags each client with the template that owns it, and attaches the
+The Hub tags each client with the **instance id** that owns it (the template
+id for the default instance), and attaches the
 `acr` and `groups` scopes (see [Hub → Keycloak clients](../operations/hub.md#keycloak-clients)).
 
 **`email_verified_claim`.** Keycloak never trusts the LLDAP email (users can
@@ -533,8 +534,10 @@ instances: multi
 **Hostname variables.** Each hostname the template serves has one *host
 router* (a rule with `Host()` alone; path-scoped routers on the same host reuse
 its variable). The Hub sets `PORTCULLIS_HOST_<ROUTER>` to the instance's full
-hostname for it; `<ROUTER>` is the router name upper-cased, with `-` and `.`
-turned into `_`. Router rules use it with the default subdomain:
+hostname for it; `<ROUTER>` is the template's original router name
+upper-cased, with `-` and `.` turned into `_`. The default subdomain `<sub>` is
+one DNS label (`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`), and a template uses one
+rule form for all its routers. Router rules use it with the default subdomain:
 
 ```yaml
 traefik.http.routers.grafana.rule: Host(`${PORTCULLIS_HOST_GRAFANA:-grafana.portcullis.local}`)
@@ -550,7 +553,7 @@ instance's value):
 | `PORTCULLIS_INSTANCE` | Instance id (the template id for the default instance) |
 | `PORTCULLIS_HOST_<ROUTER>` | Full hostname for host router `<router>` |
 | `PORTCULLIS_OIDC_CLIENT_ID` | Keycloak client id of the first `keycloak_clients` entry |
-| `PORTCULLIS_OIDC_CLIENT_ID_<KEY>` | Keycloak client id of each entry; `<KEY>` = its `client_id` upper-cased, `-`/`.` → `_` |
+| `PORTCULLIS_OIDC_CLIENT_ID_<KEY>` | Keycloak client id of each entry; `<KEY>` = its `client_id` upper-cased, `-`/`.` → `_` (two entries mapping to the same `<KEY>` are an error) |
 | `PORTCULLIS_ACCESS_GROUP` | The instance's access group (`access_group` for the default instance, else `users_<id>`) |
 | `PORTCULLIS_ADMIN_GROUP` | The instance's admin group (`admin_group` for the default instance, else `admin_<id>`) |
 
@@ -616,7 +619,8 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 **Routers**
 
 - every router has a rule of the form `` Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) `` (**NEW**, contract v2), optionally `&& <path matchers>`, where `<ROUTER>` is the host router of that hostname; `single` templates may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) ``. No core subdomain
-- each hostname has exactly one host router, and no two host routers map to the same variable
+- each hostname has exactly one host router, no two host routers map to the same variable, and the template doesn't mix the two rule forms
+- no router, service or middleware name contains `_` (**NEW**, contract v2)
 - `entrypoints: websecure`, and `tls.options` one of `authaware@file`, `public@file`, `protected@file` (`mtls` apps need `protected@file`)
 - `security-headers@file` is in the middlewares
 - `portcullis-auth@docker` and `portcullis-groups@docker` always appear together, in that order
@@ -647,7 +651,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 
 **Cross-template**
 
-- no subdomain or volume name is used by two templates
+- no default subdomain or volume name is used by two templates
 
 ---
 

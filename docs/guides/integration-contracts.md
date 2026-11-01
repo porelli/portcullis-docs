@@ -34,7 +34,7 @@ When a template's `compose.yml` references a variable, the Hub copies its value 
 
 Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any other required variable must be declared in the manifest's `env:` with `generate: random`. The Hub writes those into the per-app `.env`.
 
-**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest.
+**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest.
 
 ## 3. Template layout
 
@@ -45,7 +45,7 @@ Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any 
 - **Support files.** Files that ship with a template are bind-mounted as `./templates/<app-id>/<file>`. Compose resolves relative paths against the core checkout on the host. Before every `compose up`, the Hub copies the template directory to `<core>/templates/<app-id>/`; core mounts `./templates` read-write into the Hub at `/project/templates`. All instances of a template share this copy, so support files are mounted read-only (`:ro`).
 - **Networks.** Frontends join the external network `portcullis-proxy`; internal services join only `default`. A service name on `portcullis-proxy` is ambiguous once a template has two instances, so services address each other only over `default` (Traefik reaches containers by IP, not by name).
 - **Volumes.** A `single` template declares `name: portcullis_<volume key>`. A `multi` template (§3.1) declares **no** `name:`; the Hub's override sets it (§11.2).
-- **Middlewares.** Forward-auth and header-auth routers use `portcullis-auth@docker,portcullis-groups@docker`. Native-OIDC host-wide routers must not, nor may `mtls`, `custom` or `public` routers. For a `custom` template with `auth.native_login` the Hub's override sets every router's `middlewares` label: `portcullis-auth@docker,portcullis-groups@docker,<the template's own>` (Portcullis sign-in, the default) or the template's own without the pair ("own login only", only with `allow_without_gateway: true`; TLS tier `public@file`, no `groups` entry). The template is never edited.
+- **Middlewares.** Forward-auth and header-auth routers use `portcullis-auth@docker,portcullis-groups@docker` (on extra-domain hosts the Hub's override renders `portcullis-auth-ext@docker` instead, §5; templates always write `portcullis-auth@docker`). Native-OIDC host-wide routers must not, nor may `mtls`, `custom` or `public` routers. For a `custom` template with `auth.native_login` the Hub's override sets every router's `middlewares` label: `portcullis-auth@docker,portcullis-groups@docker,<the template's own>` (Portcullis sign-in, the default) or the template's own without the pair ("own login only", only with `allow_without_gateway: true`; TLS tier `public@file`, no `groups` entry). The template is never edited.
 - **Public exceptions.** A template may declare share-link paths in `auth.public_access` (`enabled_by_default`, `default_mode` `listed|all`, `token_pattern`, `credential_headers`, `credential_cookies`, `credential_query`, `static_extensions`, `service`, `paths[]` with `prefix` (optionally one whole `{token}` segment), `description`, `supporting`, `exact`, `broad` + `justification`); header-auth templates with it also declare `auth.identity_headers`. Fields and rules: [Manifest reference](manifest-reference.md#authpublic_access). The template never ships the public router: the Hub generates it (§5). Router and middleware names starting with `portcullis-public-` are reserved for the Hub.
 
 ### 3.1 Template contract v2: instances and hostname variables — NEW (contract v2)
@@ -54,8 +54,8 @@ Contract v2 lets a template run as several independent instances (§11) whose ho
 
 - **`instances`** (manifest, top level): `multi` or `single`; default `single`. The Hub creates instances other than the default one (§11) only for `multi` templates; for a `single` template it refuses with `409` and the reason. A template stays `single` only when it needs host-level uniqueness (e.g. fixed host devices), justified in `auth.notes`. Host ports are no reason: they are per-instance settings with the existing port collision check, so a second instance must pick free ports (or disable them) before it can start.
 - **Host routers.** Each hostname a template serves has exactly one **host router**: the router whose rule is a `Host()` alone, with no path matcher. Path-scoped routers on the same hostname (`Host(...) && <path matchers>`, e.g. `vaultwarden-admin`) reuse the host router's variable. A v2 template may not have a hostname without a host router.
-- **Hostname variables.** Each host router `<router>` gets the variable **`PORTCULLIS_HOST_<ROUTER>`**: `<ROUTER>` is the router name upper-cased, with `-` and `.` turned into `_` (`grafana` → `PORTCULLIS_HOST_GRAFANA`, `litellm-ui` → `PORTCULLIS_HOST_LITELLM_UI`). Two host routers that map to the same variable are an error. The value is the **full hostname**: lowercase, no scheme, port or trailing dot (e.g. `grafana.team-b.example.org`). The Hub writes one variable per host router into every instance's `.env`, the default instance included.
-- **Rule form.** Every router rule of a v2 template is exactly `` Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) ``, optionally followed by ` && <path matchers>` (`PathPrefix`, `Path`, or a parenthesised `||` of them, as today). The default value names the template's **default subdomain** `<sub>`: the default instance's hostname is `<sub>.<main domain>`, and a new instance's pre-filled hostname is derived from it (§11.3). Each variable is written with the same default everywhere it appears.
+- **Hostname variables.** Each host router `<router>` gets the variable **`PORTCULLIS_HOST_<ROUTER>`**: `<ROUTER>` is the template's **original** router name (never the per-instance name of the Traefik-names bullet below) upper-cased, with `-` and `.` turned into `_` (`grafana` → `PORTCULLIS_HOST_GRAFANA`, `litellm-ui` → `PORTCULLIS_HOST_LITELLM_UI`). Two host routers that map to the same variable are an error. The value is the **full hostname**: lowercase, no scheme, port or trailing dot (e.g. `grafana.team-b.example.org`). The Hub writes one variable per host router into every instance's `.env`, the default instance included. The same original router name keys `{{HOST_<ROUTER>}}`, the `hosts` maps of the Hub API (§11.7) and the sign-in router's name (§5).
+- **Rule form.** Every router rule of a v2 template is exactly `` Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) ``, optionally followed by ` && <path matchers>` (`PathPrefix`, `Path`, or a parenthesised `||` of them, as today). The default value names the template's **default subdomain** `<sub>`, a single DNS label (`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`): the default instance's hostname is `<sub>.<main domain>`, and a new instance's pre-filled hostname is derived from it (§11.3). Each variable is written with the same default everywhere it appears. A template uses one rule form for all its routers: it may not mix this form with the `${PORTCULLIS_DOMAIN}` form of the conversion period.
 - **Own hostnames everywhere.** Wherever a v2 template names one of its own hosts (env URLs, `hostname:`, middleware values such as a `redirectregex` replacement), it uses the variable in the same default form, e.g. `APP_URL: https://${PORTCULLIS_HOST_FIREFLY:-finance.portcullis.local}`. Core hosts keep `${PORTCULLIS_DOMAIN}`: `https://auth.${PORTCULLIS_DOMAIN:-portcullis.local}/realms/portcullis`.
 - **Manifest placeholders.** `{{HOST_<ROUTER>}}` in `urls[].url` and `keycloak_clients[].redirect_uri` / `redirect_uris` is replaced with the instance's hostname for that host router; `{{DOMAIN}}` stays the main domain. A `multi` template writes its own hosts only as `{{HOST_<ROUTER>}}`.
 - **Instance variables.** The Hub writes these into every instance's `.env` too. Templates use them instead of hard-coding the values, always in the default form with the **default instance's** value (e.g. `${PORTCULLIS_ACCESS_GROUP:-users_grafana}`):
@@ -65,14 +65,14 @@ Contract v2 lets a template run as several independent instances (§11) whose ho
     | `PORTCULLIS_INSTANCE` | The instance id (§11.1); the template id for the default instance |
     | `PORTCULLIS_HOST_<ROUTER>` | The instance's full hostname for that host router |
     | `PORTCULLIS_OIDC_CLIENT_ID` | Keycloak client id of the first `keycloak_clients` entry for this instance (§11.2); empty without clients |
-    | `PORTCULLIS_OIDC_CLIENT_ID_<KEY>` | The same for **every** entry; `<KEY>` is the entry's manifest `client_id` upper-cased with `-` and `.` turned into `_` (headscale: `PORTCULLIS_OIDC_CLIENT_ID_HEADSCALE`, `PORTCULLIS_OIDC_CLIENT_ID_HEADPLANE`) |
+    | `PORTCULLIS_OIDC_CLIENT_ID_<KEY>` | The same for **every** entry; `<KEY>` is the entry's manifest `client_id` upper-cased with `-` and `.` turned into `_` (headscale: `PORTCULLIS_OIDC_CLIENT_ID_HEADSCALE`, `PORTCULLIS_OIDC_CLIENT_ID_HEADPLANE`). Two entries whose `client_id`s map to the same `<KEY>` are an error |
     | `PORTCULLIS_ACCESS_GROUP` | The instance's access group (§11.2); empty if the manifest has no `access_group` |
     | `PORTCULLIS_ADMIN_GROUP` | The instance's admin group (§11.2); empty if the manifest has no `admin_group` |
 
     These names are reserved: a manifest may not declare them in `env`, `settings` or `ports`.
-- **`multi` templates also** have no `${PORTCULLIS_DOMAIN}` in any router rule, no volume `name:` (the Hub sets it, §11.2), and no hard-coded Keycloak client id or group name in `compose.yml` (they use the variables above). Router, service and middleware names a template defines may not start with `portcullis-` (reserved for core and the Hub).
-- **Traefik names per instance.** Traefik's Docker provider merges same-named routers and services across containers, so two instances must never define the same name. For every instance **except the default one**, the Hub's override renames each router, service and middleware the template's labels define from `<name>` to `<instance-id>_<name>`. It also rewrites the references to them in `routers.*.service` and `routers.*.middlewares` (`<name>@docker`). Names the template doesn't define (`portcullis-auth@docker`, `security-headers@file`, …) are kept. The override replaces each labelled service's `labels` with compose's `!override` tag, so no original name survives. Instance ids contain no `_`, so the prefix can't be ambiguous. The default instance keeps the template's names unchanged.
-- **Conversion period.** Until every template is converted, the Hub sets `PORTCULLIS_HOST_*` for every instance (default included). An `instances: single` template may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) `` rules. Such a template runs only as its default instance, its hostnames are fixed at `<sub>.<main domain>`, and the Hub refuses hostname changes for it (`409`). Its host keys are still its host routers' names.
+- **`multi` templates also** have no `${PORTCULLIS_DOMAIN}` in any router rule, no volume `name:` (the Hub sets it, §11.2), and no hard-coded Keycloak client id or group name in `compose.yml` (they use the variables above). Router, service and middleware names a template defines may not start with `portcullis-` (reserved for core and the Hub) and may not contain `_` (every v2 template, so the per-instance prefix below can't be ambiguous).
+- **Traefik names per instance.** Traefik's Docker provider merges same-named routers and services across containers, so two instances must never define the same name. For every instance **except the default one**, the Hub's override renames each router, service and middleware the template's labels define from `<name>` to `<instance-id>_<name>`. It also rewrites the references to them in `routers.*.service` and `routers.*.middlewares` (`<name>@docker`). Names the template doesn't define (`portcullis-auth@docker`, `security-headers@file`, …) are kept. The override replaces each labelled service's `labels` with compose's `!override` tag, so no original name survives. Neither instance ids nor v2 template names contain `_`, so the prefix can't be ambiguous. The default instance keeps the template's names unchanged.
+- **Conversion period.** Until every template is converted, the Hub sets `PORTCULLIS_HOST_*` for every instance (default included). An `instances: single` template may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) `` rules. Such a template runs only as its default instance, its hostnames are fixed at `<sub>.<main domain>`, and the Hub refuses hostname changes for it (`409`). Its host keys are still its host routers' names. It uses that form for all its routers (no mixing).
 
 Example (`grafana`, contract v2):
 
@@ -107,7 +107,7 @@ volumes:
   grafana-data: {}                # no name: the Hub sets it per instance
 ```
 
-For the instance `grafana-team-b` on `grafana.team-b.example.org`, the Hub writes `PORTCULLIS_INSTANCE=grafana-team-b`, `PORTCULLIS_HOST_GRAFANA=grafana.team-b.example.org`, `PORTCULLIS_ACCESS_GROUP=users_grafana-team-b`, `PORTCULLIS_ADMIN_GROUP=admin_grafana-team-b` and `PORTCULLIS_OIDC_CLIENT_ID=` (no clients) into `<data>/env/grafana-team-b.env`. Its override renames the router and the service to `grafana-team-b_grafana` and names the volume `portcullis_grafana-team-b-grafana-data`.
+For the instance `grafana-team-b` on `grafana.team-b.example.org`, the Hub writes `PORTCULLIS_INSTANCE=grafana-team-b`, `PORTCULLIS_HOST_GRAFANA=grafana.team-b.example.org`, `PORTCULLIS_ACCESS_GROUP=users_grafana-team-b`, `PORTCULLIS_ADMIN_GROUP=admin_grafana-team-b` and `PORTCULLIS_OIDC_CLIENT_ID=` (no clients) into `<data>/env/grafana-team-b.env`. Its override renames the router and the service to `grafana-team-b_grafana`, renders the router's middlewares as `portcullis-auth-ext@docker,portcullis-groups@docker,security-headers@file` (an extra-domain host, §5), adds the sign-in router `portcullis-oauth2-grafana-team-b_grafana`, and names the volume `portcullis_grafana-team-b-grafana-data`.
 
 ## 4. Policy file (Hub → group-gate)
 
@@ -119,6 +119,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 {
   "version": 5,
   "default":  {"factors": ["mtls", "webauthn"], "op": "any"},
+  "extra_domains": ["<enrolled domain>"],
   "policies": {"<hostname>": {"factors": ["mtls", "webauthn"], "op": "any|all"}},
   "groups":   {"<hostname>": "<required LLDAP group>"},
   "path_groups": {
@@ -146,6 +147,7 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
 {
   "version": 5,
   "default": {"factors": ["mtls", "webauthn"], "op": "any"},
+  "extra_domains": ["team-b.example.org"],
   "policies": {
     "grafana-team-a.portcullis.example.com": {"factors": ["webauthn"], "op": "any"},
     "grafana.team-b.example.org": {"factors": ["mtls", "webauthn"], "op": "all"}
@@ -185,7 +187,8 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
     - The Hub writes every pending expiry into this array so that expiry enforcement is strict even while the Hub is down. The Hub keeps publishing an expired entry until the membership is actually removed from LLDAP, plus a 10-minute grace period afterwards (cleared on regrant). One exception: the end of an "added" exception of a rule group is not written while the user is a current member, the group's rule matches them and the evaluator keeps them (they stay by rule after the end). Manual expiries and grace entries are always written.
     - **Which removals revoke Keycloak sessions.** The Hub signs the user out of Keycloak (`POST …/users/{id}/logout`) after: every membership the evaluator removes (rule, exception or expiry), an admin's member removal, a group deletion (every former member), and a password change; a user deletion removes the Keycloak copy. OIDC apps then lose access at their next token refresh, forward-auth sessions within about a minute (oauth2-proxy cookie refresh). Core runs Keycloak's LDAP federation with `cachePolicy: NO_CACHE`, so that refresh reads the user's current groups and attributes from LLDAP instead of a cached copy.
     - When group-gate strips an expired membership for a request, it also withholds `Authorization` and `X-Forwarded-Access-Token`. The `portcullis-groups` middleware lists both in `authResponseHeaders` and echoes them to the backend only when the request is allowed.
-- **Keys are full hostnames** (**NEW**, policy v5). `policies`, `groups`, `path_groups` and `public_paths` are keyed by the lowercase hostnames that **enabled** instances route, e.g. `grafana.team-b.example.org` — never by template or instance id. A key is a lowercase DNS name of at least two labels (`^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`): no port, no trailing dot, no wildcard. Any other key shape makes group-gate deny.
+- **Keys are full hostnames** (**NEW**, policy v5). `policies`, `groups`, `path_groups` and `public_paths` are keyed by the lowercase hostnames that **enabled** instances route, e.g. `grafana.team-b.example.org` — never by template or instance id. A key is a **valid hostname**: at most 253 characters and matching `^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` (lowercase, at least two labels, no port, no trailing dot, no wildcard). This page uses "valid hostname" in exactly this sense. Any other key shape makes group-gate deny.
+- **`extra_domains`** (**NEW**, policy v5): every enrolled domain (§12) the Hub knows, sorted, each a valid hostname. A host equal to or under one of them is an **extra-domain host** (§5); group-gate uses this to build the step-up URL. The Hub writes it from its last known list of enrolled domains (§12.3), so it is never empty just because the domains service is down. A malformed entry makes group-gate deny.
 - **Host matching** (**NEW**, policy v5). group-gate takes the request host from `X-Forwarded-Host` (first value), lowercases it, strips a `:<port>` and trailing dots, and looks it up **exactly** (`Grafana-A.Team-A.com.:443` → `grafana-a.team-a.com`). It never falls back to a subdomain-only or parent-domain match: a host with no entry gets `default` and no group, as an unlisted subdomain did before. A host that is not a valid hostname after normalisation is denied.
 - **Routing must be fully visible.** The Hub parses every `traefik.http.routers.*.rule` label in a template's compose file and only accepts the contract v2 form `` Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) `` (§3.1), or, for `single` templates during the conversion period, the literal form `` Host(`<sub>.${PORTCULLIS_DOMAIN…}`) ``, each optionally `&& <path matchers>`. It rejects any template with `HostRegexp`/`HostHeader`/`HostSNI`, other domains, other variables in the label, routers without a rule, TCP routers, or a rule branch that is not restricted by `Host()`. The Hub resolves each rule to the instance's hostname. A host the Hub can't see would get no policy and no group (fail open).
 - **`policies`** has an entry for each hostname of an enabled instance that has a per-instance policy. Instances that inherit the default publish nothing; group-gate falls back to `default`. An override only names factors the app's auth method can enforce (the Hub refuses others with `400`: `mtls` apps only `mtls`, `custom`/`public` apps without Portcullis sign-in none); every app that runs group-gate can enforce both, so for those the default applies unchanged.
@@ -271,24 +274,25 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
     - no cookie (every `Cookie` header, split on `;` and `,`) and no query key (everything after the first `?`, split on `&` and `;`) names a credential. Names are compared case-insensitively after PHP's mangling (php-src `main/php_variables.c`, `php_register_variable_ex`: leading spaces dropped, ` ` and `.` become `_`, `name[…]` is `name`, an unclosed `[` becomes `_`, NUL ends the name), both raw and percent- / `+`-decoded; a name that isn't valid UTF-8 after decoding (overlong forms) or has control characters is refused.
 
     On allow it returns 200 without identity headers. Its logs mask token-like path segments and show query parameter names only.
-- **Exposure drift.** The Hub compares every exposure label of each running container (each router's `tls.options`, all `portcullis-public-<instance-id>` and `portcullis-oauth2-<instance-id>_<router>` router labels and the strip middleware, and every router's `middlewares` of `native_login` apps) with what it would render now, `PORTCULLIS_DOMAIN` and the instance's `PORTCULLIS_HOST_*` expanded; any difference is `public_access_mismatch` drift.
-- **Extra-domain hosts — NEW (contract v2 / domains).** An instance hostname is a **main-domain host** when it is exactly `<label>.<main domain>`; every other instance hostname is an **extra-domain host** (it lies on an enrolled domain, §12, which may itself be a subdomain of the main domain, e.g. `x.team-a.portcullis.example.com`). On extra-domain hosts:
-    - **Same protection.** Routers carry exactly the middlewares, `tls.options` tier, public router and group-gate checks they would carry on the main domain. Nothing about an instance's protection depends on its domain.
+- **Exposure drift.** The Hub compares every exposure label of each running container (each router's `tls.options`, all `portcullis-public-<instance-id>` and `portcullis-oauth2-<instance-id>_<router>` router labels and the strip middleware, every router's `middlewares` of `native_login` apps and of routers on extra-domain hosts) with what it would render now, `PORTCULLIS_DOMAIN` and the instance's `PORTCULLIS_HOST_*` expanded; any difference is `public_access_mismatch` drift.
+- **Extra-domain hosts — NEW (contract v2 / domains).** An instance hostname equal to or under an enrolled domain (§12; listed in the policy file's `extra_domains`, §4) is an **extra-domain host**. That includes enrolled subdomains of the main domain: with `team-a.portcullis.example.com` enrolled, both `team-a.portcullis.example.com` and `x.team-a.portcullis.example.com` are extra-domain hosts. Every other instance hostname is a **main-domain host** (`<label>.<main domain>`). On extra-domain hosts:
+    - **Same protection.** Routers carry the same middleware chain, `tls.options` tier, public router and group-gate checks they would carry on the main domain, with one substitution: the Hub's override renders `portcullis-auth-ext@docker` in place of `portcullis-auth@docker` (in the template's middlewares and in the `native_login` prepend alike). `portcullis-groups@docker` is unchanged. Nothing else about an instance's protection depends on its domain.
+    - **Second oauth2-proxy (core).** Core runs a second oauth2-proxy service, **`forward-auth-ext`**, that serves extra-domain hosts only. It uses the same Keycloak client (`portcullis-forward-auth`) and the same cookie secret source (`FORWARD_AUTH_COOKIE_SECRET`) as `forward-auth`, a **relative** redirect URL `/oauth2/callback` (resolved against the request host) and a **host-only** cookie named **`_portcullis_ext`**. The distinct name keeps it apart from the main domain's `.<main domain>` cookie, which a host under an enrolled subdomain of the main domain also receives. Core defines its forwardAuth middleware **`portcullis-auth-ext`** (`http://forward-auth-ext:4180`) with the same `trustForwardHeader`, `authResponseHeaders` and `authResponseHeadersRegex` as `portcullis-auth`. `forward-auth`, `portcullis-auth`, the `auth.<main domain>` callback and the `.<main domain>` cookie stay exactly as they are.
     - **Certificates.** Traefik serves the enrolled domain's wildcard certificate from its file provider (`certs.yml`, §12.4), picked by SNI. The Hub assigns a host on an enrolled domain only while that domain is assignable (§12.3).
-    - **Sign-in router.** For every extra-domain host on which any of the instance's routers uses `portcullis-auth@docker`, the Hub's override adds a router to oauth2-proxy (example host `grafana.team-b.example.org`, instance `grafana-team-b`, host router `grafana`):
+    - **Sign-in router.** For every extra-domain host on which any of the instance's routers, as rendered (including the `native_login` prepend), uses `portcullis-auth-ext@docker`, the Hub's override adds a router to `forward-auth-ext`. The labels go on the instance's first service, in `compose.yml` order, that has `traefik.enable: "true"`. Example host `grafana.team-b.example.org`, instance `grafana-team-b`, host router `grafana`:
 
         ```yaml
         traefik.http.routers.portcullis-oauth2-grafana-team-b_grafana.rule: Host(`grafana.team-b.example.org`) && PathPrefix(`/oauth2/`)
         traefik.http.routers.portcullis-oauth2-grafana-team-b_grafana.entrypoints: websecure
         traefik.http.routers.portcullis-oauth2-grafana-team-b_grafana.tls.options: authaware@file   # the host's tier
         traefik.http.routers.portcullis-oauth2-grafana-team-b_grafana.priority: "<above the public router and every router of the instance>"
-        traefik.http.routers.portcullis-oauth2-grafana-team-b_grafana.service: forward-auth@docker
+        traefik.http.routers.portcullis-oauth2-grafana-team-b_grafana.service: forward-auth-ext@docker
         ```
 
-        It is named `portcullis-oauth2-<instance-id>_<host router>`, carries no middlewares (like core's `oauth2-callback` router on `auth.<main domain>`), and is Host-scoped, so it gets the host's TLS options and core CI's "no host-less router" rule still holds. On extra-domain hosts the path prefix `/oauth2/` belongs to Portcullis: a `multi` template must not serve its own paths there. Router names starting with `portcullis-oauth2-` are reserved for the Hub.
-    - **Callback and cookie.** On an extra-domain host oauth2-proxy's callback is `https://<host>/oauth2/callback` and its session cookie is host-only. On main-domain hosts nothing changes: the callback stays `https://auth.<main domain>/oauth2/callback` and the cookie `.<main domain>`. The user's Keycloak session at `auth.<main domain>` makes the extra-domain sign-in a silent redirect (no key touch) unless the instance's policy needs a stronger factor than the session has.
-    - **Callback redirect URIs.** The Hub keeps `https://<host>/oauth2/callback` for every extra-domain host with a sign-in router in the redirect URIs of core's Keycloak client `portcullis-forward-auth`. It adds and removes only such entries (Keycloak has no wildcard host matching), on instance create, hostname change, disable and delete. Core's `./portcullis keycloak configure` keeps redirect URIs of that form that it didn't set itself.
-    - **Step-up URL.** group-gate builds the step-up URL from the request host: `https://auth.<main domain>/oauth2/start?acr_values=<acr>&rd=https://<host>/` for main-domain hosts (unchanged), and `https://<host>/oauth2/start?acr_values=<acr>&rd=/` for extra-domain hosts (same host, so `rd` needs no whitelist entry).
+        It is named `portcullis-oauth2-<instance-id>_<host router>` (the original router name, §3.1), carries no middlewares (like core's `oauth2-callback` router on `auth.<main domain>`), and is Host-scoped, so it gets the host's TLS options and core CI's "no host-less router" rule still holds. On extra-domain hosts the path prefix `/oauth2/` belongs to Portcullis: a `multi` template must not serve its own paths there. Router names starting with `portcullis-oauth2-` are reserved for the Hub.
+    - **Callback and cookie.** On an extra-domain host the callback is `https://<host>/oauth2/callback` (served by `forward-auth-ext` through the sign-in router) and the session cookie is the host-only `_portcullis_ext`. On main-domain hosts nothing changes: `forward-auth`, callback `https://auth.<main domain>/oauth2/callback`, cookie for `.<main domain>`. The user's Keycloak session at `auth.<main domain>` makes the extra-domain sign-in a silent redirect (no key touch) unless the instance's policy needs a stronger factor than the session has.
+    - **Callback redirect URIs.** The Hub keeps `https://<host>/oauth2/callback` for every extra-domain host with a sign-in router in the redirect URIs of core's Keycloak client `portcullis-forward-auth` (shared by both oauth2-proxy services). It adds and removes only such entries (Keycloak has no wildcard host matching), on instance create, hostname change, disable and delete. Core's `./portcullis keycloak configure` keeps redirect URIs of that form that it didn't set itself.
+    - **Step-up URL.** group-gate builds the step-up URL from the request host: `https://auth.<main domain>/oauth2/start?acr_values=<acr>&rd=https://<host>/` for main-domain hosts (unchanged), and `https://<host>/oauth2/start?acr_values=<acr>&rd=/` for extra-domain hosts (`extra_domains`, §4; served by `forward-auth-ext`; same host, so `rd` needs no whitelist entry).
     - **Never core.** Extra domains never route core services: no core router has a host on an enrolled domain, and the portal, Hub, people, auth, enroll, directory, traefik and metrics pages exist only on the main domain.
 
 ### 5.1 People subdomain (NEW)
@@ -329,7 +333,7 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
     On create and on every reconcile (enable, ACR push), the Hub attaches the wanted one first, then detaches the other one from the client's default **and** optional scopes. It does this only for clients it may reconcile (owner tag, or an untagged client that points only at the template's hosts; see [Hub → Keycloak clients](../operations/hub.md#keycloak-clients)). If the realm has no `email-unverified` scope, the Hub reports an error and leaves the client's `email` scope attached.
 - **What the template must do.** An app with `email_verified_claim: false` must not request the `email` scope: Keycloak answers `invalid_scope` to a requested scope the client doesn't have. `email-unverified` is a default scope, so the email claim arrives without being requested. `tests/validate.py` rejects `*SCOPE*` environment values that contain `email` for such templates.
 - **Use it only for apps that refuse `email_verified=false` but accept it absent** (Vaultwarden SSO signups). The email is exactly as unverified as before: identity stays `sub` / `preferred_username` (§5), and the app must still never link accounts by email.
-- **Clients per instance (NEW, contract v2).** Each instance has its own Keycloak clients, one per `keycloak_clients[]` entry, with ids from §11.2 and redirect URIs with `{{HOST_<ROUTER>}}` expanded to the instance's hostnames. A hostname change rewrites those redirect URIs (and web origins) in place (§11.3); a guarded delete removes the clients (§11.4). The Hub also maintains the extra-domain callback URIs on `portcullis-forward-auth` (§5).
+- **Clients per instance (NEW, contract v2).** Each instance has its own Keycloak clients, one per `keycloak_clients[]` entry, with ids from §11.2 and redirect URIs with `{{HOST_<ROUTER>}}` expanded to the instance's hostnames. A hostname change rewrites those redirect URIs (and web origins) in place (§11.3); a guarded delete removes the clients (§11.4). The Hub also maintains the extra-domain callback URIs on `portcullis-forward-auth` (§5). Core's two oauth2-proxy services, `forward-auth` (main domain) and `forward-auth-ext` (extra-domain hosts), both use that client.
 
 ## 9. Hub ⇄ LLDAP (users & groups)
 
@@ -569,7 +573,7 @@ permissions:
           "description": "…",
           "icon": "📷",
           "category": "media",
-          "urls": [{"label": "Photos", "url": "https://photos.example.org"}],
+          "urls": [{"label": "Photos", "url": "https://photos.portcullis.example.com"}],
           "auth_method": "native-oidc",
           "access_group": "users_immich",
           "admin_group": "admin_immich"
@@ -581,7 +585,7 @@ permissions:
     - Only enabled apps whose template is present are listed, sorted by `id`.
     - **NEW (instances):** one entry per enabled instance (§11). `id` is the instance id and `template` the template id; for the default instance both are the template id. `name` is the template's name, followed by ` (<instance-id>)` for other instances.
     - `{{DOMAIN}}` and `{{HOST_<ROUTER>}}` in URLs are already expanded (the instance's hostnames).
-    - **NEW (domains):** `domains` lists the enrolled domains that are assignable (§12.3), sorted.
+    - **NEW (domains):** `domains` lists, sorted, every enrolled domain (§12) on which at least one listed instance has a hostname.
     - `access_group` is the group group-gate requires (`auth.group_access`); `""` means any signed-in user.
     - `admin_group` is informational.
 - **Rendering.** The portal filters by the signed-in user's groups (`X-Auth-Request-Groups`) and must escape every field. An unknown `version` means: show nothing.
@@ -593,9 +597,9 @@ A template can run as several fully separate **instances**. Each instance has it
 
 ### 11.1 Instance ids and the default instance
 
-- **Default instance.** Every enabled template has a default instance whose id **is the template id**. Its project, files, hostnames, groups, Keycloak clients, volumes and policy keys are exactly what a single deployment of the template uses, so existing state is the default instance as-is.
-- **Other instances.** Their ids match `^[a-z][a-z0-9-]{0,30}$` (a DNS label). The Hub suggests `<template>-<suffix>` (e.g. `grafana-team-a`). An id must not equal any template id of any source (those are the default instances' ids) or another instance's id.
-- **Collisions are refused** (`409`) before anything is created: the compose project, a volume name, a Keycloak client id or a group name (case-insensitive) derived from the id (§11.2) that already exists and doesn't belong to this instance.
+- **Default instance.** Every enabled template has a default instance whose id **is the template id**, so it follows the template-id pattern `^[a-z0-9][a-z0-9_-]{0,63}$` (§3), not the instance-id one. Its project, files, hostnames, groups, Keycloak clients, volumes and policy keys are exactly what a single deployment of the template uses, so existing state is the default instance as-is.
+- **Other instances.** Their ids match `^[a-z][a-z0-9-]{0,30}$` (a DNS label). The Hub suggests `<template>-<suffix>` (e.g. `grafana-team-a`). An id must not start with `portcullis`, and must not equal any template id of any source (those are the default instances' ids) or another instance's id.
+- **Collisions are refused** (`409`) before anything is created: a compose project, volume name, Keycloak client id or group name (case-insensitive) derived from the id (§11.2) that already exists and doesn't belong to this instance, or that equals a name the **default instance of any template of any source** would use (its volumes `portcullis_<key>`, manifest `client_id`s, `access_group` and `admin_group`), enabled or not.
 - **`instances: single`** templates have only the default instance (§3.1).
 
 ### 11.2 Derived names
@@ -615,11 +619,12 @@ A template can run as several fully separate **instances**. Each instance has it
 - The Hub's override sets every volume's `name:` from this table, for `multi` templates (which declare none) and for the default instance alike.
 - Creating an instance generates fresh values for every `generate: random` env entry, and creates `users_<id>` (if the manifest has `access_group`) and `admin_<id>` (if it has `admin_group`) in LLDAP as empty manual groups. The Hub tags each Keycloak client with the **instance id** that owns it and reconciles only clients with its own tag.
 - Settings, auth policies, public exceptions and share tokens, sign-in mode, the fail-closed `published` snapshot, ops records and drift are keyed by instance id.
+- **Instance states.** `created` (exists, never started: `POST /api/instances` creates without enabling), `enabled` (the project is up), `disabled` (stopped, everything kept), `deleting` (a guarded delete started and hasn't finished, §11.4), `error` (the last lifecycle operation failed; its ops record says why).
 
 ### 11.3 Hostnames
 
-- **Pre-filled.** For a new instance on domain `<domain>`, each host router with default subdomain `<sub>` (§3.1) gets `<sub>-<suffix>.<domain>`, where `<suffix>` is the instance id without a leading `<template>-` (the whole id if it has no such prefix). `grafana-team-a` on `portcullis.example.com` → `grafana-team-a.portcullis.example.com`; an instance `litellm-lab` → `llm-lab.<domain>`. The default instance's hostnames are `<sub>.<main domain>`. Every hostname is individually editable.
-- **Valid hostnames.** A hostname is either a main-domain host `<label>.<main domain>`, or lies on an **assignable** enrolled domain `<d>` (§12.3): `<d>` itself or `<label>.<d>`, where `<d>` is the longest enrolled domain that matches. `<label>` matches `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`. Deeper names are refused: the wildcard certificates cover one label.
+- **Pre-filled.** For a new instance on domain `<domain>`, each host router with default subdomain `<sub>` (§3.1) gets `<sub>-<suffix>.<domain>`, where `<suffix>` is the instance id without a leading `<template>-` (the whole id if it has no such prefix). If the label `<sub>-<suffix>` would be longer than 63 characters, the suffix is truncated to fit (a trailing `-` dropped); if the hostname is then still not a valid hostname (§4), creation is refused with an error that names the host router and asks for an explicit hostname. `grafana-team-a` on `portcullis.example.com` → `grafana-team-a.portcullis.example.com`; an instance `litellm-lab` → `llm-lab.<domain>`. The default instance's hostnames are `<sub>.<main domain>`. Every hostname is individually editable.
+- **Valid hostnames.** A hostname is a valid hostname (§4) and either lies on an **assignable** enrolled domain `<d>` (§12.3) — `<d>` itself or `<label>.<d>`; enrolled domains never nest (§12.3), so at most one matches — or, if it is at or under no enrolled domain, is a main-domain host `<label>.<main domain>`. `<label>` matches `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`. Deeper names are refused: the wildcard certificates cover one label. An enrolled subdomain of the main domain (e.g. `team-a.<main domain>`) is assignable as its own apex only as an extra-domain host, on that enrolled domain.
 - **Refused before anything changes** (`400` invalid, `409` collision): a hostname that is invalid, on a domain that isn't enrolled or isn't assignable, a core host (§4), used by any other instance (enabled or not), or used twice within the instance. Templates still using `${PORTCULLIS_DOMAIN}` rules (§3.1) can't change hostnames at all (`409`).
 - **A change applies immediately.** In order: the Hub records the new hostnames in its state, regenerates the instance's env and override, updates its Keycloak clients' redirect URIs and web origins, updates the `portcullis-forward-auth` callback URIs (§5), rewrites the policy file and `portal-apps.json` (the old hostnames vanish from them at once), and restarts the instance (`compose up`). Public share links keep their tokens and move to the new host. **There are no redirects:** the old hostnames stop routing. A step that fails after validation is reported like any lifecycle operation (`OpError`) and the instance is reconciled by retrying the change.
 - Audited as `instance.update` with the old and new hostnames.
@@ -635,7 +640,9 @@ Deleting an instance is permanent and needs the instance id typed: `{"confirm": 
 5. Deletes its access and admin groups through the Users & Groups guardrails (`DeleteGroup`, which also signs former members out). A protected or permission group is kept, with a warning.
 6. Removes its env file, overrides, ops record, generated secrets, share tokens and state entry, and rewrites the policy file and `portal-apps.json`.
 
-Every step is idempotent. A retry skips step 1 (the first backup is kept) and continues where the last attempt failed. Backups are not removed with the instance. Audited as `instance.delete` with the backup path. Disabling an instance (stop, keep everything) is unchanged.
+Every step is idempotent. A retry skips step 1 (the first backup is kept) and continues where the last attempt failed. Backups are not removed with the instance: they stay listed (`GET /api/backups`) and can be restored into a new instance (§11.6). Audited as `instance.delete` with the backup path. Disabling an instance (stop, keep everything) is unchanged.
+
+The **default instance** can be deleted the same way. That removes the manifest's `access_group` and `admin_group` (by convention `users_<template>` / `admin_<template>`) through the same guardrails; the template stays in the catalog and enabling it again creates a fresh default instance.
 
 ### 11.5 Backups
 
@@ -654,7 +661,7 @@ Every step is idempotent. A retry skips step 1 (the first backup is kept) and co
     volumes/<volume key>.tar   # one inner tar per volume; numeric uid/gid, modes and mtimes preserved
     ```
 
-    `MANIFEST.json` lists the sha256 of every other file in the archive:
+    `MANIFEST.json` is the first tar member; the other members follow sorted by path (byte order). It lists the sha256 (lowercase hex, 64 characters) of every other member:
 
     ```json
     {
@@ -666,10 +673,10 @@ Every step is idempotent. A retry skips step 1 (the first backup is kept) and co
       "reason": "manual",
       "volumes": {"grafana-data": "portcullis_grafana-team-a-grafana-data"},
       "files": {
-        "config/instance.yaml": "9f86d081884c7d65…",
-        "config/env": "60303ae22b998861…",
-        "config/override.yml": "fd61a03af4f77d87…",
-        "volumes/grafana-data.tar": "a3f5c2…"
+        "config/env": "60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752",
+        "config/instance.yaml": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "config/override.yml": "fd61a03af4f77d870fc21e05e7e80678095c92d808cfb3b5c279ee04c74aca13",
+        "volumes/grafana-data.tar": "a3f5c2a4d1e6b7c8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2"
       }
     }
     ```
@@ -683,8 +690,8 @@ Every step is idempotent. A retry skips step 1 (the first backup is kept) and co
 A backup restores into the **same** instance (replacing its data) or into a **new** instance id. Audited as `instance.restore` with the archive and the target.
 
 - **Checks first, nothing changes on failure:** `MANIFEST.json` `version` is 1; every listed file is present with a matching sha256 and there are no unlisted files (mismatch: `409`, refused); the template exists. For a new id: the id rules and collisions of §11.1, and the template must be `multi`.
-- **Same instance.** The Hub takes a backup (reason `restore`), stops the instance, replaces every volume's contents and its config (`config/*`) from the archive, then starts it. If any step fails, it puts the pre-restore backup back and reports the failure: the instance's previous data is kept.
-- **New id.** The Hub creates the instance from the archive's config with: hostnames reset to the new id's defaults on the main domain (§11.3), new Keycloak clients and new empty groups (§11.2), new volumes filled from the archive, and the archive's settings, policy, public exceptions and generated secrets, except each Keycloak client's `secret_env`, which is regenerated.
+- **Same instance** (`POST /api/instances/{id}/restore`). The Hub takes a backup (reason `restore`) and stops the instance. It replaces every volume's contents, the env (`config/env`), the custom override (`config/user.yml`, removed if the archive has none) and the instance's state from `config/instance.yaml`, **except its hostnames: the current hostnames are kept**. The Hub override is **regenerated**, not restored (`config/override.yml` is informational). Then the Hub re-applies the Keycloak clients' redirect URIs and web origins, the forward-auth callback URIs, the policy file and `portal-apps.json`, and starts the instance. If any step fails, it puts the pre-restore backup back and reports the failure: the instance's previous data is kept.
+- **New id** (`POST /api/instances/restore`), from any listed archive, including one of a deleted instance; the deleted instance's id may be reused. The Hub creates the instance from the archive's config with: hostnames reset to the new id's defaults on the main domain (§11.3), new Keycloak clients and new empty groups (§11.2), new volumes filled from the archive, and the archive's settings, policy, public exceptions and generated secrets, except each Keycloak client's `secret_env`, which is regenerated.
 
 ### 11.7 Hub API and audit
 
@@ -692,17 +699,61 @@ Instance and domain operations live on the Hub listener only (never on the peopl
 
 | Route | Body | Does |
 |-------|------|------|
-| `GET /api/instances` | — | Every instance: id, template, hostnames, state |
-| `POST /api/instances` | `{"template": "grafana", "id": "grafana-team-a", "hosts": {"grafana": "grafana-team-a.portcullis.example.com"}}` | Create (§11.1–11.3); `hosts` omitted = the defaults |
+| `GET /api/instances` | — | Every instance (shape below) |
+| `POST /api/instances` | `{"template": "grafana", "id": "grafana-team-a", "hosts": {"grafana": "grafana-team-a.portcullis.example.com"}}` | Create without enabling (state `created`; §11.1–11.3); `hosts` omitted = the defaults on the main domain; `201` with the instance |
 | `PUT /api/instances/{id}/hosts` | `{"hosts": {"<host router>": "<hostname>"}}` | Change hostnames (§11.3) |
 | `DELETE /api/instances/{id}` | `{"confirm": "<id>"}` | Guarded delete (§11.4) |
-| `GET /api/instances/{id}/backups` | — | The instance's backups |
-| `POST /api/instances/{id}/backups` | — | Back up now (§11.5) |
-| `POST /api/instances/{id}/restore` | `{"backup": "20261102T153000Z.tar", "target": "<id or new id>"}` | Restore (§11.6) |
+| `GET /api/backups` | — | Every archive under `<data>/backups/`, deleted instances' included (shape below) |
+| `GET /api/instances/{id}/backups` | — | The same, for one instance id |
+| `POST /api/instances/{id}/backups` | — | Back up now (§11.5); `201` with the backup entry |
+| `POST /api/instances/{id}/restore` | `{"archive": "grafana-team-a/20261102T153000Z.tar"}` | Restore into the same instance (§11.6); the archive must belong to `{id}` |
+| `POST /api/instances/restore` | `{"archive": "grafana-team-a/20261102T153000Z.tar", "id": "grafana-team-c"}` | Restore into a new instance (§11.6); default hostnames |
 | `GET /api/domains` | — | The domains service's list (§12.2), passed through |
 | `POST /api/domains` | `{"name": "team-b.example.org", "provider": "cloudflare", "credentials": {"api_token": "…"}}` | Enroll (§12.3) |
-| `PUT /api/domains/{name}/token` | `{"provider": "cloudflare", "credentials": {…}}` | Replace the credentials |
+| `POST /api/domains/{name}/token` | `{"provider": "cloudflare", "credentials": {…}}` | Replace the credentials |
 | `DELETE /api/domains/{name}` | — | Remove; `409` while any instance uses the domain |
+
+`archive` is always `<instance-id>/<timestamp>.tar`, relative to `<data>/backups/`; anything else is `400`.
+
+`GET /api/instances` returns, sorted by `id`:
+
+```json
+[
+  {
+    "id": "grafana-team-b",
+    "template": "grafana",
+    "default": false,
+    "state": "enabled",
+    "hosts": {"grafana": "grafana.team-b.example.org"},
+    "access_group": "users_grafana-team-b",
+    "admin_group": "admin_grafana-team-b",
+    "keycloak_clients": [],
+    "project": "portcullis-grafana-team-b"
+  }
+]
+```
+
+`state` is one of `created`, `enabled`, `disabled`, `deleting`, `error` (§11.2); `hosts` is keyed by the original host-router name (§3.1).
+
+`GET /api/backups` (and `GET /api/instances/{id}/backups`) returns, newest first:
+
+```json
+[
+  {
+    "archive": "grafana-team-a/20261102T153000Z.tar",
+    "instance": "grafana-team-a",
+    "template": "grafana",
+    "created_at": "2026-11-02T15:30:00Z",
+    "reason": "delete",
+    "size": 73400320,
+    "instance_exists": false
+  }
+]
+```
+
+The fields come from the archive's `MANIFEST.json`; `size` is in bytes; `instance_exists` says whether an instance with that id exists now.
+
+**Existing per-app routes take the instance id.** Their paths are unchanged; the `{id}` path segment or the `"id"` body field is now an **instance** id (the template id still names the default instance): `POST /api/templates/enable` and `POST /api/templates/disable` (`{"id": "<instance-id>"}`), `/api/templates/settings/{id}`, `/api/templates/status/{id}`, `/api/templates/logs/{id}`, `/api/templates/compose/{id}`, `/api/templates/env/{id}`, `/api/templates/exec/{id}`, `/api/templates/restart/{id}`, `/api/templates/lastop/{id}` and `POST /api/drift/resolve` (`{"id": "<instance-id>", …}`); `GET /api/drift` reports drift per instance id. `GET /api/templates` stays the template catalog, keyed by template id, with each template's instance ids.
 
 ## 12. Domains service (core ⇄ Hub ⇄ Traefik) — NEW (domains API)
 
@@ -728,7 +779,7 @@ Extra domains and subdomains (e.g. `team-b.example.org`, `team-a.portcullis.exam
 
 Every request carries `Authorization: Bearer <api-secret>` (compared in constant time; otherwise `401`). Bodies are JSON. Errors are non-2xx with `{"error": "<message>"}`; messages never contain credentials. The Hub is the only caller and the service trusts it: it doesn't check instance assignments (§12.3).
 
-`{name}` is a lowercase DNS name of at least two labels (the policy-key pattern of §4), not the main domain, not a parent of it, and not a core host (`400` otherwise).
+`{name}` is a valid hostname (§4), not the main domain, not a parent of it, and not at or under a core subdomain host `<sub>.<main domain>` (`auth`, `hub`, …; `400` otherwise).
 
 | Request | Success | Errors |
 |---------|---------|--------|
@@ -760,7 +811,7 @@ Every request carries `Authorization: Bearer <api-secret>` (compared in constant
 }
 ```
 
-- `records_ok`: the last check found `<name>` and a name under `*.<name>` resolving, through public resolvers, to the server's addresses (A, and AAAA when the server has IPv6).
+- `records_ok`: the last check found `<name>` and the probe name `portcullis-probe.<name>` (answered by the `*.<name>` record) resolving to exactly the server's addresses (A, and AAAA when the server has IPv6) at **both** public resolvers `1.1.1.1:53` and `8.8.8.8:53`.
 - `cert_not_after`: RFC 3339 UTC expiry of the certificate currently served, or `null` if there is none.
 - `last_error`: the last failure, `""` after a success.
 - `state`:
@@ -778,8 +829,9 @@ Example: `PUT /domains/team-b.example.org` with `{"provider": "porkbun", "creden
 
 ### 12.3 What the Hub does
 
-- **Enroll.** The Hub refuses (`409`) a name equal to, below or above an already enrolled domain, a core host, or a hostname an instance uses; `<label>.<main domain>` subdomains are allowed. It forwards the credentials once (`PUT`) and forgets them: they are never stored in its state, ops records, logs, audit or errors, and its API never returns them (the token field is write-only in the UI). Replacing them is `POST /domains/{name}/token`.
+- **Enroll.** The Hub refuses (`409`) a name equal to, below or above an already enrolled domain (enrolled domains never nest), a name at or below any core subdomain host `<sub>.<main domain>` (e.g. `auth.<main domain>`, `x.hub.<main domain>`), and a hostname an instance uses. Other names under the main domain are allowed, deeper ones included (`team-a.<main domain>`, `lab.team-a.<main domain>`). It forwards the credentials once (`PUT`) and forgets them: they are never stored in its state, ops records, logs, audit or errors, and its API never returns them (the token field is write-only in the UI). Replacing them is `POST /domains/{name}/token`.
 - **Assignable.** A domain may receive instance hostnames (create, hostname change, restore) only while `records_ok` is `true` and `cert_not_after` is in the future. A domain that stops being assignable keeps its existing hostnames; the Hub shows a warning.
+- **Known domains (fail closed).** The Hub keeps the enrolled domain names (with their provider and last known status, **never credentials**) in `state.yaml`. When the domains service is unreachable, new assignments (create, hostname change, restore onto an enrolled domain) and domain operations get `503`, and the last known list keeps feeding `extra_domains` in the policy file and `domains` in `portal-apps.json`.
 - **The Hub is the authority on assignments.** It refuses `DELETE /api/domains/{name}` with `409` while any instance (enabled or not) has a hostname on the domain. The domains service doesn't check assignments.
 - **Status.** The Domains section shows, per domain: records OK, certificate valid until, last error, state.
 
