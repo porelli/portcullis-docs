@@ -212,8 +212,12 @@ New users are onboarded **without a password**. The admin creates the user in th
     - Sign-in has no password: the browser flow is passkey / client cert only. A password set through the Hub's fallback works for LLDAP's own UI and LDAP-binding apps, not for Keycloak.
 - **What the Hub does.**
     - **New user (invite mode, the default).** LLDAP `createUser` with no password, group memberships, pre-import into Keycloak, then `POST /internal/invites`. The Hub sets **no** required action: the invite registers the key. If the invite secret is missing, the Hub refuses invite-mode creation before creating anything.
-    - **"Send new invite"** on any user except `portcullis-hub`.
-    - **"Reset passkeys".** Removes the passkeys (§9.3), then sends a new invite.
+    - **"Send new invite"** on any user except `portcullis-hub`, `admin` and administrators.
+    - **"Reset passkeys".** Removes the passkeys (§9.3), then sends a new invite (administrators: none, see below).
+    - **Administrators.** The Hub computes the same administrator set as core: `lldap_admin`, `lldap_password_manager`, `INVITE_PROTECTED_GROUPS` (Hub env, same value as enroll's), and the groups of the core subdomains in `group-gate-map.conf` (Hub: `HUB_GATE_MAP_FILE`, default `$PROJECT_DIR/group-gate/group-gate-map.conf`, re-read on use).
+        - It never sends invite requests for administrators. "Reset passkeys" for them skips the invite and checks this before removing anything.
+        - A new user created into an administrator group is created without an invite. The Hub shows `./portcullis invite <user>` instead.
+        - A `409` from core is shown as "administrators are recovered from the server: `./portcullis invite <user>`", prefixed with core's `error` text if any.
     - **Never stored.** The link is shown to the admin once (copy button). The Hub doesn't store it, log it or put it in the audit log.
 - **Password fallback.** Off by default, under "Advanced". The Hub generates a 26-character random password, shown once, or the admin types one (12 to 256 characters). Optionally it adds `webauthn-register-passwordless`. The same fallback exists as "Password…" on existing users.
 

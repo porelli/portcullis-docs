@@ -230,8 +230,9 @@ everything else keeps working.
 The table shows, for every LLDAP user:
 
 - username, display name, email and creation date
-- groups
-- Keycloak status:
+- groups, and an **administrator** badge for members of an
+  [administrator group](#administrators)
+- Keycloak status (none for `portcullis-hub`, which isn't in Keycloak):
     - **not in Keycloak yet**: LDAP users are imported at first sign-in or
       when the Hub needs them;
     - the number of passkeys, or **no passkey**;
@@ -245,6 +246,10 @@ a **one-time invite link**, shown once with a copy button and its expiry.
 They open it, register their security key and are signed in. They never get
 a password. Sending a new invite cancels the previous one.
 
+If you put the new user into an administrator group, the Hub creates the
+account but asks for no invite. Instead it shows the command to run on the
+server, `./portcullis invite <user>`.
+
 Under **Advanced** you can use a password instead. The Hub either generates
 a strong one (shown once) or takes one you type (at least 12 characters).
 "Require passkey registration at first login" is on by default. The Hub
@@ -255,10 +260,10 @@ Per-user actions:
 | Action | What it does |
 |--------|--------------|
 | Edit | Change email and display name |
-| Send new invite | New one-time link; earlier unused links stop working |
+| Send new invite | New one-time link; earlier unused links stop working. Not offered for administrators |
 | Require passkey | Adds the passkey registration action for the next sign-in (imports the user into Keycloak if needed) |
 | Clear pending | Removes pending required actions |
-| Reset passkeys | Deletes all of the user's passkeys, signs them out everywhere and creates a new invite (type the username to confirm) |
+| Reset passkeys | Deletes all of the user's passkeys and signs them out everywhere (type the username to confirm). Then it creates a new invite; for an administrator it shows `./portcullis invite <user>` instead |
 | Password… | Fallback: set or generate a password; signs the user out |
 | Delete | Deletes the user from LLDAP and Keycloak (type the username to confirm) |
 
@@ -268,7 +273,25 @@ You can create groups, delete them (type the name to confirm), and add or
 remove members. Each group shows its member count and the apps that use it.
 **Groups your templates use that don't exist yet** lists every template's
 `access_group` / `admin_group` (e.g. `users_<app>`, `admin_<app>`) missing
-from LLDAP, enabled apps first, with a one-click **Create**.
+from LLDAP, enabled apps first, with a one-click **Create**. Administrator
+groups are marked, and adding someone to one asks for confirmation.
+
+### Administrators
+
+Members of these groups are **administrators**:
+
+- `lldap_admin` and `lldap_password_manager`;
+- the groups of the core subdomains (`auth`, `traefik`, `hub`, `directory`,
+  `enroll`, `metrics`) in `group-gate/group-gate-map.conf`, read from the
+  core checkout (`HUB_GATE_MAP_FILE`);
+- any group listed in `INVITE_PROTECTED_GROUPS`.
+
+This is the same set core's invite API uses. An invite hands the account to
+whoever holds the link, so core refuses invites for administrators, and the
+Hub doesn't offer them, not even for yourself. Invite or recover an
+administrator on the server with `./portcullis invite <user>`. If core
+refuses an invite for a group the Hub doesn't know about, the Hub shows
+"administrators are recovered from the server: `./portcullis invite <user>`".
 
 ### Guardrails
 
@@ -277,10 +300,10 @@ from LLDAP, enabled apps first, with a one-click **Create**.
   passwords, invites, passkey actions or group changes. An invite for
   `admin` would hand over the root account, so recover it on the server
   with `./portcullis invite admin`.
-- Sending an invite to another administrator (`lldap_admin` member),
-  resetting their passkeys or setting their password lets you sign in as
-  them. You have to type their username to confirm, and the audit entry is
-  flagged.
+- [Administrators](#administrators) get no invites from the Hub.
+  Resetting another administrator's passkeys or setting their password lets
+  you take over their account. You have to type their username to confirm,
+  and the audit entry is flagged.
 - `admin` and `portcullis-hub` can't be created. `lldap_*` group names are
   reserved, and built-in groups can't be deleted.
 - You can't delete yourself or remove yourself from `lldap_admin`.
