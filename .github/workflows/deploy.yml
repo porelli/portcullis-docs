@@ -11,6 +11,12 @@ on:
   schedule:
     - cron: '17 4 * * *'
 
+
+# gh-pages is force-pushed: let the newest deploy win.
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
