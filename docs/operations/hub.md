@@ -33,7 +33,9 @@ The main view lists every template from every [template source](#template-source
 
 Before anything starts, the Hub refuses to enable the app if:
 
-- one of its host ports is already used by another enabled app, or
+- one of its host ports (from Settings or its [custom override](#custom-override))
+  overlaps a host port of another enabled app (HTTP 409, "port
+  0.0.0.0:3300/tcp already claimed by enabled app …"), or
 - one of its subdomains is already routed by another enabled app (HTTP 409,
   "subdomain … is already routed by enabled app …"). Every subdomain has
   exactly one owner, because group-gate keys groups and policies by subdomain.
@@ -45,6 +47,46 @@ the enable with HTTP 409, see [Keycloak clients](#keycloak-clients)) and runs
 `docker compose up`. The app is recorded as enabled only after
 `compose up` succeeds. Then the Hub publishes its group, admin paths and policy
 to group-gate.
+
+The Hub can't test host ports outside Docker from inside its container (a
+service on the host, e.g. `systemd-resolved` on `127.0.0.53:53`), so those
+conflicts surface as a `compose up` failure. See
+[When an operation fails](#when-an-operation-fails).
+
+### When an operation fails
+
+If enable, disable, restart or a drift action fails, the UI opens a dialog
+with the error, a hint where one is known, and the last 8 KiB of
+`docker compose`'s output (scrollable). Values of secret-looking variables
+(names containing `SECRET`, `PASSWORD`, `TOKEN`, `KEY`, …, and generated ones)
+from the app's and core's env are replaced with `[redacted]`. For
+`address already in use` / `port is already allocated` the hint names the
+port and links to the app's **Settings → Host Ports**: change the host port,
+bind it to one address, or clear it (optional ports) to disable the binding,
+then enable again.
+
+A failed `compose up` during **enable** is rolled back: the Hub runs
+`docker compose down --remove-orphans` for the project (volumes are kept), so
+no stopped containers or network stay behind. The app stays disabled, and
+neither the fail-closed deny entry nor a `stopped_not_enabled` drift item is
+left over. If the rollback fails too, the error says so and the leftovers show
+up in [Drift detection](#drift-detection) (**Stop & remove**).
+
+Every operation's outcome is stored per app in `${HUB_DATA_DIR}/ops/<app>.json`
+(operation, time, ok/failed, error, hint, output tail; mode 0600), and kept
+until the next operation on that app. A card whose last operation failed shows
+"last enable failed" (or restart, …); its detail panel shows a banner, and the
+**Logs** tab, also for an app that is not enabled, shows the record above the
+container logs. The API:
+
+```text
+GET  /api/templates/lastop/<app>   {op, at, ok, error?, output?, hint?, rolled_back?} or null
+```
+
+A failed lifecycle request (`POST /api/templates/enable`, `/disable`,
+`/restart/<app>`, `/api/drift/resolve`) answers with its HTTP status and a
+JSON body `{error, op, output, hint, rolled_back}`; other errors stay plain
+text.
 
 ### Disabling an app
 
@@ -64,6 +106,8 @@ shortly" message.
 ## App detail panel
 
 Each enabled app has four tabs: **Settings**, **Status**, **Logs** and **Expert**.
+An app that is not enabled has **Settings** and **Expert**, plus **Logs** when
+its last operation failed.
 
 ### Settings
 
@@ -129,24 +173,35 @@ The information comes from the Docker Engine API through the Hub's socket proxy.
 
 ### Logs
 
-Shows the last 100, 200 or 500 log lines of the app's containers. Use
-**Refresh** to reload.
+Shows the app's [last operation](#when-an-operation-fails) (with compose's
+output if it failed), then the last 100, 200 or 500 log lines of the app's
+containers. Use **Refresh** to reload.
 
 ### Expert
 
 Advanced tools with direct access to the compose configuration and the
-containers.
+containers. Compose runs with three files, later ones winning:
 
-- **compose.yml editor.** Edits the app's copy of the template's compose file.
-  Changes apply on the next restart. The Hub re-validates the routing on save:
-    - it rejects rules it can't fully parse (see [Template rules](#template-rules-enforced-by-the-hub))
-    - it rejects routes to a core subdomain
-    - it refuses a subdomain that another enabled app already routes
-- **Compose override.** The Hub generates
-  `${HUB_DATA_DIR}/overrides/<app>.override.yml` from the settings: bind
-  mounts, host ports, each router's `tls.options` derived from the access
-  policy, and the public-exception router with its strip middleware when on.
-  Edits here take precedence over the generated file.
+```text
+docker compose -p portcullis-<app> \
+  -f <template>/compose.yml \
+  -f ${HUB_DATA_DIR}/overrides/<app>.override.yml \
+  -f ${HUB_DATA_DIR}/overrides/<app>.user.yml
+```
+
+1. **compose.yml** (read-only). The template's file as it comes from the
+   template source. The Hub never writes it, so source syncs always
+   fast-forward. To change routing (subdomains, routers, middlewares), change
+   the template in its source (see [Template sources](#template-sources)).
+2. **Hub override** (read-only). Generated from Settings and regenerated
+   before every `compose up`: bind mounts, host ports, each router's
+   `tls.options` derived from the access policy, router middlewares for apps
+   with their own login, and the public-exception router with its strip
+   middleware when on. Never hand-edited.
+3. **Custom override** (editable). Your own additions, stored by the Hub per
+   app, outside the template clone, so template syncs and updates keep it.
+   See [Custom override](#custom-override).
+
 - **Environment variables.** Edit the app's own `.env` (stored in the Hub data
   directory), or add a variable. Names must match `[A-Za-z_][A-Za-z0-9_]*`, and
   values may not contain newlines.
@@ -154,12 +209,77 @@ containers.
   through the Engine API and shows its output. The Hub stops waiting after
   15 minutes, or when the browser request is cancelled. A process that keeps
   running inside the container is not killed.
-- **Restart.** A full `down` + `up` of the project, so compose and env changes
-  take effect.
+- **Restart app** (enabled apps). A full `down` + `up` of the project, so
+  override and env changes take effect. It waits for the result and, if it
+  fails, shows compose's output like a failed enable.
+
+#### Custom override
+
+Typical uses: pin a different image tag, add environment variables, resource
+limits, extra bind mounts or named volumes, extra (literal) host ports, a
+healthcheck. **Save override** validates and stores it; it applies on the next
+restart ("restart to apply"), or when a disabled app is enabled. Saving an
+empty (or comment-only) override deletes the file. Every save, removal and
+refusal goes to the [audit log](#audit-log) as `app.compose_override` with the
+signed-in user, the size and a SHA-256 prefix, never the content (it may hold
+env values). The file is mode 0600.
+
+The Hub refuses anything that would bypass Portcullis' routing or isolation.
+group-gate keys every policy and group by the subdomains the Hub reads from the
+template's Traefik labels, and the Hub's override sets each router's TLS
+options and middlewares, so the custom override may not change them:
+
+- **Top level:** only `services`, `volumes`, `networks`. Must be a mapping;
+  no YAML tags (compose's `!reset` / `!override` could strip the template's
+  labels or networks).
+- **Services:** only services the template defines, and only these keys:
+  `image`, `command`, `entrypoint`, `environment`, `labels`, `volumes`,
+  `ports`, `expose`, `restart`, `healthcheck`, `user`, `working_dir`,
+  `hostname`, `domainname`, `mem_limit`, `mem_reservation`, `memswap_limit`,
+  `mem_swappiness`, `cpus`, `cpu_shares`, `cpuset`, `pids_limit`,
+  `shm_size`, `ulimits`, `logging`, `tmpfs`, `extra_hosts`, `dns`,
+  `dns_search`, `dns_opt`, `stop_grace_period`, `stop_signal`, `init`,
+  `read_only`, `cap_drop`, `tty`, `stdin_open`, `pull_policy`, `platform`,
+  `depends_on` (on the template's services), `oom_score_adj`.
+  Everything else is refused, in particular `privileged`, `cap_add`,
+  `devices`, `security_opt`, `network_mode`, `networks`, `pid`, `ipc`, `uts`,
+  `userns_mode`, `cgroup`, `cgroup_parent`, `sysctls`, `volumes_from`,
+  `extends`, `env_file`, `build`, `links`, `external_links`,
+  `container_name`, `profiles`, `deploy`, `configs`, `secrets`, `group_add`,
+  `runtime`.
+- **Labels:** no `traefik.*` (routers, rules, middlewares, TLS options,
+  entrypoints, services) and no `com.docker.compose.*` (the Hub finds the
+  app's containers by them).
+- **Volumes:** named volumes; bind mounts of absolute host paths; or
+  `./templates/<app>/…` (relative paths otherwise resolve in the core
+  checkout, next to its secrets). Refused: variables or `..` in a source,
+  `/` itself, sockets (the Docker socket above all), `/proc`, `/sys`, `/dev`,
+  `/etc` (except `/etc/localtime`, `/etc/timezone`), `/boot`, `/root`,
+  `/run`, `/var/run`, `/var/lib/docker`, `/var/lib/containerd`, `/usr`,
+  `/bin`, `/sbin`, `/lib*`, the core checkout (except
+  `templates/<app>`), and any directory containing one of these (e.g. `/var`);
+  shared/slave bind propagation; volume types other than bind, volume, tmpfs.
+  Host paths outside that list are allowed, like path Settings.
+- **Ports:** literal host ports only (no variables); they count in the port
+  checks against other enabled apps and against the app's own Settings ports.
+- **Top-level `volumes`:** only `labels` per volume (no `driver`,
+  `driver_opts`, `external` or `name`: they could point at host paths or
+  another app's data).
+- **Top-level `networks`:** only networks the template declares and doesn't
+  mark external or name (so never `portcullis-proxy`), with `labels`,
+  `driver_opts`, `enable_ipv6`, `ipam`.
+
+Because of these rules, the routes, subdomains, published snapshot and
+exposure drift the Hub computes from the template stay exact with a custom
+override in place. The override is checked again before every `compose up`: if
+a template update dropped a service it names (or it no longer passes), enable,
+restart and drift actions fail with HTTP 409 ("the custom compose override
+(Expert) is not valid for this template any more") before compose runs — edit
+or clear it.
 
 !!! warning
-    Editing `compose.yml` can break the app or its Traefik routing. Only do it
-    if you understand Docker Compose and Traefik labels.
+    A custom override can still break the app (a wrong image, a bad mount).
+    It can't change how Portcullis routes and guards it.
 
 ### Public exceptions
 
@@ -405,7 +525,7 @@ running/total container count, and buttons for the allowed actions:
 | `running_not_enabled` | Containers of `portcullis-<id>` run, but the app is not enabled (the message adds "its public-exception router bypasses forward-auth" if they carry one) | **Stop & remove** (`stop`: compose down). **Enable** (`adopt`: mark it enabled and compose up) when a template with that ID exists |
 | `stopped_not_enabled` | Stopped containers left behind by an app that is not enabled | **Stop & remove** (`stop`) |
 | `template_missing` | Enabled, but no valid template provides it any more (source removed, template deleted or now invalid) | **Disable** (`disable`) |
-| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware, and for apps with [their own login](auth-policies.md#apps-with-their-own-login) every router's `middlewares`, e.g. after switching the Sign-in mode without a restart) differs from what the Hub renders now — a widened rule, a missing guard or other middleware, a stale or missing public router (e.g. after a failed restart, a template change or an Expert override edit) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
+| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware, and for apps with [their own login](auth-policies.md#apps-with-their-own-login) every router's `middlewares`, e.g. after switching the Sign-in mode without a restart) differs from what the Hub renders now — a widened rule, a missing guard or other middleware, a stale or missing public router (e.g. after a failed restart or a template change) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
 
 Destructive actions ask for confirmation. **Re-check** runs a reconcile
 immediately. Apps that are in the middle of an operation are skipped.
@@ -542,7 +662,8 @@ Each source is a git repository with one directory per app (`manifest.yaml` +
   (`DEFAULT_TEMPLATES_URL`) as the source named `portcullis`. It cannot be
   removed.
 - **Sync.** Runs `git pull --ff-only` on every source and reports which failed
-  to fast-forward. Local edits made in the Expert tab block the fast-forward.
+  to fast-forward. The Hub never edits the clones (the Expert tab's custom
+  override lives in the Hub's data directory), so syncs fast-forward.
 - **Community sources.** Add more repositories in the **Template Sources** tab.
     - Source names use lowercase letters, digits, `-` and `_`.
     - URLs must be `https://…`, `http://…`, `ssh://…` or `user@host:path`.
@@ -629,25 +750,16 @@ cosign verify ghcr.io/porelli/portcullis-hub:<tag> \
 
 ## Common tasks
 
-### Changing an app's subdomain
+### Changing an app's subdomain or middlewares
 
-Edit the `Host()` rule in the app's `compose.yml` in the Expert tab, and keep
-it in the strict form above. The new subdomain must not be used by another
-enabled app. The Hub re-publishes the group and policy under the new
-subdomain.
-
-### Adding custom middleware
-
-Add Traefik middleware labels in the compose override. Keep the forward-auth
-pair in this order, and keep `security-headers@file`:
-
-```yaml
-services:
-  myapp:
-    labels:
-      traefik.http.middlewares.myapp-ratelimit.ratelimit.average: "100"
-      traefik.http.routers.myapp.middlewares: "client-headers@file,portcullis-auth@docker,portcullis-groups@docker,myapp-ratelimit,security-headers@file"
-```
+Routing comes from the template only. Change the `Host()` rule or the router
+middlewares in the template, in a template source you control (fork the
+template into your own source repository if needed), keep the rule in the
+[strict form](#template-rules-enforced-by-the-hub) and keep the forward-auth
+pair (`portcullis-auth@docker,portcullis-groups@docker`, in this order) and
+`security-headers@file`. **Sync**, then restart the app. The new subdomain must
+not be used by another enabled app; the Hub re-publishes the group and policy
+under it. The Expert tab's custom override refuses `traefik.*` labels.
 
 ### Backing up app data
 
