@@ -141,7 +141,13 @@ them. Any password field fails the test.
 checks (registration, no password, `acr`/`amr` = `hwk`, single use, one-touch
 second login, the invite identity provider refuses browsers without a link)
 against any running install, e.g. a live server with a throwaway user
-(`E2E_IGNORE_HTTPS_ERRORS=1` for ACME staging).
+(`E2E_IGNORE_HTTPS_ERRORS=1` for ACME staging). With
+`--reinvite-cmd "<command printing portcullis invite <same user> --json>"` it
+also registers a second, new authenticator through a second link and checks
+that both keys sign in — or, with `--replaced` (`--replace-keys`), that the
+old one no longer does. The `e2e` job runs both variants after the browser
+tests (users `e2e-spare`, `e2e-lost`). Dialogs are answered like a user
+pressing OK (the default value).
 
 After the browser tests, the job enables the **monitoring profile** and checks:
 

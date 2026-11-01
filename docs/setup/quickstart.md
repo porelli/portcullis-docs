@@ -139,9 +139,11 @@ flow. `./portcullis init` ends with a one-time **setup link** for the LLDAP
 2. You are signed in and land in the Hub. No LLDAP or Keycloak login.
 3. Every later sign-in is **Sign in with Passkey** and one touch.
 
-The link works once and expires after 72 h. A new one (expired link, lost
-key) only from the server: `./portcullis invite admin --to hub`. The Hub
-never issues links for `admin`.
+The link works once and expires after 72 h. A new one only from the server:
+`./portcullis invite admin --to hub` adds another key (a spare);
+`./portcullis invite admin --to hub --replace-keys` is for a lost or stolen
+key (removes the old keys first). The Hub never issues links for
+administrators.
 
 ## Step 5: Create users
 
