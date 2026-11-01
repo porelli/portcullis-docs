@@ -82,7 +82,7 @@ graph TB
 | **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with per-request `acr_values` for step-up), and returns identity headers and the access token on success. |
 | **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the app's auth policy (`acr`/`amr`, mTLS binding), the subdomain's required group and `path_groups`. Returns 403 or a step-up page. |
 | **Keycloak** | Identity provider. WebAuthn (FIDO2), X.509 (YubiKey PIV) login with CRL checks, password, Level-of-Authentication step-up, OIDC/SAML for apps. Federates users from LLDAP. |
-| **LLDAP** | Lightweight LDAP directory. Stores users and groups and has a web UI (`directory.<domain>`). |
+| **LLDAP** | Lightweight LDAP directory. Stores users and groups. They are managed in the Hub; `directory.<domain>` redirects there (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
 | **PostgreSQL** | Database backend for Keycloak. |
 | **Vault PKI** | Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL. |
 | **Enrollment UI** | `enroll.<domain>`: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at `/self`. Signs CSRs through a least-privilege Vault AppRole. |

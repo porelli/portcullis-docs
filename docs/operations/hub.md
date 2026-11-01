@@ -377,9 +377,10 @@ User administration moved to the [Users & Groups tab](#users-groups-tab).
 
 ## Users & Groups tab
 
-Day-to-day user and group administration, so you don't have to sign in to
-LLDAP's own web UI a second time. LLDAP's UI (`directory.<domain>`) still
-works as a fallback. The Hub uses its own LLDAP service account,
+Day-to-day user and group administration. LLDAP has no single sign-on, so
+its own web UI isn't published: `directory.<domain>` redirects here
+(`hub.<domain>/#users`), and the LLDAP UI is reachable only from the server
+for recovery ([`portcullis lldap-ui`](cli.md#lldap-ui)). The Hub uses its own LLDAP service account,
 `portcullis-hub`, which core creates and mounts as files (see
 [Integration Contracts §9](../guides/integration-contracts.md#9-hub-lldap-users-groups)).
 If core doesn't provide it, the tab says user management is disabled and
@@ -415,7 +416,7 @@ statuses are missing.
 This section appears only when Keycloak has a user that was imported from
 LLDAP (its federation link is the LDAP provider) but LLDAP no longer has
 that username. This happens when a user is deleted outside the Hub, for
-example in the LLDAP UI. Keycloak keeps its copy and usually answers 404 or
+example in LLDAP's own UI (`portcullis lldap-ui`). Keycloak keeps its copy and usually answers 404 or
 500 for it. The list shows the username, the Keycloak id and the reason.
 
 **Remove** deletes only the Keycloak copy (type the username to confirm).

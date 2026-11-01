@@ -221,49 +221,20 @@ No group enforcement. Anyone can access the app.
 
 ### Creating Groups
 
-Groups are created in LLDAP. You can use the LLDAP web UI or the GraphQL API.
+Groups are created in the Hub: **Users & Groups** tab (`https://hub.<your-domain>/#users`).
 
-**Via LLDAP Web UI:**
+1. Under **Groups**, enter the group name (e.g., `users_grafana`) and click **Create**.
+2. Groups an enabled app needs but that don't exist yet are listed under
+   **Missing groups**, each with a one-click **Create**.
 
-1. Open `https://directory.<your-domain>`
-2. Log in as admin
-3. Navigate to **Groups**
-4. Click **Create group**
-5. Enter the group name (e.g., `users_grafana`)
-
-**Via LLDAP GraphQL API:**
-
-```bash
-# Get an auth token
-TOKEN=$(curl -s http://localhost:17170/auth/simple/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"YOUR_LLDAP_PASSWORD"}' \
-  | jq -r '.token')
-
-# Create a group
-curl -s http://localhost:17170/api/graphql \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"mutation { createGroup(name: \"users_myapp\") { id } }"}'
-```
+`https://directory.<your-domain>` redirects to the same tab. LLDAP has no
+single sign-on, so its own web UI isn't published; for recovery, open it
+from the server with [`portcullis lldap-ui`](cli.md#lldap-ui).
 
 ### Adding Users to Groups
 
-**Via LLDAP Web UI:**
-
-1. Navigate to **Users** and click on a user
-2. In the **Groups** section, click **Add to group**
-3. Select the group
-
-**Via LLDAP GraphQL API:**
-
-```bash
-# Add user "alice" to group with ID 42
-curl -s http://localhost:17170/api/graphql \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"mutation { addUserToGroup(userId: \"alice\", groupId: 42) { ok } }"}'
-```
+In the Hub's **Users & Groups** tab, pick the group and add members.
+Adding someone to an administrator group asks for confirmation.
 
 ### Syncing Groups to Keycloak
 

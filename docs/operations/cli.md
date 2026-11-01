@@ -48,6 +48,8 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`pki setup`](#pki-setup) | Create the client-certificate CA (idempotent) |
 | Identity | [`keycloak configure`](#keycloak-configure) | Import or patch the `portcullis` realm |
 | | [`oidc register`](#oidc-register) | Create the core OIDC clients and push their secrets from `.env` |
+| | [`invite`](#invite) | One-time setup link: register a passkey, signed in (no password) |
+| | [`lldap-ui`](#lldap-ui) | Break-glass SSH tunnel to LLDAP's own web UI (server only) |
 | Client certificates (YubiKey PIV) | [`cert enroll`](#cert-enroll) | New key and certificate on a YubiKey |
 | | [`cert renew`](#cert-renew) | New certificate for the key already on the YubiKey |
 | | [`cert revoke`](#cert-revoke) | Revoke a certificate (enforced by group-gate) |
@@ -455,6 +457,45 @@ Creates the `portcullis-forward-auth` client. It also creates `headscale`,
 oauth2-proxy and Keycloak always agree. Idempotent.
 
 After changing `FORWARD_AUTH_CLIENT_SECRET`, run this, then `portcullis up`.
+
+---
+
+### invite
+
+```
+portcullis invite <user> [--ttl DURATION] [--to hub|portal|URL] [--replace-keys] [--json]
+```
+
+Prints a one-time setup link for an LLDAP user. Opening it lets the user
+register a passkey or security key (YubiKey) and signs them in: no password,
+no other step. The link is single use, expires after `--ttl` (default 72h,
+max 168h) and replaces the user's previous links. Pending links do not
+survive a restart of the enroll container.
+
+This is also how the bootstrap `admin` gets (or recovers) its key: the Hub
+refuses invites for `admin`; only the server can issue them.
+
+| Option | Meaning |
+|--------|---------|
+| `--ttl DURATION` | Go duration, e.g. `30m`, `24h` |
+| `--to` | Where to land afterwards: `hub` (`https://hub.<domain>/`), `portal` (`https://<domain>/`, default) or an https URL on the domain |
+| `--replace-keys` | Lost or stolen key: first delete all of the user's passkeys and security keys in Keycloak and sign them out everywhere. Without it the new key is added next to the old ones (a spare key) |
+| `--json` | Print enroll's JSON (`{"url","expires_at"}`) |
+
+---
+
+### lldap-ui
+
+```
+portcullis lldap-ui
+```
+
+Break-glass access to LLDAP's own web UI. `directory.<domain>` only
+redirects to the Hub (LLDAP has no single sign-on), so LLDAP's UI is
+reachable only from the server. The command prints the SSH tunnel to run on
+your machine; then open `http://localhost:17170` and sign in as the LLDAP
+admin (`LLDAP_ADMIN_PASSWORD` in `.env`). Use it for recovery only:
+day-to-day, people and groups are managed in the Hub.
 
 ---
 
