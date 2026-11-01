@@ -250,16 +250,23 @@ options and middlewares, so the custom override may not change them:
 - **Labels:** no `traefik.*` (routers, rules, middlewares, TLS options,
   entrypoints, services) and no `com.docker.compose.*` (the Hub finds the
   app's containers by them).
-- **Volumes:** named volumes; bind mounts of absolute host paths; or
-  `./templates/<app>/…` (relative paths otherwise resolve in the core
-  checkout, next to its secrets). Refused: variables or `..` in a source,
-  `/` itself, sockets (the Docker socket above all), `/proc`, `/sys`, `/dev`,
-  `/etc` (except `/etc/localtime`, `/etc/timezone`), `/boot`, `/root`,
-  `/run`, `/var/run`, `/var/lib/docker`, `/var/lib/containerd`, `/usr`,
-  `/bin`, `/sbin`, `/lib*`, the core checkout (except
-  `templates/<app>`), and any directory containing one of these (e.g. `/var`);
-  shared/slave bind propagation; volume types other than bind, volume, tmpfs.
-  Host paths outside that list are allowed, like path Settings.
+- **Volumes:** named volumes, `./templates/<app>/…`, or bind mounts of
+  absolute host paths under the **bind roots**; everything else is refused,
+  including `/home`, `/var`, `/opt` and `/etc/localtime`. The bind roots are
+  `HUB_OVERRIDE_BIND_ROOTS` (colon-separated absolute paths, e.g.
+  `/srv:/mnt/media`), default `/srv:/mnt:/media`. The Hub refuses to start if
+  a root is `/`, is or contains a system path (`/etc`, `/var/lib`, `/run`,
+  `/usr`, `/tmp`, …), contains the Docker socket or state, or overlaps the
+  core checkout. Sources are cleaned (`//`, `/./`); `..` segments, sockets
+  (`*.sock`) and `/` itself are refused, as are shared/slave bind propagation
+  and volume types other than bind, volume, tmpfs.
+
+    !!! warning
+        The Hub can't resolve symlinks on the host: a symlink under a bind
+        root pointing elsewhere (e.g. `/srv/x -> /`) would be followed by the
+        Docker daemon. What lives under the bind roots is the operator's
+        responsibility; keep them to data directories.
+
 - **Ports:** literal host ports only (no variables); they count in the port
   checks against other enabled apps and against the app's own Settings ports.
 - **Top-level `volumes`:** only `labels` per volume (no `driver`,
@@ -268,6 +275,10 @@ options and middlewares, so the custom override may not change them:
 - **Top-level `networks`:** only networks the template declares and doesn't
   mark external or name (so never `portcullis-proxy`), with `labels`,
   `driver_opts`, `enable_ipv6`, `ipam`.
+- **No variables anywhere.** Compose interpolates `${VAR}` / `$VAR` in keys and
+  values *after* the Hub's checks, so a label key `${T}raefik.enable` would
+  become `traefik.enable`. Every key and value with an unescaped `$` is
+  refused; write `$$` for a literal dollar sign (compose turns it into `$`).
 
 Because of these rules, the routes, subdomains, published snapshot and
 exposure drift the Hub computes from the template stay exact with a custom
