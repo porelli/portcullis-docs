@@ -54,7 +54,7 @@ All options are in the [CLI Reference](../operations/cli.md#init).
    existing `.env` is kept; only empty or missing secrets are filled in.
 2. **Creates DNS records** for `<domain>` and `*.<domain>` pointing at this
    host's public IP (`dns setup`; skipped with `--skip-dns` or
-   `--dns-provider none`).
+   `--dns-provider none`). The wildcard covers all app and core subdomains: `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, and each enabled app.
 3. **Initialises Vault** in server mode with persistent raft storage. The root
    token and unseal key go to `secrets/` (see the warning below), and the
    enrollment service gets a least-privilege AppRole. Vault unseals itself on
@@ -108,6 +108,7 @@ image pull), fix it and run `./portcullis init` again.
 | `PORTCULLIS_AUTH_SUBNET` | `172.31.251.0/28` | Internal Traefik ↔ Keycloak network `portcullis-auth`. Must not overlap the proxy subnet |
 | `PORTCULLIS_AUTH_IP_RANGE` | `172.31.251.8/29` | Dynamic range on `portcullis-auth` |
 | `PORTCULLIS_AUTH_TRAEFIK_IP` | `172.31.251.2` | The only address Keycloak accepts proxy headers (incl. the forwarded client cert) from |
+| `HUB_PEOPLE_ADDR` | `:8889` | Hub's people listener port (set by core, not operator config). Accessible to any signed-in user at `people.<domain>` |
 
 !!! warning "Change the network ranges before `init`, not after"
     Only change the `PORTCULLIS_*_SUBNET` / `_IP_RANGE` / `_TRAEFIK_IP`

@@ -42,6 +42,9 @@ A backup is built in `backups/<timestamp>.partial/` and renamed to
 App data in Hub-managed apps (their own `portcullis_*` volumes) is **not** part
 of the core backup.
 
+!!! note "First backup on a fresh host"
+    On a host without the `group-gate` image (a fresh install before the first `portcullis up`, or after `docker image rm`), `./portcullis backup` builds it first (needs network access to Docker Hub and PyPI for the pinned, hashed Python dependencies: cryptography, PyJWT).
+
 ```bash
 ./portcullis backup            # local backup
 ./portcullis backup --list     # local backups

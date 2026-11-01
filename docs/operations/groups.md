@@ -1,6 +1,6 @@
 # Groups & Access Control
 
-Portcullis uses LLDAP groups to control which users can access which apps. This page explains the group model, how groups flow through the system, and how to manage access.
+Portcullis uses LLDAP groups to control which users can access which apps. Groups can be **manual** (membership managed by hand) or **rule-based** (computed from custom user fields). This page explains the group model, rule-based groups, how groups flow through the system, and how to manage access.
 
 ## The Group Model
 
@@ -17,6 +17,81 @@ For example, Jellyfin has:
 - `admin_jellyfin` -- Members get Jellyfin admin privileges
 
 These group names are defined in each app's `manifest.yaml` under `auth.access_group` and `auth.admin_group`.
+
+### Manual vs. Rule-Based Groups
+
+- **Manual groups**: membership is managed directly by admins (add/remove members, set expiries).
+- **Rule-based groups**: membership is computed by the Hub from custom user fields (department, office, manager, etc.). Rules combine conditions (all/any blocks) and can reference any field. The Hub evaluates rules at least every 60 seconds and on every relevant change (details, rules, exceptions, import).
+
+Groups are ordinary LLDAP groups; apps, group-gate and Keycloak use them the same way whether manual or rule-based.
+
+## Rule-Based Groups
+
+Rule-based groups grant membership automatically based on who people are, not by hand-picking members. Example rules: "everyone in the Milan office gets Nextcloud", "anyone reporting to Anna can see Grafana". The Hub evaluates rules continuously and updates LLDAP membership.
+
+### Creating a Rule
+
+Admins can make a group rule-based in the Hub's **Groups** tab. Rules are edited two ways that stay in sync:
+
+1. **Blocks** (default): point-and-click all/any blocks, nestable. Conditions: `is`, `is not`, `is one of` (list fields), `is empty`, and for person fields (e.g. manager) `reports to (directly or indirectly)`.
+2. **Text rule**: a typed expression with autocomplete for field names and list values, plus inline errors. A toggle switches between them; a parse error refuses the toggle.
+
+A **preview** shows who matches (count and names, live-updated while editing).
+
+**Converting a manual group to rule-based**: opens a review. Current members who don't match the rule are pre-ticked to stay as "added" exceptions (reason: "member before the rule (set by X on date)"). Untick whoever should leave. Nothing changes until confirmed. The Hub compares the review with a fresh preview inside its lock and refuses with 409 if they differ (someone added/removed in between) — convert again.
+
+### Exceptions
+
+On a rule-based group, admins can:
+
+- **Add** someone although the rule doesn't match them (they stay even if the rule changes), or
+- **Keep out** someone although the rule matches (the evaluator skips them).
+
+Each exception needs a written **reason** (≤ 500 characters, shown to everyone) and may have an **expiry** (date/time; they're removed automatically when it arrives). An expired exception is kept (still denying for "kept out", doing nothing for "added" once the person left the group) until the person's membership changes or an admin deletes it.
+
+### Expiries
+
+- **Manual groups**: admins can set an expiry on any membership (date/time; removed automatically).
+- **Rule-based groups**: use exceptions with expiries. Direct Add/Remove is not offered (the evaluator would revert it).
+- **Built-in groups** (`lldap_admin`): expiries are refused (409).
+
+When a membership expires, the Hub removes it from LLDAP, revokes the user's Keycloak sessions (OIDC apps lose access at their next token refresh, within ~1 minute), and keeps the expiry in the policy file's `expiring` array (plus a 10-minute grace period) so enforcement is strict even while the Hub is down. When group-gate withholds an expired membership for a request, it also withholds `Authorization` and `X-Forwarded-Access-Token`.
+
+### The Evaluator
+
+The Hub runs the rule evaluator:
+
+- at least every **60 seconds** (cadence),
+- immediately on every detail change, rule change, exception change, CSV import that affects membership, and on expiries.
+
+For each rule-based group (skipping administrator and built-in groups):
+
+1. Computes who matches the rule (handles cycles in the manager field: `reports to` stops at the first repeat).
+2. Applies exceptions (adds "added" exceptions, skips "kept out" exceptions).
+3. Compares with LLDAP membership and updates it (adds/removes members).
+4. Audits every change (`group.rule_add`, `group.rule_remove`, `group.expired`) with the cause.
+
+**The Hub owns rule-group membership.** A manual change made in LLDAP to a rule-based group (e.g. in `portcullis lldap-ui`) is reverted at the next evaluation and audited as `group.manual_change_reverted`.
+
+### Guarding Groups
+
+Rules of **protected groups** may only reference **admin-only fields**:
+
+- **Administrator groups**: `lldap_admin`, `lldap_password_manager`, core-subdomain groups (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`), `INVITE_PROTECTED_GROUPS`
+- **Permission groups**: the groups holding a delegated permission (`edit_details`, `invite`, `remove`)
+- **App admin groups**: any group used as an app's `admin_group` or in `path_groups`
+
+This prevents delegates (who can edit non-admin-only fields) from granting themselves admin rights or delegated permissions by editing data. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).
+
+**Built-in groups** (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) and permission groups cannot be rule-based (409). `INVITE_PROTECTED_GROUPS` can be rule-based, but only over admin-only fields.
+
+### Membership Flow for Rule-Based Groups
+
+1. **Fields**: admins define custom fields (department, office, manager) under **Setup** in the Hub. Admins and delegates (with `edit_details` permission) fill in values.
+2. **Rules**: admins write a rule that combines conditions over those fields.
+3. **Evaluator**: the Hub runs the rule every ≤ 60 s and on changes, computes who matches, applies exceptions, updates LLDAP membership.
+4. **Sync**: Keycloak syncs groups from LLDAP periodically (and can be triggered manually).
+5. **Access**: apps enforce group membership the same way as manual groups (group-gate for the subdomain's `access_group`, the app's own group-admin mapping for `admin_group`).
 
 ## How Groups Flow
 
@@ -221,20 +296,21 @@ No group enforcement. Anyone can access the app.
 
 ### Creating Groups
 
-Groups are created in the Hub: **Users & Groups** tab (`https://hub.<your-domain>/#users`).
+Groups are created in the Hub's **Groups** tab:
 
-1. Under **Groups**, enter the group name (e.g., `users_grafana`) and click **Create**.
-2. Groups an enabled app needs but that don't exist yet are listed under
-   **Missing groups**, each with a one-click **Create**.
+- Admins: `https://hub.<your-domain>` → **Users & Groups** tab → **Groups** section
+- Everyone: `https://people.<your-domain>` (read-only for non-admins)
 
-`https://directory.<your-domain>` redirects to the same tab. LLDAP has no
-single sign-on, so its own web UI isn't published; for recovery, open it
-from the server with [`portcullis lldap-ui`](cli.md#lldap-ui).
+1. Under **Groups**, enter the group name (e.g., `users_grafana`) and click **Create**. New groups are manual.
+2. Groups an enabled app needs but that don't exist yet are listed under **Missing groups**, each with a one-click **Create**.
+
+`https://directory.<your-domain>` redirects to `https://people.<your-domain>`. LLDAP has no single sign-on, so its own web UI isn't published; for recovery, open it from the server with [`portcullis lldap-ui`](cli.md#lldap-ui).
 
 ### Adding Users to Groups
 
-In the Hub's **Users & Groups** tab, pick the group and add members.
-Adding someone to an administrator group asks for confirmation.
+**Manual groups**: In the Hub's **Groups** tab (admins only), expand the group and use **Add member** / **Remove member**. Adding someone to an administrator group asks for confirmation.
+
+**Rule-based groups**: membership is computed. To include someone, either adjust the rule or add them as an "added" exception (with a reason). To exclude someone the rule matches, add a "kept out" exception.
 
 ### Syncing Groups to Keycloak
 

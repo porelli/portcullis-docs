@@ -490,12 +490,12 @@ refuses invites for `admin`; only the server can issue them.
 portcullis lldap-ui
 ```
 
-Break-glass access to LLDAP's own web UI. `directory.<domain>` only
-redirects to the Hub (LLDAP has no single sign-on), so LLDAP's UI is
+Break-glass access to LLDAP's own web UI. `directory.<domain>` redirects to
+`people.<domain>` (LLDAP has no single sign-on), so LLDAP's UI is
 reachable only from the server. The command prints the SSH tunnel to run on
 your machine; then open `http://localhost:17170` and sign in as the LLDAP
 admin (`LLDAP_ADMIN_PASSWORD` in `.env`). Use it for recovery only:
-day-to-day, people and groups are managed in the Hub.
+day-to-day, people and groups are managed in the Hub at `hub.<domain>` (admins) or `people.<domain>` (everyone, with per-request permission checks). Manual changes to rule-based groups in LLDAP are reverted by the Hub's evaluator and audited.
 
 ---
 

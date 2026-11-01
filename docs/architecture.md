@@ -82,11 +82,11 @@ graph TB
 | **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with per-request `acr_values` for step-up), and returns identity headers and the access token on success. |
 | **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the app's auth policy (`acr`/`amr`, mTLS binding), the subdomain's required group and `path_groups`. Returns 403 or a step-up page. |
 | **Keycloak** | Identity provider. WebAuthn (FIDO2), X.509 (YubiKey PIV) login with CRL checks, password, Level-of-Authentication step-up, OIDC/SAML for apps. Federates users from LLDAP. |
-| **LLDAP** | Lightweight LDAP directory. Stores users and groups. They are managed in the Hub; `directory.<domain>` redirects there (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
+| **LLDAP** | Lightweight LDAP directory. Stores users and groups (custom user fields are LLDAP attributes). They are managed in the Hub; `directory.<domain>` redirects to `people.<domain>` (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
 | **PostgreSQL** | Database backend for Keycloak. |
 | **Vault PKI** | Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL. |
 | **Enrollment UI** | `enroll.<domain>`: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at `/self`. Signs CSRs through a least-privilege Vault AppRole. |
-| **Hub** | `hub.<domain>`: app catalog. Runs each enabled template as its own compose project, registers Keycloak clients, writes the group-gate policy file, reports drift. |
+| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled template as its own compose project, registers Keycloak clients, writes the policy file and `user-attributes.json`, reports drift. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import), with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` permissions). |
 | **Monitoring** (optional) | Compose profile `monitoring`: Prometheus, Alertmanager, Grafana at `metrics.<domain>` (`lldap_admin`), blackbox and textfile exporters. See [Monitoring](operations/monitoring.md). |
 | **Socket proxies** | `socket-proxy-traefik` (read-only) and `socket-proxy-hub` (what compose needs): the only containers that mount the Docker socket. See [Security & Hardening](operations/hardening.md#docker-socket-proxies). |
 
@@ -301,3 +301,87 @@ graph TB
 Native OIDC apps that need to reach Keycloak do so over HTTPS via the public URL (`https://auth.<domain>`), not via the internal network.
 
 DNS is configured as a wildcard record (`*.portcullis.example.com`), so all subdomains resolve to the same server IP. Traefik routes each subdomain to the correct container based on Docker labels.
+
+## Custom Attributes Flow
+
+Custom user fields (department, office, manager, etc.) defined in the Hub flow to apps in two ways:
+
+```mermaid
+flowchart LR
+    LLDAP[(LLDAP<br/>custom attributes)]
+    Hub[Hub<br/>evaluates rules,<br/>reads attributes]
+    UAFile[user-attributes.json<br/>hub_data volume]
+    GG[group-gate]
+    App1[Forward-auth /<br/>Header-auth Apps]
+    KC[Keycloak<br/>LDAP mappers]
+    Scope[portcullis-attributes<br/>client scope]
+    App2[Native OIDC Apps]
+
+    LLDAP -->|GraphQL| Hub
+    Hub -->|writes atomically| UAFile
+    Hub -->|creates mappers| KC
+    UAFile -->|reads on every request| GG
+    GG -->|X-Forwarded-Attr-*<br/>percent-encoded, ', ' joined| App1
+    KC -->|LDAP sync| LLDAP
+    KC -->|attr_<field> claims| Scope
+    Scope -->|in ID token| App2
+```
+
+### For Forward-Auth and Header-Auth Apps
+
+1. **LLDAP**: stores users and custom attributes (created by the Hub as non-user-editable LLDAP user attributes).
+2. **Hub**: reads field values via GraphQL, evaluates rules, writes `user-attributes.json` (only fields with `share_with_apps: true`) atomically with the policy file.
+3. **group-gate**: reads `user-attributes.json` on every request. On allow, returns `X-Forwarded-Attr-<Header-Name>` headers. Values are percent-encoded (`%` → `%25`, `,` → `%2C`), joined with `, `, limited to 1 KB per value (before encoding).
+4. **Traefik**: forwards these headers to the app (the `portcullis-groups` middleware uses `authResponseHeadersRegex: ^X-Forwarded-Attr-`). Client copies are stripped by the forwardAuth regex.
+5. **App**: receives the headers. **Apps must percent-decode each value after splitting on `, `**.
+
+### For Native OIDC Apps
+
+1. **LLDAP**: stores users and custom attributes.
+2. **Hub**: on every field change (create, update, delete, or `share_with_apps` toggle), syncs Keycloak LDAP attribute mappers on the `portcullis-attributes` client scope via the Keycloak admin API. Each shared field gets:
+    - an LDAP attribute mapper: `portcullis-attr-<field>` (reads `<field>` from LDAP)
+    - a protocol mapper: `attr_<field>` claim (user attribute `<field>` → claim `attr_<field>` in ID token, access token, userinfo)
+3. **Keycloak**: syncs users from LLDAP via LDAP federation (periodic and manual sync). The mappers read field values from LDAP.
+4. **App**: receives `attr_<field>` claims in the ID token (no percent-encoding; multi-valued fields are JSON arrays).
+
+The Hub attaches the `portcullis-attributes` client scope as a default scope to every client it creates. On reconcile, it re-attaches missing mappers.
+
+## Expiry Flow
+
+Temporary group memberships (manual memberships with expiry, or exceptions with expiry in rule-based groups) are enforced strictly, even while the Hub is down.
+
+```mermaid
+flowchart TD
+    Admin[Admin sets expiry<br/>or creates exception<br/>with expiry]
+    Hub[Hub writes entry<br/>to policy file<br/>expiring array]
+    LLDAP[(LLDAP<br/>membership<br/>still present)]
+    Eval[Hub evaluator<br/>runs ≤ 60s]
+    Check{now >= at?}
+    GG[group-gate<br/>reads policy file<br/>on every request]
+    Remove[Hub removes<br/>from LLDAP,<br/>revokes Keycloak<br/>sessions]
+    Grace[Hub keeps entry<br/>+ 10 min grace]
+    Clear[Hub clears<br/>grace entry]
+
+    Admin --> Hub
+    Hub -->|immediately| LLDAP
+    Hub -->|immediately| GG
+    Eval --> Check
+    Check -->|not yet| GG
+    Check -->|yes| Remove
+    Remove --> Grace
+    Grace -->|on regrant| Clear
+    GG -->|treats as absent<br/>withholds token| App[App denied]
+    Remove -->|oauth2-proxy refresh 1m| App2[OIDC apps lose<br/>access within ~1 min]
+```
+
+1. **Admin** sets an expiry (date/time) on a membership or exception in the Hub.
+2. **Hub** writes the entry to the policy file's `expiring` array immediately: `{"user": "<username>", "group": "<group>", "at": "<RFC 3339 UTC timestamp>"}`. The entry stays in LLDAP.
+3. **group-gate** reads the policy file on every request. When `now >= at`, it treats the membership as **absent**, regardless of what the user's token says. It also withholds `Authorization` and `X-Forwarded-Access-Token` for that request.
+4. **Forward-auth apps**: denied immediately (403 from group-gate).
+5. **Native OIDC apps**: the token still has the group claim until the next Keycloak token refresh.
+6. **Hub evaluator** runs at least every 60 seconds and on changes. When it finds an expired entry, it:
+    - removes the membership from LLDAP,
+    - revokes the user's Keycloak sessions (so OIDC apps lose access at their next token refresh; oauth2-proxy cookie refresh is 1 minute, so this happens within ~1 minute),
+    - keeps the `expiring` entry (plus a 10-minute grace period) until the membership is actually removed and the grace ends, or until regrant (admin re-adds, exception include, rule change adds them back).
+
+The grace period ensures enforcement stays strict even if the Hub is restarted or LLDAP removal fails: group-gate keeps denying based on the policy file until the Hub successfully removes the entry and clears it.

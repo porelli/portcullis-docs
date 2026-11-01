@@ -28,22 +28,24 @@ exactly as on a real install. Every step drives the stack through
     - network validation
     - `cert sync`, which must never empty the revoked list when Vault fails
     - `pki setup` idempotency, including resuming a partial run
-- **`tests/test_group_gate.py`.** group-gate unit tests:
+- **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
     - host normalisation and the case/port bypass regression
     - merging the map file with the Hub's `groups`
-    - fail-closed policies and the reserved deny group
+    - fail-closed policies (version without `version` key → deny) and the reserved deny group
     - `path_groups`, including bypass variants
     - the mTLS binding
     - revocation by serial list and by a real openssl-generated CRL
-    - the identity headers returned on allow
+    - the identity headers and attribute headers returned on allow
+    - `expiring` array: membership treated as absent once `now >= at`, token withholding (`Authorization` and `X-Forwarded-Access-Token` withheld when an expired membership is stripped)
 - **Compose validity and wiring**, against a generated `.env`. `docker compose config -q` must pass for the core, apps and test compose files. It also checks:
     - `HUB_PROXY_SECRET` is generated, and an empty one is rejected
     - the public default forward-auth secret is gone
     - only the two socket proxies mount `docker.sock`; Traefik and the Hub use their proxies, and each proxy network has exactly its two members
-    - the Hub router carries `hub-proxy-secret@docker` with the right secret
-    - every core image is pinned by digest, and `enroll/Dockerfile` bases too
+    - the Hub router carries `hub-proxy-secret@docker` with the right secret, and the people router carries the same middleware
+    - every core image is pinned by digest, and `enroll/Dockerfile` + `group-gate/Dockerfile` bases too
     - every service has `no-new-privileges`, `cap_drop: ALL` and memory/pid limits
     - Keycloak's `--proxy-trusted-addresses` is Traefik's `portcullis-auth` IP, and only Keycloak and Traefik are on that network
+    - `group-gate-map.conf` has `people=*`
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub, which comes from `HUB_IMAGE`. The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
@@ -167,9 +169,9 @@ Core CI caches what it safely can. Caches are written only on pushes to `main`.
 - **Infra and monitoring images:** cached by the local composite action `.github/actions/cached-images`.
     - The cache key is a hash of each job's pinned image list. Refs without a digest are refused.
     - After `docker load`, every name set by the tarball is removed. Each ref is then re-pulled by its pinned digest (with retry and backoff), so the engine reuses a loaded image only if its content-addressed ID matches the registry's config digest.
-- **enroll image:** buildx layer cache (`type=gha`).
+- **enroll and group-gate images:** buildx layer cache (`type=gha`).
 - **Go:** module and build cache through `setup-go`, with `go mod verify`.
-- **Python:** pip and Playwright browsers, cached on the pinned requirements file.
+- **Python:** pip and Playwright browsers, cached on the pinned requirements file (`group-gate/requirements.txt` has `--require-hashes`).
 
 The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most once a minute.
 
@@ -298,10 +300,11 @@ pinned by commit SHA.
     - `go build ./cmd/hub`
 
     The unit tests cover validation, strict route parsing, the policy-file
-    writer (collisions, deny group, snapshots), middleware (proxy secret,
-    CSRF), per-app locking, reconcile/drift, and the Engine API client.
-    `TestRealTemplates` loads a sibling `portcullis-templates` checkout if
-    present.
+    writer (collisions, deny group, snapshots, `expiring` array, `user-attributes.json`), middleware (proxy secret, CSRF), per-app locking, reconcile/drift, the Engine API client, the LLDAP client (GraphQL + LDAP Password Modify), the Keycloak client (attribute mappers), the rule parser, and the directory service (users, groups, fields, rule evaluator, exceptions, expiries, CSV import, delegated permissions, protected accounts parity).
+    New packages: `internal/rules` (rule parser and evaluator), `internal/directory` (users, groups, fields, permissions, import, audit).
+    `TestRealTemplates` loads a sibling `portcullis-templates` checkout if present.
+    `TestPeopleListenerHasNoAppRoutes` checks that the people listener registers no app/policy/drift/compose/Docker routes.
+    `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
 - **`build`** (after `test`):
     - Multi-arch image (`linux/amd64`, `linux/arm64`) with SBOM and provenance (`mode=max`) attestations.
     - Tags `X.Y.Z`/`X.Y`/`X`/`sha-<short>` for release tags and `edge` for `main`. `latest` is disabled.

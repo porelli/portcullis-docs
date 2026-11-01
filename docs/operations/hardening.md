@@ -12,12 +12,14 @@ the network layout, header trust and threat model.
 | Logins | Phishing, password reuse | WebAuthn (FIDO2) and PIV client certificates. Both are bound to the origin or the TLS handshake. Per-app [policies](auth-policies.md) can require them |
 | User identity | A user changes their own LLDAP email to someone else's | Identity is the immutable username everywhere; email is never used to authorise or link accounts |
 | Identity headers (`X-Forwarded-User`, client-cert headers) | Spoofed by an internet client | Traefik deletes client-supplied `X-Forwarded-*` and cert headers on the entrypoint, and forward-auth replaces the identity headers |
+| Attribute headers (`X-Forwarded-Attr-*`) | Spoofed by an internet client or by routers without forwardAuth | Client copies stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on every forwardAuth middleware (Traefik can't delete headers by prefix in a headers middleware). Routers without forwardAuth (keycloak, vault-ui, enroll-invite, headscale, netbird, docs) don't strip them; backends there must not trust them |
 | Identity headers | Spoofed by another container on `portcullis-proxy` | Header-auth apps trust only Traefik's fixed IP (`PORTCULLIS_TRAEFIK_IP`). Keycloak trusts proxy headers only from Traefik's fixed IP on the internal `portcullis-auth` network |
-| Hub (runs compose, so it is effectively host root) | Reached without passing forward-auth | Requires `lldap_admin` and the `X-Portcullis-Proxy-Secret` header, which only Traefik adds |
+| Hub (runs compose, so it is effectively host root) | Reached without passing forward-auth | Hub: requires `lldap_admin` and the `X-Portcullis-Proxy-Secret` header. People listener (`people.<domain>`): any signed-in user (group-gate-map.conf `people=*`), per-request permission checks |
 | Docker API | A compromised Traefik or Hub takes over the host | No service mounts the socket except two socket proxies with per-client allow-lists |
-| Lost or stolen YubiKey cert | Keeps working until expiry | Revocation is checked on every request (group-gate), at Keycloak X.509 login (CRL, fail closed), and by the mTLS binding |
+| Lost or stolen YubiKey cert | Keeps working until expiry | Revocation is checked on every request (group-gate), at Keycloak X.509 login (CRL, fail closed), and by the mTLS binding. On removal or expiry, group-gate also withholds `Authorization` and `X-Forwarded-Access-Token` |
+| Expired group membership | Keeps working while Hub is down | Every pending expiry is in the policy file's `expiring` array (plus a 10-min grace after LLDAP removal). group-gate treats it as absent. The Hub also revokes Keycloak sessions (oauth2-proxy cookie refresh is 1 min, so removals and Keycloak logouts take effect within ~1 min; sessions end at Keycloak's idle 8h / max 12h) |
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
-| Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses subdomain collisions and core subdomains, and fails closed on unknown config. Templates CI lints fork PRs without secrets |
+| Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses subdomain collisions and core subdomains, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets |
 | Public exceptions (share links, off unless an admin turns them on) | Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps | Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; `rate-limit@file`; see [Public exceptions](#public-exceptions) |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
@@ -208,8 +210,8 @@ CI fails if any of these is missing.
 | lldap | 1000 (rootless image) | read-only | — | |
 | keycloak | 1000 | **writable** | — | Exception: `start` re-augments the server because the x509 lookup provider is a build option |
 | forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | No healthcheck: the image has no shell or HTTP client |
-| group-gate | 10003:10003 | read-only | — | Only world-readable mounts |
-| hub | 10001:10001 | read-only (`tmpfs /tmp`, `/home/hub`) | — | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`) |
+| group-gate | 10003:10003 | read-only | — | Locally built image (core's `group-gate/Dockerfile`) with pinned Python deps (`requirements.txt`: cryptography, PyJWT, with hashes). Only world-readable mounts |
+| hub | 10001:10001 | read-only (`tmpfs /tmp`, `/home/hub`) | — | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Go stdlib + yaml.v3 only (custom-override and rule parser: alecthomas/participle/v2). Libraries: go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client |
 | enroll | 10002:10002 | read-only | — | Reads `secrets/enroll/` via group 10002 |
 
 **Secrets the containers read** stay operator-owned, with the container's group

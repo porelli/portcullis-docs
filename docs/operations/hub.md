@@ -377,147 +377,209 @@ User administration moved to the [Users & Groups tab](#users-groups-tab).
 
 ## Users & Groups tab
 
-Day-to-day user and group administration. LLDAP has no single sign-on, so
-its own web UI isn't published: `directory.<domain>` redirects here
-(`hub.<domain>/#users`), and the LLDAP UI is reachable only from the server
+Day-to-day user, group and field administration. LLDAP has no single sign-on, so
+its own web UI isn't published: `directory.<domain>` redirects to
+`people.<domain>`, and the LLDAP UI is reachable only from the server
 for recovery ([`portcullis lldap-ui`](cli.md#lldap-ui)). The Hub uses its own LLDAP service account,
 `portcullis-hub`, which core creates and mounts as files (see
 [Integration Contracts §9](../guides/integration-contracts.md#9-hub-lldap-users-groups)).
 If core doesn't provide it, the tab says user management is disabled and
 everything else keeps working.
 
-### Users
+The tab has four sections: **People**, **Groups**, **Org chart** and **Setup** (admins only).
 
-The table shows, for every LLDAP user:
+### Access levels
 
-- username, display name, email and creation date
-- groups, and an **administrator** badge for members of an
-  [administrator group](#administrators)
-- Keycloak status (none for `portcullis-hub`, which isn't in Keycloak):
-    - **not signed in yet**: Keycloak has no copy of the user. LDAP users
-      are imported at first sign-in or when the Hub needs them. This is not
-      an error;
-    - the number of passkeys, or **no passkey**;
-    - pending required actions;
-    - **Keycloak status unavailable** with the reason, when Keycloak
-      couldn't return that user's credentials. Only that row is affected.
+- **Admins** (`hub.<domain>`, members of `lldap_admin`) see and can change everything.
+- **Everyone else** (`people.<domain>`, any signed-in user) can view all people, groups, fields and the org chart, with three **delegated permissions** (granted per group by admins):
+    - **edit details**: edit custom field values of non-protected accounts (single edits and CSV import)
+    - **invite**: create new accounts with no groups (invite links only)
+    - **remove**: delete accounts
 
-Client certificates aren't shown; see enroll.
+Delegates cannot target themselves, administrators, the protected accounts (`admin`, `portcullis-hub`), or members of any permission group. Delegates cannot touch manual groups, exceptions or expiries; they can fill in fields that make people match rule-based groups. See [Delegated permissions](#delegated-permissions).
 
-The Hub reads each user's status separately, at most 8 Keycloak calls at a
-time and 15 seconds in total. A failure for one user marks only that user's
-row. If Keycloak itself is unreachable (sign-in, user list or federation
-list fails), the tab shows one "Keycloak status unavailable" banner and the
-users and groups still load. Past the 15 seconds, the banner says some
-statuses are missing.
+### People
 
-### Stale Keycloak records
+The **People** table shows every LLDAP user, with the custom field columns, groups (⚡ marks membership via a rule), Keycloak status (passkey count, required actions; admins only) and a search box. Clicking a row opens a dialog with details, groups (how membership was granted, expiries, exceptions), keys (admins only) and actions.
 
-This section appears only when Keycloak has a user that was imported from
-LLDAP (its federation link is the LDAP provider) but LLDAP no longer has
-that username. This happens when a user is deleted outside the Hub, for
-example in LLDAP's own UI (`portcullis lldap-ui`). Keycloak keeps its copy and usually answers 404 or
-500 for it. The list shows the username, the Keycloak id and the reason.
+**Invite** (admins and delegates with the `invite` permission): creates a new user. Username (lowercase letters, digits, `.`, `_`, `-`; at least 2 characters), email, display name and groups (admins only). The user gets a **one-time invite link** (shown once, expires in 72 h): they register their passkey and are signed in, no password. A delegate's new account has no groups; filling in fields can make it match rule-based groups. Administrators get no invite links; the Hub shows `./portcullis invite <user>` (server only). Under **Advanced**, admins can use a password fallback instead (generated or typed; 12 to 256 characters).
 
-**Remove** deletes only the Keycloak copy (type the username to confirm).
-The federation is read-only, so LLDAP isn't touched. The change is in the
-audit log as `keycloak.remove_stale`, with the Keycloak id. The Hub refuses
-it for `admin`, `portcullis-hub`, any username that exists in LLDAP, and
-Keycloak users that aren't linked to the LDAP federation. Manage those in
-the Keycloak admin console.
+**Import CSV** (admins and delegates with any permission): see [CSV import](#csv-import).
 
-**New user.** Enter a username (lowercase letters, digits, `.`, `_`, `-`),
-an email, an optional display name and the groups. By default the user gets
-a **one-time invite link**, shown once with a copy button and its expiry.
-They open it, register their security key and are signed in. They never get
-a password. Sending a new invite cancels the previous one.
+#### Per-person actions (in the dialog)
 
-If you put the new user into an administrator group, the Hub creates the
-account but asks for no invite. Instead it shows the command to run on the
-server, `./portcullis invite <user>`.
+| Action | Who | What it does |
+|--------|-----|--------------|
+| Edit details | Admins, delegates with `edit_details` | Change email, display name and custom field values (admin-only fields need an admin) |
+| Send new invite | Admins, delegates with `invite` (own keyless accounts only) | New one-time link; earlier unused links stop working. Not offered for administrators |
+| Require passkey | Admins | Adds the passkey registration action for the next sign-in |
+| Clear pending | Admins | Removes pending required actions |
+| Reset passkeys | Admins | Deletes all passkeys, signs the user out, then creates a new invite (or shows `./portcullis invite <user>` for an administrator). Type the username to confirm |
+| Password… | Admins | Fallback: set or generate a password; signs the user out |
+| Remove | Admins, delegates with `remove` | Deletes the user from LLDAP and Keycloak. Type the username to confirm |
 
-Under **Advanced** you can use a password instead. The Hub either generates
-a strong one (shown once) or takes one you type (at least 12 characters).
-"Require passkey registration at first login" is on by default. The Hub
-imports the user into Keycloak right away so this required action applies.
+**Remove** deletes the user from LLDAP first (saved as a tombstone to prevent re-creation of names still in exceptions/expiries), then deletes the Keycloak copy. The audit entry records what happened to the copy: `keycloak_copy=removed`, `none` (never imported) or `FAILED`. Delegates can remove only non-protected, non-administrator accounts not in any permission group. If the Keycloak removal fails, the copy is listed under **Stale Keycloak records** (admins only), where it can be removed by id.
 
-Per-user actions:
+#### Keycloak status (admins only)
 
-| Action | What it does |
-|--------|--------------|
-| Edit | Change email and display name |
-| Send new invite | New one-time link; earlier unused links stop working. Not offered for administrators |
-| Require passkey | Adds the passkey registration action for the next sign-in (imports the user into Keycloak if needed) |
-| Clear pending | Removes pending required actions |
-| Reset passkeys | Deletes all of the user's passkeys and signs them out everywhere (type the username to confirm). Then it creates a new invite; for an administrator it shows `./portcullis invite <user>` instead |
-| Password… | Fallback: set or generate a password; signs the user out |
-| Delete | Deletes the user from LLDAP and Keycloak (type the username to confirm) |
+For each LLDAP user except `portcullis-hub`:
 
-**Delete** removes the user from LLDAP, then deletes the Keycloak copy. The
-audit entry records what happened to the copy: `keycloak_copy=removed`,
-`none` (never imported) or `FAILED`. If removing the copy fails, the Hub
-shows a warning and the copy is listed under
-[Stale Keycloak records](#stale-keycloak-records), where you can remove it.
+- **not signed in yet**: Keycloak has no copy. LDAP users are imported at first sign-in or when the Hub needs them (not an error)
+- passkey count, or **no passkey**
+- pending required actions
+- **Keycloak status unavailable** with the reason (per-user failure; only that row is affected)
+
+The Hub reads each user's status separately, at most 8 calls at a time, 15 seconds total. A per-user failure marks only that user. If Keycloak itself is unreachable (sign-in, user list or federation list fails), a banner says "Keycloak status unavailable" and users/groups still load. Past 15 seconds, a banner says some statuses are missing.
+
+Client certificates aren't shown; see `enroll.<domain>`.
+
+#### Stale Keycloak records (admins only)
+
+Users Keycloak has (federation link = LDAP provider) but LLDAP no longer has (deleted outside the Hub, e.g. in `portcullis lldap-ui`). The Hub lists the username, Keycloak id and reason.
+
+**Remove** deletes only the Keycloak copy (type the username to confirm). The federation is read-only, so LLDAP isn't touched. Logged as `keycloak.remove_stale` with the id. Refused for `admin`, `portcullis-hub`, any username LLDAP has, and Keycloak users not linked to the LDAP federation.
 
 ### Groups
 
-You can create groups, delete them (type the name to confirm), and add or
-remove members. Each group shows its member count and the apps that use it.
-**Missing groups** lists the `access_group` / `admin_group` (e.g.
-`users_<app>`, `admin_<app>`) of the apps you have enabled that don't exist in
-LLDAP yet — until they do, nobody can use the app (or administer it). Each
-line says what membership grants ("Members can sign in to Kanboard",
-"Members become Kanboard administrators") and has a one-click **Create**. Templates you haven't enabled add nothing here. Administrator
-groups are marked, and adding someone to one asks for confirmation.
+Lists every LLDAP group with its member count, rule status (manual or rule-based), exceptions, expiries and the apps that use it. Clicking a group expands its details: members (with how they got in: manual, rule, or exception), the rule editor (for rule-based groups), exceptions and expiries, and the apps.
+
+**Create** (admins): enter a group name (`[A-Za-z0-9][A-Za-z0-9_.-]{0,127}`, not starting with `lldap_`; case-insensitively unique). New groups are manual.
+
+**Delete** (admins): type the name to confirm. Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) can't be deleted.
+
+**Add / Remove member** (admins): for manual groups only. Adding someone to an administrator group asks for confirmation. Removing yourself from `lldap_admin` is refused, and the last human member of `lldap_admin` stays.
+
+**Set expiry** (admins): for manual groups only. Pick a date/time (browser local time, converted to UTC); the membership is removed automatically when it expires. Clear it with **No end**. Refused for `lldap_admin` and for rule-based groups (use an exception instead).
+
+**Missing groups** lists the `access_group` / `admin_group` (e.g. `users_<app>`, `admin_<app>`) of enabled apps that don't exist in LLDAP yet — until they do, nobody can use the app (or administer it). Each has a one-click **Create**. Templates not enabled add nothing here.
+
+#### Rule-based groups
+
+Admins can turn a group **rule-based**: membership is computed from custom fields. The rule is edited two ways that stay in sync:
+
+1. **Blocks** (default): point-and-click all/any blocks, nestable, with conditions `is`, `is not`, `is one of` (list fields), `is empty`, and for person fields `reports to (directly or indirectly)`.
+2. **Text rule**: a typed expression with autocomplete (field names, list values) and inline errors. A toggle switches between them; a parse error refuses the toggle.
+
+A **preview** shows who matches (count and names, live-updated). The Hub evaluates rules at least every 60 seconds, and on every detail change, rule change, exception change and import that affects membership.
+
+**Convert a manual group to rule-based** (admins): opens a review. Current members who don't match are pre-ticked to stay as "added" exceptions (reason: "member before the rule (set by X on date)"); untick whoever should leave. Nothing changes until confirmed. The review compares itself with a fresh preview inside the Hub's lock and refuses with 409 if they differ (someone was added/removed in between) — convert again.
+
+**Exceptions** (admins, rule-based groups only): **add** someone although the rule doesn't match them (they stay even if the rule changes), or **keep out** someone although the rule matches (the evaluator skips them). Each exception needs a written **reason** (≤ 500 characters, shown to everyone) and may have an **expiry** (date/time; they're removed automatically). The reason is required; without it the save fails.
+
+**Expiries on exceptions**: an expired exception is kept (still denying for "kept out", doing nothing for "added" once the person left) until the person's membership changes (removed, re-added by an admin, another exception, rule add) or an admin deletes the exception.
+
+#### Protected groups
+
+Rules of **administrator groups** (see [Administrators](#administrators)), **permission groups** (the groups holding a delegated permission) and **app admin groups** (any group used as an app's `admin_group` or in `path_groups`) may only reference **admin-only fields**. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).
+
+Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) and permission groups cannot be rule-based.
+
+#### The evaluator
+
+- Runs at least every 60 seconds, and immediately on detail/rule/exception/import changes.
+- Computes membership of every rule-based group (skips admin/built-in groups).
+- **The Hub owns rule-group membership.** A manual change made in LLDAP to a rule-based group (e.g. in `portcullis lldap-ui`) is reverted at the next evaluation and audited as such.
+- Handles cycles in the manager field (the `reports to` condition stops at the first repeat).
+- Removes expired memberships (manual and exceptions) from LLDAP after their expiry time. Expired entries are kept in the policy file's `expiring` array (plus a 10-minute grace period) so enforcement is strict even while the Hub is down. When group-gate withholds an expired membership for a request, it also withholds `Authorization` and `X-Forwarded-Access-Token`.
+- On every removal, the Hub revokes the user's Keycloak sessions, so OIDC apps lose access at their next token refresh (oauth2-proxy cookie refresh is 1 minute, so removals take effect within ~1 minute).
+
+### Org chart
+
+A tree of everyone's manager (the person field named `manager`, or the first person field if there is none). Shows cycles as a banner. If there is no person field, a message says so (admins: add one under Setup).
+
+Everyone can see everyone's details and the org chart.
+
+### Setup (admins only)
+
+Define custom fields and assign delegated permissions.
+
+#### Custom fields
+
+**Fields** describe people: department, office, cost center, manager, etc. Three kinds:
+
+| Kind | Meaning |
+|------|---------|
+| **text** | Free-form text (one or multiple values per person) |
+| **list** | One of the values you maintain (e.g. "Milan", "Berlin", "Remote"). Multi-valued allowed |
+| **person** | A reference to another user (e.g. manager). Single-valued only |
+
+Per field:
+
+- **Label** (shown in the UI, e.g. "Department")
+- **Share with apps** (default on): the field becomes an OIDC claim (`attr_<field>`) for native-OIDC apps and an `X-Forwarded-Attr-<Header-Name>` header for forward-auth/header-auth apps. Attribute values are percent-encoded (`%` → `%25`, `,` → `%2C`), joined with `, `, limited to 1 KB per value (before encoding; longer values are dropped and logged). Apps must percent-decode each value after splitting on `, `. See [Integration Contracts §4.1, §5](../guides/integration-contracts.md#41-user-attributes-file-hub-group-gate-new).
+- **Admin-only** (off by default): only admins may edit it, and only admin-only fields may be used in rules of protected groups (administrator, permission and app-admin groups).
+
+**Create**: name (`[a-z][a-z0-9_]{0,30}`, unique, not reserved: `username`, `email`, `display_name`, `id`, `uuid`, `groups`, `created`), label, kind, multi-valued (not for person fields), share with apps, admin-only. For list fields, add the allowed values.
+
+**Edit**: change the label, values (list fields; can't remove a value in use), share-with-apps and admin-only flags. Can't change kind or multi. Can't turn off admin-only while a protected group's rule uses the field (409).
+
+**Delete**: type the name to confirm. Refused (409) if a rule uses it, with the groups listed.
+
+Fields are stored in LLDAP as custom user attributes (non-user-editable, so users can't change their own department in `portcullis lldap-ui`). Rules, exceptions, expiries, field metadata LLDAP can't hold, and permission assignments live in the Hub's state (`$HUB_DATA_DIR/directory.yaml`, atomic, mode 0600; a corrupt file refuses to start).
+
+#### Delegated permissions
+
+Three permissions, each granted to a group (manual or rule-based; that group may itself use rules over non-admin-only fields):
+
+| Permission | What it grants |
+|------------|----------------|
+| **edit details** | Update email, display name and custom field values (single edits and CSV import). Admin-only fields need an admin |
+| **invite** | Create new accounts via invite link (no groups, no Keycloak credentials). Filling in fields can make them match rule-based groups. A delegate-created account shows "via rule, account created by X" for its rule memberships |
+| **remove** | Delete accounts |
+
+Delegates never target themselves, administrators (`lldap_admin` etc.), the protected accounts (`admin`, `portcullis-hub`) or members of any permission group. They can't create a tombstoned name or one still in exceptions/expiries. A delegate's **Send new invite** works only for accounts the delegate created that still have zero Keycloak credentials (Keycloak missing or unavailable → refused); admins should re-invite such accounts themselves if they gave them only a client certificate. An admin's password / invite / passkey action clears the account's `created_by`, so delegates can't re-invite it.
+
+Permission changes (including refusals) are audited (`directory.permission`). Built-in, admin and rule groups using non-admin-only fields are refused (409). Set a permission to **(none)** to revoke it.
+
+### CSV import
+
+**Import CSV** (admins and delegates with any of edit_details, invite, remove) uploads a CSV file (`,` or `;` separator, optional BOM, CRLF; at most 5 MB, 10,000 rows, 64 columns) and opens an **editable review table**. Nothing changes until **Apply**. The review:
+
+- One row per person: new, changed, missing (in LLDAP but not in the file; unticked by default) or unchanged (hidden by default, with a **Show unchanged** toggle)
+- Changed cells show `current → file`; click ↺ to keep the current value
+- **Edit** any cell
+- **Problems** (red): block Apply until fixed. Example: a manager who isn't a known user, with a picker to fix it. Unknown columns are reported but don't block
+- **Effect on rule-based groups**: +n / −n per group, ignoring missing rows
+- **Download CSV**: the edited table with a formula-neutralising leading `'` for cells that start with `=`, `+`, `-`, `@` or `` ` ``, or with tab/CR. That `'` is stripped on re-import, so a downloaded review imports back unchanged
+- **Re-review** (JSON of the edited `{header, rows}`): refreshes the Effect with current rules
+
+**Columns:**
+
+- `username` (required), `display_name`, `email` and every custom field name. Unknown columns are listed but don't block.
+- Missing people (LLDAP users not in the file) show up as unticked rows. Tick to remove (needs `remove` permission).
+- Can't clear email or display name (the cell must have a value).
+
+**Apply**: processes rows one by one (no rollback). Each row is re-checked with the caller's permissions (delegates: can't create into groups, can't touch protected/admin/permission-group accounts, can't create a tombstone). New people get invite links (admins and delegates with `invite`). The result shows per-row ok/error and invite links.
+
+The Hub writes shared fields (those with share-with-apps on) into `user-attributes.json`, which group-gate reads to populate `X-Forwarded-Attr-*` headers (§4.1). On every field or membership change, the Hub also syncs the Keycloak LDAP attribute mappers and protocol mappers on the `portcullis-attributes` client scope (each shared field → `portcullis-attr-<field>` LDAP mapper → `attr_<field>` protocol mapper).
 
 ### Administrators
 
 Members of these groups are **administrators**:
 
-- `lldap_admin` and `lldap_password_manager`;
-- the groups of the core subdomains (`auth`, `traefik`, `hub`, `directory`,
-  `enroll`, `metrics`) in `group-gate/group-gate-map.conf`, read from the
-  core checkout (`HUB_GATE_MAP_FILE`);
-- any group listed in `INVITE_PROTECTED_GROUPS`.
+- `lldap_admin` and `lldap_password_manager`
+- the groups of the core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`) in `group-gate/group-gate-map.conf` (Hub: `HUB_GATE_MAP_FILE`)
+- any group listed in `INVITE_PROTECTED_GROUPS`
 
-This is the same set core's invite API uses. An invite hands the account to
-whoever holds the link, so core refuses invites for administrators, and the
-Hub doesn't offer them, not even for yourself. Invite or recover an
-administrator on the server with `./portcullis invite <user>`. If core
-refuses an invite for a group the Hub doesn't know about, the Hub shows
-"administrators are recovered from the server: `./portcullis invite <user>`".
+This is the same set core's invite API uses. An invite hands the account to whoever holds the link, so core refuses invites for administrators, and the Hub doesn't offer them. Invite or recover an administrator on the server with `./portcullis invite <user>`. If core refuses an invite for a group the Hub doesn't know about, the Hub shows "administrators are recovered from the server: `./portcullis invite <user>`".
 
 ### Guardrails
 
-- `portcullis-hub` (the Hub's own account) and `admin` (the bootstrap LLDAP
-  admin, which Keycloak and enroll bind as) are read-only here: no edits,
-  passwords, invites, passkey actions or group changes. An invite for
-  `admin` would hand over the root account, so recover it on the server
-  with `./portcullis invite admin`.
-- [Administrators](#administrators) get no invites from the Hub.
-  Resetting another administrator's passkeys or setting their password lets
-  you take over their account. You have to type their username to confirm,
-  and the audit entry is flagged.
-- `admin` and `portcullis-hub` can't be created. `lldap_*` group names are
-  reserved, and built-in groups can't be deleted.
+- `portcullis-hub` (the Hub's own account) and `admin` (the bootstrap LLDAP admin) are untouchable: no edits, passwords, invites, passkey actions, group changes or deletion. An invite for `admin` would hand over the root account, so recover it on the server: `./portcullis invite admin`.
+- [Administrators](#administrators) get no invites from the Hub. Resetting another administrator's passkeys or setting their password lets you take over their account: you must type their username to confirm, and the audit entry is flagged (`target_is_lldap_admin=true`).
+- `admin` and `portcullis-hub` can't be created. `lldap_*` group names are reserved. Built-in groups can't be deleted or made rule-based.
 - You can't delete yourself or remove yourself from `lldap_admin`.
-- The last human member of `lldap_admin` can't be deleted or removed from it.
-- Every change goes through the same proxy-secret and CSRF checks as the
-  rest of the Hub, and needs a signed-in user.
+- The last human member of `lldap_admin` (every member except `portcullis-hub`) can't be deleted or removed from it.
+- Email addresses are unique (case-insensitive).
+- Every change goes through the same proxy-secret and CSRF checks as the rest of the Hub and needs a signed-in user (`X-Forwarded-User`).
 
 ### Audit log
 
-Every change, including refused and failed attempts, is appended to
-`audit.jsonl` in the Hub's data directory (`hub_data`, mode 0600). Each entry
-records who, what, the target, the time and the result. The log never
-contains passwords or invite links. The tab shows the last 100 entries.
+Every change, including refused and failed attempts, is appended to `audit.jsonl` in `$HUB_DATA_DIR` (mode 0600). Each entry records the time, actor (`X-Forwarded-User`), action, target, optional detail, result (`ok` / `refused` / `error`) and optional error. The log never contains passwords, tokens or invite links. The tab (admins only on `hub.<domain>`) shows the last 100 entries. On `people.<domain>`, `GET /api/directory/audit` is 403.
 
 ### How passwords are set
 
-LLDAP stores passwords with OPAQUE. Its HTTP password endpoints need the
-client half of that protocol, so the Hub sets passwords over LDAP instead
-(the standard Password Modify operation). LLDAP then does the OPAQUE step
-itself. This is the same mechanism `ldappasswd` uses.
+LLDAP stores passwords with OPAQUE. Its HTTP password endpoints need the client half of that protocol, so the Hub sets passwords over LDAP instead (the standard Password Modify operation, RFC 3062). LLDAP then does the OPAQUE step itself. This is the same mechanism `ldappasswd` uses. The password crosses the `portcullis` network in clear text, like Keycloak's and enroll's LDAP binds; core may switch to LDAPS with `LLDAP_LDAP_URL=ldaps://…`.
 
 ## Drift detection
 

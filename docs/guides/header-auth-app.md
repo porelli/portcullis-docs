@@ -62,8 +62,11 @@ After `portcullis-auth@docker` (oauth2-proxy) and `portcullis-groups@docker` (gr
 | `X-Auth-Request-Groups` | Comma-separated LLDAP groups | group-gate (echoed from oauth2-proxy) |
 | `X-Auth-Request-Preferred-Username` | The username | oauth2-proxy |
 | `Authorization`, `X-Forwarded-Access-Token` | The Keycloak access token (`Bearer …`) | oauth2-proxy |
+| `X-Forwarded-Attr-<Header-Name>` | Custom user field values (e.g., `X-Forwarded-Attr-Department`, `X-Forwarded-Attr-Office-Location`), if the field is shared with apps | group-gate |
 
-Traefik deletes every one of these from the client's request first and only adds the values the forward-auth services returned (CI's browser test sends spoofed copies and checks they are dropped).
+**Custom attribute headers** (`X-Forwarded-Attr-*`): When admins define custom user fields (department, office, manager, etc.) in the Hub's **Setup** tab and enable "Share with apps", group-gate returns additional headers with the user's field values. Values are percent-encoded (`%` → `%25`, `,` → `%2C`), joined with `, ` (comma-space), and limited to 1 KB per value (before encoding; longer values are dropped and logged). **Apps must percent-decode each value after splitting on `, `**. Attribute headers are present only when the request is allowed (after auth factors are satisfied). See [Integration Contracts §4.1, §5](integration-contracts.md#41-user-attributes-file-hub-group-gate-new).
+
+Traefik deletes every one of these from the client's request first and only adds the values the forward-auth services returned. Client copies of `X-Forwarded-Attr-*` are stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on every forwardAuth middleware (CI's browser test sends spoofed copies and checks they are dropped).
 
 !!! warning "Email is never an identity or linking key"
     `X-Forwarded-User` is the **immutable LLDAP username**. `X-Forwarded-Email` is the user-editable email: LLDAP lets every user change their own address, including to someone else's. That is why Keycloak's LDAP federation has `trustEmail=false` (tokens carry `email_verified=false`) and oauth2-proxy keys sessions on `preferred_username`.
