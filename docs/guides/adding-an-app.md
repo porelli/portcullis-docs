@@ -54,7 +54,7 @@ mkdir myapp
 | can create/log in users from a trusted header (`X-Forwarded-User`) | `header-auth` | `portcullis-auth@docker,portcullis-groups@docker` |
 | has its own login (or none) and no SSO | `forward-auth` | `portcullis-auth@docker,portcullis-groups@docker` |
 | is protected by client certificates only | `mtls` | `tls.options: protected@file`, no forward-auth |
-| uses a vendor account system (e.g. plex.tv) | `custom` | none |
+| uses a vendor account system (e.g. plex.tv) | `custom` (+ [`auth.native_login`](manifest-reference.md#authnative_login) if it has its own login) | none: the Hub adds Portcullis sign-in through its override |
 | is meant to be public | `public` | none |
 
 Prefer `native-oidc` when the app supports it well: mobile apps, API tokens and

@@ -16,7 +16,7 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 💸 [Firefly III](firefly-iii.md) | `finance` | finance | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
 | 📷 [Immich](immich.md) | `photos` | media | `native-oidc` | :white_check_mark: Yes | :x: | :x: |
 | 📺 [Jellyfin](jellyfin.md) | `media` | media | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
-| 🎬 [Plex](plex.md) | `plex` | media | `custom` | :x: No | :x: | :x: |
+| 🎬 [Plex](plex.md) | `plex` | media | `custom` | :x: No | :white_check_mark: | :x: |
 | 📊 [Grafana](grafana.md) | `grafana` | monitoring | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
 | 💾 [Scrutiny](scrutiny.md) | `disks` | monitoring | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 🛡 [AdGuard Home](adguard.md) | `adguard` | networking | `forward-auth` | :x: No | :white_check_mark: | :x: |

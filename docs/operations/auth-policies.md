@@ -1,12 +1,11 @@
 # Authentication Policies
 
-Portcullis lets you require any combination of three authentication factors for each app, with AND or OR semantics, plus a global default. This page explains the model and how to use it.
+Portcullis lets you require either or both of two hardware-backed factors (a passkey, a client certificate) for each app, with AND or OR semantics, plus a global default. Each app enforces only what its auth method can (see [What each app can enforce](#what-each-app-can-enforce)). This page explains the model and how to use it.
 
 ## Factors
 
 | Factor | How the user proves it | Keycloak executor | `amr` value | LoA |
 |--------|------------------------|-------------------|-------------|-----|
-| **Password** | No password in the browser flow: met by any signed-in session (a passkey or a cert is stronger) | — | `pwd` | 1 |
 | **WebAuthn** | Taps a hardware security key (YubiKey, platform authenticator) | `webauthn-authenticator-passwordless` | `hwk` | 2 |
 | **mTLS** | Presents a client certificate over TLS (PIV / YubiKey cert) | `auth-x509-client-username-form` | `mtls` | 3 |
 
@@ -15,11 +14,22 @@ sign-in is a passkey or a client cert and reaches LoA 2 in one touch
 (oauth2-proxy asks for `hwk` by default); LoA 3 needs the cert. First passkeys
 come from one-time setup links (`./portcullis invite`, the Hub's Users & Groups).
 
+!!! note "There is no password factor"
+    The realm's browser flow has no password: its LoA 1 (`pwd`) subflow is a
+    client cert or a passkey, the same as LoA 2. The Hub never offers or
+    writes `password`, and its API refuses it (`400`). A stored policy that
+    still names it is normalised when the Hub loads `state.yaml`, never into
+    something weaker: in an `all` policy it is redundant and dropped; as an
+    alternative (`any`, or alone) it accepted every session, so it becomes
+    `any of [mtls, webauthn]`. The app's settings (or the Settings tab) show
+    a note until the policy is saved. group-gate still parses `password`
+    (met by every `hwk`/`mtls` session) but the Hub no longer publishes it.
+
 ## Policy model
 
 A policy has two parts:
 
-1. **Factors** — zero or more of `mtls`, `webauthn`, `password`.
+1. **Factors** — zero or more of `mtls`, `webauthn`.
 2. **Op** — `any` (any selected factor satisfies the policy) or `all` (every selected factor must have fired in the current session).
 
 Special cases:
@@ -32,10 +42,9 @@ Examples:
 | Policy | Meaning |
 |--------|---------|
 | `{factors: [], op: ""}` | Public |
-| `{factors: ["password"]}` | Username + password only |
+| `{factors: ["webauthn"]}` | A passkey |
 | `{factors: ["mtls", "webauthn"], op: "any"}` | Either mTLS **or** WebAuthn |
 | `{factors: ["mtls", "webauthn"], op: "all"}` | mTLS **and** WebAuthn (both must fire) |
-| `{factors: ["mtls", "webauthn", "password"], op: "any"}` | Any one of the three |
 
 ## Configuring policies
 
@@ -43,9 +52,10 @@ Examples:
 
 **Per-app** — open an app in the catalog and use the *Access policy* block above the settings form:
 
-- Tick the factors you want.
+- Every app starts with *Inherit global default* ticked. While it inherits, the factor boxes are disabled and show the app's **effective** policy: the global default intersected with what the app can enforce, with a note when the two differ (e.g. "The global default allows mTLS or WebAuthn; this app can't enforce WebAuthn, so it enforces mTLS").
+- Untick *Inherit* to set an override. Only factors the app can enforce are selectable; the others are greyed out ("this app can't enforce it"), and the Hub refuses them with a `400` too.
 - If two or more are ticked, pick *Require all checked* (AND) or *Any of checked* (OR).
-- Tick *Inherit global default* to drop the override.
+- Apps that handle their own sign-in (`custom`, `public`, or an app switched to its own login only) show the block disabled: "This app handles its own sign-in".
 
 **Global default** — the *Settings* tab exposes the default policy that every app without an override uses. Changing it affects all apps whose per-app policy is unset.
 
@@ -69,11 +79,51 @@ Examples:
 
 The **safety score** next to each policy is a cosmetic sum: 0 for public, LoA for a single factor, LoA + 0.5 per extra required factor for AND policies.
 
+## What each app can enforce
+
+| Auth method | Factors | Where |
+|-------------|---------|-------|
+| `forward-auth`, `header-auth`, `custom` behind Portcullis sign-in | `mtls`, `webauthn` | group-gate, on every request; a certificate is bound to the user ([mTLS binding](#mtls-binding)) |
+| `native-oidc` | `mtls`, `webauthn` | Keycloak, when the user signs in to the app (`acr` of its client). mTLS is checked per connection only when the policy selects the `protected@file` tier (mTLS alone, or `all` including it) |
+| `mtls` | `mtls` | The TLS handshake (`protected@file`), always: the certificate stays required even under a public or WebAuthn-only default, and an override can only be `[mtls]` |
+| `custom`, `public`, own login only | none | The app handles its own sign-in; no policy, tier `public@file` |
+
+The **effective policy** is the configured one (override or global default)
+with the unsupported factors left out. For `any` that removes an alternative;
+for `all` it removes a requirement the app can't check, which the app's
+settings say. If nothing of the configured policy is enforceable (a
+WebAuthn-only default on an mTLS-only app), the app's own floor applies (the
+certificate) and the settings say so. The TLS tier and the Keycloak `acr`
+come from the effective policy. The policy file is unchanged: overrides are
+published as stored (they only name supported factors), inheriting apps
+publish nothing.
+
+## Apps with their own login
+
+A `custom` template whose app has its own login and no SSO declares
+[`auth.native_login`](../guides/manifest-reference.md#authnative_login). Its
+settings then have a **Sign-in** choice:
+
+- **Portcullis sign-in, then the app's own login** (default). The Hub's
+  override puts `portcullis-auth@docker,portcullis-groups@docker` in front of
+  every router's own middlewares; group-gate requires the template's
+  `access_group` and the policy applies per request, as for `forward-auth`.
+- **App's own login only (no Portcullis)**, only if the template sets
+  `allow_without_gateway: true`. The routers keep the template's middlewares
+  without the gateway pair, the tier is `public@file` and no group is
+  published: anyone on the internet reaches the app's login page. The UI
+  shows a red warning, the switch is audited (`app.sign_in`) and the Hub logs
+  it.
+
+The template is never edited; both modes are compose-override labels, which
+the drift check compares with the running containers. If a template stops
+allowing the own-login-only mode, the Hub falls back to Portcullis sign-in.
+
 ## What happens when a user hits an app
 
 ### Same-LoA SSO (no step-up)
 
-User logs into Docs (policy: public). Opens Grafana (policy: `any of [password]`). Their Keycloak session cookie carries `acr=pwd`, which satisfies Grafana's required LoA — Grafana gets a token with no further prompt. Same for any other apps with policies their session already satisfies.
+User signs in to Grafana with a passkey (policy: `any of [mtls, webauthn]`, session `acr=hwk`). Opens Immich (policy: `webauthn`). The Keycloak session already satisfies the required LoA, so Immich gets a token with no further prompt. Same for any other apps with policies their session already satisfies.
 
 ### Step-up on a stricter app
 
@@ -85,15 +135,15 @@ oauth2-proxy ≥ 7.10 accepts per-request `acr_values` via the `loginURLParamete
 
 ### Public policy
 
-A policy with no factors means group-gate requires **no particular factor**, and the Hub sets the router's tier to `public@file`. The Hub only changes `tls.options`. The template's middlewares stay as they are, so a forward-auth app still requires a Keycloak login and its group. An app is only reachable without logging in if its template has no forward-auth middleware (`auth.method: public`).
+A policy with no factors means group-gate requires **no particular factor**, and the Hub sets the router's tier to `public@file`. The Hub only changes `tls.options`. The template's middlewares stay as they are, so a forward-auth app still requires a Keycloak login and its group. An app is only reachable without logging in if its routers have no forward-auth middleware (`auth.method: public`, a `custom` app, or one switched to [its own login only](#apps-with-their-own-login)). An `mtls` app never becomes public: it keeps requiring the certificate.
 
 ## Traefik TLS tier
 
-The policy also drives the TLS tier on each router via a Hub-generated compose override:
+The effective policy also drives the TLS tier on each router via a Hub-generated compose override:
 
 | Policy | Tier | Behaviour |
 |--------|------|-----------|
-| Public | `public@file` | No client cert, no forward-auth |
+| Public, or the app handles its own sign-in | `public@file` | No client cert |
 | mTLS-only, or `all of [..., mtls]` | `protected@file` | Requires client cert at TLS handshake |
 | Everything else | `authaware@file` | Client cert tolerated but not required |
 
@@ -163,15 +213,18 @@ Policies decide *how* a user signed in; *who* the user is always comes from the 
 
 ## Enforcement map
 
-| Layer | Public | Password | WebAuthn | mTLS | AND combinations | OR combinations |
-|-------|--------|----------|----------|------|------------------|-----------------|
-| Traefik | `public` | `authaware` | `authaware` | `protected` | `protected` if `mtls` in set | `authaware` unless mTLS-only |
-| Keycloak | none | LoA 1 flow | LoA 2 flow | LoA 3 flow | highest LoA + step-up | lowest LoA (any satisfies) |
-| group-gate | no factor check | require `pwd ∈ amr` | require `hwk ∈ amr` | require `mtls ∈ amr` + mTLS binding | require all factors in `amr` (+ binding if `mtls`) | require `amr ∩ factors ≠ ∅` (+ binding if only `mtls` matched) |
+| Layer | Public | WebAuthn | mTLS | AND combinations | OR combinations |
+|-------|--------|----------|------|------------------|-----------------|
+| Traefik | `public` | `authaware` | `protected` | `protected` if `mtls` in set | `authaware` unless mTLS-only |
+| Keycloak | none | LoA 2 flow | LoA 3 flow | highest LoA + step-up | lowest LoA (any satisfies) |
+| group-gate | no factor check | require `hwk ∈ amr` | require `mtls ∈ amr` + mTLS binding | require all factors in `amr` (+ binding if `mtls`) | require `amr ∩ factors ≠ ∅` (+ binding if only `mtls` matched) |
+
+The table is per factor of the **effective** policy; which layers apply
+depends on the auth method ([above](#what-each-app-can-enforce)).
 
 ## LLDAP passwords
 
-The browser flow never asks for an LLDAP password. LLDAP passwords remain for LLDAP's own web UI and for apps that bind to LDAP themselves. A `password` policy factor is met by any signed-in session.
+The browser flow never asks for an LLDAP password. LLDAP passwords remain for LLDAP's own web UI and for apps that bind to LDAP themselves. They are no policy factor.
 
 ## Caveats
 
@@ -190,5 +243,5 @@ Your browser may not be sending the client certificate. Check that the cert is i
 **Keycloak login form appears when you expected SSO**
 The session cookie expired (8 hours idle / 12 hours max by default). Re-authenticate.
 
-**AND policy keeps failing with `amr=["pwd"]` even after a WebAuthn step-up**
+**AND policy keeps failing even after a WebAuthn step-up**
 Check that the `acr` client scope is attached to the app's Keycloak client and that the `acr loa level` protocol mapper has `Add to access token = true`. `./portcullis keycloak configure` does this for `portcullis-forward-auth`, and the Hub attaches the `acr` and `groups` scopes to every client it registers; a manually-created client may be missing them.

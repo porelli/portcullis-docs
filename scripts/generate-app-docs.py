@@ -231,6 +231,26 @@ def generate_app_page(app: dict, output_dir: Path):
             lines.append(f"    {line}" if line.strip() else "")
         lines.append("")
 
+    # App's own login (auth.native_login)
+    nl = auth.get("native_login")
+    if isinstance(nl, dict) and nl.get("supported"):
+        lines.append("## Sign-in")
+        lines.append("")
+        lines.append("The app has its own login. The Hub's per-app **Sign-in** setting chooses who signs users in "
+                     "([Apps with their own login](../operations/auth-policies.md#apps-with-their-own-login)):")
+        lines.append("")
+        gate = f"members of `{access_group}`" if group_access and access_group else "any signed-in user"
+        lines.append(f"- **Portcullis sign-in, then the app's own login** (default): forward-auth and group-gate in front, {gate}.")
+        if nl.get("allow_without_gateway"):
+            lines.append("- **App's own login only (no Portcullis)**: allowed by this template. No forward-auth, TLS tier "
+                         "`public@file`: anyone on the internet reaches the app's login page.")
+        else:
+            lines.append("- **App's own login only**: not allowed by this template.")
+        if nl.get("note"):
+            lines.append("")
+            lines.append(f"> {str(nl['note']).strip()}")
+        lines.append("")
+
     # Public exceptions (auth.public_access)
     pa = auth.get("public_access")
     if isinstance(pa, dict):
@@ -288,6 +308,10 @@ def generate_app_page(app: dict, output_dir: Path):
             tls = f"`{r['tls']}`" if r["tls"] else "—"
             lines.append(f"| `{md_cell(r['name'])}` | {hosts} | {paths} | {tls} | {bool_badge(gated)} |")
         lines.append("")
+        if isinstance(nl, dict) and nl.get("supported"):
+            lines.append("As written in `compose.yml`. With the default [Sign-in](#sign-in) the Hub's override adds "
+                         "`portcullis-auth@docker,portcullis-groups@docker` to every router.")
+            lines.append("")
 
     images = compose_images(app.get("_compose") or {})
     if images:

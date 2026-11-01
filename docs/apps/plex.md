@@ -11,12 +11,22 @@
 |----------|-------|
 | **Method** | `custom` |
 | **SSO** | :x: No |
-| **Group Access** | :x: |
+| **Group Access** | :white_check_mark: |
 | **Group Admin** | :x: |
+| **Access Group** | `users_plex` |
 | **Subdomain** | `plex` |
 
 !!! info "Auth Notes"
-    Plex uses its own plex.tv account system. No SSO or group integration possible. Claim token required for initial setup.
+    Plex uses its own plex.tv account system; no SSO is possible. By default the Hub puts Portcullis sign-in (users_plex) in front of Plex's own login; the Hub's Sign-in setting can switch to Plex's own login only (no Portcullis, TLS tier public), which Plex's native apps need. Claim token required for initial setup.
+
+## Sign-in
+
+The app has its own login. The Hub's per-app **Sign-in** setting chooses who signs users in ([Apps with their own login](../operations/auth-policies.md#apps-with-their-own-login)):
+
+- **Portcullis sign-in, then the app's own login** (default): forward-auth and group-gate in front, members of `users_plex`.
+- **App's own login only (no Portcullis)**: allowed by this template. No forward-auth, TLS tier `public@file`: anyone on the internet reaches the app's login page.
+
+> Plex signs users in with plex.tv accounts. Behind Portcullis sign-in only the web app in a browser works; Plex's TV, mobile and desktop apps can't pass forward-auth and need "App's own login only".
 
 ## Routing
 
@@ -25,6 +35,8 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
 | `plex` | `plex.<domain>` | all | `public@file` | :x: |
+
+As written in `compose.yml`. With the default [Sign-in](#sign-in) the Hub's override adds `portcullis-auth@docker,portcullis-groups@docker` to every router.
 
 ## Images
 

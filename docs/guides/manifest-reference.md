@@ -58,12 +58,13 @@ field.
 |-------|------|----------|-------------|
 | `method` | enum | Yes | `native-oidc`, `forward-auth`, `header-auth`, `mtls`, `custom` or `public` (see below) |
 | `sso` | `true`, `false` or `"partial"` | Yes | Whether single sign-on is supported |
-| `group_access` | boolean | Yes | group-gate restricts the app's subdomains to `access_group` |
+| `group_access` | boolean | Yes | group-gate restricts the app's subdomains to `access_group`. For `custom` apps only while Portcullis sign-in is in front of them (`native_login`) |
 | `group_admin` | boolean | Yes | The app maps `admin_group` to its admin role |
 | `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>` |
 | `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>` |
 | `admin_paths` | list of path prefixes | No | Paths that additionally require `admin_group` (see below) |
 | `public_access` | object | No | Public path exceptions: share-link paths the Hub can open without forward-auth (see [auth.public_access](#authpublic_access)) |
+| `native_login` | object | No | The app has its own login and no SSO (`method: custom` only); enables the Hub's Sign-in setting (see [auth.native_login](#authnative_login)) |
 | `identity_headers` | list of header names | If `method: header-auth` and `public_access` is set | Headers the app reads the user from (e.g. `X-Forwarded-User`); the Hub strips them on public paths |
 | `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page. Upgrade constraints go here too |
 
@@ -77,6 +78,7 @@ Constraints the schema enforces:
 - `public_access` is only allowed with `method` `forward-auth`, `header-auth`
   or `native-oidc`; with `header-auth` it requires a non-empty
   `identity_headers` (each `^[A-Za-z][A-Za-z0-9-]{0,63}$`, unique).
+- `native_login` requires `method: custom` and `sso: false`.
 
 `access_group` is only *enforced* by group-gate when `group_access: true`.
 Otherwise it is informational.
@@ -89,7 +91,7 @@ Otherwise it is informational.
 | `forward-auth` | oauth2-proxy + group-gate in front. The app has its own login, or none | `portcullis-auth@docker,portcullis-groups@docker` |
 | `header-auth` | Forward-auth, and the app also trusts `X-Forwarded-User` from Traefik (and only from Traefik) | `portcullis-auth@docker,portcullis-groups@docker` |
 | `mtls` | Client certificate at the TLS layer | `tls.options: protected@file`, no forward-auth |
-| `custom` | App-specific account system, e.g. plex.tv | None |
+| `custom` | The app handles its own sign-in (app-specific account system, e.g. plex.tv). With `native_login`, the Hub can put Portcullis sign-in in front of it | None: the Hub's override adds the gateway pair for Portcullis sign-in |
 | `public` | No authentication | None |
 
 See [Choosing an auth method](https://github.com/porelli/portcullis-templates/blob/main/CONTRIBUTING.md#choosing-an-auth-method)
@@ -100,6 +102,51 @@ in the templates repo's contributing guide.
 - `true`: the user authenticates once in Keycloak and is logged into the app automatically.
 - `false`: the app has its own login form. Forward-auth only gates access, and the user logs in again.
 - `"partial"`: the app auto-creates users from the identity, but needs extra setup, e.g. role assignment.
+
+### auth.native_login
+
+For a `custom` app that has its own login and no SSO. The Hub then shows a
+per-app **Sign-in** setting and implements it with compose-override labels;
+the template itself never changes.
+
+```yaml
+auth:
+  method: custom
+  sso: false
+  group_access: true          # enforced only behind Portcullis sign-in
+  access_group: users_plex
+  group_admin: false
+  native_login:
+    supported: true
+    allow_without_gateway: true
+    note: Plex signs users in with plex.tv accounts; its TV and mobile apps need "App's own login only".
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `supported` | `true` | Yes | The app's own login protects it on its own |
+| `allow_without_gateway` | boolean | No (default `false`) | Admins may choose **App's own login only (no Portcullis)** |
+| `note` | string (≤ 500) | No | Shown next to the Sign-in setting: what the app's login is, what breaks behind forward-auth |
+
+The two modes ([Apps with their own login](../operations/auth-policies.md#apps-with-their-own-login)):
+
+- **Portcullis sign-in, then the app's own login** (default): every router
+  gets `portcullis-auth@docker,portcullis-groups@docker` in front of its own
+  middlewares, the TLS tier from the policy, and group-gate requires
+  `access_group` if `group_access: true`. The access policy applies as for
+  `forward-auth`.
+- **App's own login only** (only with `allow_without_gateway: true`): the
+  template's middlewares without the gateway pair, `public@file`, no group.
+
+Rules (schema and `tests/validate.py`; the Hub checks the first two too):
+
+- only with `method: custom` and `sso: false`: an app with SSO is signed in
+  through Portcullis and never gets a way around it;
+- `supported` must be `true` (omit the block otherwise);
+- a `custom` app with `group_access: true` needs `native_login` (group-gate
+  only runs behind Portcullis sign-in);
+- the compose file of a `custom` app never uses `portcullis-auth@docker` or
+  `portcullis-groups@docker`: the Hub adds them.
 
 ### admin_paths
 
@@ -491,6 +538,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - every `secret_env` is an `env` entry with `generate: random`
 - port `bind` values are IPs and `range` values are valid
 - `config_files` sources exist
+- `auth.native_login` only with `method: custom` and `sso: false`, and a `custom` app with `group_access: true` declares it
 
 **Networks and volumes**
 
@@ -521,6 +569,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - `security-headers@file` is in the middlewares
 - `portcullis-auth@docker` and `portcullis-groups@docker` always appear together, in that order
 - forward-auth and header-auth routers use them; native-OIDC host-wide routers don't
+- `public`, `custom` and `mtls` routers use neither (for `custom` apps the Hub adds them, see [auth.native_login](#authnative_login))
 - each `admin_paths` entry is served by a gated router
 
 **Public exceptions** (`auth.public_access`)

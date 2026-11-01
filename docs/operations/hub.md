@@ -67,8 +67,33 @@ Each enabled app has four tabs: **Settings**, **Status**, **Logs** and **Expert*
 
 ### Settings
 
-- The **access policy** block: factors (mTLS / WebAuthn / password), any-of or
-  all-of, or *inherit global default*. See [Authentication Policies](auth-policies.md).
+- The **Sign-in** block, only for apps whose manifest declares
+  [`auth.native_login`](../guides/manifest-reference.md#authnative_login)
+  (Plex): *Portcullis sign-in, then the app's own login* (default; the
+  override adds `portcullis-auth@docker,portcullis-groups@docker` to every
+  router, group = the template's `access_group`) or *App's own login only (no
+  Portcullis)*, offered only if the template allows it. Choosing the latter
+  shows a red warning; saving writes the routers without the gateway
+  middlewares and with `public@file`, publishes no group for the app, logs a
+  warning and adds an `app.sign_in` entry (actor, `gateway -> native`) to the
+  audit log, refusals included. See
+  [Apps with their own login](auth-policies.md#apps-with-their-own-login).
+- The **access policy** block, capability-aware (see
+  [What each app can enforce](auth-policies.md#what-each-app-can-enforce)):
+    - *Inherit global default* is ticked for every app without an override.
+      While it is, the boxes are disabled and show the **effective** policy
+      (global default ∩ what the app can enforce), with the TLS tier and notes:
+      how the app enforces it (per request, at login, at the TLS handshake),
+      and what differs from the global default, including a default the app
+      can't enforce at all.
+    - Unticked, only the factors the app supports can be checked (mTLS and
+      WebAuthn; mTLS only for `mtls` apps), with any-of or all-of. The Hub
+      refuses other factors with a `400` naming them.
+    - Apps that handle their own sign-in (`custom` without Portcullis
+      sign-in, `public`) show the block disabled: "This app handles its own
+      sign-in".
+    - There is no password factor. A stored policy that names `password` is
+      normalised (never weaker) and the block says so until it is saved.
 - **Settings** declared in the manifest:
     - `path` / `paths`: host directories bind-mounted into a container, e.g. media libraries
     - `text`: free-form values
@@ -210,7 +235,9 @@ TLS tier the host gets, and a template can't open paths by itself.
   their own policy get `authaware@file`, and Keycloak steps up to at least
   LoA 2 (`hwk`). A certificate sign-in (`mtls`) satisfies it too.
   You can still choose a public default explicitly. That choice is stored and
-  honoured, and differs from "never set".
+  honoured, and differs from "never set". The default may name both factors;
+  each app enforces what it can of it (an `mtls` app always requires the
+  certificate, apps with their own sign-in get none). `password` is refused.
   Changing it re-applies it to every enabled app that inherits it, and
   restarts only the apps whose Traefik TLS tier actually changed. Saving an
   unchanged default does nothing.
@@ -376,7 +403,7 @@ running/total container count, and buttons for the allowed actions:
 | `running_not_enabled` | Containers of `portcullis-<id>` run, but the app is not enabled (the message adds "its public-exception router bypasses forward-auth" if they carry one) | **Stop & remove** (`stop`: compose down). **Enable** (`adopt`: mark it enabled and compose up) when a template with that ID exists |
 | `stopped_not_enabled` | Stopped containers left behind by an app that is not enabled | **Stop & remove** (`stop`) |
 | `template_missing` | Enabled, but no valid template provides it any more (source removed, template deleted or now invalid) | **Disable** (`disable`) |
-| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware) differs from what the Hub renders now — a widened rule, a missing guard or other middleware, a stale or missing public router (e.g. after a failed restart, a template change or an Expert override edit) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
+| `public_access_mismatch` | An exposure label of a running container (any router's `tls.options`, any label of the public router or its strip middleware, and for apps with [their own login](auth-policies.md#apps-with-their-own-login) every router's `middlewares`, e.g. after switching the Sign-in mode without a restart) differs from what the Hub renders now — a widened rule, a missing guard or other middleware, a stale or missing public router (e.g. after a failed restart, a template change or an Expert override edit) — or a stored public choice can't be applied ("confirm a mode") | **Apply settings** (`apply`: regenerate the override and compose up), **Disable** (`disable`); none for "confirm a mode" (fix it in Settings) |
 
 Destructive actions ask for confirmation. **Re-check** runs a reconcile
 immediately. Apps that are in the middle of an operation are skipped.
@@ -396,14 +423,16 @@ If Docker is unreachable, the report carries `error` and the UI shows
 
 Drift must never open access. That is why `state.yaml` keeps a **snapshot**
 (`published`) of each enabled app's last published config: subdomains, access
-group, admin paths, policy override and the public paths it opened (with
-`{token}`). The containers keep the public router they were started with, so
+group, admin paths, policy override, whether it ran with its own login only
+(then no group is published: its routers have no group-gate) and the public
+paths it opened (with `{token}`). The containers keep the public router they were started with, so
 the snapshot keeps showing it in the policy file's `public_paths`.
 
 - **Template missing, snapshot present.** If an enabled app's template stops
   loading, the Hub keeps publishing the snapshot to group-gate, so the app
   stays protected exactly as before. The drift message says "template missing
-  — still enforced from last known config".
+  — still enforced from last known config", plus "configured for the app's own
+  login only" for such apps.
 - **No snapshot.** If an enabled app has no snapshot, or a `portcullis-<id>`
   project runs without being enabled, the Hub reads the `Host()` rules from the
   running containers' labels. It publishes the reserved group
@@ -422,6 +451,8 @@ Templates must load cleanly, or the Hub skips them and logs why:
 - The directory name must match `^[a-z0-9][a-z0-9_-]{0,63}$`.
 - Setting, port and env keys must be valid `.env` keys.
 - Port `bind` values must be IP addresses.
+- `auth.method` must be one of the schema's methods; `auth.native_login`
+  only with `method: custom`, `sso: false` and `supported: true`.
 
 **Strict Traefik rule parsing.** group-gate keys every policy, group and path
 rule by subdomain. A host the Hub doesn't see would get no policy and no group,
