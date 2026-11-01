@@ -289,7 +289,6 @@ mounts.
 - **Identity is the LLDAP username, never the email.** LLDAP lets users edit
   their own mail, including to someone else's address. So:
     - Keycloak's LDAP federation does not trust it (`trustEmail=false`, tokens carry `email_verified=false`).
-    - Keycloak's LDAP federation has `cachePolicy=NO_CACHE` (realm export + `./portcullis keycloak configure`): group memberships and attributes are read from LLDAP on every lookup, so a removal or attribute change in LLDAP is in the next token (oauth2-proxy refreshes every minute) instead of a cached copy surviving until eviction or the daily sync.
     - oauth2-proxy's session user is always the token's `sub` (Keycloak's user UUID). Its alpha `userIDClaim` is only a deprecated alias of `emailClaim`, so it is not used (CI rejects it). Instead `oauth2-proxy/alpha.yaml` builds `X-Auth-Request-User`, `X-Forwarded-User` and `X-Auth-Request-Preferred-Username` from the `preferred_username` claim, keeps `emailClaim: email`, and accepts the unverified email (`insecureAllowUnverifiedEmail`) because nothing authorises by it.
     - group-gate reads the username **only** from `X-Auth-Request-Preferred-Username` (set by `portcullis-auth`, which must run first) and denies the request when it is missing. It never falls back to the email or `sub`.
     - Apps get `X-Forwarded-User` / `X-Auth-Request-User` = immutable username, and `X-Forwarded-Email` / `X-Auth-Request-Email` = email (display only).
