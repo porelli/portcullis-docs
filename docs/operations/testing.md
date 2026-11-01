@@ -88,7 +88,7 @@ the internal PKI) and verifies:
     - runs as non-root
     - talks to Docker only via its proxy
     - answers 403 without the proxy secret
-    - on a fresh install publishes the built-in default auth policy `{factors: [webauthn]}`, which group-gate applies (step-up) to an app without its own policy
+    - on a fresh install publishes the built-in default auth policy `{factors: [mtls, webauthn], op: any}` (either YubiKey method), which group-gate applies (step-up for a session with neither) to an app without its own policy
     - then gets a public default through `PUT /api/settings`, like an admin would; the revocation test checks that precondition, and every hand-written group-gate policy file in CI states its default explicitly
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
 - **Passkey-only sign-in and setup links.**
