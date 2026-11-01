@@ -11,6 +11,43 @@ command: `./portcullis init`.
 - **A server** with ports 80 and 443 reachable (VPS, home server, or local machine)
 - **A YubiKey** (or another FIDO2 key) for WebAuthn. `ykman` is only needed for PIV/mTLS certificates
 
+## Before you start: DNS
+
+Portcullis gets one Let's Encrypt **wildcard** certificate for `*.<domain>`
+with an ACME **DNS-01** challenge. Without working DNS, Traefik can't get a
+certificate and every page shows a browser warning. Two things must be in
+place:
+
+1. **The domain's DNS is hosted at a supported provider**, and you have an
+   **API token that can edit its DNS records**. Traefik uses the token to
+   create the temporary `_acme-challenge` TXT record. The token is needed even
+   if you create the A/AAAA records yourself. Per-provider steps (Cloudflare:
+   "Edit zone DNS", Porkbun, Route 53, DigitalOcean, Hetzner, others) are in
+   [DNS Configuration → Step 2](dns.md#step-2-create-a-dns-provider-api-token).
+2. **Records pointing at the server**: `<domain>` and `*.<domain>` (A, and
+   AAAA if the host has IPv6) → the server's public IP. `./portcullis init`
+   creates them for the providers it knows (`dns setup`), or prints them for
+   you to create by hand. See [DNS Configuration → Step 1](dns.md#step-1-configure-dns).
+
+Check before running `init` (or right after, if it created the records):
+
+```bash
+dig +short portcullis.example.com
+dig +short test.portcullis.example.com   # any name: answered by the wildcard
+```
+
+Both must return the server's public IP. If the domain has a **CAA** record,
+it must allow `letsencrypt.org`.
+
+!!! tip
+    For a first try, set `ACME_STAGING=true` in `.env` (see the table below):
+    Let's Encrypt's staging service has no rate limits, so DNS mistakes don't
+    lock you out for an hour. Switch it off with `./portcullis config apply`
+    once everything works.
+
+No public domain (local testing)? Use `--dns-provider none` and the
+self-signed setup in [DNS Configuration → Local Development](dns.md#local-development-no-public-domain).
+
 ## Step 1: Clone the core repository
 
 ```bash
@@ -129,6 +166,15 @@ usually takes 1-3 minutes:
 docker compose logs -f traefik 2>&1 | grep -i acme
 ./portcullis status        # overall health; exits 1 if something is down
 ```
+
+No certificate after a few minutes? Check, in this order:
+
+- `./portcullis dns setup --check` (are the records right and public?);
+- the provider token: it must be allowed to **edit DNS records** of this zone
+  (a read-only or wrong-zone token fails the challenge);
+- the Traefik log for `acme` errors such as `rateLimited` (use
+  `ACME_STAGING=true` while testing) or `CAA`;
+- to change the provider or token, follow [DNS Configuration → Changing the provider or credentials](dns.md#changing-the-provider-or-credentials).
 
 ## Step 4: First sign-in (setup link)
 
