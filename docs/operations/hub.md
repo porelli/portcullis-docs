@@ -205,8 +205,10 @@ TLS tier the host gets, and a template can't open paths by itself.
 ## Settings tab (global)
 
 - **Default access policy.** Applies to every app without its own policy.
-  **Until an admin saves one, the default is WebAuthn** (hardware key): apps
-  without their own policy get `authaware@file` and Keycloak steps up to LoA 2.
+  **Until an admin saves one, the default is a YubiKey by either method**,
+  `any of [mtls, webauthn]`: a client certificate or a passkey. Apps without
+  their own policy get `authaware@file`, and Keycloak steps up to at least
+  LoA 2 (`hwk`). A certificate sign-in (`mtls`) satisfies it too.
   You can still choose a public default explicitly. That choice is stored and
   honoured, and differs from "never set".
   Changing it re-applies it to every enabled app that inherits it, and

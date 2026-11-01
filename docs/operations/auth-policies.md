@@ -49,14 +49,23 @@ Examples:
 
 **Global default** — the *Settings* tab exposes the default policy that every app without an override uses. Changing it affects all apps whose per-app policy is unset.
 
-!!! note "Fresh installs require hardware keys"
-    Until an admin saves a global default, the Hub uses **WebAuthn** as the
-    default. Every app without its own policy then requires a hardware security
-    key: routers get `authaware@file`, Keycloak steps up to LoA 2, and
-    group-gate requires `hwk` in `amr`. A password-only session gets the
-    step-up page. To also accept YubiKey PIV certificates, save
-    `any of [mtls, webauthn]`. An explicitly saved public default is stored and
-    honoured. It is not the same as "never set".
+!!! note "Fresh installs require a YubiKey"
+    Until an admin saves a global default, the Hub uses
+    **`any of [mtls, webauthn]`** (`{"factors": ["mtls", "webauthn"], "op": "any"}`).
+    Every app without its own policy then requires the YubiKey, by either
+    method: its client certificate (`mtls`, LoA 3) or a passkey (`webauthn`,
+    LoA 2).
+
+    - Routers get `authaware@file`: the certificate is optional at the
+      handshake.
+    - Keycloak steps up to at least LoA 2 (`hwk`).
+    - group-gate accepts `mtls` or `hwk` in `amr`, so a certificate sign-in
+      passes too (including `enroll.<domain>/self` renewal).
+    - A password-only session gets the step-up page.
+
+    A WebAuthn-only default would send certificate users to the step-up page
+    on every app. An explicitly saved public default is stored and honoured.
+    It is not the same as "never set".
 
 The **safety score** next to each policy is a cosmetic sum: 0 for public, LoA for a single factor, LoA + 0.5 per extra required factor for AND policies.
 

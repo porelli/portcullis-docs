@@ -50,7 +50,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 ```json
 {
   "version": 3,
-  "default":  {"factors": ["webauthn"], "op": ""},
+  "default":  {"factors": ["mtls", "webauthn"], "op": "any"},
   "policies": {"<subdomain>": {"factors": ["mtls", "webauthn"], "op": "any|all"}},
   "groups":   {"<subdomain>": "<required LLDAP group>"},
   "path_groups": {
