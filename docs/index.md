@@ -25,7 +25,7 @@ Apps choose their auth method: forward-auth for apps without SSO support, native
 
 ## Repositories
 
-Portcullis is split across four repositories:
+Portcullis is split across four repositories. This site is the documentation for all of them; each repository keeps only a README (and the templates repo its [CONTRIBUTING.md](https://github.com/porelli/portcullis-templates/blob/main/CONTRIBUTING.md)).
 
 | Repository | Purpose | Link |
 |-----------|---------|------|

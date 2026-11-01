@@ -6,9 +6,6 @@ running. `--offsite` also uploads it, encrypted, to a
 storage. `./portcullis backup verify` proves that a backup can be restored, and
 `./portcullis restore` puts one back, on the same host or on a new one.
 
-The core repo's `docs/backups.md` is the authoritative reference. This page
-summarises it.
-
 !!! danger "A backup is the keys to everything"
     A backup contains `secrets/`, which holds the Vault **root token and unseal
     key**, plus `.env` with every password. Whoever has a backup can decrypt
@@ -81,7 +78,8 @@ BACKUP_KEEP_MONTHLY=6
 
 How the upload runs:
 
-- **Container.** restic runs in its pinned image as your user, with a read-only
+- **Container.** restic runs in its pinned image (`BACKUP_RESTIC_IMAGE` in
+  the core repo's `scripts/lib/backup.sh`) as your user, with a read-only
   root filesystem and no capabilities.
 - **Secrets.** The repository password and the provider credentials are passed
   to the container by variable name, never on a command line.

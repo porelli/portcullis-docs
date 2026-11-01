@@ -52,7 +52,7 @@ Note: SAML apps handle their own authentication flow with Keycloak, so they do n
 
 ### 2a. Open Keycloak Admin
 
-Navigate to `https://auth.<your-domain>/admin/` and log in with your admin credentials. Select the **portcullis** realm from the dropdown.
+Navigate to `https://auth.<your-domain>/admin/` and sign in with your passkey as a member of `lldap_admin` (the realm admins of the **portcullis** realm). Select the **portcullis** realm from the dropdown.
 
 ### 2b. Create a New SAML Client
 
@@ -158,7 +158,7 @@ In Nextcloud's **Administration settings** under **SSO & SAML authentication**:
 1. Open a private/incognito window
 2. Go to `https://nextcloud.<your-domain>`
 3. You should see a "Login with SSO" button or be redirected automatically
-4. Keycloak authenticates via WebAuthn (or client certificate if mTLS is enabled)
+4. Keycloak authenticates with your passkey (or client certificate if mTLS is enabled)
 5. You are logged into the app
 
 ## Step 4: Optional -- LDAP User Backend
@@ -214,7 +214,9 @@ For apps behind a reverse proxy, you typically need to configure the app to know
 ```php
 'overwriteprotocol' => 'https',
 'overwrite.cli.url' => 'https://nextcloud.<your-domain>',
-'trusted_proxies' => ['172.16.0.0/12', '10.0.0.0/8'],
+'trusted_proxies' => ['172.31.250.2'],   // PORTCULLIS_TRAEFIK_IP only
 ```
+
+Trust only Traefik's fixed address (`PORTCULLIS_TRAEFIK_IP`, default `172.31.250.2`), never whole private ranges: every app container on `portcullis-proxy` could otherwise set its own `X-Forwarded-For`.
 
 Other apps have similar settings (e.g., `FORCE_HTTPS`, `TRUST_PROXY`, `SECURE_PROXY_SSL_HEADER`).

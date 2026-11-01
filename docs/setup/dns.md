@@ -34,10 +34,14 @@ portcullis.example.com    A  203.0.113.10
 If you prefer explicit records, create one for each service:
 
 ```
+portcullis.example.com            A  203.0.113.10
 auth.portcullis.example.com       A  203.0.113.10
-hub.portcullis.example.com        A  203.0.113.10
 directory.portcullis.example.com  A  203.0.113.10
+enroll.portcullis.example.com     A  203.0.113.10
+hub.portcullis.example.com        A  203.0.113.10
+people.portcullis.example.com     A  203.0.113.10
 traefik.portcullis.example.com    A  203.0.113.10
+metrics.portcullis.example.com    A  203.0.113.10   (monitoring profile only)
 ```
 
 You will need to add a record each time you enable a new app.
@@ -98,7 +102,7 @@ HETZNER_API_KEY=your-key
 
 Traefik supports 80+ DNS providers via [lego](https://doc.traefik.io/traefik/https/acme/#providers). Set `DNS_PROVIDER=<lego-provider-name>` and its required environment variables in `.env`.
 
-If your provider's environment variables are not already listed in `docker-compose.yml`, add them to the Traefik service's `environment` section.
+Traefik is configured entirely through environment variables in the core `docker-compose.yml` (there is no `traefik.yml`). If your provider's environment variables are not already listed there, add them to the `traefik` service's `environment` section in a `docker-compose.override.yml` (it is part of every backup).
 
 ## Step 3: Configure Portcullis
 
@@ -210,7 +214,7 @@ For local development without a real domain or ACME:
 2. Add entries to `/etc/hosts`:
 
 ```
-127.0.0.1  auth.portcullis.local hub.portcullis.local directory.portcullis.local traefik.portcullis.local
+127.0.0.1  portcullis.local auth.portcullis.local directory.portcullis.local enroll.portcullis.local hub.portcullis.local people.portcullis.local traefik.portcullis.local
 ```
 
 3. Import `certs/root-ca.crt` into your browser or OS trust store to avoid certificate warnings

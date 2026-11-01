@@ -2,7 +2,21 @@
 
 ## Project Overview
 
-Documentation website for the Portcullis project, built with [Zensical](https://zensical.org) (the successor of MkDocs + Material for MkDocs) and deployed to GitHub Pages.
+Documentation website for the Portcullis project, built with [Zensical](https://zensical.org) (the successor of MkDocs + Material for MkDocs) and deployed to GitHub Pages at <https://porelli.github.io/portcullis-docs/>.
+
+**This site is the single home for Portcullis documentation.** The other repos keep only their `README.md` (and templates' `CONTRIBUTING.md`), each linking here; core's `docs/*.md` are one-line pointers to the pages below. Never add documentation to `docs/` in core, the Hub or templates — write it here.
+
+| Former core file | Page here |
+|------------------|-----------|
+| `docs/backups.md` | `docs/operations/backups.md` |
+| `docs/monitoring.md` | `docs/operations/monitoring.md` |
+| `docs/hardening.md` | `docs/operations/hardening.md` |
+| `docs/certificates.md` | `docs/setup/certificates.md` |
+| `docs/adding-a-domain.md` | `docs/setup/dns.md` |
+| `docs/saml-app-nextcloud.md` | `docs/guides/saml-app.md` |
+| `docs/non-saml-app-kanboard.md` | `docs/guides/header-auth-app.md` |
+
+Don't rename or move these pages (or their main headings) without updating the pointer files in core, which link to the published URLs.
 
 ## Critical Rules
 
@@ -22,9 +36,10 @@ When making changes to any Portcullis repo, update the corresponding docs here:
 | New setup step / `portcullis init` change | `docs/setup/quickstart.md` |
 | New or changed `./portcullis` command or option (core) | `docs/operations/cli.md` — restate the real `./portcullis <cmd> --help` output |
 | `portcullis upgrade`, versioning, release tags, `release.yml`, CHANGELOG | `docs/operations/upgrading.md`, `docs/operations/testing.md`, `docs/guides/integration-contracts.md` §1 |
-| Backups (`portcullis backup/restore`, restic) / monitoring profile (core) | `docs/operations/backups.md`, `docs/operations/monitoring.md` (summaries of core's `docs/backups.md` / `docs/monitoring.md`) |
+| Backups (`portcullis backup/restore`, restic) / monitoring profile (core) | `docs/operations/backups.md`, `docs/operations/monitoring.md` |
 | Identity headers (`X-Forwarded-User` = username, `X-Forwarded-Email`) | contracts §5, `docs/guides/header-auth-app.md`, `docs/operations/hardening.md` — email is never an identity key |
-| Socket proxies, container hardening, networks, header trust (core) | `docs/operations/hardening.md`, `docs/architecture.md` |
+| Socket proxies, container hardening, secrets ownership, networks, header trust (core) | `docs/operations/hardening.md` (authoritative per-service table), `docs/architecture.md` |
+| DNS providers, `dns setup`, one-domain rule (core) | `docs/setup/dns.md` |
 | group-gate checks, `path_groups`, deny group (core) | `docs/operations/groups.md`, `docs/operations/auth-policies.md` |
 | Cross-repo interface (policy file, env vars, proxy secret, Docker access) | `docs/guides/integration-contracts.md` **first**, then the pages above |
 | Templates CONTRIBUTING / validator / CI | `docs/guides/adding-an-app.md`, `docs/guides/manifest-reference.md`, `docs/operations/testing.md` |
@@ -54,7 +69,8 @@ The generator writes `docs/apps/.nav.yml` (the nav for that directory) but does 
 ### Preview
 
 ```bash
-# Python >= 3.10; requirements.txt pins what CI installs (Zensical is pre-1.0)
+# Python >= 3.10 (macOS's /usr/bin/python3 3.9 only sees zensical 0.0.0-0.0.2 on PyPI;
+# use e.g. python3.13 -m venv). requirements.txt pins what CI installs (Zensical is pre-1.0)
 pip install -r requirements.txt
 zensical serve            # http://localhost:8000
 zensical build --strict   # what CI runs
@@ -65,7 +81,7 @@ zensical build --strict   # what CI runs
 - The project has **no legacy installs**: document the current behaviour only — no migration guides, no "older releases did X".
 - Every operator action goes through `./portcullis <command>`; never document `docker compose` invocations where a CLI command exists, and never reference the removed `scripts/*.sh`.
 - Verify statements against the code in the other three repos (they are the source of truth); report inconsistencies instead of papering over them.
-- Backups / monitoring: the core repo's `docs/backups.md` / `docs/monitoring.md` are authoritative; the pages here summarise them and must stay in line.
+- This site is authoritative for all documentation (backups, monitoring, hardening, certificates included). Core's `docs/*.md` only point here; verify against core's code, not its docs.
 - One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`.
 
 ### Verify before committing

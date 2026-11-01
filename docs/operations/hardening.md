@@ -1,9 +1,9 @@
 # Security & Hardening
 
-This page covers what the core stack does to limit the damage a compromised
-component can do, and where it can't. The authoritative per-service table lives
-in the core repo (`docs/hardening.md`). This page summarises it together with
-the network layout, header trust and threat model.
+This page covers what the core stack (`docker-compose.yml` in the core repo)
+does to limit the damage a compromised component can do, and where it can't:
+the threat model, network layout, Docker socket proxies, per-service container
+settings, the secrets containers read, and header trust.
 
 ## Threat model summary
 
@@ -91,8 +91,8 @@ What it can't do:
 
 Trade-off: an app user signed in with a remember-me cookie gets the
 guard's 403 on a public link in the same browser (open it in a private
-window). The guard's version-3 requirement means the Hub and core are
-upgraded together.
+window). The guard serves only version 4 of the policy file, so the Hub and
+core are upgraded together.
 
 Not everything with a share feature can be scoped: Vaultwarden Send needs the
 web vault at `/` and the password-login token endpoint, and Kanboard's router
@@ -172,10 +172,10 @@ containers (HAProxy, pinned by digest). Each sits on its own internal network,
 shared with exactly one client (integration contract
 [§6](../guides/integration-contracts.md#6-docker-access)):
 
-| Proxy | Client | Allowed API sections | Methods |
-|-------|--------|---------------------|---------|
-| `socket-proxy-traefik` | Traefik (`TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy-traefik:2375`) | `CONTAINERS`, `NETWORKS`, `EVENTS`, `VERSION`, `PING` | `GET`/`HEAD` only (`POST=0`) |
-| `socket-proxy-hub` | Hub (`DOCKER_HOST=tcp://socket-proxy-hub:2375`) | `CONTAINERS`, `IMAGES`, `NETWORKS`, `VOLUMES`, `EXEC`, `EVENTS`, `INFO`, `VERSION`, `PING`, `ALLOW_LOGS` | All. `POST=1` also allows `PUT`/`DELETE` on the allowed sections |
+| Proxy | Client | Network | Allowed API sections (`1`) | Methods |
+|-------|--------|---------|---------------------|---------|
+| `socket-proxy-traefik` | Traefik (`TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy-traefik:2375`) | `socket-proxy-traefik` | `CONTAINERS`, `NETWORKS`, `EVENTS`, `VERSION`, `PING` | `GET`/`HEAD` only (`POST=0`) |
+| `socket-proxy-hub` | Hub (`DOCKER_HOST=tcp://socket-proxy-hub:2375`) | `socket-proxy-hub` | `CONTAINERS`, `IMAGES`, `NETWORKS`, `VOLUMES`, `EXEC`, `EVENTS`, `INFO`, `VERSION`, `PING`, `ALLOW_LOGS` | All. `POST=1` also allows `PUT`/`DELETE` on the allowed sections |
 
 The Hub's set is what `docker compose up/down/ps/logs` and the Hub's own Engine
 API calls (status, logs, exec, events) need:
@@ -190,49 +190,84 @@ Everything else is denied: `BUILD`, `COMMIT`, `SWARM`, `NODES`, `SERVICES`,
 `DISTRIBUTION`, `SESSION`, and container `archive` / `export`. CI runs a real
 `docker compose` project through `socket-proxy-hub` and checks the denials.
 
+**Limits of a socket proxy.** The Hub can still create containers with any
+`HostConfig` (privileged, host bind mounts): that is inherent to "runs compose
+for arbitrary templates". The proxy removes the rest of the API surface (swarm,
+plugins, image builds, system prune, secrets). Treat the Hub as
+host-root-equivalent and keep it behind `lldap_admin` and the
+[proxy secret](#hub-proxy-secret).
+
 ## Container hardening
 
 Every core service gets:
 
 - `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`
 - `mem_limit` and `pids_limit`
-- an image pinned `tag@sha256:digest`. The Hub comes from `HUB_IMAGE`; enroll is
-  built from `enroll/Dockerfile`, whose base images are pinned
+- an image pinned `tag@sha256:digest`. The Hub comes from `HUB_IMAGE`; enroll
+  and group-gate are built from `enroll/Dockerfile` / `group-gate/Dockerfile`,
+  whose base images are pinned. group-gate's Python dependencies are exact pins
+  with hashes in `group-gate/requirements.txt`, installed wheels-only with
+  `pip install --require-hashes`
 
 CI fails if any of these is missing.
 
-| Service | User | Root FS | `cap_add` | Notes |
-|---------|------|---------|-----------|-------|
-| socket proxies | root | read-only | `SYS_CHROOT` | Exception: HAProxy needs root to open the root-owned socket |
-| traefik | root | read-only | `NET_BIND_SERVICE` | Exception: binds :80/:443 and owns the ACME volume. Without `CAP_DAC_OVERRIDE` it reads files by mode only (`certs/server.key` is group 0, `0640`) |
-| postgres | 70:70 | read-only | — | |
-| vault | 100:1000 | read-only | — | `disable_mlock` (raft), so no `IPC_LOCK`. Reads the unseal key via group 1000 |
-| lldap | 1000 (rootless image) | read-only | — | |
-| keycloak | 1000 | **writable** | — | Exception: `start` re-augments the server because the x509 lookup provider is a build option |
-| forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | No healthcheck: the image has no shell or HTTP client |
-| group-gate | 10003:10003 | read-only | — | Locally built image (core's `group-gate/Dockerfile`) with pinned Python deps (`requirements.txt`: cryptography, PyJWT, with hashes). Only world-readable mounts |
-| hub | 10001:10001 | read-only (`tmpfs /tmp`, `/home/hub`) | — | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Go stdlib + yaml.v3 only (custom-override and rule parser: alecthomas/participle/v2). Libraries: go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client |
-| enroll | 10002:10002 | read-only | — | Reads `secrets/enroll/` via group 10002 |
+| Service | User | Root FS | `cap_add` | Healthcheck | Notes |
+|---------|------|---------|-----------|-------------|-------|
+| socket-proxy-traefik / -hub | root | read-only (`tmpfs /run`) | `SYS_CHROOT` | `/_ping` | Exception: HAProxy needs root to open the root-owned socket and `chroot`s to `/` |
+| traefik | root | read-only (`tmpfs /tmp`) | `NET_BIND_SERVICE` | `traefik healthcheck --ping` | Exception: root for ports 80/443 and the root-owned ACME volume. Without `CAP_DAC_OVERRIDE` it reads files by mode only (`certs/server.key` is group 0, `0640`) |
+| postgres | 70:70 | read-only (`tmpfs /var/run/postgresql`, `/tmp`) | — | `pg_isready` | `/var/lib/postgresql` is postgres-owned in the image, so the entrypoint needs no `chown` |
+| vault | 100:1000 | read-only (`tmpfs /tmp`) | — | `vault status` | `disable_mlock` (raft), so no `IPC_LOCK`. Reads `secrets/vault-unseal/` via group 1000 |
+| lldap | 1000 (`-rootless` image) | read-only (`tmpfs /tmp`) | — | `lldap healthcheck` | |
+| keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider is a build option. A custom pre-built (`--optimized`) image would allow read-only |
+| forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client |
+| group-gate | 10003:10003 (`USER` in Dockerfile) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL parsing) and `PyJWT` (token claims) + the script. Only world-readable mounts |
+| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, vjeantet/ldapserver, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client |
+| enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002 |
+| prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
+| grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
 
-**Secrets the containers read** stay operator-owned, with the container's group
-and mode `0640` (dirs `0750`). The CLI repairs them on every `init`, `up`,
-`upgrade`, `vault init` and `restore`. Without root it changes ownership
-through a throwaway pinned `alpine` container (`--network none`,
-`--cap-drop ALL --cap-add CHOWN`).
+**Throwaway containers the CLI starts:**
 
-| Path | Group | Read by |
-|------|-------|---------|
-| `secrets/vault-unseal/unseal-key` | 1000 | vault (auto-unseal) |
-| `secrets/enroll/{role-id,secret-id}` | 10002 | enroll |
-| `secrets/hub/core.env` | 10001 | Hub (as `/project/.env`) |
-| `certs/server.key` (dev/CI only) | 0 | Traefik |
+- the chown helper: pinned `alpine`, `--network none`, only `CAP_CHOWN`
+- for backups, the volume snapshot and LLDAP check: the `portcullis-group-gate`
+  image (built first if missing), the volume owner's uid, `--network none`,
+  read-only, no capabilities
+- `restic`: pinned, the operator's uid, read-only, no capabilities;
+  `--network none` for a local repository
+- for `backup verify`, a `postgres` without network
+
+## Secrets the containers read
+
+The CLI keeps these **operator-owned** with the container's group, so the
+operator can still rewrite them and nobody else can read them. It repairs them
+(`secrets_fix_perms`) on every `init`, `up`, `upgrade`, `vault init` and
+`restore`.
+
+| Path | Group | Mode | Read by |
+|------|-------|------|---------|
+| `secrets/vault-unseal/unseal-key` | 1000 | 0640 (dir 0750) | vault (auto-unseal) |
+| `secrets/enroll/{role-id,secret-id}` | 10002 | 0640 (dir 0750) | enroll |
+| `secrets/enroll/{invite-client-secret,keycloak-client-secret,invite-api-secret}` | 10002 | 0640 | enroll (invite IdP client, Keycloak service account `portcullis-enroll`, Hub invite API) |
+| `secrets/hub/core.env` | 10001 | 0640 (dir 0750) | Hub (as `/project/.env`) |
+| `secrets/hub/lldap/{username,password}` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/lldap`, LLDAP account `portcullis-hub`, `lldap_admin`) |
+| `secrets/hub/invite/secret` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/invite/secret`, same value as enroll's `invite-api-secret`) |
+| `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
+| `secrets/monitoring/alertmanager/alertmanager.yml` | 65534 | 0640 (dir 0750) | Alertmanager (receivers incl. SMTP password / webhook URLs) |
+| `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
+| `certs/server.key` (dev/CI only) | 0 | 0640 | Traefik |
+| `templates/` | owner 10001 | 0755 | Hub (writes) |
+
+Without root, the CLI changes owner/group through a throwaway container
+(pinned `alpine`, `--network none`, `--cap-drop ALL --cap-add CHOWN`). Anyone
+who can run docker is root-equivalent anyway.
 
 **The Hub never sees the core `.env`.** It gets `secrets/hub/core.env`, which
-holds only what templates may reference: `PORTCULLIS_DOMAIN`, Traefik's IP, the
-proxy subnet and range, `PORTAL_DISPLAY_NAME`, `HEADSCALE_*`, `HEADPLANE_*`,
-`NETBIRD_*`, `COTURN_*`, and the names listed in `HUB_SHARED_ENV`. Core secrets
-are refused. `./portcullis up` rewrites the file in place. `secrets/` and
-`backups/` are masked from the Hub with empty tmpfs mounts.
+holds only what templates may reference: `PORTCULLIS_DOMAIN`,
+`PORTCULLIS_TRAEFIK_IP`, the proxy subnet and range, `PORTAL_DISPLAY_NAME`,
+`HEADSCALE_*`, `HEADPLANE_*`, `NETBIRD_*`, `COTURN_*`, and the names listed in
+`HUB_SHARED_ENV`. Core secrets are refused. `./portcullis up` rewrites the file
+in place. `secrets/` and `backups/` are masked from the Hub with empty tmpfs
+mounts.
 
 ## Header spoofing protections
 
@@ -254,10 +289,12 @@ are refused. `./portcullis up` rewrites the file in place. `secrets/` and
 - **Identity is the LLDAP username, never the email.** LLDAP lets users edit
   their own mail, including to someone else's address. So:
     - Keycloak's LDAP federation does not trust it (`trustEmail=false`, tokens carry `email_verified=false`).
-    - oauth2-proxy keys sessions on `preferred_username` and accepts the unverified email because nothing authorises by it.
+    - oauth2-proxy's session user is always the token's `sub` (Keycloak's user UUID). Its alpha `userIDClaim` is only a deprecated alias of `emailClaim`, so it is not used (CI rejects it). Instead `oauth2-proxy/alpha.yaml` builds `X-Auth-Request-User`, `X-Forwarded-User` and `X-Auth-Request-Preferred-Username` from the `preferred_username` claim, keeps `emailClaim: email`, and accepts the unverified email (`insecureAllowUnverifiedEmail`) because nothing authorises by it.
+    - group-gate reads the username **only** from `X-Auth-Request-Preferred-Username` (set by `portcullis-auth`, which must run first) and denies the request when it is missing. It never falls back to the email or `sub`.
     - Apps get `X-Forwarded-User` / `X-Auth-Request-User` = immutable username, and `X-Forwarded-Email` / `X-Auth-Request-Email` = email (display only).
     - Every identity header is in the forward-auth middlewares' `authResponseHeaders`, which is what strips client-supplied copies.
-    - enroll and the Hub use `X-Forwarded-User` as-is. The mTLS binding compares the cert CN with `preferred_username`.
+    - Apps also get `X-Auth-Request-Groups`. All of these headers are `authResponseHeaders` of the forward-auth middlewares, so Traefik deletes client-supplied copies (the e2e test sends spoofed ones). Header-auth apps must log users in by `X-Forwarded-User` as a username and take the email from `X-Forwarded-Email`.
+    - enroll and the Hub use `X-Forwarded-User` as-is (no email → username lookup). group-gate's mTLS binding compares the cert CN with that same username and requires the token's `preferred_username` to match it.
     - Native-OIDC apps must key accounts on `sub` / `preferred_username` and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option.
     - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (`INVITATIONS_ALLOWED=false`, `SIGNUPS_ALLOWED=false`) and gates the SSO login paths with group-gate (`users_vaultwarden`).
 
@@ -275,7 +312,149 @@ are refused. `./portcullis up` rewrites the file in place. `secrets/` and
   decoding of unreserved `%XX`). Encoded `/`, `\`, `;` and `%00` are allowed
   through because apps such as GitLab and Nextcloud use them. group-gate's
   `path_groups` matching therefore normalises the path itself and denies
-  encoded slashes and NULs that survive one decode.
+  encoded slashes and NULs that survive one decode. `path_groups` checks also
+  deny a `#` in the URI or an encoded one in the path.
+
+### Attribute headers
+
+On every request group-gate allows (`/` and `/authenticated`, app and core
+subdomains alike) it also returns `X-Forwarded-Attr-<Header-Name>` for the
+signed-in user's shared custom fields, read from the Hub's
+`user-attributes.json` in `hub_data`
+([contract §4.1 / §5](../guides/integration-contracts.md)):
+
+- control characters (0x00–0x1F, 0x7F) are stripped, and values over 1 KB are
+  dropped and logged
+- then `%` → `%25` and `,` → `%2C` in every value (so `Doe, Jane` stays one
+  value; apps percent-decode each item), and the values are joined with `, `.
+  Non-ASCII is sent as UTF-8 bytes
+- a missing or corrupt file (logged) means no attribute headers, never a deny.
+  Header names must match `^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$` and be unique
+  case-insensitively (two fields on one header = corrupt)
+
+`portcullis-groups` forwards them with
+`authResponseHeadersRegex: ^X-Forwarded-Attr-`. A headers middleware can only
+delete headers by exact name (and the field names are the Hub's), so
+client-sent `X-Forwarded-Attr-*` are deleted by the same regex on every
+forwardAuth middleware (`portcullis-auth`, `-auth-console`, `-groups`, `-self`,
+`-public-guard`): Traefik removes all request headers matching it before
+copying the auth server's. Public routers therefore get none, and `_` aliases
+are dropped by the entrypoints (`aliasHeadersStrategy`). CI sends forged ones
+through the gated and public test routers.
+
+Routers with **no** forwardAuth middleware (`keycloak`, `keycloak-resources`,
+`lldap` (redirect only), `vault-ui`, `enroll-invite`, and in the app overlays
+`headscale`, `netbird-*`, `docs`) do not strip client-sent `X-Forwarded-Attr-*`.
+Their backends must never trust those headers (none of them reads them).
+
+### Sessions, temporary memberships and the people directory
+
+- **Temporary memberships.** The policy file (version 4, the only version
+  group-gate serves) lists `expiring` `{user, group, at}` entries. group-gate
+  treats a membership as absent once `now >= at` (for the subdomain and
+  path-group checks and in the `X-Auth-Request-Groups` it returns), whatever
+  the token says, so expiry holds even while the Hub is down. A malformed entry
+  denies (fail closed). The access token still names the expired group, so when
+  group-gate strips a membership it withholds `Authorization` and
+  `X-Forwarded-Access-Token` (both are `portcullis-groups`
+  `authResponseHeaders`, so Traefik deletes them). Otherwise it echoes them
+  unchanged: apps keep the token, and the Keycloak console behind
+  `portcullis-auth-console` keeps its own bearer. A file without `version`
+  denies as well; only a missing file means "nothing published".
+- **Session re-validation.** Forward-auth sessions are re-validated every
+  minute (`OAUTH2_PROXY_COOKIE_REFRESH=1m`, a legacy option that still applies
+  with `--alpha-config`): once the session cookie is a minute old, oauth2-proxy
+  redeems the refresh token with Keycloak. A Keycloak logout or a session the
+  Hub revokes (membership removal) then fails the refresh and ends access, and
+  changed groups reach group-gate, within about a minute. The refresh also ends
+  forward-auth sessions at Keycloak's SSO session limits (8 h idle, 12 h max);
+  the 168 h cookie lifetime (`cookie_expire`) is only an upper bound.
+- **`people.<domain>`** (the Hub's directory listener `:8889`,
+  [contract §5.1](../guides/integration-contracts.md)) is open to any signed-in
+  user: `people=*` in `group-gate-map.conf` (`*` is valid only there; in the
+  policy file's `groups` it is ignored, in `path_groups` it is malformed). It
+  has the admin Hub's chain (`client-headers`, `portcullis-auth`,
+  `portcullis-groups`, `hub-proxy-secret`, `security-headers`), and the Hub
+  checks permissions per request and registers no app, policy or Docker
+  endpoint there.
+
+### Routing rules around Keycloak and oauth2-proxy
+
+- **oauth2-proxy's endpoints** (`/oauth2/start`, `/oauth2/callback`,
+  `/oauth2/sign_out`) are routed only on `auth.<domain>`. A host-less
+  `PathPrefix(/oauth2/)` router cannot carry the tiers' TLS options, and
+  Traefik answers 421 on it. group-gate's step-up page therefore sends the
+  browser to `https://auth.<domain>/oauth2/start?acr_values=…&rd=<app>`. CI
+  rejects router rules without `Host(`.
+- **Keycloak's `/admin` and `/realms/master` router** uses
+  `portcullis-auth-console`: the same forward-auth, minus `Authorization` in
+  `authResponseHeaders`. The admin console sends its own bearer token to the
+  admin API; `portcullis-auth` would replace it with the forward-auth session's
+  token ("You do not have permission to access this resource").
+
+### Setup links (enroll)
+
+`enroll-invite` (`enroll.<domain>/invite/*`) is the only enroll router without
+forward-auth.
+
+- **The token** is 256 bit, stored as SHA-256, single use, bound to one LLDAP
+  user, valid 72 h (max 7 days) and revoked by a newer link. `GET` only shows
+  it (link previews must not burn it); the same-origin `POST` redeems it.
+- **The identity provider.** enroll then acts as the hidden identity provider
+  `portcullis-invite`. Keycloak shows it only for
+  `kc_idp_hint=portcullis-invite`, and its first-login flow links the existing
+  LLDAP user and never creates one. The flow uses a 10-minute HttpOnly
+  redemption cookie scoped to `/invite/`, a 60 s single-use code bound to the
+  broker redirect URI and the PKCE challenge, and an ES256 id_token.
+- **Unrouted ports.** Its token / JWKS port (8445) and the Hub's invite API
+  (8444, bearer secret) are not routed by Traefik. `./portcullis invite` (the
+  CLI, through `docker exec`) uses a loopback-only listener (8446), the only
+  way to invite an administrator.
+- **Admins only through the CLI.** The Hub API refuses `admin`,
+  `portcullis-hub` and every member of `lldap_admin`, `lldap_password_manager`
+  and the core-console groups of `group-gate-map.conf` (LLDAP group lookup,
+  fails closed), so a leaked API secret cannot take over an admin account. The
+  check is repeated for API-made invites at redeem, at the authorization code
+  and at the token exchange: a user promoted to `lldap_admin` after the invite
+  was made is refused, and their pending API invites are cancelled.
+- **Passkey required.** The invite session is LoA 2 / amr `hwk` and cannot
+  finish without the passkey registration (`webauthn-register-passwordless`,
+  added when the link is redeemed by enroll's service account
+  `portcullis-enroll`, realm-management view-users + manage-users). enroll
+  already held the LLDAP admin bind and Vault signing rights, so this adds no
+  new class of power to it.
+- **Re-invites.** A re-invite of a user who already has keys adds one more
+  (spare). `./portcullis invite <user> --replace-keys` (lost or stolen key)
+  deletes the user's WebAuthn credentials and sessions first.
+
+### Service accounts and public routers
+
+- **The Hub's LLDAP account.** The Hub logs in to LLDAP as `portcullis-hub`
+  (`lldap_admin`; LLDAP 0.6.3's `lldap_password_manager` cannot create users or
+  groups). It could already start arbitrary containers through its socket
+  proxy, so this is no new trust
+  ([contract §9.1](../guides/integration-contracts.md#91-service-account-core-provides)). The account cannot
+  sign in: Keycloak's federation filters it out (`(!(uid=portcullis-hub))`)
+  and group-gate denies it (`GATE_DENY_USERS`).
+- **Public guard.** Public exceptions (the Hub's `portcullis-public-<app>`
+  routers) have no forward-auth: nothing is signed in and no identity header is
+  passed (the Hub's strip middleware deletes client copies). Their first
+  middleware, `portcullis-public-guard@docker` (group-gate `/public-guard`),
+  returns 403 unless the policy file (version 4) publishes the subdomain in
+  `public_paths`, the normalised path is inside one of its patterns (prefix /
+  exact / static files; encoded `/`, `\`, NUL or `#` denied, and so is any `#`
+  in `X-Forwarded-Uri`: browsers never send fragments), and the request carries
+  none of `Authorization`, `Proxy-Authorization`, the app's
+  `credential_headers` (also in `_` form), `credential_cookies` or
+  `credential_query`. Cookie and query names are compared case-insensitively
+  after PHP's mangling (`main/php_variables.c` `php_register_variable_ex`:
+  leading spaces dropped, ` `/`.` → `_`, `name[...]` is `name`, an unclosed `[`
+  → `_`, NUL ends the name), both raw and percent-/`+`-decoded; names that are
+  not valid UTF-8 (overlong forms) are refused. It never returns identity
+  headers. See [Public exceptions](#public-exceptions).
+- **Logs.** The guard's logs (like group-gate's path denials) show the path
+  with token-like segments masked as `<token>` and query parameter names only.
+  Never share tokens, query values, cookies or credentials.
 
 ## Hub proxy secret
 

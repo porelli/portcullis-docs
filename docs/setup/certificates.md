@@ -135,8 +135,8 @@ The realm's X.509 authenticator (`x509-config`) then:
 
 - maps the Subject CN to the LLDAP username
 - **re-validates** the chain against `certs/truststore/` (written by `pki setup`, mounted as Keycloak's truststore), and checks the validity period and the `clientAuth` EKU
-- **checks the CRL** at `http://vault:8200/v1/pki_int/crl`. Keycloak caches it for at most 60 s; Vault rebuilds it on every revoke
-- **fails closed on the CRL**: if the CRL cannot be fetched, the X.509 login fails. `x509-cert-auth-crl-abort-if-non-updated=true` also rejects a CRL past its `nextUpdate`. Vault never lets it get that stale: `pki setup` sets `pki_int/config/crl` to `expiry=72h auto_rebuild=true auto_rebuild_grace_period=12h`
+- **checks the CRLs** at `http://vault:8200/v1/pki_int/crl` and `.../crl/delta` (`##`-separated in `crl-relative-path`). Keycloak caches each for at most 60 s. pki_int has `auto_rebuild=true` (keeps the full CRL from going stale) and therefore `enable_delta=true`: Vault does **not** rebuild the full CRL on revoke. New revocations land in the delta CRL, rebuilt every minute, until the next full rebuild. `./portcullis cert revoke` also rotates the full CRL immediately
+- **fails closed on the CRL**: if the CRL cannot be fetched, the X.509 login fails. `x509-cert-auth-crl-abort-if-non-updated=true` (Keycloak's actual key, with a dash) also rejects a CRL past its `nextUpdate`. Vault never lets it get that stale: `pki setup` sets `pki_int/config/crl` to `expiry=72h auto_rebuild=true auto_rebuild_grace_period=12h`
 
 `./portcullis keycloak configure` pushes the `x509-config` settings from
 `keycloak/realm-export.json` to an existing realm.
@@ -148,14 +148,15 @@ in front of Keycloak could log in as that user. Three things prevent it:
 
 - **Keycloak only trusts the header from Traefik.** Keycloak's header-based
   lookup providers (`traefik` included) return no certificate unless the
-  request comes from a trusted proxy. With
-  `--proxy-trusted-addresses=${PORTCULLIS_AUTH_TRAEFIK_IP}`, Keycloak decides
-  that **from the TCP peer address of each request**. It overwrites any
-  trust-marker header the client sent. The only trusted address is Traefik's
+  request comes from a trusted proxy (`HttpRequest.isProxyTrusted()`). With
+  `--proxy-trusted-addresses=${PORTCULLIS_AUTH_TRAEFIK_IP}`, Keycloak (Quarkus)
+  decides that **from the TCP peer address of each request**, and overwrites
+  any `X-Forwarded-Trusted-Proxy` header the client sent (`ForwardedParser`,
+  run before routing). The only trusted address is Traefik's
   fixed IP on the internal `portcullis-auth` network. That IP is outside the
   network's dynamic range, so no other container can get it. These sources are
   untrusted, so the cert header and their `X-Forwarded-*` are ignored:
-    - requests via `127.0.0.1:8080` (the CLI's admin API access)
+    - requests via `127.0.0.1:8080` (the CLI's admin API access; it arrives from the Docker gateway)
     - requests from the `portcullis` network
     - requests from any other container attached to `portcullis-auth`
 - **Traefik strips client-supplied cert headers.** It deletes
@@ -165,9 +166,36 @@ in front of Keycloak could log in as that user. Three things prevent it:
 - **CI tests it.** The `build-and-test` job logs in through Traefik with a real
   cert, which must succeed. Then it sends the same cert as a forged header
   straight to Keycloak from the `portcullis` and `portcullis-auth` networks and
-  from `127.0.0.1:8080`, which must not yield an authorization code.
+  from `127.0.0.1:8080`, with the realm's HTTPS requirement temporarily off so
+  only the proxy gate can stop it. None may yield an authorization code.
 
 See [Security & Hardening](../operations/hardening.md#header-spoofing-protections).
+
+### Sign-in levels (Keycloak browser flow)
+
+The realm's browser flow `portcullis-universal` (kept equal to
+`keycloak/realm-export.json` by `./portcullis keycloak configure`) has **no
+password**:
+
+| acr (LoA) | Satisfied by | amr |
+|-----------|--------------|-----|
+| `pwd` (1) | the client cert (automatic when the browser presents one) or a passkey | `mtls` / `hwk` |
+| `hwk` (2) | reaching LoA 1: every LoA 1 factor is hardware-backed, so no second touch | (same) |
+| `mtls` (3) | the client cert | `mtls` |
+
+oauth2-proxy asks for `hwk` by default; group-gate asks for `mtls` when a policy
+needs the cert. Keycloak's step-up on an existing session asks only for the
+levels it has not reached (no `prompt=login`).
+
+A user's first passkey comes from a one-time setup link
+(`./portcullis invite <user>`, or the Hub): Keycloak 26.8 cannot enrol a
+passkey from inside the flow
+(`WebAuthnPasswordlessAuthenticatorFactory.isUserSetupAllowed()` is false).
+The setup link signs the user in through the hidden identity provider
+`portcullis-invite` (enroll) with LoA 2 / amr `hwk`, after the passkey
+registration it requires. Details:
+[Security & Hardening](../operations/hardening.md#setup-links-enroll) and
+[Authentication Policies](../operations/auth-policies.md).
 
 ### mTLS binding (group-gate)
 
@@ -208,10 +236,14 @@ cert still succeeds. Revocation is enforced in three places:
       queried, the file is left unchanged and the command fails: it never
       "un-revokes" by writing an empty list. If the file exists but can't be
       read, group-gate denies every request that presents a cert (fail closed).
-    - **Vault's CRL** (`http://vault:8200/v1/pki_int/crl`), re-fetched every
-      60 s. It also covers revocations made directly through the Vault API or
-      UI. If Vault is unreachable, the last good CRL is kept and the serial
-      list still applies.
+    - **Vault's full and delta CRL** (`GATE_CRL_URL` =
+      `http://vault:8200/v1/pki_int/crl`, `GATE_DELTA_CRL_URL` =
+      `.../crl/delta`), re-fetched every 60 s (`GATE_CRL_REFRESH_SECONDS`).
+      The union is enforced. It also covers revocations made directly through
+      the Vault API or UI: they reach the delta CRL within about 2 minutes
+      (Vault's periodic rebuild runs once a minute) and are denied at
+      group-gate's next refresh. If Vault is unreachable, the last good copy of
+      each CRL is kept and the serial list still applies.
 2. **Keycloak X.509 login**: the CRL check above. It fails closed when the CRL
    is unavailable or stale.
 3. **mTLS binding**: sessions on mTLS-only policies need the unrevoked cert on
@@ -264,10 +296,19 @@ inside the vault container. The token is passed by environment-variable name,
 never on the command line. `secrets/` and `backups/` are masked from the Hub
 container with empty tmpfs mounts.
 
-`pki setup` never replaces an existing CA. If Vault has no CA but
-`certs/ca-chain.crt` exists (Vault data lost), it refuses to create a new one.
-Restore a backup, or pass `--force` and re-enroll every certificate. See the
+`pki setup` is idempotent and never replaces an existing CA: it only recreates
+missing pieces such as the `client-cert` role or the exported CA files. If it
+finds an incomplete PKI (an earlier run aborted before the intermediate was
+signed), it wipes and recreates it; any Vault error aborts instead of being
+mistaken for "no PKI". If Vault has no CA but `certs/ca-chain.crt` exists
+(Vault data lost), it refuses to create a new one. Restore a backup, or pass
+`--force` and re-enroll every certificate. See the
 [CLI Reference](../operations/cli.md#pki-setup).
+
+`certs/server.key` is written `0640` with group 0 (Traefik runs as root but
+without `CAP_DAC_OVERRIDE`). When the CLI is not run as root, it changes group
+ownership through a throwaway root container (pinned `alpine`, only
+`CAP_CHOWN`, no network).
 
 **Trade-off of auto-unseal.** The unseal key lives on the same host as the
 encrypted data. Root on the host, or anyone who can read `secrets/`, can unseal
@@ -279,16 +320,17 @@ hand after each restart (`docker compose exec vault vault operator unseal`), or
 use a cloud KMS auto-unseal.
 
 **Keep an offline copy of `secrets/vault-init.json`.** Backups made by
-`portcullis backup` and `upgrade` include `secrets/`, so protect them like the
-keys themselves.
+`portcullis backup` and `upgrade` include `secrets/` (and a raft snapshot of
+Vault), so protect them like the keys themselves. Off-host copies are encrypted
+with `BACKUP_PASSWORD` (see [Backups](../operations/backups.md)).
 
 ---
 
 ## Disabling mTLS (`MTLS_ENABLED=false`)
 
 All three tiers then behave like `public`: no client certificates are requested
-anywhere. Authentication is purely Keycloak (WebAuthn / password). You don't
-need `ykman` or PIV setup. This is a good choice if you only want YubiKey
+anywhere. Authentication is purely Keycloak passkeys (WebAuthn); there is no
+password sign-in. You don't need `ykman` or PIV setup. This is a good choice if you only want YubiKey
 tap-to-authenticate.
 
 !!! danger "Routers that rely on mTLS alone become unauthenticated"

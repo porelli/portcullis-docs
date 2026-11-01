@@ -5,9 +5,6 @@ and two small exporters to the core stack. Grafana is at
 `https://metrics.<domain>`, for `lldap_admin` only, and nothing else is
 published. `./portcullis status` works the same with or without the profile.
 
-The core repo's `docs/monitoring.md` is the authoritative reference. This page
-summarises it.
-
 ## Enable
 
 ```bash
@@ -57,7 +54,7 @@ All images:
 | `traefik` | `traefik:8082/metrics` | Internal `metrics` entrypoint, not published, no routers |
 | `vault` | `vault:8200/v1/sys/metrics?format=prometheus` | Uses a token with policy `portcullis-metrics` (`vault/policies/metrics.hcl`, read `sys/metrics` only); details below |
 | `group-gate` | `group-gate:8080/metrics` | Decisions by endpoint/result, denials and step-ups by reason, policy load errors, CRL last fetch and `nextUpdate`, revoked-serial counts |
-| `keycloak` | `keycloak:9000/metrics` | Management port, not routed |
+| `keycloak` | `keycloak:9000/metrics` | Management port (`--metrics-enabled`), not routed |
 | `prometheus`, `alertmanager`, `grafana` | self | |
 | `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry, newest client cert per user) |
 | `vault_health` | blackbox → `http://vault:8200/v1/sys/health` | 200 only when initialised, unsealed and active |
@@ -66,7 +63,8 @@ All images:
 
 The Vault metrics token is an orphan token without the default policy, with a
 10-year TTL. It lives in `secrets/monitoring/prometheus/vault-token`.
-`vault init` recreates it when less than a year is left.
+`vault init` recreates it when less than a year is left (it raises the
+`token/` mount's max TTL to allow this).
 
 ## Alerts
 
@@ -112,7 +110,9 @@ running Alertmanager reloads it.
   change that. The router uses
   `client-headers@file,portcullis-auth@docker,portcullis-groups@docker`.
 - **Grafana trusts only Traefik.** It logs users in from `X-Forwarded-User`
-  (the LLDAP **username**), accepted only from Traefik's fixed IP
+  (the LLDAP **username**) only, never by email (LLDAP email is
+  user-editable and Grafana can link accounts by email). The header is
+  accepted only from Traefik's fixed IP
   (`GF_AUTH_PROXY_WHITELIST=${PORTCULLIS_TRAEFIK_IP}`). Its login form and basic
   auth are off. Everyone who gets through is an `lldap_admin`, so everyone is a
   Grafana Admin.
