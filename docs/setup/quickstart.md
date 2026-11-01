@@ -101,6 +101,7 @@ image pull), fix it and run `./portcullis init` again.
 | `BACKUP_REPOSITORY` | unset | restic repository for off-host backups (`s3:`, `b2:`, `rest:`, …). See [Backups](../operations/backups.md) |
 | `COMPOSE_PROFILES` | unset | `monitoring` enables Prometheus, Alertmanager and Grafana at `metrics.<domain>`. See [Monitoring](../operations/monitoring.md) |
 | `HUB_SHARED_ENV` | empty | Extra variable names the Hub may pass to templates. Core secrets are refused |
+| `HUB_OVERRIDE_BIND_ROOTS` | `/srv:/mnt:/media` | Host directories an app's custom compose override (Hub → Expert) may bind-mount. System paths and `/` are refused |
 | `PORTCULLIS_PROXY_SUBNET` | `172.31.250.0/24` | Fixed subnet of the shared `portcullis-proxy` network |
 | `PORTCULLIS_PROXY_IP_RANGE` | `172.31.250.128/25` | Dynamic addresses for app containers. Must be inside the subnet and must not contain Traefik's IP |
 | `PORTCULLIS_TRAEFIK_IP` | `172.31.250.2` | Traefik's static IP on `portcullis-proxy`. Header-auth apps trust identity headers only from this address |
