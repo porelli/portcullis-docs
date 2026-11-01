@@ -1,0 +1,3519 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/guides/manifest-reference/">
+      
+      
+      
+        <link rel="prev" href="../adding-an-app/">
+      
+      
+        <link rel="next" href="../saml-app/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Manifest Reference - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Manifest Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conventions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Top-level fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        auth
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="auth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auth-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auth methods
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sso-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SSO values
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authnative_login" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        auth.native_login
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#admin_paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        admin_paths
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authpublic_access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        auth.public_access
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        settings
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setting types
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        target
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ports
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#env" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        env
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keycloak_clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        keycloak_clients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        config_files
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        urls
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Validation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Complete example
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conventions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Top-level fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        auth
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="auth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auth-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auth methods
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sso-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SSO values
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authnative_login" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        auth.native_login
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#admin_paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        admin_paths
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authpublic_access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        auth.public_access
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        settings
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setting types
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        target
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ports
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#env" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        env
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keycloak_clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        keycloak_clients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        config_files
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        urls
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Validation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Complete example
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="manifest-reference">Manifest Reference<a class="headerlink" href="#manifest-reference" title="Permanent link">&para;</a></h1>
+<p>Every app template has a <code>manifest.yaml</code> that describes the app to the Hub.
+This page documents every field of the schema.</p>
+<p>The authoritative definition is the JSON Schema (draft 2020-12)
+<a href="https://github.com/porelli/portcullis-templates/blob/main/schema/manifest.schema.json"><code>schema/manifest.schema.json</code></a>
+in the templates repo. The Hub enforces the same rules and skips templates that
+fail them (see <a href="../integration-contracts/#3-template-layout">Integration Contracts §3</a>).
+Rules that need the compose file, the filesystem or several templates at once
+are checked by <code>tests/validate.py</code> (see <a href="#validation">Validation</a>).</p>
+<p>For editor completion, start the manifest with:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># yaml-language-server: $schema=../schema/manifest.schema.json</span>
+</code></pre></div>
+<h2 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h2>
+<p>Several types recur throughout the schema:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>single line</em></td>
+<td>A string without control characters (U+0000–U+001F, U+007F)</td>
+</tr>
+<tr>
+<td><em>env key</em></td>
+<td><code>^[A-Za-z_][A-Za-z0-9_]{0,127}$</code>. It becomes a key in the per-app <code>.env</code></td>
+</tr>
+<tr>
+<td><em>group</em></td>
+<td>An LLDAP group name: <code>^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$</code></td>
+</tr>
+<tr>
+<td><em>service</em></td>
+<td>A service name from the template's <code>compose.yml</code>: <code>^[a-zA-Z0-9][a-zA-Z0-9_.-]*$</code></td>
+</tr>
+<tr>
+<td><code>{{DOMAIN}}</code></td>
+<td>In <code>urls</code> and redirect URIs, replaced with <code>PORTCULLIS_DOMAIN</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>No other keys are allowed.</strong> Every object in the schema sets
+<code>additionalProperties: false</code>, so a typo is an error, not a silently ignored
+field.</p>
+<h2 id="top-level-fields">Top-level fields<a class="headerlink" href="#top-level-fields" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>single line, 1–64 chars</td>
+<td>Yes</td>
+<td>Display name shown in the Hub</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>single line, 1–200 chars</td>
+<td>Yes</td>
+<td>One-line description of what the app does</td>
+</tr>
+<tr>
+<td><code>icon</code></td>
+<td>single line, 1–16 chars</td>
+<td>Yes</td>
+<td>Unicode emoji for the app card, e.g. <code>"\U0001F4CA"</code></td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td><code>^[a-z][a-z0-9-]{0,31}$</code></td>
+<td>Yes</td>
+<td>Catalog category</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>list of unique strings <code>^[a-z0-9][a-z0-9.+-]{0,31}$</code></td>
+<td>Yes</td>
+<td>Searchable tags (lowercase)</td>
+</tr>
+<tr>
+<td><code>auth</code></td>
+<td>object</td>
+<td>Yes</td>
+<td>See <a href="#auth">auth</a></td>
+</tr>
+<tr>
+<td><code>settings</code></td>
+<td>list</td>
+<td>No</td>
+<td>See <a href="#settings">settings</a></td>
+</tr>
+<tr>
+<td><code>ports</code></td>
+<td>list</td>
+<td>No</td>
+<td>See <a href="#ports">ports</a></td>
+</tr>
+<tr>
+<td><code>env</code></td>
+<td>list</td>
+<td>No</td>
+<td>See <a href="#env">env</a></td>
+</tr>
+<tr>
+<td><code>keycloak_clients</code></td>
+<td>list</td>
+<td>No; required (at least one) for <code>native-oidc</code></td>
+<td>See <a href="#keycloak_clients">keycloak_clients</a></td>
+</tr>
+<tr>
+<td><code>config_files</code></td>
+<td>list</td>
+<td>No</td>
+<td>See <a href="#config_files">config_files</a></td>
+</tr>
+<tr>
+<td><code>urls</code></td>
+<td>list</td>
+<td>No</td>
+<td>See <a href="#urls">urls</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Categories in use:</strong> <code>monitoring</code>, <code>media</code>, <code>productivity</code>, <code>security</code>,
+<code>networking</code>, <code>ai</code>, <code>devops</code>, <code>finance</code>, <code>vpn</code>, <code>remote-access</code>, <code>public</code>.</p>
+<h2 id="auth">auth<a class="headerlink" href="#auth" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method</code></td>
+<td>enum</td>
+<td>Yes</td>
+<td><code>native-oidc</code>, <code>forward-auth</code>, <code>header-auth</code>, <code>mtls</code>, <code>custom</code> or <code>public</code> (see below)</td>
+</tr>
+<tr>
+<td><code>sso</code></td>
+<td><code>true</code>, <code>false</code> or <code>"partial"</code></td>
+<td>Yes</td>
+<td>Whether single sign-on is supported</td>
+</tr>
+<tr>
+<td><code>group_access</code></td>
+<td>boolean</td>
+<td>Yes</td>
+<td>group-gate restricts the app's subdomains to <code>access_group</code>. For <code>custom</code> apps only while Portcullis sign-in is in front of them (<code>native_login</code>)</td>
+</tr>
+<tr>
+<td><code>group_admin</code></td>
+<td>boolean</td>
+<td>Yes</td>
+<td>The app maps <code>admin_group</code> to its admin role</td>
+</tr>
+<tr>
+<td><code>access_group</code></td>
+<td>group</td>
+<td>If <code>group_access: true</code></td>
+<td>LLDAP group required for access, by convention <code>users_&lt;app&gt;</code></td>
+</tr>
+<tr>
+<td><code>admin_group</code></td>
+<td>group</td>
+<td>If <code>group_admin: true</code> or <code>admin_paths</code> is non-empty</td>
+<td>LLDAP group for admin privileges, by convention <code>admin_&lt;app&gt;</code></td>
+</tr>
+<tr>
+<td><code>admin_paths</code></td>
+<td>list of path prefixes</td>
+<td>No</td>
+<td>Paths that additionally require <code>admin_group</code> (see below)</td>
+</tr>
+<tr>
+<td><code>public_access</code></td>
+<td>object</td>
+<td>No</td>
+<td>Public path exceptions: share-link paths the Hub can open without forward-auth (see <a href="#authpublic_access">auth.public_access</a>)</td>
+</tr>
+<tr>
+<td><code>native_login</code></td>
+<td>object</td>
+<td>No</td>
+<td>The app has its own login and no SSO (<code>method: custom</code> only); enables the Hub's Sign-in setting (see <a href="#authnative_login">auth.native_login</a>)</td>
+</tr>
+<tr>
+<td><code>identity_headers</code></td>
+<td>list of header names</td>
+<td>If <code>method: header-auth</code> and <code>public_access</code> is set</td>
+<td>Headers the app reads the user from (e.g. <code>X-Forwarded-User</code>); the Hub strips them on public paths</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>string</td>
+<td>No</td>
+<td>Free-text notes about the auth integration. Shown on the app's docs page. Upgrade constraints go here too</td>
+</tr>
+</tbody>
+</table>
+<p>Constraints the schema enforces:</p>
+<ul>
+<li><code>group_access: true</code> requires <code>access_group</code>.</li>
+<li><code>group_admin: true</code> requires <code>admin_group</code>.</li>
+<li>A non-empty <code>admin_paths</code> requires <code>admin_group</code>.</li>
+<li><code>method: public</code> requires <code>group_access: false</code> and an empty (or missing)
+  <code>admin_paths</code>.</li>
+<li><code>public_access</code> is only allowed with <code>method</code> <code>forward-auth</code>, <code>header-auth</code>
+  or <code>native-oidc</code>; with <code>header-auth</code> it requires a non-empty
+  <code>identity_headers</code> (each <code>^[A-Za-z][A-Za-z0-9-]{0,63}$</code>, unique).</li>
+<li><code>native_login</code> requires <code>method: custom</code> and <code>sso: false</code>.</li>
+</ul>
+<p><code>access_group</code> is only <em>enforced</em> by group-gate when <code>group_access: true</code>.
+Otherwise it is informational.</p>
+<h3 id="auth-methods">Auth methods<a class="headerlink" href="#auth-methods" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th><code>method</code></th>
+<th>Meaning</th>
+<th>Router middlewares</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>native-oidc</code></td>
+<td>The app talks OIDC to Keycloak itself. Needs <code>keycloak_clients</code></td>
+<td><strong>No</strong> <code>portcullis-auth</code> on the host-wide router. Login or admin paths may use a separate <code>PathPrefix</code> router with forward-auth</td>
+</tr>
+<tr>
+<td><code>forward-auth</code></td>
+<td>oauth2-proxy + group-gate in front. The app has its own login, or none</td>
+<td><code>portcullis-auth@docker,portcullis-groups@docker</code></td>
+</tr>
+<tr>
+<td><code>header-auth</code></td>
+<td>Forward-auth, and the app also trusts <code>X-Forwarded-User</code> from Traefik (and only from Traefik)</td>
+<td><code>portcullis-auth@docker,portcullis-groups@docker</code></td>
+</tr>
+<tr>
+<td><code>mtls</code></td>
+<td>Client certificate at the TLS layer</td>
+<td><code>tls.options: protected@file</code>, no forward-auth</td>
+</tr>
+<tr>
+<td><code>custom</code></td>
+<td>The app handles its own sign-in (app-specific account system, e.g. plex.tv). With <code>native_login</code>, the Hub can put Portcullis sign-in in front of it</td>
+<td>None: the Hub's override adds the gateway pair for Portcullis sign-in</td>
+</tr>
+<tr>
+<td><code>public</code></td>
+<td>No authentication</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="https://github.com/porelli/portcullis-templates/blob/main/CONTRIBUTING.md#choosing-an-auth-method">Choosing an auth method</a>
+in the templates repo's contributing guide.</p>
+<h3 id="sso-values">SSO values<a class="headerlink" href="#sso-values" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>true</code>: the user authenticates once in Keycloak and is logged into the app automatically.</li>
+<li><code>false</code>: the app has its own login form. Forward-auth only gates access, and the user logs in again.</li>
+<li><code>"partial"</code>: the app auto-creates users from the identity, but needs extra setup, e.g. role assignment.</li>
+</ul>
+<h3 id="authnative_login">auth.native_login<a class="headerlink" href="#authnative_login" title="Permanent link">&para;</a></h3>
+<p>For a <code>custom</code> app that has its own login and no SSO. The Hub then shows a
+per-app <strong>Sign-in</strong> setting and implements it with compose-override labels;
+the template itself never changes.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom</span>
+<span class="w">  </span><span class="nt">sso</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">group_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">          </span><span class="c1"># enforced only behind Portcullis sign-in</span>
+<span class="w">  </span><span class="nt">access_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users_plex</span>
+<span class="w">  </span><span class="nt">group_admin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">native_login</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">supported</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">allow_without_gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">note</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Plex signs users in with plex.tv accounts; its TV and mobile apps need "App's own login only".</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>supported</code></td>
+<td><code>true</code></td>
+<td>Yes</td>
+<td>The app's own login protects it on its own</td>
+</tr>
+<tr>
+<td><code>allow_without_gateway</code></td>
+<td>boolean</td>
+<td>No (default <code>false</code>)</td>
+<td>Admins may choose <strong>App's own login only (no Portcullis)</strong></td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td>string (≤ 500)</td>
+<td>No</td>
+<td>Shown next to the Sign-in setting: what the app's login is, what breaks behind forward-auth</td>
+</tr>
+</tbody>
+</table>
+<p>The two modes (<a href="../../operations/auth-policies/#apps-with-their-own-login">Apps with their own login</a>):</p>
+<ul>
+<li><strong>Portcullis sign-in, then the app's own login</strong> (default): every router
+  gets <code>portcullis-auth@docker,portcullis-groups@docker</code> in front of its own
+  middlewares, the TLS tier from the policy, and group-gate requires
+  <code>access_group</code> if <code>group_access: true</code>. The access policy applies as for
+  <code>forward-auth</code>.</li>
+<li><strong>App's own login only</strong> (only with <code>allow_without_gateway: true</code>): the
+  template's middlewares without the gateway pair, <code>public@file</code>, no group.</li>
+</ul>
+<p>Rules (schema and <code>tests/validate.py</code>; the Hub checks the first two too):</p>
+<ul>
+<li>only with <code>method: custom</code> and <code>sso: false</code>: an app with SSO is signed in
+  through Portcullis and never gets a way around it;</li>
+<li><code>supported</code> must be <code>true</code> (omit the block otherwise);</li>
+<li>a <code>custom</code> app with <code>group_access: true</code> needs <code>native_login</code> (group-gate
+  only runs behind Portcullis sign-in);</li>
+<li>the compose file of a <code>custom</code> app never uses <code>portcullis-auth@docker</code> or
+  <code>portcullis-groups@docker</code>: the Hub adds them.</li>
+</ul>
+<h3 id="admin_paths">admin_paths<a class="headerlink" href="#admin_paths" title="Permanent link">&para;</a></h3>
+<p><code>admin_paths</code> lists path prefixes on the app's subdomains that need
+<code>admin_group</code> <strong>in addition</strong> to the subdomain's group. The Hub publishes them
+as group-gate <code>path_groups</code> (see <a href="../../operations/groups/#path-rules-path_groups-and-admin_paths">Groups → Path rules</a>).</p>
+<p>Each item must:</p>
+<ul>
+<li>match <code>^/[A-Za-z0-9._~%!$&amp;'()*+,;=:@/-]*$</code>, be at most 256 characters, and be unique in the list</li>
+<li>not contain <code>..</code> or <code>//</code>, and have no <code>.</code> segment (<code>/./</code>, a trailing <code>/.</code>)</li>
+</ul>
+<p>Matching is a segment-boundary prefix match: <code>/admin</code> matches <code>/admin</code> and
+<code>/admin/x</code>, but not <code>/administrator</code>.</p>
+<p>Path rules only take effect on routers that use <code>portcullis-groups@docker</code>.
+<code>validate.py</code> therefore fails if no router with
+<code>portcullis-auth@docker,portcullis-groups@docker</code> serves each listed path.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native-oidc</span>
+<span class="w">  </span><span class="nt">sso</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">group_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">group_admin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">access_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users_vaultwarden</span>
+<span class="w">  </span><span class="nt">admin_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admin_vaultwarden</span>
+<span class="w">  </span><span class="nt">admin_paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"/admin"</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<h3 id="authpublic_access">auth.public_access<a class="headerlink" href="#authpublic_access" title="Permanent link">&para;</a></h3>
+<p>Public path exceptions let anonymous visitors use an app's share links
+(Nextcloud <code>/s/&lt;token&gt;</code>, Grafana shared dashboards) while the rest of the
+host stays behind Portcullis. The template only <strong>declares</strong> the paths. When
+an admin turns the exception on in the <a href="../../operations/hub/#public-exceptions">Hub</a>,
+the Hub adds one Traefik router for them <strong>without</strong> forward-auth and
+group-gate (contracts §3). A template must never ship such a router in
+<code>compose.yml</code>. The app's own auth (share token, share password, expiry) is
+all that protects these paths; see
+<a href="../../operations/auth-policies/#public-exceptions">Auth policies → Public exceptions</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled_by_default</code></td>
+<td>boolean</td>
+<td>No (default <code>false</code>)</td>
+<td>State of the Hub toggle until an admin chooses</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string, one line, ≤ 500</td>
+<td>No</td>
+<td>Shown in the Hub above the warning</td>
+</tr>
+<tr>
+<td><code>default_mode</code></td>
+<td><code>listed</code> or <code>all</code></td>
+<td>No</td>
+<td><code>listed</code>: only shares an admin lists in the Hub; <code>all</code>: every share. Default <code>listed</code> if a path has <code>{token}</code>, else <code>all</code>. <code>listed</code> needs a <code>{token}</code> path</td>
+</tr>
+<tr>
+<td><code>token_pattern</code></td>
+<td>anchored regex <code>^...$</code>, ≤ 200</td>
+<td>If a path has <code>{token}</code> (and only then)</td>
+<td>Every listed share token must match it</td>
+</tr>
+<tr>
+<td><code>credential_headers</code></td>
+<td>list of header names</td>
+<td>No</td>
+<td>Headers besides <code>Authorization</code> / <code>Proxy-Authorization</code> (always refused) the app logs a user in with, e.g. Immich <code>x-api-key</code></td>
+</tr>
+<tr>
+<td><code>credential_cookies</code></td>
+<td>list of cookie names</td>
+<td>No</td>
+<td>Cookies the app logs a user in with (session, remember-me, render keys)</td>
+</tr>
+<tr>
+<td><code>credential_query</code></td>
+<td>list of parameter names</td>
+<td>No</td>
+<td>Query parameters the app logs a user in with (e.g. Immich <code>apiKey</code>, Grafana <code>auth_token</code>)</td>
+</tr>
+<tr>
+<td><code>static_extensions</code></td>
+<td>list of <code>[a-z0-9]{1,8}</code></td>
+<td>No</td>
+<td>Extra file extensions supporting paths may serve (default: <code>avif css eot gif ico jpeg jpg js map mjs otf png svg ttf webp woff woff2</code>). Script extensions (<code>php</code>, <code>phtml</code>, <code>cgi</code>, <code>py</code>, <code>jsp</code>, …) are refused</td>
+</tr>
+<tr>
+<td><code>service</code></td>
+<td>compose service</td>
+<td>No</td>
+<td>Service the public router targets. Default: the only service with HTTP routers</td>
+</tr>
+<tr>
+<td><code>paths</code></td>
+<td>list, 1–20</td>
+<td>Yes</td>
+<td>See below</td>
+</tr>
+</tbody>
+</table>
+<p>Each <code>paths</code> item:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prefix</code></td>
+<td>path</td>
+<td>Yes</td>
+<td>Segment-boundary prefix: <code>/s</code> matches <code>/s</code> and <code>/s/...</code>, not <code>/sx</code>. Letters, digits and <code>. _ ~ -</code> per segment, optional trailing <code>/</code>; one whole segment may be <code>{token}</code>. Not <code>/</code> itself; no wildcards, <code>..</code>, <code>//</code>, <code>%</code>, <code>?</code>, <code>#</code>, <code>$</code>, quotes or backticks</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string, one line, ≤ 200</td>
+<td>Yes</td>
+<td>What the path is for (shown in the Hub and on the app page)</td>
+</tr>
+<tr>
+<td><code>supporting</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>Token-free path the share page needs. Opened in both modes, and <strong>only for static files</strong> below it unless <code>exact</code>. Can't have <code>{token}</code></td>
+</tr>
+<tr>
+<td><code>exact</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>Opens only this path itself (<code>Path</code>, no subpaths): a single app route or file the page needs. Requires <code>justification</code>; can't have <code>{token}</code>. A path on the broad list (an exact <code>/index.php</code> is still the whole front controller) also needs <code>broad: true</code></td>
+</tr>
+<tr>
+<td><code>broad</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>Acknowledges a prefix on the broad list; requires <code>justification</code></td>
+</tr>
+<tr>
+<td><code>justification</code></td>
+<td>string</td>
+<td>If <code>broad: true</code> or <code>exact: true</code></td>
+<td>Why the broad prefix / exact route is needed</td>
+</tr>
+</tbody>
+</table>
+<p>What each mode opens:</p>
+<table>
+<thead>
+<tr>
+<th>Path kind</th>
+<th>Mode <code>listed</code></th>
+<th>Mode <code>all</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{token}</code> path, e.g. <code>/s/{token}</code></td>
+<td><code>/s/&lt;t&gt;</code> for each listed token <code>&lt;t&gt;</code></td>
+<td><code>/s</code> (up to the segment before <code>{token}</code>)</td>
+</tr>
+<tr>
+<td><code>supporting: true</code></td>
+<td>static files under the prefix (see below)</td>
+<td>same</td>
+</tr>
+<tr>
+<td><code>supporting: true</code> + <code>exact: true</code></td>
+<td>the exact path</td>
+<td>same</td>
+</tr>
+<tr>
+<td>other token-free paths</td>
+<td>no</td>
+<td>segment-boundary prefix (or the exact path with <code>exact: true</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Static files means Traefik's <code>PathRegexp</code> of the prefix, dot-free directory
+segments and a file name ending in a static extension, e.g.
+<code>/dist/core-common.js</code> or <code>/core/img/actions/a.svg</code>, but not <code>/dist/</code>,
+<code>/dist/a</code>, <code>/dist/a.php</code> or <code>/dist/x.php/a.js</code>. An app route that only
+accepts extension-less paths is therefore never reached through a
+supporting path.</p>
+<p>Logins never ride the public router: core's public guard (contracts §5)
+answers 403 to requests carrying <code>Authorization</code>, <code>Proxy-Authorization</code>,
+a <code>credential_headers</code> header, a <code>credential_cookies</code> cookie or a
+<code>credential_query</code> parameter. Cookie and query names are compared
+case-insensitively after PHP's name mangling (leading spaces dropped, <code></code>
+and <code>.</code> become <code>_</code>, <code>name[…]</code> is <code>name</code>), raw and percent-decoded. List
+<strong>every</strong> way the app authenticates a request at the pinned version.</p>
+<p>In mode <code>listed</code> with no listed share, nothing is opened and no router is
+generated.</p>
+<p>Rules (schema, <code>tests/validate.py</code> and the Hub):</p>
+<ul>
+<li><strong>Broad prefixes</strong> need <code>broad: true</code> and a <code>justification</code>: <code>/api</code>, <code>/apps</code>,
+  <code>/index.php</code>, <code>/ocs</code>, <code>/ocs/v1.php</code>, <code>/ocs/v2.php</code>, <code>/remote.php</code>,
+  <code>/remote.php/dav</code>, <code>/remote.php/webdav</code>, <code>/public.php</code>, <code>/dav</code>, <code>/webdav</code>,
+  <code>/graphql</code>, <code>/rest</code>, <code>/v1</code>, <code>/v2</code>, <code>/v3</code>, <code>/auth</code>, <code>/login</code>, <code>/user</code>,
+  <code>/users</code>, <code>/account</code>, <code>/settings</code>, <code>/identity</code>, <code>/sso</code>, <code>/oidc</code>, and any
+  bare <code>/&lt;name&gt;.php</code>. A <code>{token}</code> path is checked on its mode-<code>all</code> extent
+  (<code>/api/{token}</code> is broad).</li>
+<li><strong>Never public</strong>: anything overlapping <code>/oauth2</code>, <code>/admin</code> or
+  <code>/.well-known</code>, or the app's <code>admin_paths</code>.</li>
+<li><strong>No overlap with other routers</strong>: a prefix (mode-<code>all</code> extent) may not
+  overlap a <code>Path</code>/<code>PathPrefix</code> of another router on the app's hosts (login
+  gates, admin routers, API splits). Traefik's <code>PathPrefix</code> is a plain string
+  prefix, so <code>PathPrefix(</code>/login<code>)</code> overlaps <code>/logins</code>.</li>
+<li><strong>Analysable routing only</strong>: routers on the app's hosts may use only
+  <code>Host</code>, <code>Path</code>, <code>PathPrefix</code>, <code>Method</code>, <code>Header</code>, <code>HeaderRegexp</code>, <code>Query</code>,
+  <code>QueryRegexp</code> and <code>ClientIP</code>, without negation. <code>PathRegexp</code>, negated
+  matchers or unknown matchers make the Hub refuse the template's public
+  plan (it can't prove there is no overlap).</li>
+<li><strong><code>token_pattern</code></strong> must be anchored and compile, and must reject <code>""</code>,
+  <code>.</code>, <code>..</code>, <code>a/b</code>, <code>/</code>, backticks, spaces, <code>%2F</code>, <code>${X}</code>, <code>)</code> and newlines.
+  The Hub additionally requires tokens of <code>[A-Za-z0-9._~-]{1,128}</code>.</li>
+<li><strong>Routing names</strong>: routers and middlewares named <code>portcullis-public-*</code> are
+  reserved for the Hub.</li>
+<li>
+<p><strong>Service</strong>: with several routed services, set <code>service</code>. If it defines
+  several Traefik services, exactly one host-wide router on it must name one.</p>
+</li>
+<li>
+<p><strong>Supporting prefixes are directories</strong>: a supporting prefix whose last
+  segment looks like a file (<code>/custom.css</code>) must be <code>exact</code>.</p>
+</li>
+</ul>
+<p>Set <code>enabled_by_default: true</code> only when turning the exception on opens
+nothing by itself (mode <code>listed</code>) and can't weaken the host. Example
+(Nextcloud, abridged):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">forward-auth</span>
+<span class="w">  </span><span class="nt">public_access</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled_by_default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">default_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">listed</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Public share links for people without a Portcullis account.</span>
+<span class="w">    </span><span class="nt">token_pattern</span><span class="p">:</span><span class="w"> </span><span class="s">'^[A-Za-z0-9-]{1,32}$'</span>
+<span class="w">    </span><span class="nt">credential_cookies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">nc_username</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">nc_token</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">nc_session_id</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s">"/s/{token}"</span><span class="w">          </span><span class="c1"># quote: { } in flow style is YAML syntax</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Share page, password form, download and direct preview</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s">"/public.php/dav/files/{token}"</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Public WebDAV of the share</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dist</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Compiled JS/CSS</span>
+<span class="w">        </span><span class="nt">supporting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                </span><span class="c1"># static files only</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/core/mimeicon</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">File-type icon for files without a preview</span>
+<span class="w">        </span><span class="nt">supporting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">exact</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">justification</span><span class="p">:</span><span class="w"> </span><span class="s">"#[PublicPage]</span><span class="nv"> </span><span class="s">route</span><span class="nv"> </span><span class="s">that</span><span class="nv"> </span><span class="s">only</span><span class="nv"> </span><span class="s">redirects</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">static</span><span class="nv"> </span><span class="s">icon"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/apps/text/public</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown viewer sessions (token in the body, so only in mode all)</span>
+</code></pre></div>
+<h2 id="settings">settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p>User-configurable settings shown in the Hub. Each <code>key</code> becomes a key in the
+per-app <code>.env</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>env key</td>
+<td>Yes</td>
+<td>Variable name</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>single line, non-empty</td>
+<td>Yes</td>
+<td>Label shown in the Hub</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>enum</td>
+<td>Yes</td>
+<td><code>text</code>, <code>path</code>, <code>paths</code>, <code>boolean</code> or <code>select</code></td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>No</td>
+<td>Help text</td>
+</tr>
+<tr>
+<td><code>required</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>The setting must be filled in</td>
+</tr>
+<tr>
+<td><code>default</code></td>
+<td>string without control chars</td>
+<td>No</td>
+<td>Default value</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>list of strings without control chars</td>
+<td>Required (at least one) for <code>select</code></td>
+<td>The choices of a <code>select</code></td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td>object</td>
+<td>No</td>
+<td>Bind-mount target for <code>path</code> / <code>paths</code> (see below)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setting-types">Setting types<a class="headerlink" href="#setting-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Input</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code></td>
+<td>Free-form text</td>
+<td>API keys, custom names</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>One host directory</td>
+<td><code>/mnt/media/movies</code></td>
+</tr>
+<tr>
+<td><code>paths</code></td>
+<td>Several host directories</td>
+<td>Several media folders</td>
+</tr>
+<tr>
+<td><code>boolean</code></td>
+<td>On/off toggle</td>
+<td>Feature flags</td>
+</tr>
+<tr>
+<td><code>select</code></td>
+<td>Dropdown of <code>options</code></td>
+<td>Log level</td>
+</tr>
+</tbody>
+</table>
+<p><code>options</code> is a <strong>list of plain strings</strong>. Each string is both the stored value
+and the label:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">settings</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MYAPP_LOG_LEVEL</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Log level</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select</span>
+<span class="w">    </span><span class="nt">options</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">info</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">debug</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">warn</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">info</span>
+</code></pre></div>
+<h3 id="target">target<a class="headerlink" href="#target" title="Permanent link">&para;</a></h3>
+<p>For <code>path</code> and <code>paths</code>, <code>target</code> says where the host path is mounted:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service</code></td>
+<td>service</td>
+<td>Yes</td>
+<td>Compose service to mount into</td>
+</tr>
+<tr>
+<td><code>mount</code></td>
+<td><code>^/[^:]*$</code> (absolute, no <code>:</code>, no control chars)</td>
+<td>Yes</td>
+<td>Container path</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nt">settings</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JELLYFIN_MOVIES_PATH</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Movies folder</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Host path to your movies library</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path</span>
+<span class="w">    </span><span class="nt">target</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jellyfin</span>
+<span class="w">      </span><span class="nt">mount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/movies</span>
+</code></pre></div>
+<p>When the user sets it to <code>/mnt/media/movies</code>, the Hub's per-app override gets
+the bind mount <code>"/mnt/media/movies:/data/movies"</code>.</p>
+<h2 id="ports">ports<a class="headerlink" href="#ports" title="Permanent link">&para;</a></h2>
+<p>Host port bindings the app needs (for non-HTTP protocols such as DNS or TURN;
+HTTP always goes through Traefik). The Hub:</p>
+<ol>
+<li>Refuses to enable the app if one of its ports is already claimed by another enabled app.</li>
+<li>Shows each port as an editable field, so users can rebind it or (if not <code>required</code>) disable it.</li>
+<li>Writes the effective bindings into the per-app compose override. <code>compose.yml</code> must <strong>not</strong> publish these ports itself.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>env key</td>
+<td>Yes</td>
+<td>Variable holding the user-overridable host port</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>single line, non-empty</td>
+<td>Yes</td>
+<td>UI label, e.g. <code>DNS (TCP)</code></td>
+</tr>
+<tr>
+<td><code>protocol</code></td>
+<td><code>tcp</code> or <code>udp</code></td>
+<td>Yes</td>
+<td></td>
+</tr>
+<tr>
+<td><code>service</code></td>
+<td>service</td>
+<td>Yes</td>
+<td>Compose service the port belongs to</td>
+</tr>
+<tr>
+<td><code>container</code></td>
+<td>integer 1–65535</td>
+<td>Yes, unless <code>range</code> is set</td>
+<td>Container-side port</td>
+</tr>
+<tr>
+<td><code>default</code></td>
+<td>integer 1–65535</td>
+<td>Yes, unless <code>range</code> is set</td>
+<td>Default host port</td>
+</tr>
+<tr>
+<td><code>range</code></td>
+<td><code>"low-high"</code></td>
+<td>No</td>
+<td>Inclusive port range, e.g. <code>"49152-65535"</code>. Mutually exclusive with <code>container</code> and <code>default</code>; can't be rebound</td>
+</tr>
+<tr>
+<td><code>bind</code></td>
+<td>IPv4 or IPv6 address</td>
+<td>No</td>
+<td>Default bind address (default <code>0.0.0.0</code>)</td>
+</tr>
+<tr>
+<td><code>required</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>If not <code>true</code>, the user can clear the host port to disable the binding</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>No</td>
+<td>Help text</td>
+</tr>
+<tr>
+<td><code>network_mode_host</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>The service uses <code>network_mode: host</code>. Ports are claimed globally and can't be rebound</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nt">ports</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ADGUARD_DNS_TCP_HOST</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DNS (TCP)</span>
+<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+<span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tcp</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+<span class="w">    </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adguard</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">COTURN_MEDIA_RANGE</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TURN media relays</span>
+<span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">udp</span>
+<span class="w">    </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="s">"49152-65535"</span>
+<span class="w">    </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">coturn</span>
+<span class="w">    </span><span class="nt">network_mode_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<h2 id="env">env<a class="headerlink" href="#env" title="Permanent link">&para;</a></h2>
+<p>Per-app environment variables.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>env key</td>
+<td>Yes</td>
+<td>Variable name</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>non-empty string</td>
+<td>Yes</td>
+<td>What it is for</td>
+</tr>
+<tr>
+<td><code>generate</code></td>
+<td><code>random</code>, <code>none</code> or <code>""</code></td>
+<td>No</td>
+<td><code>random</code>: the Hub generates 32 hex characters on first enable and writes them to the per-app <code>.env</code></td>
+</tr>
+<tr>
+<td><code>required</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>The variable must have a value</td>
+</tr>
+</tbody>
+</table>
+<p>Secrets (passwords, OIDC client secrets, app keys) must be <code>generate: random</code>
+entries. Never hard-code a secret in <code>compose.yml</code>. A variable that
+<code>compose.yml</code> references as required (<code>${VAR:?...}</code>) must be an <code>env</code> entry with
+<code>generate: random</code>, because that is all the Hub writes.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">VAULTWARDEN_ADMIN_TOKEN</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Vaultwarden admin panel token</span>
+<span class="w">    </span><span class="nt">generate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">random</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">VAULTWARDEN_OIDC_SECRET</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Vaultwarden OIDC client secret</span>
+<span class="w">    </span><span class="nt">generate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">random</span>
+</code></pre></div>
+<h2 id="keycloak_clients">keycloak_clients<a class="headerlink" href="#keycloak_clients" title="Permanent link">&para;</a></h2>
+<p>OIDC clients the Hub registers in Keycloak when the app is enabled. Required
+(at least one) for <code>native-oidc</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>client_id</code></td>
+<td><code>^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$</code></td>
+<td>Yes</td>
+<td>Keycloak client ID. Core clients such as <code>portcullis-forward-auth</code> are reserved</td>
+</tr>
+<tr>
+<td><code>secret_env</code></td>
+<td>env key</td>
+<td>Yes</td>
+<td>The <code>env</code> entry (with <code>generate: random</code>) holding the client secret</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>single line, non-empty</td>
+<td>Yes</td>
+<td>Display name in Keycloak</td>
+</tr>
+<tr>
+<td><code>redirect_uri</code></td>
+<td>URI</td>
+<td>Exactly one of the two</td>
+<td>A single redirect URI</td>
+</tr>
+<tr>
+<td><code>redirect_uris</code></td>
+<td>list of URIs (at least one)</td>
+<td>Exactly one of the two</td>
+<td>Several redirect URIs</td>
+</tr>
+<tr>
+<td><code>email_verified_claim</code></td>
+<td>boolean</td>
+<td>No (default <code>true</code>)</td>
+<td><code>false</code>: the client gets the <code>email-unverified</code> scope instead of <code>email</code>, so tokens carry <code>email</code> but no <code>email_verified</code> claim. For apps that refuse <code>email_verified=false</code> but accept the claim being absent (Vaultwarden). The app must then not request the <code>email</code> scope</td>
+</tr>
+</tbody>
+</table>
+<p>Redirect URIs must match <code>^[a-z][a-z0-9+.-]*://\S+$</code>, so custom schemes such
+as <code>app.immich:///oauth-callback</code> work. <code>{{DOMAIN}}</code> is replaced.</p>
+<p>The Hub tags each client with the template that owns it, and attaches the
+<code>acr</code> and <code>groups</code> scopes (see <a href="../../operations/hub/#keycloak-clients">Hub → Keycloak clients</a>).</p>
+<p><strong><code>email_verified_claim</code>.</strong> Keycloak never trusts the LLDAP email (users can
+edit it), so the built-in <code>email</code> scope always sends <code>email_verified: false</code>.
+Some apps refuse that value. With <code>email_verified_claim: false</code> the Hub
+attaches core's <code>email-unverified</code> scope instead (the <code>email</code> claim only) and
+removes <code>email</code> from the client. Keycloak rejects a request for a scope the
+client doesn't have (<code>invalid_scope</code>), so drop <code>email</code> from the scopes the app
+requests; <code>tests/validate.py</code> checks <code>*SCOPE*</code> environment variables. The
+email is still unverified: identity stays <code>sub</code> / <code>preferred_username</code>, and
+the app must never link accounts by email
+(<a href="../integration-contracts/#8-keycloak-clients-core-hub-templates">contract §8</a>).</p>
+<div class="highlight"><pre><span></span><code><span class="nt">keycloak_clients</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vaultwarden</span>
+<span class="w">    </span><span class="nt">secret_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">VAULTWARDEN_OIDC_SECRET</span>
+<span class="w">    </span><span class="nt">redirect_uri</span><span class="p">:</span><span class="w"> </span><span class="s">"https://passwords.{{DOMAIN}}/identity/connect/oidc-signin"</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Vaultwarden</span>
+<span class="w">    </span><span class="nt">email_verified_claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">keycloak_clients</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">immich</span>
+<span class="w">    </span><span class="nt">secret_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IMMICH_OIDC_SECRET</span>
+<span class="w">    </span><span class="nt">redirect_uris</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"https://photos.{{DOMAIN}}/auth/login"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"https://photos.{{DOMAIN}}/user-settings"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"app.immich:///oauth-callback"</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Immich</span>
+</code></pre></div>
+<h2 id="config_files">config_files<a class="headerlink" href="#config_files" title="Permanent link">&para;</a></h2>
+<p>Files the Hub copies from the template directory into the core checkout when
+the app is enabled.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src</code></td>
+<td>relative path, no <code>..</code> segment, no whitespace</td>
+<td>Yes</td>
+<td>Path relative to the template directory. Must exist (<code>validate.py</code>)</td>
+</tr>
+<tr>
+<td><code>dest</code></td>
+<td>non-empty, no <code>..</code> segment</td>
+<td>Yes</td>
+<td>Destination relative to the core checkout. Must stay inside it and not at its top level</td>
+</tr>
+</tbody>
+</table>
+<p>The Hub already copies the whole template directory to
+<code>&lt;core&gt;/templates/&lt;app-id&gt;/</code> before every <code>compose up</code>. Mounting
+<code>./templates/&lt;app-id&gt;/&lt;file&gt;</code> is usually all you need, and every built-in
+template uses <code>config_files: []</code>.</p>
+<h2 id="urls">urls<a class="headerlink" href="#urls" title="Permanent link">&para;</a></h2>
+<p>Links shown in the Hub.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>label</code></td>
+<td>single line, non-empty</td>
+<td>Yes</td>
+<td>Link text</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td><code>^https?://\S+$</code></td>
+<td>Yes</td>
+<td>URL, with <code>{{DOMAIN}}</code> replaced</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nt">urls</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Vault</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">"https://passwords.{{DOMAIN}}"</span>
+</code></pre></div>
+<h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
+<p>Run the validator from the templates repo:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>.venv/bin/pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tests/requirements.txt
+.venv/bin/python<span class="w"> </span>tests/validate.py<span class="w">            </span><span class="c1"># all templates</span>
+.venv/bin/python<span class="w"> </span>tests/validate.py<span class="w"> </span>my-app<span class="w">     </span><span class="c1"># one template (cross-template checks still run)</span>
+.venv/bin/python<span class="w"> </span>tests/validate.py<span class="w"> </span>--strict<span class="w">   </span><span class="c1"># warnings fail too</span>
+</code></pre></div>
+<p>It prints one line per problem with a hint. Exit codes: <code>0</code> OK, <code>1</code> rule
+violations, <code>2</code> usage or setup error. Besides the schema, it checks:</p>
+<p><strong>Layout</strong></p>
+<ul>
+<li>the directory name is a valid app ID (<code>^[a-z0-9][a-z0-9_-]{0,63}$</code>)</li>
+<li>the files are named exactly <code>manifest.yaml</code> and <code>compose.yml</code></li>
+<li><code>tests/apps/&lt;app-id&gt;.sh</code> exists</li>
+<li>the directory is listed in <code>.github/dependabot.yml</code></li>
+<li><code>.core-ref</code> holds exactly one ref</li>
+</ul>
+<p><strong>Manifest</strong></p>
+<ul>
+<li>no key is declared twice across <code>env</code>, <code>settings</code> and <code>ports</code>, and none shadows a core variable</li>
+<li>every <code>secret_env</code> is an <code>env</code> entry with <code>generate: random</code></li>
+<li>port <code>bind</code> values are IPs and <code>range</code> values are valid</li>
+<li><code>config_files</code> sources exist</li>
+<li><code>auth.native_login</code> only with <code>method: custom</code> and <code>sso: false</code>, and a <code>custom</code> app with <code>group_access: true</code> declares it</li>
+</ul>
+<p><strong>Networks and volumes</strong></p>
+<ul>
+<li>Traefik-routed services use <code>networks: [default, portcullis-proxy]</code>, and internal services stay off <code>portcullis-proxy</code></li>
+<li><code>portcullis-proxy</code> is declared <code>external: true</code>, and no other networks are used</li>
+<li>volumes declare <code>name: portcullis_&lt;volume&gt;</code>, unique across templates and never external</li>
+</ul>
+<p><strong>Variables</strong></p>
+<ul>
+<li>core variables use their default form, e.g. <code>${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}</code></li>
+<li>every other variable is declared in the manifest</li>
+<li>required <code>${VAR:?}</code> variables are <code>generate: random</code> env entries</li>
+</ul>
+<p><strong>Services</strong></p>
+<ul>
+<li>no <code>ports:</code>, <code>build:</code>, <code>container_name:</code> or <code>env_file:</code></li>
+<li>every image is pinned <code>tag@sha256:digest</code>, and floating tags (<code>latest</code>, <code>16-alpine</code>, ...) are rejected</li>
+</ul>
+<p><strong>Bind mounts</strong></p>
+<ul>
+<li>only <code>./templates/&lt;app-id&gt;/&lt;file&gt;</code> (the file must exist) and <code>./certs/ca-bundle.crt:&lt;path&gt;:ro</code></li>
+<li>never <code>./scripts/</code> or another template's files</li>
+</ul>
+<p><strong>Routers</strong></p>
+<ul>
+<li>every router has a rule of the form <code>Host(`&lt;sub&gt;.${PORTCULLIS_DOMAIN:-portcullis.local}`)</code>, and no core subdomain</li>
+<li><code>entrypoints: websecure</code>, and <code>tls.options</code> one of <code>authaware@file</code>, <code>public@file</code>, <code>protected@file</code> (<code>mtls</code> apps need <code>protected@file</code>)</li>
+<li><code>security-headers@file</code> is in the middlewares</li>
+<li><code>portcullis-auth@docker</code> and <code>portcullis-groups@docker</code> always appear together, in that order</li>
+<li>forward-auth and header-auth routers use them; native-OIDC host-wide routers don't</li>
+<li><code>public</code>, <code>custom</code> and <code>mtls</code> routers use neither (for <code>custom</code> apps the Hub adds them, see <a href="#authnative_login">auth.native_login</a>)</li>
+<li>each <code>admin_paths</code> entry is served by a gated router</li>
+</ul>
+<p><strong>Public exceptions</strong> (<code>auth.public_access</code>)</p>
+<ul>
+<li>only for <code>forward-auth</code>, <code>header-auth</code> and <code>native-oidc</code>; header-auth apps list <code>identity_headers</code>, and every identity-like <code>X-…</code>/<code>Remote-…</code> header in <code>compose.yml</code> must be among them</li>
+<li>the prefix, broad, never-public, overlap, matcher and <code>token_pattern</code> rules of <a href="#authpublic_access">auth.public_access</a></li>
+<li><code>exact</code> paths have a <code>justification</code> and no <code>{token}</code>; supporting prefixes don't name a file</li>
+<li>no router or middleware named <code>portcullis-public-*</code></li>
+</ul>
+<p><strong>Header trust</strong></p>
+<ul>
+<li>header-auth apps restrict identity headers to Traefik's IP</li>
+<li>nothing trusts <code>**</code>, <code>0.0.0.0/0</code>, <code>::/0</code> or the proxy subnet</li>
+</ul>
+<p><strong>Cross-template</strong></p>
+<ul>
+<li>no subdomain or volume name is used by two templates</li>
+</ul>
+<hr />
+<h2 id="complete-example">Complete example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
+<p>A native-OIDC app with path settings, generated secrets and a Keycloak client:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># yaml-language-server: $schema=../schema/manifest.schema.json</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Jellyfin</span>
+<span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Free and open-source media server -- movies, TV, music, live TV</span>
+<span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="s">"</span><span class="se">\U0001F4FA</span><span class="s">"</span>
+<span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">media</span>
+<span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">media</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">movies</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tv</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">music</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">streaming</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">opensource</span><span class="p p-Indicator">]</span>
+
+<span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native-oidc</span>
+<span class="w">  </span><span class="nt">sso</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">group_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">group_admin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">access_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users_jellyfin</span>
+<span class="w">  </span><span class="nt">admin_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admin_jellyfin</span>
+<span class="w">  </span><span class="nt">notes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
+<span class="w">    </span><span class="no">SSO-Auth plugin with group enforcement. Users must be in access_group</span>
+<span class="w">    </span><span class="no">to log in. Members of admin_group get Jellyfin admin.</span>
+
+<span class="nt">settings</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JELLYFIN_MOVIES_PATH</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Movies folder</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Host path to your movies library</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path</span>
+<span class="w">    </span><span class="nt">target</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jellyfin</span>
+<span class="w">      </span><span class="nt">mount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/movies</span>
+
+<span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JELLYFIN_ADMIN_PASSWORD</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Jellyfin admin password</span>
+<span class="w">    </span><span class="nt">generate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">random</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JELLYFIN_OIDC_SECRET</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Jellyfin OIDC client secret</span>
+<span class="w">    </span><span class="nt">generate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">random</span>
+
+<span class="nt">keycloak_clients</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jellyfin</span>
+<span class="w">    </span><span class="nt">secret_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JELLYFIN_OIDC_SECRET</span>
+<span class="w">    </span><span class="nt">redirect_uris</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"https://media.{{DOMAIN}}/sso/OID/redirect/keycloak"</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Jellyfin</span>
+
+<span class="nt">config_files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+
+<span class="nt">urls</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Jellyfin</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">"https://media.{{DOMAIN}}"</span>
+</code></pre></div>
+<p>A forward-auth app with host ports:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pi-hole</span>
+<span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Network-wide ad blocking via DNS sinkhole</span>
+<span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="s">"</span><span class="se">\U0001F6AB</span><span class="s">"</span>
+<span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">networking</span>
+<span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dns</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">adblock</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">privacy</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">filtering</span><span class="p p-Indicator">]</span>
+
+<span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">forward-auth</span>
+<span class="w">  </span><span class="nt">sso</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">group_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">group_admin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">access_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users_pihole</span>
+<span class="w">  </span><span class="nt">admin_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admin_pihole</span>
+<span class="w">  </span><span class="nt">notes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">No SSO support. Has its own web password. Access gated by group-gate middleware.</span>
+
+<span class="nt">ports</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PIHOLE_DNS_TCP_HOST</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DNS (TCP)</span>
+<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+<span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tcp</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+<span class="w">    </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pihole</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PIHOLE_DNS_UDP_HOST</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DNS (UDP)</span>
+<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+<span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">udp</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+<span class="w">    </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pihole</span>
+
+<span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PIHOLE_WEBPASSWORD</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pi-hole web interface password</span>
+<span class="w">    </span><span class="nt">generate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">random</span>
+
+<span class="nt">keycloak_clients</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="nt">config_files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+
+<span class="nt">urls</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Dashboard</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">"https://pihole.{{DOMAIN}}/admin"</span>
+</code></pre></div>
+<p>The real manifests of every built-in template are rendered in the <a href="../../apps/">App Catalog</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2906 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/setup/certificates/">
+      
+      
+      
+        <link rel="prev" href="../dns/">
+      
+      
+        <link rel="next" href="../../apps/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>TLS & mTLS - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TLS & mTLS
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#acme-staging-vs-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ACME staging vs production
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ACME staging vs production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#production-acme_stagingfalse-the-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Production (<code>ACME_STAGING=false</code>, the default)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#staging-acme_stagingtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Staging (<code>ACME_STAGING=true</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Switching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mtls-client-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS (client certificates)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mTLS (client certificates)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TLS tiers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issuing-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Issuing certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifetime-and-renewal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lifetime and renewal
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-login-through-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS login through Keycloak
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mTLS login through Keycloak">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trusted-proxy-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Trusted proxy address
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sign-in-levels-keycloak-browser-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in levels (Keycloak browser flow)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-binding-group-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS binding (group-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revocation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vault-server-mode-auto-unseal-and-approle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vault: server mode, auto-unseal and AppRole
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disabling-mtls-mtls_enabledfalse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disabling mTLS (<code>MTLS_ENABLED=false</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common scenarios
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-connection-is-not-private-neterr_cert_authority_invalid" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        "Your connection is not private" / <code>NET::ERR_CERT_AUTHORITY_INVALID</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-shows-unable-to-get-local-issuer-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App shows "unable to get local issuer certificate"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-err_bad_ssl_client_auth_cert" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS: <code>ERR_BAD_SSL_CLIENT_AUTH_CERT</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-err_ssl_client_auth_cert_needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS: <code>ERR_SSL_CLIENT_AUTH_CERT_NEEDED</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-your-client-certificate-has-been-revoked" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403 "Your client certificate has been revoked"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-the-certificate-revocation-list-is-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403 "The certificate revocation list is unavailable"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#x509-login-in-keycloak-does-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        X.509 login in Keycloak does nothing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#acme-staging-vs-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ACME staging vs production
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ACME staging vs production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#production-acme_stagingfalse-the-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Production (<code>ACME_STAGING=false</code>, the default)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#staging-acme_stagingtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Staging (<code>ACME_STAGING=true</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Switching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mtls-client-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS (client certificates)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mTLS (client certificates)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TLS tiers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issuing-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Issuing certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifetime-and-renewal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lifetime and renewal
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-login-through-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS login through Keycloak
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mTLS login through Keycloak">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trusted-proxy-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Trusted proxy address
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sign-in-levels-keycloak-browser-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in levels (Keycloak browser flow)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-binding-group-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS binding (group-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revocation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vault-server-mode-auto-unseal-and-approle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vault: server mode, auto-unseal and AppRole
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disabling-mtls-mtls_enabledfalse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disabling mTLS (<code>MTLS_ENABLED=false</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common scenarios
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-connection-is-not-private-neterr_cert_authority_invalid" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        "Your connection is not private" / <code>NET::ERR_CERT_AUTHORITY_INVALID</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-shows-unable-to-get-local-issuer-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App shows "unable to get local issuer certificate"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-err_bad_ssl_client_auth_cert" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS: <code>ERR_BAD_SSL_CLIENT_AUTH_CERT</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-err_ssl_client_auth_cert_needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS: <code>ERR_SSL_CLIENT_AUTH_CERT_NEEDED</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-your-client-certificate-has-been-revoked" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403 "Your client certificate has been revoked"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-the-certificate-revocation-list-is-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403 "The certificate revocation list is unavailable"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#x509-login-in-keycloak-does-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        X.509 login in Keycloak does nothing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="tls-certificates-mtls">TLS Certificates &amp; mTLS<a class="headerlink" href="#tls-certificates-mtls" title="Permanent link">&para;</a></h1>
+<p>Portcullis has two TLS toggles in <code>.env</code>. They are independent of each other:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th><code>.env</code> variable</th>
+<th>Default</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Certificate source</strong></td>
+<td><code>ACME_STAGING</code></td>
+<td><code>false</code></td>
+<td>Staging (test) vs production (trusted) Let's Encrypt certs</td>
+</tr>
+<tr>
+<td><strong>Client certificates</strong></td>
+<td><code>MTLS_ENABLED</code></td>
+<td><code>true</code></td>
+<td>Whether Traefik requests mTLS client certs (PIV/YubiKey)</td>
+</tr>
+</tbody>
+</table>
+<p>After changing either one, run:</p>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>config<span class="w"> </span>apply
+./portcullis<span class="w"> </span>up
+</code></pre></div>
+<p><code>config apply</code> rewrites <code>traefik/dynamic/tls.yml</code> (Traefik hot-reloads it),
+sets <code>ACME_CA_SERVER</code> in <code>.env</code>, and rebuilds <code>certs/ca-bundle.crt</code>. <code>up</code>
+recreates Traefik when its environment changed.</p>
+<hr />
+<h2 id="acme-staging-vs-production">ACME staging vs production<a class="headerlink" href="#acme-staging-vs-production" title="Permanent link">&para;</a></h2>
+<h3 id="production-acme_stagingfalse-the-default">Production (<code>ACME_STAGING=false</code>, the default)<a class="headerlink" href="#production-acme_stagingfalse-the-default" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Uses the Let's Encrypt <strong>production</strong> CA, which all browsers trust.</li>
+<li>Rate limits apply: 50 certificates per registered domain per week.</li>
+<li>One wildcard certificate (<code>&lt;domain&gt;</code> + <code>*.&lt;domain&gt;</code>) covers every app, so
+  individual subdomains never appear in Certificate Transparency logs.</li>
+</ul>
+<h3 id="staging-acme_stagingtrue">Staging (<code>ACME_STAGING=true</code>)<a class="headerlink" href="#staging-acme_stagingtrue" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Uses the Let's Encrypt <strong>staging</strong> CA. There are no rate limits, but
+  <strong>browsers will not trust the certificate</strong>. Use it while you iterate on DNS
+  setup.</li>
+<li>App containers that call Keycloak over HTTPS mount <code>certs/ca-bundle.crt</code>.
+  <code>config apply</code> builds it from the system CAs, the internal Portcullis PKI
+  chain, and the Let's Encrypt staging root (only when <code>ACME_STAGING=true</code>).
+  <code>init</code>, <code>up</code> and <code>upgrade</code> rebuild it too.</li>
+</ul>
+<p>Browser workarounds for staging certs: start Chrome with
+<code>--ignore-certificate-errors</code>, accept the risk in Firefox, or use <code>curl -k</code>.</p>
+<h3 id="switching">Switching<a class="headerlink" href="#switching" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Set <code>ACME_STAGING=true</code> or <code>false</code> in <code>.env</code>.</li>
+<li>Run <code>./portcullis config apply &amp;&amp; ./portcullis up</code>. <code>config apply</code> notices
+   the flip and clears Traefik's <code>acme.json</code>, so Traefik requests a new
+   certificate.</li>
+<li>Wait about 2 minutes for the DNS-01 challenge:
+   <code>docker compose logs -f traefik 2&gt;&amp;1 | grep -i acme</code>.</li>
+</ol>
+<hr />
+<h2 id="mtls-client-certificates">mTLS (client certificates)<a class="headerlink" href="#mtls-client-certificates" title="Permanent link">&para;</a></h2>
+<h3 id="tls-tiers">TLS tiers<a class="headerlink" href="#tls-tiers" title="Permanent link">&para;</a></h3>
+<p>With <code>MTLS_ENABLED=true</code>, Traefik offers three TLS option sets
+(<code>traefik/dynamic/tls.yml</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Traefik option</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>protected</strong></td>
+<td><code>RequireAndVerifyClientCert</code></td>
+<td>Client cert <strong>required</strong>. Without one, the TLS handshake fails</td>
+</tr>
+<tr>
+<td><strong>authaware</strong></td>
+<td><code>VerifyClientCertIfGiven</code></td>
+<td>Client cert <strong>optional</strong>. Verified against <code>certs/ca-chain.crt</code> if present</td>
+</tr>
+<tr>
+<td><strong>public</strong></td>
+<td><code>NoClientCert</code></td>
+<td>No client cert requested</td>
+</tr>
+</tbody>
+</table>
+<p>All core routers (<code>auth</code>, <code>hub</code>, <code>enroll</code>, <code>traefik</code>, <code>directory</code>) use
+<code>authaware</code>. For apps, the Hub derives the tier from the app's
+<a href="../../operations/auth-policies/#traefik-tls-tier">access policy</a> and writes it
+into a per-app compose override. You change it by editing the policy in the Hub,
+not the template's <code>compose.yml</code>.</p>
+<h3 id="issuing-certificates">Issuing certificates<a class="headerlink" href="#issuing-certificates" title="Permanent link">&para;</a></h3>
+<p>Client certificates come from Vault's PKI (<code>pki_int</code>, role <code>client-cert</code>). The
+key is generated on the YubiKey and never leaves it.</p>
+<ul>
+<li><strong>Admin enrollment</strong>: at <code>https://enroll.&lt;domain&gt;</code> (requires <code>lldap_admin</code>),
+  either by pasting a CSR made with <code>ykman</code> or through the guided flow, or on
+  the host with <code>./portcullis cert enroll &lt;user&gt; [email]</code>.</li>
+<li><strong>What Vault signs</strong>: the role takes the CN from the caller, never from the
+  CSR, and enroll only signs CSRs whose subject is exactly the user. The
+  certificate has the <code>clientAuth</code> EKU.</li>
+</ul>
+<h3 id="lifetime-and-renewal">Lifetime and renewal<a class="headerlink" href="#lifetime-and-renewal" title="Permanent link">&para;</a></h3>
+<p>Certificates live <strong><code>CLIENT_CERT_TTL</code></strong>, default <code>720h</code> (30 days).</p>
+<p><strong>Why 30 days.</strong> A very short lifetime (say 24 hours) would mean renewing with
+the YubiKey every day; in practice certificates expire and users fall back to
+weaker factors. A short lifetime would only be standing in for revocation, and
+Portcullis enforces revocation everywhere a certificate is accepted (see
+<a href="#revocation">Revocation</a>), so the lifetime just sets how often people renew.
+90 days (<code>2160h</code>) is reasonable if you revoke lost keys promptly.</p>
+<p><code>./portcullis pki setup</code> (also run by <code>upgrade</code>) rewrites the Vault role with
+the current value. Only certificates issued afterwards are affected.</p>
+<p><strong>Self-service renewal</strong> at <code>https://enroll.&lt;domain&gt;/self</code> is open to any
+signed-in user, for their own certificate only. It runs on router
+<code>enroll-self</code> with <code>portcullis-self@docker</code>, which is group-gate's
+<code>/authenticated</code> check: revocation and host checks, but no <code>lldap_admin</code>
+requirement. Renewal succeeds only if all of these hold:</p>
+<ul>
+<li>the browser presents the user's <strong>current, valid, unrevoked</strong> certificate (Traefik passes it to enroll via <code>client-cert-pem@file</code>)</li>
+<li>its CN is the signed-in user</li>
+<li>Vault issued exactly that certificate</li>
+<li>the pasted CSR is for <strong>the same public key</strong>: <code>ykman piv keys export 9a</code> + <code>ykman piv certificates request</code></li>
+</ul>
+<p>An expired or revoked certificate cannot be renewed this way. An admin
+re-enrolls the key instead.</p>
+<p><strong>CLI renewal</strong> on the host, with the YubiKey attached:
+<code>./portcullis cert renew &lt;user&gt;</code>.</p>
+<p><strong>Expiry warnings.</strong> These list users whose newest certificate has fewer than
+<code>CERT_EXPIRY_WARN_DAYS</code> (default 7) days left:</p>
+<ul>
+<li><code>./portcullis status</code> (and <code>vault.certs_expiring</code> in <code>status --json</code>)</li>
+<li><code>./portcullis cert list</code>, which marks them <code>expiring</code></li>
+<li>the enrollment UI, which flags them</li>
+</ul>
+<h3 id="mtls-login-through-keycloak">mTLS login through Keycloak<a class="headerlink" href="#mtls-login-through-keycloak" title="Permanent link">&para;</a></h3>
+<p><code>auth.&lt;domain&gt;</code> uses the <strong>authaware</strong> tier, so the browser can present the
+YubiKey cert to Keycloak:</p>
+<ol>
+<li>Traefik verifies the cert against <code>certs/ca-chain.crt</code>.</li>
+<li>Traefik forwards it PEM-encoded in <code>X-Forwarded-Tls-Client-Cert</code> (middleware <code>client-cert-pem@file</code>).</li>
+<li>Keycloak reads the header with its built-in <strong><code>traefik</code> x509 lookup provider</strong> (<code>--spi-x509cert-lookup--provider=traefik</code>). The provider understands Traefik's <code>passTLSClientCert</code> <code>pem: true</code> format.</li>
+</ol>
+<p>The realm's X.509 authenticator (<code>x509-config</code>) then:</p>
+<ul>
+<li>maps the Subject CN to the LLDAP username</li>
+<li><strong>re-validates</strong> the chain against <code>certs/truststore/</code> (written by <code>pki setup</code>, mounted as Keycloak's truststore), and checks the validity period and the <code>clientAuth</code> EKU</li>
+<li><strong>checks the CRLs</strong> at <code>http://vault:8200/v1/pki_int/crl</code> and <code>.../crl/delta</code> (<code>##</code>-separated in <code>crl-relative-path</code>). Keycloak caches each for at most 60 s. pki_int has <code>auto_rebuild=true</code> (keeps the full CRL from going stale) and therefore <code>enable_delta=true</code>: Vault does <strong>not</strong> rebuild the full CRL on revoke. New revocations land in the delta CRL, rebuilt every minute, until the next full rebuild. <code>./portcullis cert revoke</code> also rotates the full CRL immediately</li>
+<li><strong>fails closed on the CRL</strong>: if the CRL cannot be fetched, the X.509 login fails. <code>x509-cert-auth-crl-abort-if-non-updated=true</code> (Keycloak's actual key, with a dash) also rejects a CRL past its <code>nextUpdate</code>. Vault never lets it get that stale: <code>pki setup</code> sets <code>pki_int/config/crl</code> to <code>expiry=72h auto_rebuild=true auto_rebuild_grace_period=12h</code></li>
+</ul>
+<p><code>./portcullis keycloak configure</code> pushes the <code>x509-config</code> settings from
+<code>keycloak/realm-export.json</code> to an existing realm.</p>
+<h4 id="trusted-proxy-address">Trusted proxy address<a class="headerlink" href="#trusted-proxy-address" title="Permanent link">&para;</a></h4>
+<p>A cert header carries only the public certificate, so anyone who could put one
+in front of Keycloak could log in as that user. Three things prevent it:</p>
+<ul>
+<li><strong>Keycloak only trusts the header from Traefik.</strong> Keycloak's header-based
+  lookup providers (<code>traefik</code> included) return no certificate unless the
+  request comes from a trusted proxy (<code>HttpRequest.isProxyTrusted()</code>). With
+  <code>--proxy-trusted-addresses=${PORTCULLIS_AUTH_TRAEFIK_IP}</code>, Keycloak (Quarkus)
+  decides that <strong>from the TCP peer address of each request</strong>, and overwrites
+  any <code>X-Forwarded-Trusted-Proxy</code> header the client sent (<code>ForwardedParser</code>,
+  run before routing). The only trusted address is Traefik's
+  fixed IP on the internal <code>portcullis-auth</code> network. That IP is outside the
+  network's dynamic range, so no other container can get it. These sources are
+  untrusted, so the cert header and their <code>X-Forwarded-*</code> are ignored:<ul>
+<li>requests via <code>127.0.0.1:8080</code> (the CLI's admin API access; it arrives from the Docker gateway)</li>
+<li>requests from the <code>portcullis</code> network</li>
+<li>requests from any other container attached to <code>portcullis-auth</code></li>
+</ul>
+</li>
+<li><strong>Traefik strips client-supplied cert headers.</strong> It deletes
+  <code>X-Forwarded-Tls-Client-Cert*</code> sent by the client on the entrypoint, also
+  for requests without a TLS client cert, and drops their <code>_</code>/<code>.</code> aliases
+  (<code>aliasHeadersStrategy=delete</code>).</li>
+<li><strong>CI tests it.</strong> The <code>build-and-test</code> job logs in through Traefik with a real
+  cert, which must succeed. Then it sends the same cert as a forged header
+  straight to Keycloak from the <code>portcullis</code> and <code>portcullis-auth</code> networks and
+  from <code>127.0.0.1:8080</code>, with the realm's HTTPS requirement temporarily off so
+  only the proxy gate can stop it. None may yield an authorization code.</li>
+</ul>
+<p>See <a href="../../operations/hardening/#header-spoofing-protections">Security &amp; Hardening</a>.</p>
+<h3 id="sign-in-levels-keycloak-browser-flow">Sign-in levels (Keycloak browser flow)<a class="headerlink" href="#sign-in-levels-keycloak-browser-flow" title="Permanent link">&para;</a></h3>
+<p>The realm's browser flow <code>portcullis-universal</code> (kept equal to
+<code>keycloak/realm-export.json</code> by <code>./portcullis keycloak configure</code>) has <strong>no
+password</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>acr (LoA)</th>
+<th>Satisfied by</th>
+<th>amr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pwd</code> (1)</td>
+<td>the client cert (automatic when the browser presents one) or a passkey</td>
+<td><code>mtls</code> / <code>hwk</code></td>
+</tr>
+<tr>
+<td><code>hwk</code> (2)</td>
+<td>reaching LoA 1: every LoA 1 factor is hardware-backed, so no second touch</td>
+<td>(same)</td>
+</tr>
+<tr>
+<td><code>mtls</code> (3)</td>
+<td>the client cert</td>
+<td><code>mtls</code></td>
+</tr>
+</tbody>
+</table>
+<p>oauth2-proxy asks for <code>hwk</code> by default; group-gate asks for <code>mtls</code> when a policy
+needs the cert. Keycloak's step-up on an existing session asks only for the
+levels it has not reached (no <code>prompt=login</code>).</p>
+<p>A user's first passkey comes from a one-time setup link
+(<code>./portcullis invite &lt;user&gt;</code>, or the Hub): Keycloak 26.8 cannot enrol a
+passkey from inside the flow
+(<code>WebAuthnPasswordlessAuthenticatorFactory.isUserSetupAllowed()</code> is false).
+The setup link signs the user in through the hidden identity provider
+<code>portcullis-invite</code> (enroll) with LoA 2 / amr <code>hwk</code>, after the passkey
+registration it requires. Details:
+<a href="../../operations/hardening/#setup-links-enroll">Security &amp; Hardening</a> and
+<a href="../../operations/auth-policies/">Authentication Policies</a>.</p>
+<h3 id="mtls-binding-group-gate">mTLS binding (group-gate)<a class="headerlink" href="#mtls-binding-group-gate" title="Permanent link">&para;</a></h3>
+<p>A token with <code>amr=mtls</code> proves that a cert was used <strong>at login</strong>. Sometimes an
+app's policy is satisfied <strong>only</strong> through the <code>mtls</code> factor:</p>
+<ul>
+<li><code>mtls</code> alone</li>
+<li><code>all</code> including <code>mtls</code></li>
+<li><code>any</code> where <code>mtls</code> is the only factor present in the token</li>
+</ul>
+<p>Then group-gate also requires the <strong>current request</strong> to carry a client cert
+that is not revoked and whose CN equals the session's <code>preferred_username</code>.
+Otherwise the user gets the step-up page (<code>acr_values=mtls</code>).</p>
+<p>So a session opened with a cert that is revoked later stops working
+immediately. So does a session replayed from another browser without the key.</p>
+<h3 id="revocation">Revocation<a class="headerlink" href="#revocation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>cert<span class="w"> </span>list<span class="w">                </span><span class="c1"># find the serial (--all includes revoked)</span>
+./portcullis<span class="w"> </span>cert<span class="w"> </span>revoke<span class="w"> </span>&lt;serial&gt;<span class="w">     </span><span class="c1"># revoke (add --yes to skip the prompt)</span>
+./portcullis<span class="w"> </span>cert<span class="w"> </span>sync<span class="w">                </span><span class="c1"># rewrite the serial list from Vault</span>
+</code></pre></div>
+<p><strong>Traefik does not check CRLs.</strong> A TLS handshake with a revoked but unexpired
+cert still succeeds. Revocation is enforced in three places:</p>
+<ol>
+<li><strong>group-gate, on every request</strong> (<code>portcullis-groups@docker</code> and
+   <code>portcullis-self@docker</code>). <code>client-headers@file</code> (Traefik
+   <code>passTLSClientCert</code> with <code>serialNumber: true</code>) passes
+   <code>X-Forwarded-Tls-Client-Cert-Info</code> to the backend and to every later
+   forward-auth middleware. group-gate returns 403 when the cert's serial is
+   revoked, before any other check. It has two sources:<ul>
+<li><strong>The serial list</strong> <code>certs/revocation/revoked-serials.txt</code>. <code>cert revoke</code>
+  and <code>cert sync</code> rewrite it atomically from Vault's list of revoked
+  serials, and group-gate re-reads it when it changes. If Vault can't be
+  queried, the file is left unchanged and the command fails: it never
+  "un-revokes" by writing an empty list. If the file exists but can't be
+  read, group-gate denies every request that presents a cert (fail closed).</li>
+<li><strong>Vault's full and delta CRL</strong> (<code>GATE_CRL_URL</code> =
+  <code>http://vault:8200/v1/pki_int/crl</code>, <code>GATE_DELTA_CRL_URL</code> =
+  <code>.../crl/delta</code>), re-fetched every 60 s (<code>GATE_CRL_REFRESH_SECONDS</code>).
+  The union is enforced. It also covers revocations made directly through
+  the Vault API or UI: they reach the delta CRL within about 2 minutes
+  (Vault's periodic rebuild runs once a minute) and are denied at
+  group-gate's next refresh. If Vault is unreachable, the last good copy of
+  each CRL is kept and the serial list still applies.</li>
+</ul>
+</li>
+<li><strong>Keycloak X.509 login</strong>: the CRL check above. It fails closed when the CRL
+   is unavailable or stale.</li>
+<li><strong>mTLS binding</strong>: sessions on mTLS-only policies need the unrevoked cert on
+   every request.</li>
+</ol>
+<p><strong>Coverage.</strong> Revocation covers:</p>
+<ul>
+<li>every router whose middleware chain has <code>client-headers@file</code> <strong>before</strong> <code>portcullis-groups@docker</code> (all core routers and the default templates)</li>
+<li>new Keycloak X.509 logins</li>
+<li>sessions on mTLS-only policies</li>
+</ul>
+<p><strong>Not covered.</strong> Routers that rely on the TLS client cert alone, e.g. a
+<code>protected</code>-tier router without <code>portcullis-groups@docker</code>. There the cert
+works until it expires. Password and WebAuthn sessions of the same user are
+also not affected; sign them out in the Keycloak admin console if needed.</p>
+<hr />
+<h2 id="vault-server-mode-auto-unseal-and-approle">Vault: server mode, auto-unseal and AppRole<a class="headerlink" href="#vault-server-mode-auto-unseal-and-approle" title="Permanent link">&para;</a></h2>
+<p>Vault runs in <strong>server mode</strong> with integrated (raft) storage on the
+<code>vault_data</code> volume (<code>vault/vault.hcl</code>, data in <code>/vault/file</code>), so the CA
+survives restarts. The listener is plain HTTP on the internal <code>portcullis</code>
+network, and on <code>127.0.0.1:8200</code> on the host only. The container runs as the
+image's non-root <code>vault</code> user (100:1000).</p>
+<p><code>./portcullis vault init</code> is idempotent and is run by <code>init</code>, <code>upgrade</code> and
+<code>restore</code>. It does three things:</p>
+<ol>
+<li><strong>Init</strong>, on the first run only, with <strong>one key share, threshold 1</strong>. It
+   writes to <code>secrets/</code> (dir <code>0700</code>, gitignored):<ul>
+<li><code>secrets/vault-init.json</code>: the root token and unseal key (<code>0600</code>)</li>
+<li><code>secrets/vault-unseal/unseal-key</code>: mounted read-only into the vault
+  container. Owned by you, group 1000, <code>0640</code> (dir <code>0750</code>)</li>
+</ul>
+</li>
+<li><strong>Unseal.</strong> After that, <code>vault/entrypoint.sh</code> unseals automatically on every
+   container start: <code>up</code>, restart, host reboot.</li>
+<li><strong>Least privilege for enroll.</strong> It creates the AppRole <code>portcullis-enroll</code>
+   with policy <code>vault/policies/enroll.hcl</code>, which allows only
+   <code>pki_int/sign/client-cert</code>, listing <code>pki_int/certs</code> and reading
+   <code>pki_int/cert/*</code>. The credentials in <code>secrets/enroll/</code> (group 10002 = the
+   enroll user, <code>0640</code>) are mounted read-only into enroll. Enroll logs in for
+   1-hour tokens and logs in again before expiry or on a 403. There is no
+   static or root token in <code>.env</code>. Rotate the secret-id with
+   <code>./portcullis vault rotate-enroll-secret</code>.</li>
+</ol>
+<p>The admin commands (<code>pki setup</code>, <code>cert enroll|renew|revoke|list|sync</code>,
+<code>status</code>) use the root token from <code>secrets/vault-init.json</code>, or <code>VAULT_TOKEN</code>
+if exported. They use the host <code>vault</code> CLI if it is installed, otherwise the CLI
+inside the vault container. The token is passed by environment-variable name,
+never on the command line. <code>secrets/</code> and <code>backups/</code> are masked from the Hub
+container with empty tmpfs mounts.</p>
+<p><code>pki setup</code> is idempotent and never replaces an existing CA: it only recreates
+missing pieces such as the <code>client-cert</code> role or the exported CA files. If it
+finds an incomplete PKI (an earlier run aborted before the intermediate was
+signed), it wipes and recreates it; any Vault error aborts instead of being
+mistaken for "no PKI". If Vault has no CA but <code>certs/ca-chain.crt</code> exists
+(Vault data lost), it refuses to create a new one. Restore a backup, or pass
+<code>--force</code> and re-enroll every certificate. See the
+<a href="../../operations/cli/#pki-setup">CLI Reference</a>.</p>
+<p><code>certs/server.key</code> is written <code>0640</code> with group 0 (Traefik runs as root but
+without <code>CAP_DAC_OVERRIDE</code>). When the CLI is not run as root, it changes group
+ownership through a throwaway root container (pinned <code>alpine</code>, only
+<code>CAP_CHOWN</code>, no network).</p>
+<p><strong>Trade-off of auto-unseal.</strong> The unseal key lives on the same host as the
+encrypted data. Root on the host, or anyone who can read <code>secrets/</code>, can unseal
+Vault. What it does protect: a copy of the <code>vault_data</code> volume alone is useless.
+Several Shamir shares on the same disk would add nothing, hence one share.</p>
+<p>For stronger guarantees, remove the <code>secrets/vault-unseal</code> mount and unseal by
+hand after each restart (<code>docker compose exec vault vault operator unseal</code>), or
+use a cloud KMS auto-unseal.</p>
+<p><strong>Keep an offline copy of <code>secrets/vault-init.json</code>.</strong> Backups made by
+<code>portcullis backup</code> and <code>upgrade</code> include <code>secrets/</code> (and a raft snapshot of
+Vault), so protect them like the keys themselves. Off-host copies are encrypted
+with <code>BACKUP_PASSWORD</code> (see <a href="../../operations/backups/">Backups</a>).</p>
+<hr />
+<h2 id="disabling-mtls-mtls_enabledfalse">Disabling mTLS (<code>MTLS_ENABLED=false</code>)<a class="headerlink" href="#disabling-mtls-mtls_enabledfalse" title="Permanent link">&para;</a></h2>
+<p>All three tiers then behave like <code>public</code>: no client certificates are requested
+anywhere. Authentication is purely Keycloak passkeys (WebAuthn); there is no
+password sign-in. You don't need <code>ykman</code> or PIV setup. This is a good choice if you only want YubiKey
+tap-to-authenticate.</p>
+<div class="admonition danger">
+<p class="admonition-title">Routers that rely on mTLS alone become unauthenticated</p>
+<p>WebAuthn only protects routers that also run forward-auth
+(<code>portcullis-auth@docker</code>). A router on the <code>protected</code> tier with no
+forward-auth middleware, such as the Vault UI template, relied on the
+client certificate <em>as</em> its authentication. With <code>MTLS_ENABLED=false</code>,
+that router becomes <strong>open</strong>: there is no WebAuthn fallback. Before you
+disable mTLS, add <code>portcullis-auth@docker,portcullis-groups@docker</code> to such
+routers, or disable them.</p>
+</div>
+<p>Also note:</p>
+<ul>
+<li>App policies that require the <code>mtls</code> factor can no longer be satisfied, so
+  users get the step-up page.</li>
+<li>X.509 login in Keycloak never fires.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># .env: MTLS_ENABLED=false</span>
+./portcullis<span class="w"> </span>config<span class="w"> </span>apply
+./portcullis<span class="w"> </span>up
+</code></pre></div>
+<hr />
+<h2 id="common-scenarios">Common scenarios<a class="headerlink" href="#common-scenarios" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th><code>ACME_STAGING</code></th>
+<th><code>MTLS_ENABLED</code></th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First DNS/ACME experiments</td>
+<td><code>true</code></td>
+<td><code>false</code></td>
+<td>Untrusted certs, WebAuthn only</td>
+</tr>
+<tr>
+<td>Production, WebAuthn only</td>
+<td><code>false</code></td>
+<td><code>false</code></td>
+<td>Trusted certs, no certificate management</td>
+</tr>
+<tr>
+<td>Production, full mTLS</td>
+<td><code>false</code></td>
+<td><code>true</code></td>
+<td>PIV certs for browsers and CLI/API, WebAuthn fallback</td>
+</tr>
+<tr>
+<td>Development / CI</td>
+<td><code>true</code></td>
+<td><code>true</code></td>
+<td>Everything, including mTLS flows</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="your-connection-is-not-private-neterr_cert_authority_invalid">"Your connection is not private" / <code>NET::ERR_CERT_AUTHORITY_INVALID</code><a class="headerlink" href="#your-connection-is-not-private-neterr_cert_authority_invalid" title="Permanent link">&para;</a></h3>
+<p>You are on staging certificates. Switch to <code>ACME_STAGING=false</code>, or launch
+Chrome with <code>--ignore-certificate-errors</code>.</p>
+<h3 id="app-shows-unable-to-get-local-issuer-certificate">App shows "unable to get local issuer certificate"<a class="headerlink" href="#app-shows-unable-to-get-local-issuer-certificate" title="Permanent link">&para;</a></h3>
+<p>The app container cannot verify Keycloak's TLS cert. Check that:</p>
+<ul>
+<li><code>certs/ca-bundle.crt</code> exists (<code>./portcullis config apply --bundle-only</code>)</li>
+<li>the container mounts it (<code>./certs/ca-bundle.crt:&lt;path&gt;:ro</code> in the template's <code>compose.yml</code>)</li>
+<li>the runtime uses it: <code>NODE_EXTRA_CA_CERTS</code> for Node.js, <code>SSL_CERT_FILE</code> for Go</li>
+</ul>
+<h3 id="mtls-err_bad_ssl_client_auth_cert">mTLS: <code>ERR_BAD_SSL_CLIENT_AUTH_CERT</code><a class="headerlink" href="#mtls-err_bad_ssl_client_auth_cert" title="Permanent link">&para;</a></h3>
+<p>The client certificate is invalid, expired, or not signed by the Portcullis CA.
+Renew it at <code>https://enroll.&lt;domain&gt;/self</code> while it is still valid; otherwise
+an admin re-enrolls it.</p>
+<h3 id="mtls-err_ssl_client_auth_cert_needed">mTLS: <code>ERR_SSL_CLIENT_AUTH_CERT_NEEDED</code><a class="headerlink" href="#mtls-err_ssl_client_auth_cert_needed" title="Permanent link">&para;</a></h3>
+<p>The router is on the <code>protected</code> tier and requires a client cert. Enroll a PIV
+cert, or change the app's access policy in the Hub.</p>
+<h3 id="403-your-client-certificate-has-been-revoked">403 "Your client certificate has been revoked"<a class="headerlink" href="#403-your-client-certificate-has-been-revoked" title="Permanent link">&para;</a></h3>
+<p>group-gate found the cert's serial in the revoked list or the CRL. Remove the
+cert from the browser/keychain and have an admin re-enroll the key.</p>
+<h3 id="403-the-certificate-revocation-list-is-unavailable">403 "The certificate revocation list is unavailable"<a class="headerlink" href="#403-the-certificate-revocation-list-is-unavailable" title="Permanent link">&para;</a></h3>
+<p>group-gate cannot read <code>certs/revocation/revoked-serials.txt</code> and therefore
+denies requests that present a cert. Run <code>./portcullis cert sync</code> and check the
+file's permissions.</p>
+<h3 id="x509-login-in-keycloak-does-nothing">X.509 login in Keycloak does nothing<a class="headerlink" href="#x509-login-in-keycloak-does-nothing" title="Permanent link">&para;</a></h3>
+<p>Check the Keycloak logs:</p>
+<ul>
+<li><code>HTTP header "X-Forwarded-Tls-Client-Cert" is not trusted</code> means the request
+  did not come from Traefik's <code>portcullis-auth</code> address. Check
+  <code>PORTCULLIS_AUTH_TRAEFIK_IP</code> and that Traefik is attached to <code>portcullis-auth</code>.</li>
+<li>A CRL error means Vault is sealed or unreachable (<code>./portcullis status</code>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

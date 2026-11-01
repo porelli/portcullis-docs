@@ -1,0 +1,2854 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/groups/">
+      
+      
+      
+        <link rel="prev" href="../hardening/">
+      
+      
+        <link rel="next" href="../auth-policies/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Groups & Access Control - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Groups & Access Control
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-group-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Group Model
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Group Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-vs-rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Manual vs. Rule-Based Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule-Based Groups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rule-Based Groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating a Rule
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expiries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Expiries
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Evaluator
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guarding-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Guarding Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#membership-flow-for-rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership Flow for Rule-Based Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-groups-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Groups Flow
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Groups Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Step by step:
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#group-gate-and-the-subdomain-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        group-gate and the Subdomain Map
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="group-gate and the Subdomain Map">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-group-gate-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What group-gate checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-reserved-group-__portcullis_deny__" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The reserved group <code>__portcullis_deny__</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-rules-path_groups-and-admin_paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Path rules (<code>path_groups</code> and <code>admin_paths</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authenticated-any-signed-in-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>/authenticated</code>: any signed-in user
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-app-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-App Enforcement
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-App Enforcement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#forward-auth-and-header-auth-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Forward-Auth and Header-Auth Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-oidc-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Native OIDC Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Managing Groups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-users-to-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding Users to Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syncing-groups-to-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Syncing Groups to Keycloak
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-giving-a-user-access-to-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Giving a User Access to an App
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-revoking-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Revoking Access
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-group-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Group Model
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Group Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-vs-rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Manual vs. Rule-Based Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule-Based Groups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rule-Based Groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating a Rule
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expiries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Expiries
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Evaluator
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guarding-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Guarding Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#membership-flow-for-rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership Flow for Rule-Based Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-groups-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Groups Flow
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Groups Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Step by step:
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#group-gate-and-the-subdomain-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        group-gate and the Subdomain Map
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="group-gate and the Subdomain Map">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-group-gate-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What group-gate checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-reserved-group-__portcullis_deny__" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The reserved group <code>__portcullis_deny__</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-rules-path_groups-and-admin_paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Path rules (<code>path_groups</code> and <code>admin_paths</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authenticated-any-signed-in-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>/authenticated</code>: any signed-in user
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-app-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-App Enforcement
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-App Enforcement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#forward-auth-and-header-auth-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Forward-Auth and Header-Auth Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-oidc-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Native OIDC Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Managing Groups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-users-to-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding Users to Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syncing-groups-to-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Syncing Groups to Keycloak
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-giving-a-user-access-to-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Giving a User Access to an App
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-revoking-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Revoking Access
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="groups-access-control">Groups &amp; Access Control<a class="headerlink" href="#groups-access-control" title="Permanent link">&para;</a></h1>
+<p>Portcullis uses LLDAP groups to control which users can access which apps. Groups can be <strong>manual</strong> (membership managed by hand) or <strong>rule-based</strong> (computed from custom user fields). This page explains the group model, rule-based groups, how groups flow through the system, and how to manage access.</p>
+<h2 id="the-group-model">The Group Model<a class="headerlink" href="#the-group-model" title="Permanent link">&para;</a></h2>
+<p>Every app in Portcullis has two associated LLDAP groups:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Pattern</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Access group</strong></td>
+<td><code>users_&lt;app&gt;</code></td>
+<td>Grants access to the app. Users not in this group get a 403 from group-gate.</td>
+</tr>
+<tr>
+<td><strong>Admin group</strong></td>
+<td><code>admin_&lt;app&gt;</code></td>
+<td>Grants admin privileges within the app (if the app supports group-based admin).</td>
+</tr>
+</tbody>
+</table>
+<p>For example, Jellyfin has:</p>
+<ul>
+<li><code>users_jellyfin</code> -- Members can access Jellyfin</li>
+<li><code>admin_jellyfin</code> -- Members get Jellyfin admin privileges</li>
+</ul>
+<p>These group names are defined in each app's <code>manifest.yaml</code> under <code>auth.access_group</code> and <code>auth.admin_group</code>.</p>
+<h3 id="manual-vs-rule-based-groups">Manual vs. Rule-Based Groups<a class="headerlink" href="#manual-vs-rule-based-groups" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Manual groups</strong>: membership is managed directly by admins (add/remove members, set expiries).</li>
+<li><strong>Rule-based groups</strong>: membership is computed by the Hub from custom user fields (department, office, manager, etc.). Rules combine conditions (all/any blocks) and can reference any field. The Hub evaluates rules at least every 60 seconds and on every relevant change (details, rules, exceptions, import).</li>
+</ul>
+<p>Groups are ordinary LLDAP groups; apps, group-gate and Keycloak use them the same way whether manual or rule-based.</p>
+<h2 id="rule-based-groups">Rule-Based Groups<a class="headerlink" href="#rule-based-groups" title="Permanent link">&para;</a></h2>
+<p>Rule-based groups grant membership automatically based on who people are, not by hand-picking members. Example rules: "everyone in the Milan office gets Nextcloud", "anyone reporting to Anna can see Grafana". The Hub evaluates rules continuously and updates LLDAP membership.</p>
+<h3 id="creating-a-rule">Creating a Rule<a class="headerlink" href="#creating-a-rule" title="Permanent link">&para;</a></h3>
+<p>Admins can make a group rule-based in the Hub's <strong>Groups</strong> tab. Rules are edited two ways that stay in sync:</p>
+<ol>
+<li><strong>Blocks</strong> (default): point-and-click all/any blocks, nestable. Conditions: <code>is</code>, <code>is not</code>, <code>is one of</code> (list fields), <code>is empty</code>, and for person fields (e.g. manager) <code>reports to (directly or indirectly)</code>.</li>
+<li><strong>Text rule</strong>: a typed expression with autocomplete for field names and list values, plus inline errors. A toggle switches between them; a parse error refuses the toggle.</li>
+</ol>
+<p>A <strong>preview</strong> shows who matches (count and names, live-updated while editing).</p>
+<p><strong>Converting a manual group to rule-based</strong>: opens a review. Current members who don't match the rule are pre-ticked to stay as "added" exceptions (reason: "member before the rule (set by X on date)"). Untick whoever should leave. Nothing changes until confirmed. The Hub compares the review with a fresh preview inside its lock and refuses with 409 if they differ (someone added/removed in between) — convert again.</p>
+<h3 id="exceptions">Exceptions<a class="headerlink" href="#exceptions" title="Permanent link">&para;</a></h3>
+<p>On a rule-based group, admins can:</p>
+<ul>
+<li><strong>Add</strong> someone although the rule doesn't match them (they stay even if the rule changes), or</li>
+<li><strong>Keep out</strong> someone although the rule matches (the evaluator skips them).</li>
+</ul>
+<p>Each exception needs a written <strong>reason</strong> (≤ 500 characters, shown to everyone) and may have an <strong>expiry</strong> (date/time; they're removed automatically when it arrives). An expired exception is kept (still denying for "kept out", doing nothing for "added" once the person left the group) until the person's membership changes or an admin deletes it.</p>
+<h3 id="expiries">Expiries<a class="headerlink" href="#expiries" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Manual groups</strong>: admins can set an expiry on any membership (date/time; removed automatically).</li>
+<li><strong>Rule-based groups</strong>: use exceptions with expiries. Direct Add/Remove is not offered (the evaluator would revert it).</li>
+<li><strong>Built-in groups</strong> (<code>lldap_admin</code>): expiries are refused (409).</li>
+</ul>
+<p>When a membership expires, the Hub removes it from LLDAP, revokes the user's Keycloak sessions (OIDC apps lose access at their next token refresh, within ~1 minute), and keeps the expiry in the policy file's <code>expiring</code> array (plus a 10-minute grace period) so enforcement is strict even while the Hub is down. When group-gate withholds an expired membership for a request, it also withholds <code>Authorization</code> and <code>X-Forwarded-Access-Token</code>.</p>
+<h3 id="the-evaluator">The Evaluator<a class="headerlink" href="#the-evaluator" title="Permanent link">&para;</a></h3>
+<p>The Hub runs the rule evaluator:</p>
+<ul>
+<li>at least every <strong>60 seconds</strong> (cadence),</li>
+<li>immediately on every detail change, rule change, exception change, CSV import that affects membership, and on expiries.</li>
+</ul>
+<p>For each rule-based group (skipping administrator and built-in groups):</p>
+<ol>
+<li>Computes who matches the rule (handles cycles in the manager field: <code>reports to</code> stops at the first repeat).</li>
+<li>Applies exceptions (adds "added" exceptions, skips "kept out" exceptions).</li>
+<li>Compares with LLDAP membership and updates it (adds/removes members).</li>
+<li>Audits every change (<code>group.rule_add</code>, <code>group.rule_remove</code>, <code>group.expired</code>) with the cause.</li>
+</ol>
+<p><strong>The Hub owns rule-group membership.</strong> A manual change made in LLDAP to a rule-based group (e.g. in <code>portcullis lldap-ui</code>) is reverted at the next evaluation and audited as <code>group.manual_change_reverted</code>.</p>
+<h3 id="guarding-groups">Guarding Groups<a class="headerlink" href="#guarding-groups" title="Permanent link">&para;</a></h3>
+<p>Rules of <strong>protected groups</strong> may only reference <strong>admin-only fields</strong>:</p>
+<ul>
+<li><strong>Administrator groups</strong>: <code>lldap_admin</code>, <code>lldap_password_manager</code>, core-subdomain groups (<code>auth</code>, <code>traefik</code>, <code>hub</code>, <code>directory</code>, <code>enroll</code>, <code>people</code>, <code>metrics</code>), <code>INVITE_PROTECTED_GROUPS</code></li>
+<li><strong>Permission groups</strong>: the groups holding a delegated permission (<code>edit_details</code>, <code>invite</code>, <code>remove</code>)</li>
+<li><strong>App admin groups</strong>: any group used as an app's <code>admin_group</code> or in <code>path_groups</code></li>
+</ul>
+<p>This prevents delegates (who can edit non-admin-only fields) from granting themselves admin rights or delegated permissions by editing data. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).</p>
+<p><strong>Built-in groups</strong> (<code>lldap_admin</code>, <code>lldap_password_manager</code>, core-subdomain groups) and permission groups cannot be rule-based (409). <code>INVITE_PROTECTED_GROUPS</code> can be rule-based, but only over admin-only fields.</p>
+<h3 id="membership-flow-for-rule-based-groups">Membership Flow for Rule-Based Groups<a class="headerlink" href="#membership-flow-for-rule-based-groups" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Fields</strong>: admins define custom fields (department, office, manager) under <strong>Setup</strong> in the Hub. Admins and delegates (with <code>edit_details</code> permission) fill in values.</li>
+<li><strong>Rules</strong>: admins write a rule that combines conditions over those fields.</li>
+<li><strong>Evaluator</strong>: the Hub runs the rule every ≤ 60 s and on changes, computes who matches, applies exceptions, updates LLDAP membership.</li>
+<li><strong>Sync</strong>: Keycloak syncs groups from LLDAP periodically (and can be triggered manually).</li>
+<li><strong>Access</strong>: apps enforce group membership the same way as manual groups (group-gate for the subdomain's <code>access_group</code>, the app's own group-admin mapping for <code>admin_group</code>).</li>
+</ol>
+<h2 id="how-groups-flow">How Groups Flow<a class="headerlink" href="#how-groups-flow" title="Permanent link">&para;</a></h2>
+<p>Groups originate in LLDAP and flow through the system:</p>
+<div class="highlight"><pre><span></span><code>LLDAP (source of truth)
+  |
+  v  LDAP federation (periodic sync)
+Keycloak (identity provider)
+  |
+  v  OIDC groups claim
+oauth2-proxy (forward auth)
+  |
+  v  X-Auth-Request-Groups header
+group-gate (access check)
+  |
+  v  subdomain -&gt; required group mapping
+App (allowed or denied)
+</code></pre></div>
+<h3 id="step-by-step">Step by step:<a class="headerlink" href="#step-by-step" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>LLDAP</strong> stores users and groups. An admin creates groups and assigns users to them.</li>
+<li><strong>Keycloak</strong> federates from LLDAP via its LDAP user storage provider. Groups are synced periodically (and can be triggered manually).</li>
+<li><strong>oauth2-proxy</strong> authenticates users via Keycloak's OIDC endpoint. The ID token includes a <code>groups</code> claim with the user's LLDAP groups.</li>
+<li><strong>group-gate</strong> receives the <code>X-Auth-Request-Groups</code> header (set by oauth2-proxy) and checks whether the user belongs to the required group for the requested subdomain.</li>
+</ol>
+<h2 id="group-gate-and-the-subdomain-map">group-gate and the Subdomain Map<a class="headerlink" href="#group-gate-and-the-subdomain-map" title="Permanent link">&para;</a></h2>
+<p>group-gate is the forward-auth service behind the <code>portcullis-groups@docker</code>
+middleware. It maps <strong>subdomains</strong> to required groups. Two sources are merged,
+and both are re-read on every request:</p>
+<ol>
+<li>
+<p><strong><code>group-gate/group-gate-map.conf</code></strong> in the core repo (mounted read-only
+   into group-gate) holds static entries, mainly for the core services:</p>
+<div class="highlight"><pre><span></span><code># subdomain=required_group
+auth=lldap_admin
+hub=lldap_admin
+grafana=users_grafana
+</code></pre></div>
+<p>Edits take effect on the next request; no restart is needed.</p>
+</li>
+<li>
+<p><strong>The Hub's <code>group-gate-policy.json</code></strong> (version 3, on the <code>hub_data</code> volume)
+   has a <code>groups</code> map. The Hub rewrites it whenever an app is enabled,
+   disabled or reconfigured. For every <strong>enabled</strong> template with
+   <code>auth.group_access: true</code>, each subdomain the template routes maps to the
+   manifest's <code>auth.access_group</code>. For example, Nextcloud routes
+   <code>cloud.&lt;domain&gt;</code> and declares <code>users_nextcloud</code>, so it yields
+   <code>cloud = users_nextcloud</code>. Hub entries add to or override the map file for
+   app subdomains.</p>
+</li>
+</ol>
+<p><strong>Keys are subdomains only.</strong> Policies, groups and path rules are never keyed
+by template ID, because an ID could equal another app's subdomain. The Hub
+refuses to enable a template that routes a subdomain another enabled app
+already routes, and rejects templates whose <code>Host()</code> rules it can't fully
+resolve (see <a href="../hub/#template-rules-enforced-by-the-hub">Hub → Template rules</a>).</p>
+<p><strong>Core subdomains</strong> (<code>auth</code>, <code>traefik</code>, <code>hub</code>, <code>directory</code>, <code>enroll</code>, <code>metrics</code>) always
+come from the map file. The Hub never publishes them, and group-gate ignores
+them in the policy file. If they are missing from the map file they default to
+<code>lldap_admin</code>.</p>
+<h3 id="what-group-gate-checks">What group-gate checks<a class="headerlink" href="#what-group-gate-checks" title="Permanent link">&para;</a></h3>
+<p>When a request for <code>grafana.&lt;domain&gt;</code> arrives, group-gate runs these checks in
+order and stops at the first failure:</p>
+<ol>
+<li><strong>Host.</strong> It takes the host from <code>X-Forwarded-Host</code>, lowercases it, and
+   strips any port and trailing dot. The host must be exactly
+   <code>&lt;label&gt;.&lt;PORTCULLIS_DOMAIN&gt;</code>; anything else gets a 403. Traefik matches
+   hosts case-insensitively, so without normalisation <code>HUB.&lt;domain&gt;</code> would
+   miss the <code>hub</code> entry.</li>
+<li><strong>Reserved group.</strong> A user whose groups include <code>__portcullis_deny__</code> is
+   denied.</li>
+<li><strong>Revocation.</strong> If the request carries a client certificate (via
+   <code>client-headers@file</code>, which must come before <code>portcullis-groups@docker</code>),
+   its serial must not be revoked. See <a href="../../setup/certificates/#revocation">TLS &amp; mTLS</a>.</li>
+<li><strong>Auth policy.</strong> If the app has a policy (or there is a global default),
+   the session's <code>acr</code>/<code>amr</code> must satisfy it. Otherwise group-gate returns the
+   step-up page. Policies satisfied only through <code>mtls</code> also need the current
+   request's certificate to match the user (mTLS binding). See
+   <a href="../auth-policies/">Authentication Policies</a>.</li>
+<li><strong>Group.</strong> It looks up the subdomain's required group (<code>users_grafana</code>) and
+   compares it with <code>X-Auth-Request-Groups</code> (set by oauth2-proxy). The header
+   is split on commas only, and the match must be exact.</li>
+<li><strong>Path rules.</strong> If the subdomain has <code>path_groups</code>, the group of the matching
+   path rule is required <strong>in addition</strong> (see below).</li>
+<li><strong>Allow.</strong> It returns <code>200 OK</code> and sets <code>X-Forwarded-User</code> /
+   <code>X-Auth-Request-User</code> (the LLDAP username), <code>X-Forwarded-Email</code> /
+   <code>X-Auth-Request-Email</code> and <code>X-Auth-Request-Groups</code> for the backend.
+   Identity is always the immutable LLDAP username, never the user-editable
+   email. Apps must never create, match or link accounts by email.
+   Otherwise it returns <code>403 Forbidden</code>.</li>
+</ol>
+<p><strong>Fail closed.</strong> These all deny the request instead of falling back to
+"public":</p>
+<ul>
+<li>a policy file that exists but can't be parsed</li>
+<li>a <code>version</code> newer than group-gate understands</li>
+<li>an unknown factor, op or rule shape</li>
+</ul>
+<p>If a subdomain has no mapping at all, group-gate allows any authenticated user
+and logs <code>ALLOW-UNMAPPED</code>. This is the passthrough for apps without group-based
+access.</p>
+<h3 id="the-reserved-group-__portcullis_deny__">The reserved group <code>__portcullis_deny__</code><a class="headerlink" href="#the-reserved-group-__portcullis_deny__" title="Permanent link">&para;</a></h3>
+<p>The Hub publishes <code>groups[sub] = "__portcullis_deny__"</code> for subdomains it knows
+are routed but can't attribute a config to. That happens when:</p>
+<ul>
+<li>an enabled app has neither a template nor a stored snapshot</li>
+<li>a <code>portcullis-&lt;id&gt;</code> project runs without being enabled</li>
+</ul>
+<p>Nobody is a member of that group, so every request to those subdomains is
+denied ("The configuration of … is unavailable"). A user who <em>claims</em>
+membership is denied everywhere.</p>
+<div class="admonition danger">
+<p class="admonition-title">Never create an LLDAP group named <code>__portcullis_deny__</code></p>
+<p>Membership would be treated as tampering and deny that user on every app.</p>
+</div>
+<p>See <a href="../hub/#fail-closed-behaviour">Hub → Fail-closed behaviour</a>.</p>
+<h3 id="path-rules-path_groups-and-admin_paths">Path rules (<code>path_groups</code> and <code>admin_paths</code>)<a class="headerlink" href="#path-rules-path_groups-and-admin_paths" title="Permanent link">&para;</a></h3>
+<p>Some apps keep an admin area on a path of the same subdomain, e.g.
+Vaultwarden's <code>/admin</code>. A template lists such prefixes in its manifest:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">admin_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admin_vaultwarden</span>
+<span class="w">  </span><span class="nt">admin_paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"/admin"</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>For every subdomain of an enabled template, the Hub publishes
+<code>path_groups[sub] = [{"prefix": "/admin", "group": "admin_vaultwarden"}]</code>. On
+requests under that prefix, group-gate then requires <code>admin_group</code> <strong>in
+addition</strong> to the subdomain's group.</p>
+<p>Matching:</p>
+<ul>
+<li><strong>What is matched.</strong> The path from <code>X-Forwarded-Uri</code> with the query and
+  fragment stripped. It is percent-decoded <strong>once</strong>, <code>//</code> is collapsed, and dot
+  segments (<code>/./</code>, <code>/../</code>) are resolved.</li>
+<li><strong>Ambiguous paths are denied.</strong> If an encoded slash, backslash or NUL
+  (<code>%2F</code>, <code>%5C</code>, <code>%00</code>) is still present after that one decode, or the path has
+  control characters, the request is denied outright. Different backends read
+  such paths differently.</li>
+<li><strong>Deny-biased variants.</strong> A rule applies if it matches <strong>any</strong> of: the
+  primary form, the fully decoded form, <code>\</code> read as <code>/</code>, <code>;</code> path parameters
+  stripped. Each is compared both case-sensitively and case-insensitively. So
+  <code>/%61dmin</code>, <code>//admin</code>, <code>/x/../admin</code> and <code>/ADMIN</code> all hit the <code>/admin</code> rule
+  (CI's browser test checks exactly these).</li>
+<li><strong>Segment-boundary prefixes.</strong> <code>/admin</code> matches <code>/admin</code> and <code>/admin/x</code>, but
+  not <code>/administrator</code>. The longest matching prefix wins. If different variants
+  hit rules with different groups, all of those groups are required.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Only routers with group-gate are covered</p>
+<p>Path rules only work on routers whose middlewares include
+<code>portcullis-auth@docker,portcullis-groups@docker</code>. For a native-OIDC app,
+the template routes the admin path through its own higher-priority
+<code>PathPrefix</code> router with forward-auth (<code>validate.py</code> in the templates repo
+checks that such a router exists).</p>
+</div>
+<h3 id="authenticated-any-signed-in-user"><code>/authenticated</code>: any signed-in user<a class="headerlink" href="#authenticated-any-signed-in-user" title="Permanent link">&para;</a></h3>
+<p>group-gate also serves <code>/authenticated</code>, used by the core middleware
+<code>portcullis-self@docker</code>. It runs every check except the subdomain group check
+(step 5): host, revocation, policy, path rules, and a signed-in user. Core uses
+it for <code>enroll.&lt;domain&gt;/self</code>, where every user may renew <strong>their own</strong>
+certificate without being in <code>lldap_admin</code>.</p>
+<h2 id="per-app-enforcement">Per-App Enforcement<a class="headerlink" href="#per-app-enforcement" title="Permanent link">&para;</a></h2>
+<p>How group access is enforced depends on the auth method:</p>
+<h3 id="forward-auth-and-header-auth-apps">Forward-Auth and Header-Auth Apps<a class="headerlink" href="#forward-auth-and-header-auth-apps" title="Permanent link">&para;</a></h3>
+<p>The Traefik middleware chain handles everything:</p>
+<div class="highlight"><pre><span></span><code>client-headers@file --&gt; portcullis-auth@docker --&gt; portcullis-groups@docker --&gt; App
+(client cert info)      (oauth2-proxy)             (group-gate)
+</code></pre></div>
+<p>Both oauth2-proxy and group-gate run as Traefik forward-auth middleware. The app itself is unaware of groups (header-auth apps receive them in <code>X-Auth-Request-Groups</code>).</p>
+<h3 id="native-oidc-apps">Native OIDC Apps<a class="headerlink" href="#native-oidc-apps" title="Permanent link">&para;</a></h3>
+<p>Native OIDC apps receive the user's groups in the <code>groups</code> claim (the Hub attaches the <code>groups</code> client scope to every client it registers). Some apps enforce group-based access themselves, e.g. Jellyfin's SSO plugin requires <code>users_jellyfin</code> and maps <code>admin_jellyfin</code> to admin. Each app page in the <a href="../../apps/">App Catalog</a> says what it does.</p>
+<p>Apps that can't restrict OIDC logins by group (GitLab, LiteLLM, Vaultwarden) put only their interactive login paths behind forward-auth + group-gate on a higher-priority <code>PathPrefix</code> router, and keep their API router without forward-auth. Never put <code>portcullis-auth@docker</code> on the host-wide router of a native-OIDC app: it would break API clients and mobile apps.</p>
+<h3 id="public-apps">Public Apps<a class="headerlink" href="#public-apps" title="Permanent link">&para;</a></h3>
+<p>No group enforcement. Anyone can access the app.</p>
+<h2 id="managing-groups">Managing Groups<a class="headerlink" href="#managing-groups" title="Permanent link">&para;</a></h2>
+<h3 id="creating-groups">Creating Groups<a class="headerlink" href="#creating-groups" title="Permanent link">&para;</a></h3>
+<p>Groups are created in the Hub's <strong>Groups</strong> tab:</p>
+<ul>
+<li>Admins: <code>https://hub.&lt;your-domain&gt;</code> → <strong>Users &amp; Groups</strong> tab → <strong>Groups</strong> section</li>
+<li>
+<p>Everyone: <code>https://people.&lt;your-domain&gt;</code> (read-only for non-admins)</p>
+</li>
+<li>
+<p>Under <strong>Groups</strong>, enter the group name (e.g., <code>users_grafana</code>) and click <strong>Create</strong>. New groups are manual.</p>
+</li>
+<li>Groups an enabled app needs but that don't exist yet are listed under <strong>Missing groups</strong>, each with a one-click <strong>Create</strong>.</li>
+</ul>
+<p><code>https://directory.&lt;your-domain&gt;</code> redirects to <code>https://people.&lt;your-domain&gt;</code>. LLDAP has no single sign-on, so its own web UI isn't published; for recovery, open it from the server with <a href="../cli/#lldap-ui"><code>portcullis lldap-ui</code></a>.</p>
+<h3 id="adding-users-to-groups">Adding Users to Groups<a class="headerlink" href="#adding-users-to-groups" title="Permanent link">&para;</a></h3>
+<p><strong>Manual groups</strong>: In the Hub's <strong>Groups</strong> tab (admins only), expand the group and use <strong>Add member</strong> / <strong>Remove member</strong>. Adding someone to an administrator group asks for confirmation.</p>
+<p><strong>Rule-based groups</strong>: membership is computed. To include someone, either adjust the rule or add them as an "added" exception (with a reason). To exclude someone the rule matches, add a "kept out" exception.</p>
+<h3 id="syncing-groups-to-keycloak">Syncing Groups to Keycloak<a class="headerlink" href="#syncing-groups-to-keycloak" title="Permanent link">&para;</a></h3>
+<p>Keycloak syncs groups from LLDAP periodically. To trigger an immediate sync:</p>
+<ol>
+<li>Open Keycloak admin at <code>https://auth.&lt;your-domain&gt;/admin/</code></li>
+<li>Go to <strong>User Federation</strong></li>
+<li>Click on the LLDAP provider</li>
+<li>Click <strong>Synchronize all users</strong></li>
+</ol>
+<p>Or via API:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get admin token</span>
+<span class="nv">KC_TOKEN</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8080/realms/master/protocol/openid-connect/token<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s2">"client_id=admin-cli"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s2">"username=admin"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s2">"password=YOUR_KC_ADMIN_PASSWORD"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s2">"grant_type=password"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.access_token'</span><span class="k">)</span>
+
+<span class="c1"># Find LDAP provider ID</span>
+<span class="nv">LDAP_ID</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8080/admin/realms/portcullis/components<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$KC_TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[] | select(.providerId=="ldap") | .id'</span><span class="k">)</span>
+
+<span class="c1"># Trigger full sync</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"http://localhost:8080/admin/realms/portcullis/user-storage/</span><span class="nv">$LDAP_ID</span><span class="s2">/sync?action=triggerFullSync"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$KC_TOKEN</span><span class="s2">"</span>
+</code></pre></div>
+<h2 id="example-giving-a-user-access-to-an-app">Example: Giving a User Access to an App<a class="headerlink" href="#example-giving-a-user-access-to-an-app" title="Permanent link">&para;</a></h2>
+<p>To give user <code>alice</code> access to Grafana:</p>
+<ol>
+<li>Create the <code>users_grafana</code> group in LLDAP if it doesn't exist yet (the Hub does not create groups)</li>
+<li>Add <code>alice</code> to the <code>users_grafana</code> group in LLDAP</li>
+<li>Wait for Keycloak sync (or trigger manually)</li>
+<li><code>alice</code> can now access <code>https://grafana.&lt;your-domain&gt;</code></li>
+</ol>
+<p>To also give <code>alice</code> admin privileges in Grafana, add her to <code>admin_grafana</code>.</p>
+<h2 id="example-revoking-access">Example: Revoking Access<a class="headerlink" href="#example-revoking-access" title="Permanent link">&para;</a></h2>
+<p>To revoke <code>alice</code>'s access to Grafana:</p>
+<ol>
+<li>Remove <code>alice</code> from the <code>users_grafana</code> group in LLDAP</li>
+<li>Trigger a Keycloak sync</li>
+<li><code>alice</code> will receive a 403 on her next request (after her oauth2-proxy session expires)</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>oauth2-proxy sessions have a configurable expiry. For immediate revocation, you can also revoke the user's Keycloak sessions from the Keycloak admin panel.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

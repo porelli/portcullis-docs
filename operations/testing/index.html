@@ -1,0 +1,2661 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/testing/">
+      
+      
+      
+        <link rel="prev" href="../hub/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Testing & CI - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Testing & CI
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Core CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-no-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>unit-tests</code> (no containers)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-and-test-whole-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>build-and-test</code> (whole stack)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e</code> (browser)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Caching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#releases-releaseyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Releases (<code>release.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependabot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dependabot
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-core-tests-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running the core tests locally
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Templates CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Templates CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lintyml-every-push-and-pr-forks-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>lint.yml</code>: every push and PR, forks included
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-appsyml-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>test-apps.yml</code>: integration tests
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docs-dispatchyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>docs-dispatch.yml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-helpers-testslibsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Test helpers (<code>tests/lib.sh</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-ci-buildyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hub CI (<code>build.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-workflows-locally-with-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running workflows locally with act
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Core CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-no-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>unit-tests</code> (no containers)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-and-test-whole-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>build-and-test</code> (whole stack)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e</code> (browser)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Caching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#releases-releaseyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Releases (<code>release.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependabot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dependabot
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-core-tests-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running the core tests locally
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Templates CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Templates CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lintyml-every-push-and-pr-forks-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>lint.yml</code>: every push and PR, forks included
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-appsyml-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>test-apps.yml</code>: integration tests
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docs-dispatchyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>docs-dispatch.yml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-helpers-testslibsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Test helpers (<code>tests/lib.sh</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-ci-buildyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hub CI (<code>build.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-workflows-locally-with-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running workflows locally with act
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="testing-ci">Testing &amp; CI<a class="headerlink" href="#testing-ci" title="Permanent link">&para;</a></h1>
+<p>Each repository has its own GitHub Actions CI. Core tests the stack itself, the
+templates repo tests every template against a pinned core version, and the Hub
+tests and signs its image.</p>
+<table>
+<thead>
+<tr>
+<th>Repo</th>
+<th>Workflow</th>
+<th>Jobs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>core (<code>porelli/portcullis</code>)</td>
+<td><code>.github/workflows/ci.yml</code>, <code>release.yml</code></td>
+<td><code>unit-tests</code>, <code>build-and-test</code>, <code>e2e</code>; release: <code>preflight</code> → <code>ci</code> (reusable <code>ci.yml</code>) → <code>release</code></td>
+</tr>
+<tr>
+<td>templates (<code>porelli/portcullis-templates</code>)</td>
+<td><code>lint.yml</code>, <code>test-apps.yml</code>, <code>docs-dispatch.yml</code></td>
+<td><code>lint</code>; <code>gate</code> → <code>changes</code> → <code>fetch-core</code> (+ <code>app-images</code> on push to <code>main</code>) → <code>test</code>; <code>dispatch</code></td>
+</tr>
+<tr>
+<td>Hub (<code>porelli/portcullis-hub</code>)</td>
+<td><code>build.yml</code></td>
+<td><code>test</code>, <code>build</code></td>
+</tr>
+<tr>
+<td>docs (<code>porelli/portcullis-docs</code>)</td>
+<td><code>deploy.yml</code></td>
+<td><code>deploy</code> (<code>zensical build --strict</code>, publish to <code>gh-pages</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="core-ci">Core CI<a class="headerlink" href="#core-ci" title="Permanent link">&para;</a></h2>
+<p>Runs on pushes to <code>main</code>, on pull requests, and as a reusable workflow (<code>workflow_call</code>) from <code>release.yml</code>. Secrets are not configured in
+the workflow: <code>./portcullis init --env-only</code> generates them into <code>.env</code>,
+exactly as on a real install. Every step drives the stack through
+<code>./portcullis</code>.</p>
+<h3 id="unit-tests-no-containers"><code>unit-tests</code> (no containers)<a class="headerlink" href="#unit-tests-no-containers" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>shellcheck</strong> of <code>portcullis</code>, <code>scripts/lib/*.sh</code>, <code>tests/*.sh</code> and <code>vault/entrypoint.sh</code>.</li>
+<li><strong>CLI help.</strong> Every command listed by <code>./portcullis help</code> must print a <code>Usage: portcullis &lt;cmd&gt;</code> line for <code>--help</code>.</li>
+<li><strong><code>tests/test_cli.sh</code>.</strong> Argument parsing, dispatch and <code>init --env-only</code>, with a stub <code>docker</code>.</li>
+<li><strong><code>tests/test_shell_libs.sh</code>.</strong> Shell-library tests against stub <code>docker</code>/<code>vault</code>:<ul>
+<li><code>.env</code> handling and secret generation</li>
+<li>network validation</li>
+<li><code>cert sync</code>, which must never empty the revoked list when Vault fails</li>
+<li><code>pki setup</code> idempotency, including resuming a partial run</li>
+</ul>
+</li>
+<li><strong><code>tests/test_group_gate.py</code>.</strong> group-gate unit tests (run in a venv with <code>pip install --require-hashes -r group-gate/requirements.txt</code>):<ul>
+<li>host normalisation and the case/port bypass regression</li>
+<li>merging the map file with the Hub's <code>groups</code></li>
+<li>fail-closed policies (version without <code>version</code> key → deny) and the reserved deny group</li>
+<li><code>path_groups</code>, including bypass variants</li>
+<li>the mTLS binding</li>
+<li>revocation by serial list and by a real openssl-generated CRL</li>
+<li>the identity headers and attribute headers returned on allow</li>
+<li><code>expiring</code> array: membership treated as absent once <code>now &gt;= at</code>, token withholding (<code>Authorization</code> and <code>X-Forwarded-Access-Token</code> withheld when an expired membership is stripped)</li>
+</ul>
+</li>
+<li><strong>Compose validity and wiring</strong>, against a generated <code>.env</code>. <code>docker compose config -q</code> must pass for the core, apps and test compose files. It also checks:<ul>
+<li><code>HUB_PROXY_SECRET</code> is generated, and an empty one is rejected</li>
+<li>the public default forward-auth secret is gone</li>
+<li>only the two socket proxies mount <code>docker.sock</code>; Traefik and the Hub use their proxies, and each proxy network has exactly its two members</li>
+<li>the Hub router carries <code>hub-proxy-secret@docker</code> with the right secret, and the people router carries the same middleware</li>
+<li>every core image is pinned by digest, and <code>enroll/Dockerfile</code> + <code>group-gate/Dockerfile</code> bases too</li>
+<li>every service has <code>no-new-privileges</code>, <code>cap_drop: ALL</code> and memory/pid limits</li>
+<li>Keycloak's <code>--proxy-trusted-addresses</code> is Traefik's <code>portcullis-auth</code> IP, and only Keycloak and Traefik are on that network</li>
+<li><code>group-gate-map.conf</code> has <code>people=*</code></li>
+</ul>
+</li>
+<li><strong>Pin enforcement.</strong> Every image in every compose file, under every profile (<code>--profile '*'</code>), must be pinned <code>tag@sha256:…</code>, apart from the Hub, which comes from <code>HUB_IMAGE</code>. The same goes for the <code>enroll/Dockerfile</code> bases, the image constants the CLI runs itself (<code>*_IMAGE=</code> in <code>scripts/lib</code>, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a <code># vX.Y.Z</code> comment.</li>
+<li><strong>Monitoring config.</strong> It runs, in the pinned images:<ul>
+<li><code>promtool check config</code> and <code>check rules</code>, plus <code>promtool test rules</code> (the alert unit tests)</li>
+<li><code>amtool check-config</code> for a generated Alertmanager config with no receiver, a webhook, ntfy and SMTP</li>
+<li><code>blackbox_exporter --config.check</code></li>
+<li>a sanity check of the provisioned dashboard JSON</li>
+</ul>
+</li>
+<li><strong>enroll</strong> <code>go vet</code> + <code>go test</code> in the pinned Go image: CSR validation, admin requirement, content type, AppRole login and re-login, self-service renewal.</li>
+</ul>
+<h3 id="build-and-test-whole-stack"><code>build-and-test</code> (whole stack)<a class="headerlink" href="#build-and-test-whole-stack" title="Permanent link">&para;</a></h3>
+<p>It boots the stack with a CI override (no ACME; self-signed server cert from
+the internal PKI) and verifies:</p>
+<ul>
+<li><strong>Vault</strong><ul>
+<li>server-mode init and unseal, and the permissions on <code>secrets/</code></li>
+<li>after a restart it auto-unseals and the CA is unchanged</li>
+<li>the enroll AppRole can only sign, list and read certs</li>
+</ul>
+</li>
+<li><strong>PKI</strong><ul>
+<li>the CA chain is created and valid</li>
+<li>Vault issues client certificates</li>
+</ul>
+</li>
+<li><strong>Keycloak</strong><ul>
+<li>the OIDC discovery and SAML descriptor endpoints</li>
+<li>the WebAuthn policy</li>
+<li>the <code>portcullis-forward-auth</code> client</li>
+<li>LLDAP users show up through the federation</li>
+<li>the <code>email-unverified</code> scope has exactly one mapper (<code>email</code>), also after a second <code>keycloak configure</code>; a throwaway direct-grant client with that scope instead of <code>email</code> gets <code>email</code> but no <code>email_verified</code> in the ID token, access token and userinfo, while the built-in <code>email</code> scope sends <code>email_verified: false</code></li>
+</ul>
+</li>
+<li><strong>mTLS</strong><ul>
+<li>requests with no cert, or a cert from another CA, are rejected</li>
+<li>cert info, including the serial, reaches the backend</li>
+<li>requests arrive from Traefik's static IP</li>
+</ul>
+</li>
+<li><strong>X.509 login</strong><ul>
+<li>a login via Traefik with a real cert succeeds</li>
+<li>the same cert as a forged header sent straight to Keycloak (from the
+  <code>portcullis</code> and <code>portcullis-auth</code> networks and from <code>127.0.0.1:8080</code>)
+  must <strong>not</strong> yield an authorization code</li>
+</ul>
+</li>
+<li><strong>Header spoofing.</strong> Client-supplied cert headers and their aliases are
+  dropped, and group-gate's path rules see <code>X-Forwarded-Uri</code>.</li>
+<li><strong>Socket proxies.</strong> A real <code>docker compose</code> project runs through
+  <code>socket-proxy-hub</code>, and the denied sections (build, swarm, plugins, secrets,
+  system, ...) fail. Traefik's proxy is read-only.</li>
+<li><strong>Hub</strong><ul>
+<li>runs as non-root</li>
+<li>talks to Docker only via its proxy</li>
+<li>answers 403 without the proxy secret</li>
+<li>on a fresh install publishes the built-in default auth policy <code>{factors: [mtls, webauthn], op: any}</code> (either YubiKey method), which group-gate applies (step-up for a session with neither) to an app without its own policy</li>
+<li>then gets a public default through <code>PUT /api/settings</code>, like an admin would; the revocation test checks that precondition, and every hand-written group-gate policy file in CI states its default explicitly</li>
+</ul>
+</li>
+<li><strong>Enrollment UI and API.</strong> List users, sign a CSR with the AppRole token, list certs.</li>
+<li><strong>Passkey-only sign-in and setup links.</strong><ul>
+<li>the browser flow has no password executor, has the identity-provider redirector, a passkey step and LoA 2 = allow-access; it carries the <code>[sync &lt;hash&gt;]</code> marker and a second <code>keycloak configure</code> rebuilds nothing</li>
+<li>the LDAP federation has <code>cachePolicy</code> <code>NO_CACHE</code> (<code>tests/test_shell_libs.sh</code> also checks the realm export and that <code>keycloak configure</code>'s patch sets it idempotently)</li>
+<li>the invite identity provider is enabled, hidden, links existing users only (<code>idp-detect-existing-broker-user</code>, <code>idp-auto-link</code>), back-channel <code>http://enroll:8445</code>, PKCE; the service account <code>portcullis-enroll</code> has exactly view-users + manage-users</li>
+<li><code>./portcullis invite</code>: link format, a new link revokes the older one, viewing doesn't consume it, a cross-site redeem is refused, <code>portcullis-hub</code> is refused, <code>admin</code> is allowed from the server</li>
+<li>the Hub's invite API (<code>enroll:8444</code>, contract §9.4): 201 for a user, 409 for <code>admin</code> / <code>portcullis-hub</code>, 404 for an unknown user, 401 with a wrong secret; the Hub's copy of the secret matches; the JWKS serves an ES256 key</li>
+</ul>
+</li>
+<li><strong><code>./portcullis up</code> and the Hub's LLDAP account.</strong> <code>portcullis-hub</code> is in <code>lldap_admin</code>, the 0640 / group 10001 password file logs in, a password changed in LLDAP is reset from the file on the next <code>up</code>, and the Hub sees <code>/run/portcullis/lldap</code> and <code>/run/portcullis/invite</code>.</li>
+<li><strong>Revocation end to end</strong>, once through <code>./portcullis cert revoke</code> and once through Vault's CRL alone.</li>
+<li><strong>CLI.</strong> <code>./portcullis status</code>.</li>
+<li><strong>Backup round-trip.</strong> It runs, in order:<ul>
+<li><code>./portcullis backup</code> with nothing stopped, then <code>backup verify --local</code>. A deliberately damaged backup must fail verification.</li>
+<li><code>status --textfile</code>.</li>
+<li><code>backup --offsite</code> twice to a local restic repository. The second run must be incremental, and retention must collapse same-day snapshots under <code>keep-daily</code>.</li>
+<li><code>backup verify</code> (off-host). A wrong <code>BACKUP_PASSWORD</code> must fail, and neither the root token nor the <code>.env</code> secrets may appear in the encrypted repository.</li>
+<li><strong>Restore into a fresh stack.</strong> Containers, volumes, <code>.env</code>, <code>secrets/</code>, <code>certs/</code> and local backups are all deleted, as on a new host. Then <code>restore --yes --from-offsite</code> must bring back an active Vault, the Keycloak realm, the forward-auth client and the LLDAP user.</li>
+</ul>
+</li>
+</ul>
+<p>The step "Test the public guard (public exceptions) through Traefik" routes a test host through <code>portcullis-public-guard@docker</code> only and checks: no version-3 entry → 403; published prefix / static paths → 200; other paths, encoded <code>/</code> or <code>#</code>, dot-segment escapes → 403; <code>Authorization</code>, <code>Proxy-Authorization</code>, a credential header, credential cookies and query keys in PHP-mangled spellings → 403. The guard's unit tests are in <code>tests/test_group_gate.py</code> (<code>PublicGuardTest</code>, <code>PhpVarNameTest</code>).</p>
+<h3 id="e2e-browser"><code>e2e</code> (browser)<a class="headerlink" href="#e2e-browser" title="Permanent link">&para;</a></h3>
+<p><code>tests/e2e/e2e_login.py</code> runs Playwright Chromium (pinned in
+<code>tests/e2e/requirements.txt</code>) with a CDP virtual WebAuthn authenticator against
+the full chain: Traefik → oauth2-proxy → Keycloak (LLDAP users, WebAuthn, X.509)
+→ group-gate. A <code>whoami</code> test app has three hosts: <code>app.</code> (group <code>users_e2e</code>,
+<code>/admin</code> → <code>admin_e2e</code>), <code>hwk.</code> (WebAuthn policy) and <code>mtls.</code> (mTLS policy).</p>
+<p>Scenarios:</p>
+<p>No user has a password and nothing is pre-assigned in Keycloak: the job
+creates one-time setup links with <code>./portcullis invite &lt;user&gt; --to &lt;landing&gt; --json</code>
+(for <code>e2e</code>, <code>e2e-other</code> and the bootstrap <code>admin</code>) and the test starts from
+them. Any password field fails the test.</p>
+<ol>
+<li>An unauthenticated request is redirected to a passkey-only Keycloak sign-in page.</li>
+<li>The setup link → <strong>Register my key</strong> → passkey registration → the webauthn-policy app (<code>hwk.</code>), with no second prompt.</li>
+<li>The setup link works once.</li>
+<li>The session reaches the app.</li>
+<li>Apps get the <strong>username</strong> as <code>X-Forwarded-User</code>, and spoofed identity headers are dropped.</li>
+<li><code>path_groups</code>: <code>/admin</code> needs <code>admin_e2e</code>. <code>/%61dmin</code>, <code>//admin</code>, <code>/x/../admin</code> and <code>/ADMIN</code> are denied, while <code>/administrator</code> is allowed.</li>
+<li>A second login in a fresh browser with the same key is one passkey assertion.</li>
+<li>Group denial for a user not in <code>users_e2e</code> (also onboarded by setup link).</li>
+<li>The bootstrap admin's link lands on the portal (<code>https://&lt;domain&gt;/</code>) with the Hub link.</li>
+<li>X.509 login via Keycloak satisfies an mTLS policy.</li>
+<li>An mTLS session without the cert on the request is refused (mTLS binding).</li>
+<li>A revoked client cert is rejected.</li>
+<li>A client cert from a foreign CA is rejected in the TLS handshake.</li>
+</ol>
+<p><code>tests/e2e/e2e_invite.py &lt;setup-link&gt; &lt;landing-url&gt;</code> runs the setup-link
+checks (registration, no password, <code>acr</code>/<code>amr</code> = <code>hwk</code>, single use, one-touch
+second login, the invite identity provider refuses browsers without a link)
+against any running install, e.g. a live server with a throwaway user
+(<code>E2E_IGNORE_HTTPS_ERRORS=1</code> for ACME staging). With
+<code>--reinvite-cmd "&lt;command printing portcullis invite &lt;same user&gt; --json&gt;"</code> it
+also registers a second, new authenticator through a second link and checks
+that both keys sign in — or, with <code>--replaced</code> (<code>--replace-keys</code>), that the
+old one no longer does. The <code>e2e</code> job runs both variants after the browser
+tests (users <code>e2e-spare</code>, <code>e2e-lost</code>). Dialogs are answered like a user
+pressing OK (the default value).</p>
+<p>After the browser tests, the job enables the <strong>monitoring profile</strong> and checks:</p>
+<ul>
+<li>all monitoring services become healthy, and every Prometheus target is up</li>
+<li>the Vault health probe and the enroll/forward-auth/LLDAP probes succeed</li>
+<li>group-gate, CRL, backup (textfile), CA-expiry, Traefik and Vault metrics are present</li>
+<li>the alert rules are loaded, and neither <code>VaultSealedOrDown</code> nor <code>CrlStale</code> is pending or firing</li>
+<li>Grafana at <code>metrics.&lt;domain&gt;</code> redirects unauthenticated users to sign in, and rejects a forged identity header that doesn't come from Traefik's IP</li>
+</ul>
+<p>On failure, screenshots, HTML, traces and service logs are uploaded as
+artifacts. The test needs a live stack and is not collected by pytest.</p>
+<h3 id="caching">Caching<a class="headerlink" href="#caching" title="Permanent link">&para;</a></h3>
+<p>Core CI caches what it safely can. Caches are written only on pushes to <code>main</code>.</p>
+<ul>
+<li><strong>Infra and monitoring images:</strong> cached by the local composite action <code>.github/actions/cached-images</code>.<ul>
+<li>The cache key is a hash of each job's pinned image list. Refs without a digest are refused.</li>
+<li>After <code>docker load</code>, every name set by the tarball is removed. Each ref is then re-pulled by its pinned digest (with retry and backoff), so the engine reuses a loaded image only if its content-addressed ID matches the registry's config digest.</li>
+</ul>
+</li>
+<li><strong>enroll and group-gate images:</strong> buildx layer cache (<code>type=gha</code>).</li>
+<li><strong>Go:</strong> module and build cache through <code>setup-go</code>, with <code>go mod verify</code>.</li>
+<li><strong>Python:</strong> pip and Playwright browsers, cached on the pinned requirements file (<code>group-gate/requirements.txt</code> has <code>--require-hashes</code>).</li>
+</ul>
+<p>The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most once a minute.</p>
+<h3 id="releases-releaseyml">Releases (<code>release.yml</code>)<a class="headerlink" href="#releases-releaseyml" title="Permanent link">&para;</a></h3>
+<p>Runs on <code>v*</code> tags:</p>
+<ol>
+<li><strong><code>preflight</code></strong> checks two things:<ul>
+<li>The tag is <code>vMAJOR.MINOR.PATCH</code> and <code>CHANGELOG.md</code> has its <code>## [X.Y.Z]</code> section.</li>
+<li>The <code>HUB_IMAGE</code> default in <code>docker-compose.yml</code> is <code>ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…</code>, where <code>vA.B.C</code> is a published (non-draft, non-prerelease) Hub release and the tag still resolves to that digest.</li>
+</ul>
+</li>
+<li><strong><code>ci</code></strong> runs the full <code>ci.yml</code> on the tagged commit.</li>
+<li><strong><code>release</code></strong> builds a reproducible <code>portcullis-X.Y.Z.tar.gz</code> (the checkout without <code>.git</code>, plus <code>VERSION</code>) and its <code>.sha256</code>. It then creates the GitHub release with the changelog section, the pinned Hub image and generated notes.</li>
+</ol>
+<p>See <a href="../upgrading/#core-releases">Upgrading &amp; Releases</a>.</p>
+<h3 id="dependabot">Dependabot<a class="headerlink" href="#dependabot" title="Permanent link">&para;</a></h3>
+<p><code>.github/dependabot.yml</code> proposes weekly, grouped updates for:</p>
+<ul>
+<li>the compose images</li>
+<li>the enroll Dockerfile and Go modules</li>
+<li>the GitHub Actions</li>
+<li>the e2e Python requirements</li>
+</ul>
+<p>Image constants in the CLI and inline images in workflows are not covered by
+Dependabot. They are still checked by the pin-enforcement step.</p>
+<h3 id="running-the-core-tests-locally">Running the core tests locally<a class="headerlink" href="#running-the-core-tests-locally" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>tests/test_group_gate.py
+bash<span class="w"> </span>tests/test_cli.sh
+bash<span class="w"> </span>tests/test_shell_libs.sh
+<span class="o">(</span><span class="nb">cd</span><span class="w"> </span>enroll<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./...<span class="o">)</span>
+shellcheck<span class="w"> </span>-S<span class="w"> </span>warning<span class="w"> </span>portcullis<span class="w"> </span>scripts/lib/*.sh<span class="w"> </span>tests/*.sh
+<span class="c1"># compose validity without Docker containers:</span>
+<span class="nv">PORTCULLIS_ROOT</span><span class="o">=</span>/tmp/x<span class="w"> </span>./portcullis<span class="w"> </span>init<span class="w"> </span>--env-only<span class="w"> </span>--non-interactive<span class="w"> </span>--domain<span class="w"> </span>ci.example.org<span class="w"> </span>--dns-provider<span class="w"> </span>none
+</code></pre></div>
+<h2 id="templates-ci">Templates CI<a class="headerlink" href="#templates-ci" title="Permanent link">&para;</a></h2>
+<h3 id="lintyml-every-push-and-pr-forks-included"><code>lint.yml</code>: every push and PR, forks included<a class="headerlink" href="#lintyml-every-push-and-pr-forks-included" title="Permanent link">&para;</a></h3>
+<p>No secrets, no core checkout, read-only token. Safe for fork pull requests, so
+every contributor gets this feedback:</p>
+<ul>
+<li><code>python tests/validate.py</code>: the manifest schema plus repo rules (networks,
+  volumes, middlewares, required vars, mounts, image pinning, header trust,
+  Dependabot coverage, <code>.core-ref</code>). See
+  <a href="../../guides/manifest-reference/#validation">Manifest Reference → Validation</a>.</li>
+<li><code>bash tests/compose-config.sh</code>: <code>docker compose config</code> for every template.</li>
+<li><code>shellcheck</code> of the test scripts and template scripts.</li>
+<li><code>actionlint</code> (pinned image).</li>
+</ul>
+<h3 id="test-appsyml-integration-tests"><code>test-apps.yml</code>: integration tests<a class="headerlink" href="#test-appsyml-integration-tests" title="Permanent link">&para;</a></h3>
+<p>Triggers: push to <code>main</code>, pull requests from branches of the repo, and manual
+<code>workflow_dispatch</code> (inputs <code>pr</code>, <code>ref</code>, <code>apps</code>). It boots core infrastructure
+and runs <code>tests/apps/&lt;app&gt;.sh</code> for the affected templates. The trust boundary is
+per job:</p>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Secrets</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gate</code></td>
+<td>none</td>
+<td>Resolves what to test. Fork PRs run like any other PR (core is public; no job uses a secret), with <code>.core-ref</code> taken from the PR's base. For a manual run with <code>pr = &lt;n&gt;</code>, it resolves the PR head commit to test</td>
+</tr>
+<tr>
+<td><code>changes</code></td>
+<td>none</td>
+<td>Verifies the commit under test. Picks the apps: changed <code>&lt;app&gt;/</code> directories and changed <code>tests/apps/&lt;app&gt;.sh</code>. A change to <code>tests/lib.sh</code>, <code>.github/</code> or <code>.core-ref</code> tests <strong>all</strong> apps. With no usable base, all apps are tested</td>
+</tr>
+<tr>
+<td><code>fetch-core</code></td>
+<td>none</td>
+<td>Checks out nothing from the PR except <code>.core-ref</code>, read from a trusted commit (for PR runs: the PR's <em>base</em>, so a PR can't point CI at another core ref). Clones the public core repo anonymously at that ref, resolves the infra image list with <code>docker compose config --images</code> against a throwaway <code>.env</code> from <code>portcullis init --env-only</code> (failing on an empty list), packs core as an artifact, and writes the infra image cache</td>
+</tr>
+<tr>
+<td><code>app-images</code> (matrix per app, push to <code>main</code> only)</td>
+<td>none</td>
+<td>Never runs for PRs or manual runs. For each tested app whose test boots it, reads the image list from its <code>compose.yml</code> (<code>tests/app-images.sh</code>), pulls the pinned images and writes that app's image cache (key: hash of the list). Starts no container</td>
+</tr>
+<tr>
+<td><code>test</code> (matrix per app)</td>
+<td>none</td>
+<td>Downloads core by artifact ID with digest verification. Writes no cache. Loads the cached infra and app images as <strong>untrusted</strong>: removes every name a tarball sets, then binds each image (core's and the app's) with a <code>docker pull</code> of its <code>tag@sha256</code> pin. The pull checks the manifest against the pinned digest and reuses a loaded image only if its ID (the hash of its config, which pins every layer) is the one that manifest names; otherwise it downloads the image fresh. Boots infra like core's own CI: every secret generated by <code>portcullis init --env-only</code> (the workflow sets none, since the shell environment would override <code>.env</code>), Keycloak with its production <code>start</code> command, setup through the core CLI (<code>vault init</code>, <code>pki setup --with-server-cert</code>, <code>config apply --bundle-only</code>, <code>keycloak configure</code>, <code>oidc register</code>). Checks Traefik got its static IP and that forward-auth redirects an unauthenticated request to <code>auth.&lt;domain&gt;</code>, then runs the app's test</td>
+</tr>
+</tbody>
+</table>
+<p>Every job has a read-only <code>contents: read</code> token. The workflow deliberately does
+<strong>not</strong> use <code>pull_request_target</code>, which would run fork code with a write token.</p>
+<p><strong>Fork PRs</strong> get the full integration tests automatically. A maintainer can re-run one with <strong>Actions → Test Apps → Run workflow</strong>, <code>pr = &lt;number&gt;</code>. That run tests exactly the PR's head commit, and aborts if the head moved.</p>
+<p><strong><code>.core-ref</code></strong> holds the core ref the templates are tested against: a tag such
+as <code>v1.4.0</code>, or <code>main</code> during development (today: <code>main</code>). Changing it
+re-tests every template.</p>
+<h3 id="docs-dispatchyml"><code>docs-dispatch.yml</code><a class="headerlink" href="#docs-dispatchyml" title="Permanent link">&para;</a></h3>
+<p>On push to <code>main</code> it sends a <code>templates-updated</code> <code>repository_dispatch</code> to this
+docs repo, which regenerates the <a href="../../apps/">App Catalog</a>. It needs the
+<code>DOCS_DISPATCH_TOKEN</code> secret. Without it the step is skipped with a notice, and
+the docs pick the change up on their daily rebuild.</p>
+<h3 id="test-helpers-testslibsh">Test helpers (<code>tests/lib.sh</code>)<a class="headerlink" href="#test-helpers-testslibsh" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Output</td>
+<td><code>pass</code>, <code>fail</code>, <code>info</code>, <code>section</code>, <code>report</code></td>
+</tr>
+<tr>
+<td>Waiting</td>
+<td><code>wait_for_url URL TIMEOUT NAME</code>, <code>wait_for_container</code></td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>keycloak_admin_token</code>, <code>keycloak_user_token</code>, <code>keycloak_enable_direct_grant</code>, <code>keycloak_register_client</code></td>
+</tr>
+<tr>
+<td>LLDAP</td>
+<td><code>lldap_token</code>, <code>lldap_graphql</code>, <code>lldap_create_user</code>, <code>lldap_create_group</code>, <code>lldap_add_to_group</code>, <code>lldap_sync_keycloak</code></td>
+</tr>
+<tr>
+<td>Compose</td>
+<td><code>compose_up APP</code>, <code>compose_down APP</code>, <code>app_container_ip APP</code>, <code>app_logs APP</code></td>
+</tr>
+<tr>
+<td>Assertions</td>
+<td><code>assert_http_code URL CODE</code>, <code>assert_redirect_to_keycloak URL</code>, <code>assert_redirect_contains URL STRING</code>, <code>assert_body_contains URL STRING</code>, <code>assert_container_can_reach CONTAINER URL</code></td>
+</tr>
+<tr>
+<td>Public exceptions</td>
+<td><code>public_routed_prefixes &lt;manifest&gt; &lt;all\|listed&gt; [token…]</code> prints what the Hub's public router opens; <code>write_public_override &lt;app&gt; &lt;service&gt; &lt;host-arg&gt; &lt;tier&gt; &lt;out&gt; &lt;entry…&gt;</code> writes the override labels the Hub would generate (tier for every router, public router behind <code>portcullis-public-guard@docker</code> with static-only supporting paths, exact paths, strip middleware); pass it to <code>compose_up</code> with <code>COMPOSE_OVERRIDE=&lt;file&gt;</code>. <code>write_public_policy &lt;sub&gt; &lt;manifest&gt; &lt;mode&gt;</code> writes the version-3 policy entry the Hub would publish into core's <code>hub_data</code> volume, so core's real public guard runs (<code>clear_public_policy</code> empties it). <code>assert_public_path &lt;host&gt; &lt;path&gt; [curl args]</code> / <code>assert_gated_path …</code> / <code>assert_public_refused …</code> send HTTPS requests through Traefik on the runner (no client certificate) and check the app answers / the request is redirected to <code>auth.&lt;domain&gt;</code> / the guard answers 403. <code>grafana.sh</code> uses them: a listed dashboard token is public; an unlisted token, <code>/</code>, <code>/api/user</code> and <code>/public/build/</code> stay gated; Grafana login cookies (also PHP-mangled spellings), <code>Authorization</code>, <code>X-Access-Token</code> and <code>auth_token</code> query variants are refused by the guard. It needs a core with <code>/public-guard</code> (<code>.core-ref</code>). <code>nextcloud.sh</code> and <code>immich.sh</code> check their path lists statically</td>
+</tr>
+<tr>
+<td>Header trust</td>
+<td><code>assert_traefik_only_trust &lt;compose&gt; &lt;SETTING&gt;</code> checks statically that the trust setting uses <code>${PORTCULLIS_TRAEFIK_IP:-…}</code> and nothing trusts every peer. <code>assert_spoofed_identity_rejected &lt;url&gt; [expected]</code> sends a forged <code>X-Forwarded-User</code> from the CI host (never Traefik) and expects a rejection. <strong>Required for header-auth templates</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>compose_up</code> mirrors the Hub: before each compose call it exports a random
+value for every manifest <code>env:</code> entry with <code>generate: random</code> that isn't set
+yet. Templates reference those as <code>${VAR:?}</code>, so a missing value fails loudly.</p>
+<p>Every template needs a <code>tests/apps/&lt;app-id&gt;.sh</code> (<code>validate.py</code> checks it). A
+static test is the minimum; copy <code>tests/apps/scrutiny.sh</code>. What the tests
+typically verify:</p>
+<table>
+<thead>
+<tr>
+<th>Auth method</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>forward-auth</td>
+<td>Unauthenticated request redirects to Keycloak; container healthy; app endpoints respond</td>
+</tr>
+<tr>
+<td>header-auth</td>
+<td>The above, plus the Traefik-only trust setting and a rejected spoofed identity</td>
+</tr>
+<tr>
+<td>native-oidc</td>
+<td>Container reaches Keycloak's discovery endpoint; the app's SSO redirect points at Keycloak; gated login/admin paths redirect</td>
+</tr>
+<tr>
+<td>public / custom</td>
+<td>App responds without authentication; container healthy</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../../guides/adding-an-app/#step-6-add-a-test">Adding an App</a> for a
+template.</p>
+<h2 id="hub-ci-buildyml">Hub CI (<code>build.yml</code>)<a class="headerlink" href="#hub-ci-buildyml" title="Permanent link">&para;</a></h2>
+<p>Triggers: pushes to <code>main</code>, tags <code>v*</code>, and pull requests. Every action is
+pinned by commit SHA.</p>
+<ul>
+<li>
+<p><strong><code>test</code></strong>:</p>
+<ul>
+<li><code>gofmt -l .</code> must be empty</li>
+<li><code>go vet ./...</code></li>
+<li><code>go test -race -count=1 ./...</code></li>
+<li><code>go build ./cmd/hub</code></li>
+</ul>
+<p>The unit tests cover validation, strict route parsing, the policy-file
+writer (collisions, deny group, snapshots, <code>expiring</code> array, <code>user-attributes.json</code>), middleware (proxy secret, CSRF), per-app locking, reconcile/drift, the Engine API client, the LLDAP client (GraphQL + LDAP Password Modify), the Keycloak client (attribute mappers), the rule parser, and the directory service (users, groups, fields, rule evaluator, exceptions, expiries, CSV import, delegated permissions, protected accounts parity).
+New packages: <code>internal/rules</code> (rule parser and evaluator), <code>internal/directory</code> (users, groups, fields, permissions, import, audit).
+<code>TestRealTemplates</code> loads a sibling <code>portcullis-templates</code> checkout if present.
+<code>TestPeopleListenerHasNoAppRoutes</code> checks that the people listener registers no app/policy/drift/compose/Docker routes.
+<code>TestProtectedAccountsParity</code> reflects over <code>directory.Service</code> methods to check every user-targeting operation refuses <code>admin</code> and <code>portcullis-hub</code>.
+- <strong><code>build</code></strong> (after <code>test</code>):
+- Multi-arch image (<code>linux/amd64</code>, <code>linux/arm64</code>) with SBOM and provenance (<code>mode=max</code>) attestations.
+- Tags <code>X.Y.Z</code>/<code>X.Y</code>/<code>X</code>/<code>sha-&lt;short&gt;</code> for release tags and <code>edge</code> for <code>main</code>. <code>latest</code> is disabled.
+- Pushed to GHCR and <strong>signed with cosign</strong> (keyless, GitHub OIDC) by digest. Pull requests build but don't push or sign.</p>
+</li>
+</ul>
+<p>Verify a published image with the command in
+<a href="../hub/#image-tags-and-verification">Hub → Image tags</a>.</p>
+<h2 id="running-workflows-locally-with-act">Running workflows locally with act<a class="headerlink" href="#running-workflows-locally-with-act" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/nektos/act">act</a> runs GitHub Actions workflows locally in
+Docker:</p>
+<div class="highlight"><pre><span></span><code>act<span class="w"> </span>-l<span class="w"> </span>-W<span class="w"> </span>.github/workflows/test-apps.yml<span class="w">                     </span><span class="c1"># list jobs (templates repo)</span>
+act<span class="w"> </span>-j<span class="w"> </span>lint<span class="w"> </span>-W<span class="w"> </span>.github/workflows/lint.yml<span class="w">                      </span><span class="c1"># static checks, no secrets</span>
+act<span class="w"> </span>-W<span class="w"> </span>.github/workflows/test-apps.yml<span class="w">                         </span><span class="c1"># integration (no secrets needed)</span>
+act<span class="w"> </span>-W<span class="w"> </span>.github/workflows/ci.yml<span class="w">                                </span><span class="c1"># core CI (core repo)</span>
+</code></pre></div>
+<p>The first run downloads the runner images, which can take a few minutes.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

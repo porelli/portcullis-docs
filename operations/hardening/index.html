@@ -1,0 +1,2929 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/hardening/">
+      
+      
+      
+        <link rel="prev" href="../monitoring/">
+      
+      
+        <link rel="next" href="../groups/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Security & Hardening - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Security & Hardening
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#threat-model-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Threat model summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#networks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Networks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-socket-proxies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Docker socket proxies
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#container-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Container hardening
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secrets-the-containers-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Secrets the containers read
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#header-spoofing-protections" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Header spoofing protections
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Header spoofing protections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attribute-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Attribute headers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sessions-temporary-memberships-and-the-people-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sessions, temporary memberships and the people directory
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#routing-rules-around-keycloak-and-oauth2-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Routing rules around Keycloak and oauth2-proxy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-links-enroll" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup links (enroll)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-accounts-and-public-routers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Service accounts and public routers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-proxy-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hub proxy secret
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#threat-model-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Threat model summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#networks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Networks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-socket-proxies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Docker socket proxies
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#container-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Container hardening
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secrets-the-containers-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Secrets the containers read
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#header-spoofing-protections" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Header spoofing protections
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Header spoofing protections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attribute-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Attribute headers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sessions-temporary-memberships-and-the-people-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sessions, temporary memberships and the people directory
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#routing-rules-around-keycloak-and-oauth2-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Routing rules around Keycloak and oauth2-proxy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-links-enroll" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup links (enroll)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-accounts-and-public-routers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Service accounts and public routers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-proxy-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hub proxy secret
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="security-hardening">Security &amp; Hardening<a class="headerlink" href="#security-hardening" title="Permanent link">&para;</a></h1>
+<p>This page covers what the core stack (<code>docker-compose.yml</code> in the core repo)
+does to limit the damage a compromised component can do, and where it can't:
+the threat model, network layout, Docker socket proxies, per-service container
+settings, the secrets containers read, and header trust.</p>
+<h2 id="threat-model-summary">Threat model summary<a class="headerlink" href="#threat-model-summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Asset / boundary</th>
+<th>Threat</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Logins</td>
+<td>Phishing, password reuse</td>
+<td>WebAuthn (FIDO2) and PIV client certificates. Both are bound to the origin or the TLS handshake. Per-app <a href="../auth-policies/">policies</a> can require them</td>
+</tr>
+<tr>
+<td>User identity</td>
+<td>A user changes their own LLDAP email to someone else's</td>
+<td>Identity is the immutable username everywhere; email is never used to authorise or link accounts</td>
+</tr>
+<tr>
+<td>Identity headers (<code>X-Forwarded-User</code>, client-cert headers)</td>
+<td>Spoofed by an internet client</td>
+<td>Traefik deletes client-supplied <code>X-Forwarded-*</code> and cert headers on the entrypoint, and forward-auth replaces the identity headers</td>
+</tr>
+<tr>
+<td>Attribute headers (<code>X-Forwarded-Attr-*</code>)</td>
+<td>Spoofed by an internet client or by routers without forwardAuth</td>
+<td>Client copies stripped by <code>authResponseHeadersRegex: ^X-Forwarded-Attr-</code> on every forwardAuth middleware (Traefik can't delete headers by prefix in a headers middleware). Routers without forwardAuth (keycloak, vault-ui, enroll-invite, headscale, netbird, docs) don't strip them; backends there must not trust them</td>
+</tr>
+<tr>
+<td>Identity headers</td>
+<td>Spoofed by another container on <code>portcullis-proxy</code></td>
+<td>Header-auth apps trust only Traefik's fixed IP (<code>PORTCULLIS_TRAEFIK_IP</code>). Keycloak trusts proxy headers only from Traefik's fixed IP on the internal <code>portcullis-auth</code> network</td>
+</tr>
+<tr>
+<td>Hub (runs compose, so it is effectively host root)</td>
+<td>Reached without passing forward-auth</td>
+<td>Hub: requires <code>lldap_admin</code> and the <code>X-Portcullis-Proxy-Secret</code> header. People listener (<code>people.&lt;domain&gt;</code>): any signed-in user (group-gate-map.conf <code>people=*</code>), per-request permission checks</td>
+</tr>
+<tr>
+<td>Docker API</td>
+<td>A compromised Traefik or Hub takes over the host</td>
+<td>No service mounts the socket except two socket proxies with per-client allow-lists</td>
+</tr>
+<tr>
+<td>Lost or stolen YubiKey cert</td>
+<td>Keeps working until expiry</td>
+<td>Revocation is checked on every request (group-gate), at Keycloak X.509 login (CRL, fail closed), and by the mTLS binding. On removal or expiry, group-gate also withholds <code>Authorization</code> and <code>X-Forwarded-Access-Token</code></td>
+</tr>
+<tr>
+<td>Expired group membership</td>
+<td>Keeps working while Hub is down</td>
+<td>Every pending expiry is in the policy file's <code>expiring</code> array (plus a 10-min grace after LLDAP removal). group-gate treats it as absent. The Hub also revokes Keycloak sessions (oauth2-proxy cookie refresh is 1 min, so removals and Keycloak logouts take effect within ~1 min; sessions end at Keycloak's idle 8h / max 12h)</td>
+</tr>
+<tr>
+<td>Path-based admin areas</td>
+<td>Bypassed with encoded or dot-segment paths</td>
+<td>group-gate normalises the path and denies ambiguous encodings (see <a href="../groups/#path-rules-path_groups-and-admin_paths">Groups</a>)</td>
+</tr>
+<tr>
+<td>Templates (outside contributions)</td>
+<td>A malicious or careless template opens access</td>
+<td>The Hub rejects routing it can't fully see, refuses subdomain collisions and core subdomains, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets</td>
+</tr>
+<tr>
+<td>Public exceptions (share links, off unless an admin turns them on)</td>
+<td>Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps</td>
+<td>Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; <code>rate-limit@file</code>; see <a href="#public-exceptions">Public exceptions</a></td>
+</tr>
+<tr>
+<td>Vault data volume</td>
+<td>Copied off the host</td>
+<td>Encrypted. The unseal key is in <code>secrets/</code> on the host, so a copy of the volume alone is useless</td>
+</tr>
+<tr>
+<td>Host root / <code>docker</code> group</td>
+<td>Full compromise</td>
+<td>Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host</td>
+</tr>
+</tbody>
+</table>
+<p>Known limits:</p>
+<ul>
+<li><strong>The Hub can still start arbitrary containers</strong> (privileged, host mounts):
+  that is what "run compose for any template" means. Treat it as host root.</li>
+<li><strong>Auto-unseal trades confidentiality at rest for availability</strong> on the same
+  host (see <a href="../../setup/certificates/#vault-server-mode-auto-unseal-and-approle">TLS &amp; mTLS</a>).</li>
+<li><strong>Routers without <code>portcullis-groups@docker</code></strong> don't get revocation checks.
+  They also get no group or path checks.</li>
+</ul>
+<h2 id="public-exceptions">Public exceptions<a class="headerlink" href="#public-exceptions" title="Permanent link">&para;</a></h2>
+<p>An app's <a href="../auth-policies/#public-exceptions">public exceptions</a> are the one
+place where Portcullis deliberately lets unauthenticated internet traffic
+reach an app. What a turned-on exception exposes:</p>
+<ul>
+<li><strong>Every endpoint under each opened prefix</strong>, to anyone, without login,
+  group, hardware key or policy. Only the app's own checks remain (share
+  token, share password, expiry, download limits). In mode <code>all</code> that includes
+  guessing share tokens; in mode <code>listed</code> only the listed shares are routed,
+  and any other token on the same prefix still goes through forward-auth.</li>
+<li><strong>The app's share-password form</strong> (e.g. Nextcloud <code>/s/&lt;token&gt;/authenticate</code>)
+  to brute force. Only the app's own brute-force protection and Traefik's
+  <code>rate-limit@file</code> (50 req/s average, burst 100, per client IP) limit it. The
+  app must see the real client IP (e.g. Nextcloud's <code>TRUSTED_PROXIES</code> =
+  Traefik) or its limiter locks out everyone at once.</li>
+<li><strong>Static files under supporting paths</strong> (assets, l10n, theming; matched by
+  extension, e.g. Grafana <code>/public/plugins</code> reveals installed plugins), and
+  the few <code>exact</code> routes a template justifies. A front controller that
+  routes extension-suffixed paths to code (Nextcloud's
+  <code>/apps/theming/theme/&lt;id&gt;.css</code>, <code>/core/js/oc.js</code>) still runs those
+  <code>#[PublicPage]</code> routes.</li>
+<li><strong>Uploads</strong> where the app allows them on a share (Nextcloud file drop via
+  <code>/public.php/dav</code>).</li>
+<li><strong>The host's TLS tier.</strong> With an mTLS-only policy the host drops from
+  <code>protected@file</code> to <code>authaware@file</code>: group-gate still enforces the client
+  certificate per request on gated routers, but native-OIDC apps then check it
+  only at login (Keycloak acr), and routers without group-gate not at all.</li>
+</ul>
+<p>What it can't do:</p>
+<ul>
+<li>reach paths outside the prefixes: the router matches <code>Path(p)</code> /
+  <code>PathPrefix(p/)</code> on Traefik's sanitised path (dot-segments resolved), so
+  <code>/s/x/../../apps/files</code> is matched as <code>/apps/files</code> and stays gated;</li>
+<li>overlap admin paths, login gates or other routers of the app (the Hub
+  refuses the template), or <code>/admin</code>, <code>/oauth2</code>, <code>/.well-known</code>;</li>
+<li>carry an identity: <code>X-Forwarded-User</code>, <code>X-Forwarded-Email</code>, the other
+  forward-auth headers, <code>Remote-*</code> and the template's <code>identity_headers</code>
+  (and their <code>_</code> forms) are deleted, so a header-auth app (Grafana) can't be
+  told who the visitor is;</li>
+<li>carry a login past the hardware key: core's public guard (group-gate
+  <code>/public-guard</code>, first middleware of every public router) answers 403 to
+  requests with <code>Authorization</code>, <code>Proxy-Authorization</code>, the template's
+  <code>credential_headers</code>, <code>credential_cookies</code> or <code>credential_query</code>. Cookie
+  and query names are normalised the way PHP does (php-src
+  <code>php_register_variable_ex</code>: leading spaces, <code></code>/<code>.</code> → <code>_</code>, <code>name[…]</code>,
+  NUL), raw and percent-decoded, case-insensitively; non-UTF-8 names are
+  refused. It also denies any path outside the published patterns, a <code>#</code>,
+  and encoded <code>/</code>, <code>\</code>, NUL or <code>#</code>. A plain session cookie the template doesn't list
+  (Nextcloud's <code>oc&lt;instanceid&gt;</code>, needed for share passwords and CSRF) is
+  passed; it only reaches share-scoped routes and static files there;</li>
+<li>be opened by a template on its own: the Hub generates the router, only
+  while an admin (or a template default that opens nothing until an admin
+  lists a share) has it on, and reports any running exposure label that
+  differs from what it would render as drift.</li>
+</ul>
+<p>Trade-off: an app user signed in with a remember-me cookie gets the
+guard's 403 on a public link in the same browser (open it in a private
+window). The guard serves only version 4 of the policy file, so the Hub and
+core are upgraded together.</p>
+<p>Not everything with a share feature can be scoped: Vaultwarden Send needs the
+web vault at <code>/</code> and the password-login token endpoint, and Kanboard's router
+reads <code>?controller=</code> before the path, so neither declares public exceptions.</p>
+<h2 id="networks">Networks<a class="headerlink" href="#networks" title="Permanent link">&para;</a></h2>
+<p>Each box is a service; each hexagon is a Docker network. A line means "is attached to".</p>
+<pre class="mermaid"><code>graph LR
+    Internet((Internet)) --&gt;|:80 / :443| T[Traefik]
+
+    NP{{portcullis-proxy&lt;br/&gt;fixed IPAM, Traefik .2}}
+    NA{{portcullis-auth&lt;br/&gt;internal, fixed IPAM}}
+    NC{{portcullis&lt;br/&gt;core}}
+    NST{{socket-proxy-traefik&lt;br/&gt;internal}}
+    NSH{{socket-proxy-hub&lt;br/&gt;internal}}
+
+    T --- NP
+    T --- NA
+    T --- NC
+    T --- NST
+    Apps[App frontends] --- NP
+    Apps --- AppNet{{one per app: portcullis-APP_default}}
+    AppDB[(App databases)] --- AppNet
+    KC[Keycloak] --- NA
+    KC --- NC
+    O2[oauth2-proxy] --- NC
+    GG[group-gate] --- NC
+    En[enroll] --- NC
+    V[Vault] --- NC
+    LL[LLDAP] --- NC
+    PG[(PostgreSQL)] --- NC
+    Hub --- NC
+    Hub --- NSH
+    SPT[socket-proxy-traefik] --- NST
+    SPH[socket-proxy-hub] --- NSH
+    SPT --&gt;|read-only API| Sock[(docker.sock)]
+    SPH --&gt;|compose API subset| Sock</code></pre>
+<table>
+<thead>
+<tr>
+<th>Network</th>
+<th>Members</th>
+<th>Addressing</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>portcullis</code></td>
+<td>Traefik and all core services</td>
+<td>Docker default</td>
+<td>Core service traffic: forward-auth, Vault, LLDAP, PostgreSQL</td>
+</tr>
+<tr>
+<td><code>portcullis-proxy</code></td>
+<td>Traefik and app frontends</td>
+<td><code>PORTCULLIS_PROXY_SUBNET</code> (default <code>172.31.250.0/24</code>). Dynamic range <code>PORTCULLIS_PROXY_IP_RANGE</code> (<code>172.31.250.128/25</code>). Traefik pinned at <code>PORTCULLIS_TRAEFIK_IP</code> (<code>172.31.250.2</code>), outside the range</td>
+<td>Routing plane. Traefik's docker provider uses this network. No app container can ever get Traefik's address</td>
+</tr>
+<tr>
+<td><code>portcullis-auth</code></td>
+<td>Traefik and Keycloak only (<code>internal: true</code>)</td>
+<td><code>PORTCULLIS_AUTH_SUBNET</code> (<code>172.31.251.0/28</code>), range <code>PORTCULLIS_AUTH_IP_RANGE</code> (<code>172.31.251.8/29</code>), Traefik at <code>PORTCULLIS_AUTH_TRAEFIK_IP</code> (<code>172.31.251.2</code>)</td>
+<td>The only path from which Keycloak accepts proxy headers, including the forwarded client cert for X.509 login</td>
+</tr>
+<tr>
+<td><code>socket-proxy-traefik</code></td>
+<td>Traefik + its socket proxy (<code>internal: true</code>)</td>
+<td>Docker default</td>
+<td>Read-only Docker API for Traefik</td>
+</tr>
+<tr>
+<td><code>socket-proxy-hub</code></td>
+<td>Hub + its socket proxy (<code>internal: true</code>)</td>
+<td>Docker default</td>
+<td>Docker API for the Hub</td>
+</tr>
+<tr>
+<td><code>monitoring</code> (profile <code>monitoring</code>, <code>internal: true</code>)</td>
+<td>Prometheus, Alertmanager, Grafana, blackbox, textfile exporter</td>
+<td>Docker default</td>
+<td>Scraping and dashboards. Prometheus and blackbox also join <code>portcullis</code>, Grafana joins <code>portcullis-proxy</code> (routed at <code>metrics.&lt;domain&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>alerting</code> (profile <code>monitoring</code>)</td>
+<td>Alertmanager</td>
+<td>Docker default</td>
+<td>Alertmanager's only network with egress, for the receivers</td>
+</tr>
+<tr>
+<td><code>portcullis-&lt;app&gt;_default</code></td>
+<td>One app's services</td>
+<td>Docker default</td>
+<td>App-internal traffic (databases, caches). Isolated from other apps and from core</td>
+</tr>
+</tbody>
+</table>
+<p>CI checks that exactly <code>keycloak</code> and <code>traefik</code> are on <code>portcullis-auth</code>, and
+that each socket-proxy network has exactly its two members.</p>
+<p><strong>Changing the ranges.</strong> Only do this if the defaults collide with a host, LAN
+or VPN network, ideally before <code>./portcullis init</code>. The rules:</p>
+<ul>
+<li>the IP range must be inside its subnet</li>
+<li>the range must not contain the Traefik IP</li>
+<li>the two subnets must not overlap</li>
+</ul>
+<p><code>./portcullis up</code> and <code>upgrade</code> validate them and refuse to run when an
+existing network has different IPAM:</p>
+<ul>
+<li><code>portcullis-proxy</code>: disable the apps in the Hub, <code>./portcullis down</code>,
+  <code>docker network rm portcullis-proxy</code>, <code>./portcullis up</code>, then re-enable the
+  apps so their env picks up the new Traefik IP.</li>
+<li><code>portcullis-auth</code> (core only): <code>./portcullis down &amp;&amp; ./portcullis up</code>.</li>
+</ul>
+<h2 id="docker-socket-proxies">Docker socket proxies<a class="headerlink" href="#docker-socket-proxies" title="Permanent link">&para;</a></h2>
+<p>No service mounts <code>/var/run/docker.sock</code> except two
+<a href="https://github.com/linuxserver/docker-socket-proxy">linuxserver/socket-proxy</a>
+containers (HAProxy, pinned by digest). Each sits on its own internal network,
+shared with exactly one client (integration contract
+<a href="../../guides/integration-contracts/#6-docker-access">§6</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Proxy</th>
+<th>Client</th>
+<th>Network</th>
+<th>Allowed API sections (<code>1</code>)</th>
+<th>Methods</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>socket-proxy-traefik</code></td>
+<td>Traefik (<code>TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy-traefik:2375</code>)</td>
+<td><code>socket-proxy-traefik</code></td>
+<td><code>CONTAINERS</code>, <code>NETWORKS</code>, <code>EVENTS</code>, <code>VERSION</code>, <code>PING</code></td>
+<td><code>GET</code>/<code>HEAD</code> only (<code>POST=0</code>)</td>
+</tr>
+<tr>
+<td><code>socket-proxy-hub</code></td>
+<td>Hub (<code>DOCKER_HOST=tcp://socket-proxy-hub:2375</code>)</td>
+<td><code>socket-proxy-hub</code></td>
+<td><code>CONTAINERS</code>, <code>IMAGES</code>, <code>NETWORKS</code>, <code>VOLUMES</code>, <code>EXEC</code>, <code>EVENTS</code>, <code>INFO</code>, <code>VERSION</code>, <code>PING</code>, <code>ALLOW_LOGS</code></td>
+<td>All. <code>POST=1</code> also allows <code>PUT</code>/<code>DELETE</code> on the allowed sections</td>
+</tr>
+</tbody>
+</table>
+<p>The Hub's set is what <code>docker compose up/down/ps/logs</code> and the Hub's own Engine
+API calls (status, logs, exec, events) need:</p>
+<ul>
+<li>containers: create, start, stop, kill, rm, inspect, list, wait, logs, exec</li>
+<li>images: pull (<code>/images/create</code>) and inspect</li>
+<li>networks and volumes: create, inspect, rm</li>
+<li><code>/events</code>, <code>/info</code>, <code>/version</code>, <code>/_ping</code></li>
+</ul>
+<p>Everything else is denied: <code>BUILD</code>, <code>COMMIT</code>, <code>SWARM</code>, <code>NODES</code>, <code>SERVICES</code>,
+<code>TASKS</code>, <code>SECRETS</code>, <code>CONFIGS</code>, <code>PLUGINS</code>, <code>SYSTEM</code> (df / prune), <code>AUTH</code>,
+<code>DISTRIBUTION</code>, <code>SESSION</code>, and container <code>archive</code> / <code>export</code>. CI runs a real
+<code>docker compose</code> project through <code>socket-proxy-hub</code> and checks the denials.</p>
+<p><strong>Limits of a socket proxy.</strong> The Hub can still create containers with any
+<code>HostConfig</code> (privileged, host bind mounts): that is inherent to "runs compose
+for arbitrary templates". The proxy removes the rest of the API surface (swarm,
+plugins, image builds, system prune, secrets). Treat the Hub as
+host-root-equivalent and keep it behind <code>lldap_admin</code> and the
+<a href="#hub-proxy-secret">proxy secret</a>.</p>
+<h2 id="container-hardening">Container hardening<a class="headerlink" href="#container-hardening" title="Permanent link">&para;</a></h2>
+<p>Every core service gets:</p>
+<ul>
+<li><code>security_opt: [no-new-privileges:true]</code> and <code>cap_drop: [ALL]</code></li>
+<li><code>mem_limit</code> and <code>pids_limit</code></li>
+<li>an image pinned <code>tag@sha256:digest</code>. The Hub comes from <code>HUB_IMAGE</code>; enroll
+  and group-gate are built from <code>enroll/Dockerfile</code> / <code>group-gate/Dockerfile</code>,
+  whose base images are pinned. group-gate's Python dependencies are exact pins
+  with hashes in <code>group-gate/requirements.txt</code>, installed wheels-only with
+  <code>pip install --require-hashes</code></li>
+</ul>
+<p>CI fails if any of these is missing.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>User</th>
+<th>Root FS</th>
+<th><code>cap_add</code></th>
+<th>Healthcheck</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>socket-proxy-traefik / -hub</td>
+<td>root</td>
+<td>read-only (<code>tmpfs /run</code>)</td>
+<td><code>SYS_CHROOT</code></td>
+<td><code>/_ping</code></td>
+<td>Exception: HAProxy needs root to open the root-owned socket and <code>chroot</code>s to <code>/</code></td>
+</tr>
+<tr>
+<td>traefik</td>
+<td>root</td>
+<td>read-only (<code>tmpfs /tmp</code>)</td>
+<td><code>NET_BIND_SERVICE</code></td>
+<td><code>traefik healthcheck --ping</code></td>
+<td>Exception: root for ports 80/443 and the root-owned ACME volume. Without <code>CAP_DAC_OVERRIDE</code> it reads files by mode only (<code>certs/server.key</code> is group 0, <code>0640</code>)</td>
+</tr>
+<tr>
+<td>postgres</td>
+<td>70:70</td>
+<td>read-only (<code>tmpfs /var/run/postgresql</code>, <code>/tmp</code>)</td>
+<td>—</td>
+<td><code>pg_isready</code></td>
+<td><code>/var/lib/postgresql</code> is postgres-owned in the image, so the entrypoint needs no <code>chown</code></td>
+</tr>
+<tr>
+<td>vault</td>
+<td>100:1000</td>
+<td>read-only (<code>tmpfs /tmp</code>)</td>
+<td>—</td>
+<td><code>vault status</code></td>
+<td><code>disable_mlock</code> (raft), so no <code>IPC_LOCK</code>. Reads <code>secrets/vault-unseal/</code> via group 1000</td>
+</tr>
+<tr>
+<td>lldap</td>
+<td>1000 (<code>-rootless</code> image)</td>
+<td>read-only (<code>tmpfs /tmp</code>)</td>
+<td>—</td>
+<td><code>lldap healthcheck</code></td>
+<td></td>
+</tr>
+<tr>
+<td>keycloak</td>
+<td>1000 (image)</td>
+<td><strong>writable</strong> (<code>tmpfs /tmp</code>)</td>
+<td>—</td>
+<td><code>/health/ready</code></td>
+<td>Exception: <code>start</code> re-augments the server into <code>/opt/keycloak/lib</code> because the x509 lookup provider is a build option. A custom pre-built (<code>--optimized</code>) image would allow read-only</td>
+</tr>
+<tr>
+<td>forward-auth (oauth2-proxy)</td>
+<td>65532 (distroless)</td>
+<td>read-only</td>
+<td>—</td>
+<td><strong>none</strong></td>
+<td>Exception: the image has no shell or HTTP client</td>
+</tr>
+<tr>
+<td>group-gate</td>
+<td>10003:10003 (<code>USER</code> in Dockerfile)</td>
+<td>read-only (<code>tmpfs /tmp</code>)</td>
+<td>—</td>
+<td><code>/healthz</code></td>
+<td>Image <code>portcullis-group-gate</code>: pinned <code>python</code> alpine base + <code>cryptography</code> (CRL parsing) and <code>PyJWT</code> (token claims) + the script. Only world-readable mounts</td>
+</tr>
+<tr>
+<td>hub</td>
+<td>10001:10001 (image)</td>
+<td>read-only (<code>tmpfs /tmp</code>, <code>/home/hub</code>)</td>
+<td>—</td>
+<td>image <code>HEALTHCHECK</code> (<code>/healthz</code>)</td>
+<td>Writes <code>/data</code> (volume) and <code>/project/templates</code> (chowned to 10001 by <code>./portcullis up</code>). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api</td>
+</tr>
+<tr>
+<td>enroll</td>
+<td>10002:10002 (<code>USER</code> in Dockerfile)</td>
+<td>read-only</td>
+<td>—</td>
+<td><code>/healthz</code></td>
+<td>Reads <code>secrets/enroll/</code> via group 10002</td>
+</tr>
+<tr>
+<td>prometheus, alertmanager, blackbox, textfile-exporter (profile <code>monitoring</code>)</td>
+<td>65534:65534</td>
+<td>read-only</td>
+<td>—</td>
+<td><code>/-/ready</code>, <code>/-/healthy</code>, <code>/metrics</code></td>
+<td><code>monitoring</code> network is <code>internal</code>; nothing published. Alertmanager's only egress is the <code>alerting</code> network</td>
+</tr>
+<tr>
+<td>grafana (profile <code>monitoring</code>)</td>
+<td>472:472</td>
+<td>read-only (<code>tmpfs /tmp</code>)</td>
+<td>—</td>
+<td><code>/api/health</code></td>
+<td>Header auth only from <code>PORTCULLIS_TRAEFIK_IP</code>; login form and basic auth off</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Throwaway containers the CLI starts:</strong></p>
+<ul>
+<li>the chown helper: pinned <code>alpine</code>, <code>--network none</code>, only <code>CAP_CHOWN</code></li>
+<li>for backups, the volume snapshot and LLDAP check: the <code>portcullis-group-gate</code>
+  image (built first if missing), the volume owner's uid, <code>--network none</code>,
+  read-only, no capabilities</li>
+<li><code>restic</code>: pinned, the operator's uid, read-only, no capabilities;
+  <code>--network none</code> for a local repository</li>
+<li>for <code>backup verify</code>, a <code>postgres</code> without network</li>
+</ul>
+<h2 id="secrets-the-containers-read">Secrets the containers read<a class="headerlink" href="#secrets-the-containers-read" title="Permanent link">&para;</a></h2>
+<p>The CLI keeps these <strong>operator-owned</strong> with the container's group, so the
+operator can still rewrite them and nobody else can read them. It repairs them
+(<code>secrets_fix_perms</code>) on every <code>init</code>, <code>up</code>, <code>upgrade</code>, <code>vault init</code> and
+<code>restore</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Group</th>
+<th>Mode</th>
+<th>Read by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>secrets/vault-unseal/unseal-key</code></td>
+<td>1000</td>
+<td>0640 (dir 0750)</td>
+<td>vault (auto-unseal)</td>
+</tr>
+<tr>
+<td><code>secrets/enroll/{role-id,secret-id}</code></td>
+<td>10002</td>
+<td>0640 (dir 0750)</td>
+<td>enroll</td>
+</tr>
+<tr>
+<td><code>secrets/enroll/{invite-client-secret,keycloak-client-secret,invite-api-secret}</code></td>
+<td>10002</td>
+<td>0640</td>
+<td>enroll (invite IdP client, Keycloak service account <code>portcullis-enroll</code>, Hub invite API)</td>
+</tr>
+<tr>
+<td><code>secrets/hub/core.env</code></td>
+<td>10001</td>
+<td>0640 (dir 0750)</td>
+<td>Hub (as <code>/project/.env</code>)</td>
+</tr>
+<tr>
+<td><code>secrets/hub/lldap/{username,password}</code></td>
+<td>10001</td>
+<td>0640 (dir 0750)</td>
+<td>Hub (<code>/run/portcullis/lldap</code>, LLDAP account <code>portcullis-hub</code>, <code>lldap_admin</code>)</td>
+</tr>
+<tr>
+<td><code>secrets/hub/invite/secret</code></td>
+<td>10001</td>
+<td>0640 (dir 0750)</td>
+<td>Hub (<code>/run/portcullis/invite/secret</code>, same value as enroll's <code>invite-api-secret</code>)</td>
+</tr>
+<tr>
+<td><code>secrets/monitoring/prometheus/{vault-token,tls-targets.json}</code></td>
+<td>65534</td>
+<td>0640 (dir 0750)</td>
+<td>Prometheus (Vault metrics token: policy <code>portcullis-metrics</code>)</td>
+</tr>
+<tr>
+<td><code>secrets/monitoring/alertmanager/alertmanager.yml</code></td>
+<td>65534</td>
+<td>0640 (dir 0750)</td>
+<td>Alertmanager (receivers incl. SMTP password / webhook URLs)</td>
+</tr>
+<tr>
+<td><code>secrets/monitoring/grafana/admin-password</code></td>
+<td>472</td>
+<td>0640 (dir 0750)</td>
+<td>Grafana</td>
+</tr>
+<tr>
+<td><code>certs/server.key</code> (dev/CI only)</td>
+<td>0</td>
+<td>0640</td>
+<td>Traefik</td>
+</tr>
+<tr>
+<td><code>templates/</code></td>
+<td>owner 10001</td>
+<td>0755</td>
+<td>Hub (writes)</td>
+</tr>
+</tbody>
+</table>
+<p>Without root, the CLI changes owner/group through a throwaway container
+(pinned <code>alpine</code>, <code>--network none</code>, <code>--cap-drop ALL --cap-add CHOWN</code>). Anyone
+who can run docker is root-equivalent anyway.</p>
+<p><strong>The Hub never sees the core <code>.env</code>.</strong> It gets <code>secrets/hub/core.env</code>, which
+holds only what templates may reference: <code>PORTCULLIS_DOMAIN</code>,
+<code>PORTCULLIS_TRAEFIK_IP</code>, the proxy subnet and range, <code>PORTAL_DISPLAY_NAME</code>,
+<code>HEADSCALE_*</code>, <code>HEADPLANE_*</code>, <code>NETBIRD_*</code>, <code>COTURN_*</code>, and the names listed in
+<code>HUB_SHARED_ENV</code>. Core secrets are refused. <code>./portcullis up</code> rewrites the file
+in place. <code>secrets/</code> and <code>backups/</code> are masked from the Hub with empty tmpfs
+mounts.</p>
+<h2 id="header-spoofing-protections">Header spoofing protections<a class="headerlink" href="#header-spoofing-protections" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Entrypoint.</strong> The <code>websecure</code> entrypoint has no
+  <code>forwardedHeaders.trustedIPs</code>, so Traefik deletes client-supplied
+  <code>X-Forwarded-*</code> and <code>X-Forwarded-Tls-Client-Cert(-Info)</code> headers.
+  <code>aliasHeadersStrategy=delete</code> also drops alias spellings such as
+  <code>X_Forwarded_Tls_Client_Cert</code>. The cert headers that group-gate, enroll and
+  Keycloak see therefore always describe a certificate Traefik verified.</li>
+<li><strong>Forward-auth headers.</strong> Traefik's <code>forwardAuth</code> deletes every
+  <code>authResponseHeaders</code> entry from the upstream request and re-adds only the
+  values oauth2-proxy and group-gate return. A client can't send its own
+  <code>X-Forwarded-User</code> or <code>X-Auth-Request-Groups</code> through.</li>
+<li><strong>No stale groups from Keycloak's cache.</strong> Keycloak's LDAP federation runs
+  with <code>cachePolicy=NO_CACHE</code> (realm export, enforced on existing realms by
+  <code>./portcullis keycloak configure</code>): a removed membership or changed
+  attribute in LLDAP is in the user's next token (forward-auth refreshes
+  every minute), not held in a cached user until eviction or the daily sync.</li>
+<li>
+<p><strong>Identity is the LLDAP username, never the email.</strong> LLDAP lets users edit
+  their own mail, including to someone else's address. So:</p>
+<ul>
+<li>Keycloak's LDAP federation does not trust it (<code>trustEmail=false</code>, tokens carry <code>email_verified=false</code>).</li>
+<li>oauth2-proxy's session user is always the token's <code>sub</code> (Keycloak's user UUID). Its alpha <code>userIDClaim</code> is only a deprecated alias of <code>emailClaim</code>, so it is not used (CI rejects it). Instead <code>oauth2-proxy/alpha.yaml</code> builds <code>X-Auth-Request-User</code>, <code>X-Forwarded-User</code> and <code>X-Auth-Request-Preferred-Username</code> from the <code>preferred_username</code> claim, keeps <code>emailClaim: email</code>, and accepts the unverified email (<code>insecureAllowUnverifiedEmail</code>) because nothing authorises by it.</li>
+<li>group-gate reads the username <strong>only</strong> from <code>X-Auth-Request-Preferred-Username</code> (set by <code>portcullis-auth</code>, which must run first) and denies the request when it is missing. It never falls back to the email or <code>sub</code>.</li>
+<li>Apps get <code>X-Forwarded-User</code> / <code>X-Auth-Request-User</code> = immutable username, and <code>X-Forwarded-Email</code> / <code>X-Auth-Request-Email</code> = email (display only).</li>
+<li>Every identity header is in the forward-auth middlewares' <code>authResponseHeaders</code>, which is what strips client-supplied copies.</li>
+<li>Apps also get <code>X-Auth-Request-Groups</code>. All of these headers are <code>authResponseHeaders</code> of the forward-auth middlewares, so Traefik deletes client-supplied copies (the e2e test sends spoofed ones). Header-auth apps must log users in by <code>X-Forwarded-User</code> as a username and take the email from <code>X-Forwarded-Email</code>.</li>
+<li>enroll and the Hub use <code>X-Forwarded-User</code> as-is (no email → username lookup). group-gate's mTLS binding compares the cert CN with that same username and requires the token's <code>preferred_username</code> to match it.</li>
+<li>Native-OIDC apps must key accounts on <code>sub</code> / <code>preferred_username</code> and must not link existing accounts by email (e.g. Vaultwarden <code>SSO_SIGNUPS_MATCH_EMAIL</code>). Apps that insist on <code>email_verified=true</code> need their "allow unverified email" option.</li>
+<li>Apps that refuse <code>email_verified=false</code> but accept it absent (Vaultwarden SSO signups) get the <code>email-unverified</code> client scope instead of <code>email</code> (manifest <code>email_verified_claim: false</code>): the <code>email</code> claim without <code>email_verified</code>. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (<code>INVITATIONS_ALLOWED=false</code>, <code>SIGNUPS_ALLOWED=false</code>) and gates the SSO login paths with group-gate (<code>users_vaultwarden</code>).</li>
+</ul>
+<p><strong>Rule: email is never an identity or account-linking key.</strong>
+- <strong>Header-auth apps</strong> accept identity headers only from
+  <code>${PORTCULLIS_TRAEFIK_IP}</code>, through the app's proxy allow-list or a small
+  gate in front of it. Templates CI checks this statically and with a forged
+  request (see <a href="../../guides/header-auth-app/#header-security">Header Auth Pattern</a>).
+- <strong>Keycloak</strong> accepts proxy headers only from
+  <code>PORTCULLIS_AUTH_TRAEFIK_IP</code> on <code>portcullis-auth</code>, decided by the TCP peer
+  address (<code>--proxy-trusted-addresses</code>). The <code>127.0.0.1:8080</code> publish for the
+  CLI's admin API is untrusted, so it can't inject a cert. See
+  <a href="../../setup/certificates/#trusted-proxy-address">mTLS login</a>.
+- <strong>Paths.</strong> Traefik's default path handling stays on (<code>sanitizePath</code>,
+  decoding of unreserved <code>%XX</code>). Encoded <code>/</code>, <code>\</code>, <code>;</code> and <code>%00</code> are allowed
+  through because apps such as GitLab and Nextcloud use them. group-gate's
+  <code>path_groups</code> matching therefore normalises the path itself and denies
+  encoded slashes and NULs that survive one decode. <code>path_groups</code> checks also
+  deny a <code>#</code> in the URI or an encoded one in the path.</p>
+</li>
+</ul>
+<h3 id="attribute-headers">Attribute headers<a class="headerlink" href="#attribute-headers" title="Permanent link">&para;</a></h3>
+<p>On every request group-gate allows (<code>/</code> and <code>/authenticated</code>, app and core
+subdomains alike) it also returns <code>X-Forwarded-Attr-&lt;Header-Name&gt;</code> for the
+signed-in user's shared custom fields, read from the Hub's
+<code>user-attributes.json</code> in <code>hub_data</code>
+(<a href="../../guides/integration-contracts/">contract §4.1 / §5</a>):</p>
+<ul>
+<li>control characters (0x00–0x1F, 0x7F) are stripped, and values over 1 KB are
+  dropped and logged</li>
+<li>then <code>%</code> → <code>%25</code> and <code>,</code> → <code>%2C</code> in every value (so <code>Doe, Jane</code> stays one
+  value; apps percent-decode each item), and the values are joined with <code>,</code>.
+  Non-ASCII is sent as UTF-8 bytes</li>
+<li>field names must match <code>^[a-z][a-z0-9]*(_[a-z0-9]+)*$</code> (at most 31
+  characters) and header names <code>^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$</code>; a field with
+  an invalid name or header name is skipped (logged), the others still get
+  their headers</li>
+<li>a missing or corrupt file (logged) means no attribute headers, never a deny.
+  Two fields on one header (compared case-insensitively) make the file corrupt</li>
+</ul>
+<p><code>portcullis-groups</code> forwards them with
+<code>authResponseHeadersRegex: ^X-Forwarded-Attr-</code>. A headers middleware can only
+delete headers by exact name (and the field names are the Hub's), so
+client-sent <code>X-Forwarded-Attr-*</code> are deleted by the same regex on every
+forwardAuth middleware (<code>portcullis-auth</code>, <code>-auth-console</code>, <code>-groups</code>, <code>-self</code>,
+<code>-public-guard</code>): Traefik removes all request headers matching it before
+copying the auth server's. Public routers therefore get none, and <code>_</code> aliases
+are dropped by the entrypoints (<code>aliasHeadersStrategy</code>). CI sends forged ones
+through the gated and public test routers.</p>
+<p>Routers with <strong>no</strong> forwardAuth middleware (<code>keycloak</code>, <code>keycloak-resources</code>,
+<code>lldap</code> (redirect only), <code>vault-ui</code>, <code>enroll-invite</code>, and in the app overlays
+<code>headscale</code>, <code>netbird-*</code>, <code>docs</code>) do not strip client-sent <code>X-Forwarded-Attr-*</code>.
+Their backends must never trust those headers (none of them reads them).</p>
+<h3 id="sessions-temporary-memberships-and-the-people-directory">Sessions, temporary memberships and the people directory<a class="headerlink" href="#sessions-temporary-memberships-and-the-people-directory" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Temporary memberships.</strong> The policy file (version 4, the only version
+  group-gate serves) lists <code>expiring</code> <code>{user, group, at}</code> entries. group-gate
+  treats a membership as absent once <code>now &gt;= at</code> (for the subdomain and
+  path-group checks and in the <code>X-Auth-Request-Groups</code> it returns), whatever
+  the token says, so expiry holds even while the Hub is down. A malformed entry
+  denies (fail closed). The access token still names the expired group, so when
+  group-gate strips a membership it withholds <code>Authorization</code> and
+  <code>X-Forwarded-Access-Token</code> (both are <code>portcullis-groups</code>
+  <code>authResponseHeaders</code>, so Traefik deletes them). Otherwise it echoes them
+  unchanged: apps keep the token, and the Keycloak console behind
+  <code>portcullis-auth-console</code> keeps its own bearer. A file without <code>version</code>
+  denies as well; only a missing file means "nothing published".</li>
+<li><strong>Session re-validation.</strong> Forward-auth sessions are re-validated every
+  minute (<code>OAUTH2_PROXY_COOKIE_REFRESH=1m</code>, a legacy option that still applies
+  with <code>--alpha-config</code>): once the session cookie is a minute old, oauth2-proxy
+  redeems the refresh token with Keycloak. A Keycloak logout or a session the
+  Hub revokes (membership removal) then fails the refresh and ends access, and
+  changed groups reach group-gate, within about a minute. The refresh also ends
+  forward-auth sessions at Keycloak's SSO session limits (8 h idle, 12 h max);
+  the 168 h cookie lifetime (<code>cookie_expire</code>) is only an upper bound.</li>
+<li><strong><code>people.&lt;domain&gt;</code></strong> (the Hub's directory listener <code>:8889</code>,
+  <a href="../../guides/integration-contracts/">contract §5.1</a>) is open to any signed-in
+  user: <code>people=*</code> in <code>group-gate-map.conf</code> (<code>*</code> is valid only there; in the
+  policy file's <code>groups</code> it is ignored, in <code>path_groups</code> it is malformed). It
+  has the admin Hub's chain (<code>client-headers</code>, <code>portcullis-auth</code>,
+  <code>portcullis-groups</code>, <code>hub-proxy-secret</code>, <code>security-headers</code>), and the Hub
+  checks permissions per request and registers no app, policy or Docker
+  endpoint there.</li>
+</ul>
+<h3 id="routing-rules-around-keycloak-and-oauth2-proxy">Routing rules around Keycloak and oauth2-proxy<a class="headerlink" href="#routing-rules-around-keycloak-and-oauth2-proxy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>oauth2-proxy's endpoints</strong> (<code>/oauth2/start</code>, <code>/oauth2/callback</code>,
+  <code>/oauth2/sign_out</code>) are routed only on <code>auth.&lt;domain&gt;</code>. A host-less
+  <code>PathPrefix(/oauth2/)</code> router cannot carry the tiers' TLS options, and
+  Traefik answers 421 on it. group-gate's step-up page therefore sends the
+  browser to <code>https://auth.&lt;domain&gt;/oauth2/start?acr_values=…&amp;rd=&lt;app&gt;</code>. CI
+  rejects router rules without <code>Host(</code>.</li>
+<li><strong>Keycloak's <code>/admin</code> and <code>/realms/master</code> router</strong> uses
+  <code>portcullis-auth-console</code>: the same forward-auth, minus <code>Authorization</code> in
+  <code>authResponseHeaders</code>. The admin console sends its own bearer token to the
+  admin API; <code>portcullis-auth</code> would replace it with the forward-auth session's
+  token ("You do not have permission to access this resource").</li>
+</ul>
+<h3 id="setup-links-enroll">Setup links (enroll)<a class="headerlink" href="#setup-links-enroll" title="Permanent link">&para;</a></h3>
+<p><code>enroll-invite</code> (<code>enroll.&lt;domain&gt;/invite/*</code>) is the only enroll router without
+forward-auth.</p>
+<ul>
+<li><strong>The token</strong> is 256 bit, stored as SHA-256, single use, bound to one LLDAP
+  user, valid 72 h (max 7 days) and revoked by a newer link. <code>GET</code> only shows
+  it (link previews must not burn it); the same-origin <code>POST</code> redeems it.</li>
+<li><strong>The identity provider.</strong> enroll then acts as the hidden identity provider
+  <code>portcullis-invite</code>. Keycloak shows it only for
+  <code>kc_idp_hint=portcullis-invite</code>, and its first-login flow links the existing
+  LLDAP user and never creates one. The flow uses a 10-minute HttpOnly
+  redemption cookie scoped to <code>/invite/</code>, a 60 s single-use code bound to the
+  broker redirect URI and the PKCE challenge, and an ES256 id_token.</li>
+<li><strong>Unrouted ports.</strong> Its token / JWKS port (8445) and the Hub's invite API
+  (8444, bearer secret) are not routed by Traefik. <code>./portcullis invite</code> (the
+  CLI, through <code>docker exec</code>) uses a loopback-only listener (8446), the only
+  way to invite an administrator.</li>
+<li><strong>Admins only through the CLI.</strong> The Hub API refuses <code>admin</code>,
+  <code>portcullis-hub</code> and every member of <code>lldap_admin</code>, <code>lldap_password_manager</code>
+  and the core-console groups of <code>group-gate-map.conf</code> (LLDAP group lookup,
+  fails closed), so a leaked API secret cannot take over an admin account. The
+  check is repeated for API-made invites at redeem, at the authorization code
+  and at the token exchange: a user promoted to <code>lldap_admin</code> after the invite
+  was made is refused, and their pending API invites are cancelled.</li>
+<li><strong>Passkey required.</strong> The invite session is LoA 2 / amr <code>hwk</code> and cannot
+  finish without the passkey registration (<code>webauthn-register-passwordless</code>,
+  added when the link is redeemed by enroll's service account
+  <code>portcullis-enroll</code>, realm-management view-users + manage-users). enroll
+  already held the LLDAP admin bind and Vault signing rights, so this adds no
+  new class of power to it.</li>
+<li><strong>Re-invites.</strong> A re-invite of a user who already has keys adds one more
+  (spare). <code>./portcullis invite &lt;user&gt; --replace-keys</code> (lost or stolen key)
+  deletes the user's WebAuthn credentials and sessions first.</li>
+</ul>
+<h3 id="service-accounts-and-public-routers">Service accounts and public routers<a class="headerlink" href="#service-accounts-and-public-routers" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>The Hub's LLDAP account.</strong> The Hub logs in to LLDAP as <code>portcullis-hub</code>
+  (<code>lldap_admin</code>; LLDAP 0.6.3's <code>lldap_password_manager</code> cannot create users or
+  groups). It could already start arbitrary containers through its socket
+  proxy, so this is no new trust
+  (<a href="../../guides/integration-contracts/#91-service-account-core-provides">contract §9.1</a>). The account cannot
+  sign in: Keycloak's federation filters it out (<code>(!(uid=portcullis-hub))</code>)
+  and group-gate denies it (<code>GATE_DENY_USERS</code>).</li>
+<li><strong>Public guard.</strong> Public exceptions (the Hub's <code>portcullis-public-&lt;app&gt;</code>
+  routers) have no forward-auth: nothing is signed in and no identity header is
+  passed (the Hub's strip middleware deletes client copies). Their first
+  middleware, <code>portcullis-public-guard@docker</code> (group-gate <code>/public-guard</code>),
+  returns 403 unless the policy file (version 4) publishes the subdomain in
+  <code>public_paths</code>, the normalised path is inside one of its patterns (prefix /
+  exact / static files; encoded <code>/</code>, <code>\</code>, NUL or <code>#</code> denied, and so is any <code>#</code>
+  in <code>X-Forwarded-Uri</code>: browsers never send fragments), and the request carries
+  none of <code>Authorization</code>, <code>Proxy-Authorization</code>, the app's
+  <code>credential_headers</code> (also in <code>_</code> form), <code>credential_cookies</code> or
+  <code>credential_query</code>. Cookie and query names are compared case-insensitively
+  after PHP's mangling (<code>main/php_variables.c</code> <code>php_register_variable_ex</code>:
+  leading spaces dropped, <code></code>/<code>.</code> → <code>_</code>, <code>name[...]</code> is <code>name</code>, an unclosed <code>[</code>
+  → <code>_</code>, NUL ends the name), both raw and percent-/<code>+</code>-decoded; names that are
+  not valid UTF-8 (overlong forms) are refused. It never returns identity
+  headers. See <a href="#public-exceptions">Public exceptions</a>.</li>
+<li><strong>Logs.</strong> The guard's logs (like group-gate's path denials) show the path
+  with token-like segments masked as <code>&lt;token&gt;</code> and query parameter names only.
+  Never share tokens, query values, cookies or credentials.</li>
+</ul>
+<h2 id="hub-proxy-secret">Hub proxy secret<a class="headerlink" href="#hub-proxy-secret" title="Permanent link">&para;</a></h2>
+<p>The Hub has no login of its own. Every request except <code>GET /healthz</code> must
+carry <code>X-Portcullis-Proxy-Secret</code> equal to <code>HUB_PROXY_SECRET</code> (at least 32
+characters, compared in constant time). Otherwise the Hub answers 403, and it
+refuses to start without the variable.</p>
+<p><code>./portcullis init</code> generates the secret. The core router injects it with the
+<code>hub-proxy-secret@docker</code> headers middleware, placed <strong>after</strong>
+<code>portcullis-auth</code> and <code>portcullis-groups</code>. So the secret is never sent to
+oauth2-proxy or group-gate, and only requests that passed forward-auth and the
+<code>lldap_admin</code> check carry it. A container that reaches the Hub directly on the
+<code>portcullis</code> network can't spoof <code>X-Forwarded-User</code> without the secret.</p>
+<p>To rotate it, empty <code>HUB_PROXY_SECRET</code> in <code>.env</code> and run
+<code>./portcullis upgrade</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

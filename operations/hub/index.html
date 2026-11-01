@@ -1,0 +1,3819 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/hub/">
+      
+      
+      
+        <link rel="prev" href="../auth-policies/">
+      
+      
+        <link rel="next" href="../testing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Hub Management - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Hub Management
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#app-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App Catalog
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App Catalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enabling-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Enabling an app
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-an-operation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When an operation fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disabling-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disabling an app
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#app-detail-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App detail panel
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App detail panel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Status
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Logs
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expert" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Expert
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Expert">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom override
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-tab-global" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings tab (global)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#users-groups-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Users &amp; Groups tab
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Users &amp; Groups tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#access-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access levels
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#people" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        People
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="People">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-person-actions-in-the-dialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-person actions (in the dialog)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keycloak-status-admins-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keycloak status (admins only)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stale-keycloak-records-admins-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Stale Keycloak records (admins only)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Groups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule-based groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Protected groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The evaluator
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#org-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Org chart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-admins-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup (admins only)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup (admins only)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delegated-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Delegated permissions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csv-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CSV import
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#administrators" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Administrators
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Guardrails
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Audit log
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-passwords-are-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How passwords are set
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#drift-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Drift detection
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Drift detection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fail-closed-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fail-closed behaviour
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#template-rules-enforced-by-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Template rules enforced by the Hub
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keycloak-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keycloak clients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-app-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-app isolation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#template-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Template sources
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-tags-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Image tags and verification
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common tasks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common tasks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changing-an-apps-subdomain-or-middlewares" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changing an app's subdomain or middlewares
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backing-up-app-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backing up app data
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#app-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App Catalog
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App Catalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enabling-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Enabling an app
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-an-operation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When an operation fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disabling-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disabling an app
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#app-detail-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App detail panel
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App detail panel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Status
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Logs
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expert" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Expert
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Expert">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom override
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-tab-global" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings tab (global)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#users-groups-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Users &amp; Groups tab
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Users &amp; Groups tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#access-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access levels
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#people" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        People
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="People">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-person-actions-in-the-dialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-person actions (in the dialog)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keycloak-status-admins-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keycloak status (admins only)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stale-keycloak-records-admins-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Stale Keycloak records (admins only)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Groups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rule-based-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule-based groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Protected groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The evaluator
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#org-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Org chart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-admins-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup (admins only)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup (admins only)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delegated-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Delegated permissions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csv-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CSV import
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#administrators" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Administrators
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Guardrails
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Audit log
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-passwords-are-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How passwords are set
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#drift-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Drift detection
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Drift detection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fail-closed-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fail-closed behaviour
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#template-rules-enforced-by-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Template rules enforced by the Hub
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keycloak-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keycloak clients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-app-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-app isolation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#template-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Template sources
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-tags-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Image tags and verification
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common tasks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common tasks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changing-an-apps-subdomain-or-middlewares" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changing an app's subdomain or middlewares
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backing-up-app-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backing up app data
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="hub-management">Hub Management<a class="headerlink" href="#hub-management" title="Permanent link">&para;</a></h1>
+<p>The Hub is Portcullis's web dashboard for app templates. It lists the catalog,
+enables and disables apps, edits their settings and access policies, and shows
+status and logs. It is published as <code>ghcr.io/porelli/portcullis-hub</code> and run by
+the core <code>docker-compose.yml</code> (<code>HUB_IMAGE</code>). There is nothing to build.</p>
+<p>Open it at <code>https://hub.&lt;your-domain&gt;</code>. It requires a Keycloak login and
+membership of <code>lldap_admin</code>.</p>
+<h2 id="app-catalog">App Catalog<a class="headerlink" href="#app-catalog" title="Permanent link">&para;</a></h2>
+<p>The main view lists every template from every <a href="#template-sources">template source</a> as a card:</p>
+<ul>
+<li>icon, name and one-line description</li>
+<li>auth badges:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Badge</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SSO</strong></td>
+<td>The app supports single sign-on via Keycloak (<code>auth.sso</code>)</td>
+</tr>
+<tr>
+<td><strong>Group Access</strong></td>
+<td>group-gate restricts the app's subdomains to the <code>users_&lt;app&gt;</code> group (<code>auth.group_access</code>)</td>
+</tr>
+<tr>
+<td><strong>Group Admin</strong></td>
+<td>The app maps the <code>admin_&lt;app&gt;</code> group to its admin role (<code>auth.group_admin</code>)</td>
+</tr>
+<tr>
+<td><strong>Method</strong></td>
+<td><code>forward-auth</code>, <code>native-oidc</code>, <code>header-auth</code>, <code>mtls</code>, <code>custom</code> or <code>public</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>whether the app is enabled and running</li>
+</ul>
+<h3 id="enabling-an-app">Enabling an app<a class="headerlink" href="#enabling-an-app" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open the app card and review the details.</li>
+<li>Fill in its settings (media folders, ports, options) and, if needed, its
+   <a href="../auth-policies/">access policy</a>.</li>
+<li>Click <strong>Enable</strong>.</li>
+</ol>
+<p>Before anything starts, the Hub refuses to enable the app if:</p>
+<ul>
+<li>one of its host ports (from Settings or its <a href="#custom-override">custom override</a>)
+  overlaps a host port of another enabled app (HTTP 409, "port
+  0.0.0.0:3300/tcp already claimed by enabled app …"), or</li>
+<li>one of its subdomains is already routed by another enabled app (HTTP 409,
+  "subdomain … is already routed by enabled app …"). Every subdomain has
+  exactly one owner, because group-gate keys groups and policies by subdomain.</li>
+</ul>
+<p>It then generates the per-app <code>.env</code> and compose override, copies the template
+directory to <code>&lt;core&gt;/templates/&lt;app-id&gt;/</code>, registers the template's Keycloak
+clients (a client ID owned by another template or by nobody provable aborts
+the enable with HTTP 409, see <a href="#keycloak-clients">Keycloak clients</a>) and runs
+<code>docker compose up</code>. The app is recorded as enabled only after
+<code>compose up</code> succeeds. Then the Hub publishes its group, admin paths and policy
+to group-gate.</p>
+<p>The Hub can't test host ports outside Docker from inside its container (a
+service on the host, e.g. <code>systemd-resolved</code> on <code>127.0.0.53:53</code>), so those
+conflicts surface as a <code>compose up</code> failure. See
+<a href="#when-an-operation-fails">When an operation fails</a>.</p>
+<h3 id="when-an-operation-fails">When an operation fails<a class="headerlink" href="#when-an-operation-fails" title="Permanent link">&para;</a></h3>
+<p>If enable, disable, restart or a drift action fails, the UI opens a dialog
+with the error, a hint where one is known, and the last 8 KiB of
+<code>docker compose</code>'s output (scrollable). Values of secret-looking variables
+(names containing <code>SECRET</code>, <code>PASSWORD</code>, <code>TOKEN</code>, <code>KEY</code>, …, and generated ones)
+from the app's and core's env are replaced with <code>[redacted]</code>. For
+<code>address already in use</code> / <code>port is already allocated</code> the hint names the
+port and links to the app's <strong>Settings → Host Ports</strong>: change the host port,
+bind it to one address, or clear it (optional ports) to disable the binding,
+then enable again.</p>
+<p>A failed <code>compose up</code> during <strong>enable</strong> is rolled back: the Hub runs
+<code>docker compose down --remove-orphans</code> for the project (volumes are kept), so
+no stopped containers or network stay behind. The app stays disabled, and
+neither the fail-closed deny entry nor a <code>stopped_not_enabled</code> drift item is
+left over. If the rollback fails too, the error says so and the leftovers show
+up in <a href="#drift-detection">Drift detection</a> (<strong>Stop &amp; remove</strong>).</p>
+<p>Every operation's outcome is stored per app in <code>${HUB_DATA_DIR}/ops/&lt;app&gt;.json</code>
+(operation, time, ok/failed, error, hint, output tail; mode 0600), and kept
+until the next operation on that app. A card whose last operation failed shows
+"last enable failed" (or restart, …); its detail panel shows a banner, and the
+<strong>Logs</strong> tab, also for an app that is not enabled, shows the record above the
+container logs. The API:</p>
+<div class="highlight"><pre><span></span><code>GET  /api/templates/lastop/&lt;app&gt;   {op, at, ok, error?, output?, hint?, rolled_back?} or null
+</code></pre></div>
+<p>A failed lifecycle request (<code>POST /api/templates/enable</code>, <code>/disable</code>,
+<code>/restart/&lt;app&gt;</code>, <code>/api/drift/resolve</code>) answers with its HTTP status and a
+JSON body <code>{error, op, output, hint, rolled_back}</code>; other errors stay plain
+text.</p>
+<h3 id="disabling-an-app">Disabling an app<a class="headerlink" href="#disabling-an-app" title="Permanent link">&para;</a></h3>
+<p>Click <strong>Disable</strong> in the app's detail panel. The Hub runs
+<code>docker compose down</code> for the project. The app is marked disabled only once
+that succeeds. If stopping fails, the app stays enabled and the error is shown,
+so you can retry instead of being left with orphaned containers. If the
+template is gone or its compose file is broken, the Hub falls back to
+<code>docker compose -p portcullis-&lt;id&gt; down</code>.</p>
+<p>Keycloak clients are not deleted when you disable an app. Volumes are kept.</p>
+<p>Only one lifecycle operation (enable, disable, restart) runs per app at a time.
+A second request while one is in progress is rejected with a "try again
+shortly" message.</p>
+<h2 id="app-detail-panel">App detail panel<a class="headerlink" href="#app-detail-panel" title="Permanent link">&para;</a></h2>
+<p>Each enabled app has four tabs: <strong>Settings</strong>, <strong>Status</strong>, <strong>Logs</strong> and <strong>Expert</strong>.
+An app that is not enabled has <strong>Settings</strong> and <strong>Expert</strong>, plus <strong>Logs</strong> when
+its last operation failed.</p>
+<h3 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The <strong>Sign-in</strong> block, only for apps whose manifest declares
+  <a href="../../guides/manifest-reference/#authnative_login"><code>auth.native_login</code></a>
+  (Plex): <em>Portcullis sign-in, then the app's own login</em> (default; the
+  override adds <code>portcullis-auth@docker,portcullis-groups@docker</code> to every
+  router, group = the template's <code>access_group</code>) or <em>App's own login only (no
+  Portcullis)</em>, offered only if the template allows it. Choosing the latter
+  shows a red warning; saving writes the routers without the gateway
+  middlewares and with <code>public@file</code>, publishes no group for the app, logs a
+  warning and adds an <code>app.sign_in</code> entry (actor, <code>gateway -&gt; native</code>) to the
+  audit log, refusals included. See
+  <a href="../auth-policies/#apps-with-their-own-login">Apps with their own login</a>.</li>
+<li>The <strong>access policy</strong> block, capability-aware (see
+  <a href="../auth-policies/#what-each-app-can-enforce">What each app can enforce</a>):<ul>
+<li><em>Inherit global default</em> is ticked for every app without an override.
+  While it is, the boxes are disabled and show the <strong>effective</strong> policy
+  (global default ∩ what the app can enforce), with the TLS tier and notes:
+  how the app enforces it (per request, at login, at the TLS handshake),
+  and what differs from the global default, including a default the app
+  can't enforce at all.</li>
+<li>Unticked, only the factors the app supports can be checked (mTLS and
+  WebAuthn; mTLS only for <code>mtls</code> apps), with any-of or all-of. The Hub
+  refuses other factors with a <code>400</code> naming them.</li>
+<li>Apps that handle their own sign-in (<code>custom</code> without Portcullis
+  sign-in, <code>public</code>) show the block disabled: "This app handles its own
+  sign-in".</li>
+<li>There is no password factor. A stored policy that names <code>password</code> is
+  normalised (never weaker) and the block says so until it is saved.</li>
+</ul>
+</li>
+<li><strong>Settings</strong> declared in the manifest:<ul>
+<li><code>path</code> / <code>paths</code>: host directories bind-mounted into a container, e.g. media libraries</li>
+<li><code>text</code>: free-form values</li>
+<li><code>boolean</code>: toggles</li>
+<li><code>select</code>: a dropdown of the manifest's options</li>
+</ul>
+</li>
+<li><strong>Host ports</strong> declared in the manifest: rebind them, or clear optional ones
+  to disable the binding.</li>
+<li>The <strong>public exceptions</strong> block, only for apps whose manifest declares
+  <a href="../../guides/manifest-reference/#authpublic_access"><code>auth.public_access</code></a>.
+  See <a href="#public-exceptions">Public exceptions</a>.</li>
+</ul>
+<p>Saving restarts the app in the background. Clearing a text field clears the
+value in the app's <code>.env</code>.</p>
+<p>Input validation:</p>
+<ul>
+<li>Path settings may not contain <code>:</code> (Compose would read it as <code>host:container</code>)
+  or newlines. Spaces, quotes and <code>#</code> are fine, because paths are quoted in the
+  generated override.</li>
+<li>Port bind addresses must be IP addresses (e.g. <code>0.0.0.0</code>, <code>127.0.0.1</code>, <code>::1</code>).
+  IPv6 is bracketed automatically.</li>
+<li>No setting value may contain newlines or other control characters.</li>
+</ul>
+<h3 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h3>
+<p>Lists each container of the app's compose project with its state:</p>
+<ul>
+<li><strong>All containers running</strong></li>
+<li><strong>Some containers not running</strong></li>
+<li><strong>Containers stopped</strong></li>
+</ul>
+<p>The information comes from the Docker Engine API through the Hub's socket proxy.</p>
+<h3 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h3>
+<p>Shows the app's <a href="#when-an-operation-fails">last operation</a> (with compose's
+output if it failed), then the last 100, 200 or 500 log lines of the app's
+containers. Use <strong>Refresh</strong> to reload.</p>
+<h3 id="expert">Expert<a class="headerlink" href="#expert" title="Permanent link">&para;</a></h3>
+<p>Advanced tools with direct access to the compose configuration and the
+containers. Compose runs with three files, later ones winning:</p>
+<div class="highlight"><pre><span></span><code>docker compose -p portcullis-&lt;app&gt; \
+  -f &lt;template&gt;/compose.yml \
+  -f ${HUB_DATA_DIR}/overrides/&lt;app&gt;.override.yml \
+  -f ${HUB_DATA_DIR}/overrides/&lt;app&gt;.user.yml
+</code></pre></div>
+<ol>
+<li><strong>compose.yml</strong> (read-only). The template's file as it comes from the
+   template source. The Hub never writes it, so source syncs always
+   fast-forward. To change routing (subdomains, routers, middlewares), change
+   the template in its source (see <a href="#template-sources">Template sources</a>).</li>
+<li><strong>Hub override</strong> (read-only). Generated from Settings and regenerated
+   before every <code>compose up</code>: bind mounts, host ports, each router's
+   <code>tls.options</code> derived from the access policy, router middlewares for apps
+   with their own login, and the public-exception router with its strip
+   middleware when on. Never hand-edited.</li>
+<li>
+<p><strong>Custom override</strong> (editable). Your own additions, stored by the Hub per
+   app, outside the template clone, so template syncs and updates keep it.
+   See <a href="#custom-override">Custom override</a>.</p>
+</li>
+<li>
+<p><strong>Environment variables.</strong> Edit the app's own <code>.env</code> (stored in the Hub data
+  directory), or add a variable. Names must match <code>[A-Za-z_][A-Za-z0-9_]*</code>, and
+  values may not contain newlines.</p>
+</li>
+<li><strong>Container shell.</strong> Runs one command with <code>/bin/sh -c</code> in a chosen container
+  through the Engine API and shows its output. The Hub stops waiting after
+  15 minutes, or when the browser request is cancelled. A process that keeps
+  running inside the container is not killed.</li>
+<li><strong>Restart app</strong> (enabled apps). A full <code>down</code> + <code>up</code> of the project, so
+  override and env changes take effect. It waits for the result and, if it
+  fails, shows compose's output like a failed enable.</li>
+</ol>
+<h4 id="custom-override">Custom override<a class="headerlink" href="#custom-override" title="Permanent link">&para;</a></h4>
+<p>Typical uses: pin a different image tag, add environment variables, resource
+limits, extra bind mounts or named volumes, extra (literal) host ports, a
+healthcheck. <strong>Save override</strong> validates and stores it; it applies on the next
+restart ("restart to apply"), or when a disabled app is enabled. Saving an
+empty (or comment-only) override deletes the file. Every save, removal and
+refusal goes to the <a href="#audit-log">audit log</a> as <code>app.compose_override</code> with the
+signed-in user, the size and a SHA-256 prefix, never the content (it may hold
+env values). The file is mode 0600.</p>
+<p>The Hub refuses anything that would bypass Portcullis' routing or isolation.
+group-gate keys every policy and group by the subdomains the Hub reads from the
+template's Traefik labels, and the Hub's override sets each router's TLS
+options and middlewares, so the custom override may not change them:</p>
+<ul>
+<li><strong>Top level:</strong> only <code>services</code>, <code>volumes</code>, <code>networks</code>. Must be a mapping;
+  no YAML tags (compose's <code>!reset</code> / <code>!override</code> could strip the template's
+  labels or networks).</li>
+<li><strong>Services:</strong> only services the template defines, and only these keys:
+  <code>image</code>, <code>command</code>, <code>entrypoint</code>, <code>environment</code>, <code>labels</code>, <code>volumes</code>,
+  <code>ports</code>, <code>expose</code>, <code>restart</code>, <code>healthcheck</code>, <code>user</code>, <code>working_dir</code>,
+  <code>hostname</code>, <code>domainname</code>, <code>mem_limit</code>, <code>mem_reservation</code>, <code>memswap_limit</code>,
+  <code>mem_swappiness</code>, <code>cpus</code>, <code>cpu_shares</code>, <code>cpuset</code>, <code>pids_limit</code>,
+  <code>shm_size</code>, <code>ulimits</code>, <code>logging</code>, <code>tmpfs</code>, <code>extra_hosts</code>, <code>dns</code>,
+  <code>dns_search</code>, <code>dns_opt</code>, <code>stop_grace_period</code>, <code>stop_signal</code>, <code>init</code>,
+  <code>read_only</code>, <code>cap_drop</code>, <code>tty</code>, <code>stdin_open</code>, <code>pull_policy</code>, <code>platform</code>,
+  <code>depends_on</code> (on the template's services), <code>oom_score_adj</code>.
+  Everything else is refused, in particular <code>privileged</code>, <code>cap_add</code>,
+  <code>devices</code>, <code>security_opt</code>, <code>network_mode</code>, <code>networks</code>, <code>pid</code>, <code>ipc</code>, <code>uts</code>,
+  <code>userns_mode</code>, <code>cgroup</code>, <code>cgroup_parent</code>, <code>sysctls</code>, <code>volumes_from</code>,
+  <code>extends</code>, <code>env_file</code>, <code>build</code>, <code>links</code>, <code>external_links</code>,
+  <code>container_name</code>, <code>profiles</code>, <code>deploy</code>, <code>configs</code>, <code>secrets</code>, <code>group_add</code>,
+  <code>runtime</code>.</li>
+<li><strong>Labels:</strong> no <code>traefik.*</code> (routers, rules, middlewares, TLS options,
+  entrypoints, services) and no <code>com.docker.compose.*</code> (the Hub finds the
+  app's containers by them).</li>
+<li>
+<p><strong>Volumes:</strong> named volumes, <code>./templates/&lt;app&gt;/…</code>, or bind mounts of
+  absolute host paths under the <strong>bind roots</strong>; everything else is refused,
+  including <code>/home</code>, <code>/var</code>, <code>/opt</code> and <code>/etc/localtime</code>. The bind roots are
+  <code>HUB_OVERRIDE_BIND_ROOTS</code> (colon-separated absolute paths, e.g.
+  <code>/srv:/mnt/media</code>), default <code>/srv:/mnt:/media</code>. The Hub refuses to start if
+  a root is <code>/</code>, is or contains a system path (<code>/etc</code>, <code>/var/lib</code>, <code>/run</code>,
+  <code>/usr</code>, <code>/tmp</code>, …), contains the Docker socket or state, or overlaps the
+  core checkout. Sources are cleaned (<code>//</code>, <code>/./</code>); <code>..</code> segments, sockets
+  (<code>*.sock</code>) and <code>/</code> itself are refused, as are shared/slave bind propagation
+  and volume types other than bind, volume, tmpfs.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The Hub can't resolve symlinks on the host: a symlink under a bind
+root pointing elsewhere (e.g. <code>/srv/x -&gt; /</code>) would be followed by the
+Docker daemon. What lives under the bind roots is the operator's
+responsibility; keep them to data directories.</p>
+</div>
+</li>
+<li>
+<p><strong>Ports:</strong> literal host ports only (no variables); they count in the port
+  checks against other enabled apps and against the app's own Settings ports.</p>
+</li>
+<li><strong>Top-level <code>volumes</code>:</strong> only <code>labels</code> per volume (no <code>driver</code>,
+  <code>driver_opts</code>, <code>external</code> or <code>name</code>: they could point at host paths or
+  another app's data).</li>
+<li><strong>Top-level <code>networks</code>:</strong> only networks the template declares and doesn't
+  mark external or name (so never <code>portcullis-proxy</code>), with <code>labels</code>,
+  <code>driver_opts</code>, <code>enable_ipv6</code>, <code>ipam</code>.</li>
+<li><strong>No variables anywhere.</strong> Compose interpolates <code>${VAR}</code> / <code>$VAR</code> in keys and
+  values <em>after</em> the Hub's checks, so a label key <code>${T}raefik.enable</code> would
+  become <code>traefik.enable</code>. Every key and value with an unescaped <code>$</code> is
+  refused; write <code>$$</code> for a literal dollar sign (compose turns it into <code>$</code>).</li>
+</ul>
+<p>Because of these rules, the routes, subdomains, published snapshot and
+exposure drift the Hub computes from the template stay exact with a custom
+override in place. The override is checked again before every <code>compose up</code>: if
+a template update dropped a service it names (or it no longer passes), enable,
+restart and drift actions fail with HTTP 409 ("the custom compose override
+(Expert) is not valid for this template any more") before compose runs — edit
+or clear it.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>A custom override can still break the app (a wrong image, a bad mount).
+It can't change how Portcullis routes and guards it.</p>
+</div>
+<h3 id="public-exceptions">Public exceptions<a class="headerlink" href="#public-exceptions" title="Permanent link">&para;</a></h3>
+<p>Some apps have share links meant for people without a Portcullis account
+(Nextcloud public shares, Grafana shared dashboards, Immich shared links). If
+the template declares them, the Settings tab shows a <strong>Public exceptions</strong>
+block (bordered in amber):</p>
+<ul>
+<li>the template's description and every declared path with its description
+  and kind: <em>per share</em> (<code>{token}</code> path), <em>supporting, always opened</em>
+  (static assets) or <em>all shares only</em>;</li>
+<li>a red warning: requests to these paths skip Portcullis entirely (no
+  forward-auth, no group-gate, no hardware key); only the app's own checks
+  (share token, share password, expiry) apply;</li>
+<li>what is refused or stripped: core's public guard answers 403 to requests
+  carrying <code>Authorization</code>, <code>Proxy-Authorization</code> or the app's login
+  headers, cookies or query parameters (an app user signed in with
+  "remember me" opens shares in a private window), and the Hub strips
+  identity headers;</li>
+<li>if the app's policy requires a client certificate at the TLS handshake
+  (<code>protected@file</code>), an amber warning that <strong>all</strong> of the app's routers use
+  <code>authaware@file</code> while a public path is open. For native-OIDC apps it adds
+  that mTLS is then only enforced at login (Keycloak acr); for forward-auth /
+  header-auth apps that group-gate still checks the client certificate on
+  every gated request; and it lists routers without group-gate, which lose
+  the handshake check. See
+  <a href="../auth-policies/#public-exceptions">Auth policies → Public exceptions</a>.</li>
+</ul>
+<p>Controls:</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Allow public exceptions</strong></td>
+<td>On/off (an explicit admin choice)</td>
+</tr>
+<tr>
+<td><strong>Use the template default</strong></td>
+<td>Forget the choice; the template's <code>enabled_by_default</code> applies, also after it changes on a template sync</td>
+</tr>
+<tr>
+<td><strong>Only listed shares / All shares</strong></td>
+<td>Mode, if the template has <code>{token}</code> paths. <em>Only listed</em>: just the shares below. <em>All</em>: every share of the app</td>
+</tr>
+<tr>
+<td><strong>Listed shares</strong></td>
+<td>Each listed token with <strong>Remove</strong>; a text box takes share URLs or bare tokens, one per line</td>
+</tr>
+</tbody>
+</table>
+<p>The Hub extracts the token from a pasted URL (the <code>{token}</code> segment of the
+first matching path, e.g. <code>https://cloud.example.org/s/AbC123/download</code> →
+<code>AbC123</code>), checks it against the template's <code>token_pattern</code> and the alphabet
+<code>[A-Za-z0-9._~-]</code>, rejects anything else (the save fails with the reason),
+and removes duplicates. At most 200 shares per app (each adds two matchers
+per <code>{token}</code> path to one Traefik rule). The status line shows what is open
+(with <code>{token}</code>, never the tokens) and on which subdomains, or "No public
+router is generated" — the case in mode <em>listed</em> with no share, which also
+keeps the handshake tier.</p>
+<p>The list is admin-managed: ordinary app users can't publish a share to the
+internet themselves; they create the share in the app as usual (with its own
+password and expiry) and ask a Hub admin to list it. Remove the token (or
+turn the exception off) to close it again; the app's own share settings keep
+applying either way.</p>
+<p>Saving regenerates the override and restarts the app. Any public choice
+(toggle, token list) also pins the mode it was made under, so a later
+template change can't widen it. Fail closed:</p>
+<ul>
+<li>a stored mode the template no longer supports (e.g. <em>listed</em> after the
+  template dropped its <code>{token}</code> paths) opens <strong>nothing</strong> and shows "public
+  exception disabled … confirm a mode" in the block and as drift;</li>
+<li>listed tokens the template's <code>token_pattern</code> no longer accepts are not
+  routed and are shown as invalid (saving removes them).</li>
+</ul>
+<p>The router is generated from the manifest, not shipped in <code>compose.yml</code>: only
+the Hub knows whether the exception is on, which shares are listed and which
+TLS tier the host gets, and a template can't open paths by itself.</p>
+<h2 id="settings-tab-global">Settings tab (global)<a class="headerlink" href="#settings-tab-global" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Default access policy.</strong> Applies to every app without its own policy.
+  <strong>Until an admin saves one, the default is a YubiKey by either method</strong>,
+  <code>any of [mtls, webauthn]</code>: a client certificate or a passkey. Apps without
+  their own policy get <code>authaware@file</code>, and Keycloak steps up to at least
+  LoA 2 (<code>hwk</code>). A certificate sign-in (<code>mtls</code>) satisfies it too.
+  You can still choose a public default explicitly. That choice is stored and
+  honoured, and differs from "never set". The default may name both factors;
+  each app enforces what it can of it (an <code>mtls</code> app always requires the
+  certificate, apps with their own sign-in get none). <code>password</code> is refused.
+  Changing it re-applies it to every enabled app that inherits it, and
+  restarts only the apps whose Traefik TLS tier actually changed. Saving an
+  unchanged default does nothing.</li>
+</ul>
+<p>User administration moved to the <a href="#users-groups-tab">Users &amp; Groups tab</a>.</p>
+<h2 id="users-groups-tab">Users &amp; Groups tab<a class="headerlink" href="#users-groups-tab" title="Permanent link">&para;</a></h2>
+<p>Day-to-day user, group and field administration. LLDAP has no single sign-on, so
+its own web UI isn't published: <code>directory.&lt;domain&gt;</code> redirects to
+<code>people.&lt;domain&gt;</code>, and the LLDAP UI is reachable only from the server
+for recovery (<a href="../cli/#lldap-ui"><code>portcullis lldap-ui</code></a>). The Hub uses its own LLDAP service account,
+<code>portcullis-hub</code>, which core creates and mounts as files (see
+<a href="../../guides/integration-contracts/#9-hub-lldap-users-groups">Integration Contracts §9</a>).
+If core doesn't provide it, the tab says user management is disabled and
+everything else keeps working.</p>
+<p>The tab has four sections: <strong>People</strong>, <strong>Groups</strong>, <strong>Org chart</strong> and <strong>Setup</strong> (admins only).</p>
+<h3 id="access-levels">Access levels<a class="headerlink" href="#access-levels" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Admins</strong> (<code>hub.&lt;domain&gt;</code>, members of <code>lldap_admin</code>) see and can change everything.</li>
+<li><strong>Everyone else</strong> (<code>people.&lt;domain&gt;</code>, any signed-in user) can view all people, groups, fields and the org chart, with three <strong>delegated permissions</strong> (granted per group by admins):<ul>
+<li><strong>edit details</strong>: edit custom field values of non-protected accounts (single edits and CSV import)</li>
+<li><strong>invite</strong>: create new accounts with no groups (invite links only)</li>
+<li><strong>remove</strong>: delete accounts</li>
+</ul>
+</li>
+</ul>
+<p>Administrators signed in on <code>people.&lt;domain&gt;</code> get the same admin operations there as on <code>hub.&lt;domain&gt;</code>: core lets any signed-in user reach <code>people.&lt;domain&gt;</code>, and the Hub's own <code>lldap_admin</code> check (re-checked on every change) is the gate for admin operations on that listener.</p>
+<p>Delegates cannot target themselves, administrators, the protected accounts (<code>admin</code>, <code>portcullis-hub</code>), or members of any permission group. Delegates cannot touch manual groups, exceptions or expiries; they can fill in fields that make people match rule-based groups. See <a href="#delegated-permissions">Delegated permissions</a>.</p>
+<h3 id="people">People<a class="headerlink" href="#people" title="Permanent link">&para;</a></h3>
+<p>The <strong>People</strong> table shows every LLDAP user, with the custom field columns, groups (⚡ marks membership via a rule), Keycloak status (passkey count, required actions; admins only) and a search box. Clicking a row opens a dialog with details, groups (how membership was granted, expiries, exceptions), keys (admins only) and actions.</p>
+<p><strong>Invite</strong> (admins and delegates with the <code>invite</code> permission): creates a new user. Username (lowercase letters, digits, <code>.</code>, <code>_</code>, <code>-</code>; at least 2 characters), email, display name and groups (admins only). The user gets a <strong>one-time invite link</strong> (shown once, expires in 72 h): they register their passkey and are signed in, no password. A delegate's new account has no groups; filling in fields can make it match rule-based groups. Administrators get no invite links; the Hub shows <code>./portcullis invite &lt;user&gt;</code> (server only). Under <strong>Advanced</strong>, admins can use a password fallback instead (generated or typed; 12 to 256 characters).</p>
+<p><strong>Import CSV</strong> (admins and delegates with any permission): see <a href="#csv-import">CSV import</a>.</p>
+<h4 id="per-person-actions-in-the-dialog">Per-person actions (in the dialog)<a class="headerlink" href="#per-person-actions-in-the-dialog" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Who</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Edit details</td>
+<td>Admins, delegates with <code>edit_details</code></td>
+<td>Change email, display name and custom field values (admin-only fields need an admin)</td>
+</tr>
+<tr>
+<td>Send new invite</td>
+<td>Admins, delegates with <code>invite</code> (own keyless accounts only)</td>
+<td>New one-time link; earlier unused links stop working. Not offered for administrators</td>
+</tr>
+<tr>
+<td>Require passkey</td>
+<td>Admins</td>
+<td>Adds the passkey registration action for the next sign-in</td>
+</tr>
+<tr>
+<td>Clear pending</td>
+<td>Admins</td>
+<td>Removes pending required actions</td>
+</tr>
+<tr>
+<td>Reset passkeys</td>
+<td>Admins</td>
+<td>Deletes all passkeys, signs the user out, then creates a new invite (or shows <code>./portcullis invite &lt;user&gt;</code> for an administrator). Type the username to confirm</td>
+</tr>
+<tr>
+<td>Password…</td>
+<td>Admins</td>
+<td>Fallback: set or generate a password; signs the user out</td>
+</tr>
+<tr>
+<td>Remove</td>
+<td>Admins, delegates with <code>remove</code></td>
+<td>Deletes the user from LLDAP and Keycloak. Type the username to confirm</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remove</strong> deletes the user from LLDAP first (saved as a tombstone to prevent re-creation of names still in exceptions/expiries), then deletes the Keycloak copy. The audit entry records what happened to the copy: <code>keycloak_copy=removed</code>, <code>none</code> (never imported) or <code>FAILED</code>. Delegates can remove only non-protected, non-administrator accounts not in any permission group. If the Keycloak removal fails, the copy is listed under <strong>Stale Keycloak records</strong> (admins only), where it can be removed by id. (Keycloak sometimes answers HTTP 500 after it has removed a federated user's copy; the Hub then looks the user up again and treats "not found" as removed.) The result also warns when other people's person fields (e.g. <code>manager</code>) or a rule's <code>reports to</code> still name the deleted user — update those.</p>
+<h4 id="keycloak-status-admins-only">Keycloak status (admins only)<a class="headerlink" href="#keycloak-status-admins-only" title="Permanent link">&para;</a></h4>
+<p>For each LLDAP user except <code>portcullis-hub</code>:</p>
+<ul>
+<li><strong>not signed in yet</strong>: Keycloak has no copy. LDAP users are imported at first sign-in or when the Hub needs them (not an error)</li>
+<li>passkey count, or <strong>no passkey</strong></li>
+<li>pending required actions</li>
+<li><strong>Keycloak status unavailable</strong> with the reason (per-user failure; only that row is affected)</li>
+</ul>
+<p>The Hub reads each user's status separately, at most 8 calls at a time, 15 seconds total. A per-user failure marks only that user. If Keycloak itself is unreachable (sign-in, user list or federation list fails), a banner says "Keycloak status unavailable" and users/groups still load. Past 15 seconds, a banner says some statuses are missing.</p>
+<p>Client certificates aren't shown; see <code>enroll.&lt;domain&gt;</code>.</p>
+<h4 id="stale-keycloak-records-admins-only">Stale Keycloak records (admins only)<a class="headerlink" href="#stale-keycloak-records-admins-only" title="Permanent link">&para;</a></h4>
+<p>Users Keycloak has (federation link = LDAP provider) but LLDAP no longer has (deleted outside the Hub, e.g. in <code>portcullis lldap-ui</code>). The Hub lists the username, Keycloak id and reason.</p>
+<p><strong>Remove</strong> deletes only the Keycloak copy (type the username to confirm). The federation is read-only, so LLDAP isn't touched. Logged as <code>keycloak.remove_stale</code> with the id. Refused for <code>admin</code>, <code>portcullis-hub</code>, any username LLDAP has, and Keycloak users not linked to the LDAP federation.</p>
+<h3 id="groups">Groups<a class="headerlink" href="#groups" title="Permanent link">&para;</a></h3>
+<p>Lists every LLDAP group with its member count, rule status (manual or rule-based), exceptions, expiries and the apps that use it. Clicking a group expands its details: members (with how they got in: manual, rule, or exception), the rule editor (for rule-based groups), exceptions and expiries, and the apps.</p>
+<p><strong>Create</strong> (admins): enter a group name (<code>[A-Za-z0-9][A-Za-z0-9_.-]{0,127}</code>, not starting with <code>lldap_</code>; case-insensitively unique). New groups are manual and start clean: if the Hub still has a rule, exceptions, expiries or a permission grant for that name (a group deleted in LLDAP's own UI), they are removed first and a warning lists them.</p>
+<p><strong>Delete</strong> (admins): type the name to confirm. Built-in groups (<code>lldap_admin</code>, <code>lldap_password_manager</code>, core-subdomain groups) can't be deleted. The group is deleted in LLDAP first (if that fails, nothing changes); then its rule, exceptions, expiries and any delegated permission granted to it are removed, so a group created later with the same name inherits nothing. Its former members are signed out of Keycloak.</p>
+<p><strong>Add / Remove member</strong> (admins): for manual groups only. Adding someone to an administrator group asks for confirmation. Removing yourself from <code>lldap_admin</code> is refused, and the last human member of <code>lldap_admin</code> stays. Removing a member also drops their expiry in that group (a later re-add starts without one) and signs them out of Keycloak; if the sign-out fails, the removal stands and a warning says so.</p>
+<p><strong>Set expiry</strong> (admins): for manual groups only. Pick a date/time (browser local time, converted to UTC); the membership is removed automatically when it expires. Clear it with <strong>No end</strong>. Refused for <code>lldap_admin</code> and for rule-based groups (use an exception instead).</p>
+<p><strong>Missing groups</strong> lists the <code>access_group</code> / <code>admin_group</code> (e.g. <code>users_&lt;app&gt;</code>, <code>admin_&lt;app&gt;</code>) of enabled apps that don't exist in LLDAP yet — until they do, nobody can use the app (or administer it). Each has a one-click <strong>Create</strong>. Templates not enabled add nothing here.</p>
+<h4 id="rule-based-groups">Rule-based groups<a class="headerlink" href="#rule-based-groups" title="Permanent link">&para;</a></h4>
+<p>Admins can turn a group <strong>rule-based</strong>: membership is computed from custom fields. The rule is edited two ways that stay in sync:</p>
+<ol>
+<li><strong>Blocks</strong> (default): point-and-click all/any blocks, nestable, with conditions <code>is</code>, <code>is not</code>, <code>is one of</code> (list fields), <code>is empty</code>, and for person fields <code>reports to (directly or indirectly)</code>.</li>
+<li><strong>Text rule</strong>: a typed expression with autocomplete (field names, list values) and inline errors. A toggle switches between them; a parse error refuses the toggle.</li>
+</ol>
+<p>A <strong>preview</strong> shows who matches (count and names, live-updated). The Hub evaluates rules at least every 60 seconds, and on every detail change, rule change, exception change and import that affects membership.</p>
+<p><strong>Convert a manual group to rule-based</strong> (admins): opens a review. Current members who don't match are pre-ticked to stay as "added" exceptions (reason: "member before the rule (set by X on date)"); untick whoever should leave. Nothing changes until confirmed. The review compares itself with a fresh preview inside the Hub's lock and refuses with 409 if they differ (someone was added/removed in between) — convert again.</p>
+<p><strong>Exceptions</strong> (admins, rule-based groups only): <strong>add</strong> someone although the rule doesn't match them (they stay even if the rule changes), or <strong>keep out</strong> someone although the rule matches (the evaluator skips them). Each exception needs a written <strong>reason</strong> (≤ 500 characters, shown to everyone) and may have an <strong>expiry</strong> (date/time; they're removed automatically). The reason is required; without it the save fails.</p>
+<p><strong>Expiries on exceptions</strong>: an expired exception is kept (still denying for "kept out", doing nothing for "added" once the person left) until the person's membership changes (removed, re-added by an admin, another exception, rule add) or an admin deletes the exception.</p>
+<h4 id="protected-groups">Protected groups<a class="headerlink" href="#protected-groups" title="Permanent link">&para;</a></h4>
+<p>Rules of <strong>administrator groups</strong> (see <a href="#administrators">Administrators</a>), <strong>permission groups</strong> (the groups holding a delegated permission) and <strong>app admin groups</strong> (any group used as an app's <code>admin_group</code> or in <code>path_groups</code>) may only reference <strong>admin-only fields</strong>. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).</p>
+<p>A protected group's rule also <strong>must not match a person with no details</strong> (e.g. <code>office is empty</code> or <code>not office = "HQ"</code>): every new account starts empty, so such a rule would hand the group to whoever creates accounts (409).</p>
+<p><strong>Delegate-created accounts</strong> (<code>created_by</code>, see <a href="#delegated-permissions">Delegated permissions</a>) are never added to a protected group by the evaluator, even if they match its rule; the evaluator reports them each run. They join once an admin acts on the account (sets a password, sends an invite, removes passkeys or requires a passkey), which clears <code>created_by</code>.</p>
+<p>Built-in groups (<code>lldap_admin</code>, <code>lldap_password_manager</code>, core-subdomain groups) and permission groups cannot be rule-based.</p>
+<h4 id="the-evaluator">The evaluator<a class="headerlink" href="#the-evaluator" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Runs at least every 60 seconds, and immediately on detail/rule/exception/import changes.</li>
+<li>Computes membership of every rule-based group (skips admin/built-in groups).</li>
+<li><strong>The Hub owns rule-group membership.</strong> A manual change made in LLDAP to a rule-based group (e.g. in <code>portcullis lldap-ui</code>) is reverted at the next evaluation and audited as such.</li>
+<li>Handles cycles in the manager field (the <code>reports to</code> condition stops at the first repeat).</li>
+<li>Removes expired memberships (manual and exceptions) from LLDAP after their expiry time. Expired entries are kept in the policy file's <code>expiring</code> array (plus a 10-minute grace period) so enforcement is strict even while the Hub is down. When group-gate withholds an expired membership for a request, it also withholds <code>Authorization</code> and <code>X-Forwarded-Access-Token</code>.</li>
+<li>On every removal, the Hub revokes the user's Keycloak sessions, so OIDC apps lose access at their next token refresh (oauth2-proxy cookie refresh is 1 minute, so removals take effect within ~1 minute). The same happens for an admin's <strong>Remove member</strong>, a group <strong>Delete</strong> (all former members) and a <strong>password</strong> change; deleting a user deletes their Keycloak copy. Keycloak's LDAP federation caches no users, so group and field changes are read from LLDAP at that refresh.</li>
+<li>An "added" exception with an end date is not published as expiring while the person is a member and matches the rule anyway (they stay by rule after the end); manual expiries and the 10-minute grace entries are always published.</li>
+</ul>
+<h3 id="org-chart">Org chart<a class="headerlink" href="#org-chart" title="Permanent link">&para;</a></h3>
+<p>A tree of everyone's manager (the person field named <code>manager</code>, or the first person field if there is none). Shows cycles as a banner. If there is no person field, a message says so (admins: add one under Setup).</p>
+<p>Everyone can see everyone's details and the org chart.</p>
+<h3 id="setup-admins-only">Setup (admins only)<a class="headerlink" href="#setup-admins-only" title="Permanent link">&para;</a></h3>
+<p>Define custom fields and assign delegated permissions.</p>
+<h4 id="custom-fields">Custom fields<a class="headerlink" href="#custom-fields" title="Permanent link">&para;</a></h4>
+<p><strong>Fields</strong> describe people: department, office, cost center, manager, etc. Three kinds:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>text</strong></td>
+<td>Free-form text (one or multiple values per person)</td>
+</tr>
+<tr>
+<td><strong>list</strong></td>
+<td>One of the values you maintain (e.g. "Milan", "Berlin", "Remote"). Multi-valued allowed</td>
+</tr>
+<tr>
+<td><strong>person</strong></td>
+<td>A reference to another user (e.g. manager). Single-valued only</td>
+</tr>
+</tbody>
+</table>
+<p>Per field:</p>
+<ul>
+<li><strong>Label</strong> (shown in the UI, e.g. "Department")</li>
+<li><strong>Share with apps</strong> (default on): the field becomes an OIDC claim (<code>attr_&lt;field&gt;</code>) for native-OIDC apps and an <code>X-Forwarded-Attr-&lt;Header-Name&gt;</code> header for forward-auth/header-auth apps. Attribute values are percent-encoded (<code>%</code> → <code>%25</code>, <code>,</code> → <code>%2C</code>), joined with <code>,</code>, limited to 1 KB per value (before encoding; longer values are dropped and logged). Apps must percent-decode each value after splitting on <code>,</code>. See <a href="../../guides/integration-contracts/#41-user-attributes-file-hub-group-gate-new">Integration Contracts §4.1, §5</a>.</li>
+<li><strong>Admin-only</strong> (off by default): only admins may edit it, and only admin-only fields may be used in rules of protected groups (administrator, permission and app-admin groups).</li>
+</ul>
+<p><strong>Create</strong>: name (<code>^[a-z][a-z0-9]*(_[a-z0-9]+)*$</code>, at most 31 characters: lowercase letters and digits, starting with a letter, <code>_</code> only between two of them — not at the end, not doubled; so its header name is always valid and unique; unique, and not one of LLDAP's built-in attributes: <code>mail</code>, <code>uid</code>, <code>display_name</code>, <code>first_name</code>, <code>last_name</code>, <code>avatar</code>, <code>creation_date</code>, <code>uuid</code>, <code>user_id</code>), label, kind, multi-valued (not for person fields), share with apps, admin-only. For list fields, add the allowed values.</p>
+<p><strong>Edit</strong>: change the label, values (list fields; can't remove a value in use), share-with-apps and admin-only flags. Can't change kind or multi. Can't turn off admin-only while a protected group's rule uses the field (409).</p>
+<p><strong>Delete</strong>: type the name to confirm. Refused (409) if a rule uses it, with the groups listed.</p>
+<p>Fields are stored in LLDAP as custom user attributes (non-user-editable, so users can't change their own department in <code>portcullis lldap-ui</code>). Rules, exceptions, expiries, field metadata LLDAP can't hold, and permission assignments live in the Hub's state (<code>$HUB_DATA_DIR/directory.yaml</code>, atomic, mode 0600; a corrupt file refuses to start).</p>
+<h4 id="delegated-permissions">Delegated permissions<a class="headerlink" href="#delegated-permissions" title="Permanent link">&para;</a></h4>
+<p>Three permissions, each granted to a group (manual or rule-based; that group may itself use rules over non-admin-only fields):</p>
+<table>
+<thead>
+<tr>
+<th>Permission</th>
+<th>What it grants</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>edit details</strong></td>
+<td>Update email, display name and custom field values (single edits and CSV import). Admin-only fields need an admin</td>
+</tr>
+<tr>
+<td><strong>invite</strong></td>
+<td>Create new accounts via invite link (no groups, no Keycloak credentials). Filling in fields can make them match rule-based groups. A delegate-created account shows "via rule, account created by X" for its rule memberships</td>
+</tr>
+<tr>
+<td><strong>remove</strong></td>
+<td>Delete accounts</td>
+</tr>
+</tbody>
+</table>
+<p>Delegates never target themselves, administrators (<code>lldap_admin</code> etc.), the protected accounts (<code>admin</code>, <code>portcullis-hub</code>) or members of any permission group. They can't create a tombstoned name or one still in exceptions/expiries. A delegate's <strong>Send new invite</strong> works only for accounts the delegate created that still have zero Keycloak credentials (Keycloak missing or unavailable → refused); admins should re-invite such accounts themselves if they gave them only a client certificate. An admin's password / invite / passkey action clears the account's <code>created_by</code>, so delegates can't re-invite it.</p>
+<p>Permission changes (including refusals) are audited (<code>directory.permission</code>). Built-in, admin and rule groups using non-admin-only fields are refused (409). Set a permission to <strong>(none)</strong> to revoke it.</p>
+<h3 id="csv-import">CSV import<a class="headerlink" href="#csv-import" title="Permanent link">&para;</a></h3>
+<p><strong>Import CSV</strong> (admins and delegates with any of edit_details, invite, remove) uploads a CSV file (<code>,</code> or <code>;</code> separator, optional BOM, CRLF; at most 5 MB, 10,000 rows, 64 columns) and opens an <strong>editable review table</strong>. Nothing changes until <strong>Apply</strong>. The review:</p>
+<ul>
+<li>One row per person: new, changed, missing (in LLDAP but not in the file; unticked by default) or unchanged (hidden by default, with a <strong>Show unchanged</strong> toggle)</li>
+<li>Changed cells show <code>current → file</code>; click ↺ to keep the current value</li>
+<li><strong>Edit</strong> any cell</li>
+<li><strong>Problems</strong> (red): block Apply until fixed. Example: a manager who isn't a known user, with a picker to fix it. Unknown columns are reported but don't block</li>
+<li><strong>Effect on rule-based groups</strong>: +n / −n per group, ignoring missing rows</li>
+<li><strong>Download CSV</strong>: the edited table with a formula-neutralising leading <code>'</code> for cells that start with <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code> or <code>`</code>, or with tab/CR. That <code>'</code> is stripped on re-import, so a downloaded review imports back unchanged</li>
+<li><strong>Re-review</strong> (JSON of the edited <code>{header, rows}</code>): refreshes the Effect with current rules</li>
+</ul>
+<p><strong>Columns:</strong></p>
+<ul>
+<li><code>username</code> (required), <code>display_name</code>, <code>email</code> and every custom field name. Unknown columns are listed but don't block.</li>
+<li>Missing people (LLDAP users not in the file) show up as unticked rows. Tick to remove (needs <code>remove</code> permission).</li>
+<li>Can't clear email or display name (the cell must have a value).</li>
+</ul>
+<p><strong>Apply</strong>: processes rows one by one (no rollback). Each row is re-checked with the caller's permissions (delegates: can't create into groups, can't touch protected/admin/permission-group accounts, can't create a tombstone). New people get invite links (admins and delegates with <code>invite</code>). The result shows per-row ok/error and invite links.</p>
+<p>The Hub writes shared fields (those with share-with-apps on) into <code>user-attributes.json</code>, which group-gate reads to populate <code>X-Forwarded-Attr-*</code> headers (§4.1). On every field or membership change, the Hub also syncs the Keycloak LDAP attribute mappers and protocol mappers on the <code>portcullis-attributes</code> client scope (each shared field → <code>portcullis-attr-&lt;field&gt;</code> LDAP mapper → <code>attr_&lt;field&gt;</code> protocol mapper).</p>
+<h3 id="administrators">Administrators<a class="headerlink" href="#administrators" title="Permanent link">&para;</a></h3>
+<p>Members of these groups are <strong>administrators</strong>:</p>
+<ul>
+<li><code>lldap_admin</code> and <code>lldap_password_manager</code></li>
+<li>the groups of the core subdomains (<code>auth</code>, <code>traefik</code>, <code>hub</code>, <code>directory</code>, <code>enroll</code>, <code>people</code>, <code>metrics</code>) in <code>group-gate/group-gate-map.conf</code> (Hub: <code>HUB_GATE_MAP_FILE</code>)</li>
+<li>any group listed in <code>INVITE_PROTECTED_GROUPS</code></li>
+</ul>
+<p>This is the same set core's invite API uses. An invite hands the account to whoever holds the link, so core refuses invites for administrators, and the Hub doesn't offer them. Invite or recover an administrator on the server with <code>./portcullis invite &lt;user&gt;</code>. If core refuses an invite for a group the Hub doesn't know about, the Hub shows "administrators are recovered from the server: <code>./portcullis invite &lt;user&gt;</code>".</p>
+<h3 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>portcullis-hub</code> (the Hub's own account) and <code>admin</code> (the bootstrap LLDAP admin) are untouchable: no edits, passwords, invites, passkey actions, group changes or deletion. An invite for <code>admin</code> would hand over the root account, so recover it on the server: <code>./portcullis invite admin</code>.</li>
+<li><a href="#administrators">Administrators</a> get no invites from the Hub. Resetting another administrator's passkeys or setting their password lets you take over their account: you must type their username to confirm, and the audit entry is flagged (<code>target_is_lldap_admin=true</code>).</li>
+<li><code>admin</code> and <code>portcullis-hub</code> can't be created. <code>lldap_*</code> group names are reserved. Built-in groups can't be deleted or made rule-based.</li>
+<li>You can't delete yourself or remove yourself from <code>lldap_admin</code>.</li>
+<li>The last human member of <code>lldap_admin</code> (every member except <code>portcullis-hub</code>) can't be deleted or removed from it.</li>
+<li>Email addresses are unique (case-insensitive).</li>
+<li>Every change goes through the same proxy-secret and CSRF checks as the rest of the Hub and needs a signed-in user (<code>X-Forwarded-User</code>).</li>
+</ul>
+<h3 id="audit-log">Audit log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h3>
+<p>Every change, including refused and failed attempts, is appended to <code>audit.jsonl</code> in <code>$HUB_DATA_DIR</code> (mode 0600). Each entry records the time, actor (<code>X-Forwarded-User</code>), action, target, optional detail, result (<code>ok</code> / <code>refused</code> / <code>error</code>) and optional error. The log never contains passwords, tokens or invite links. The tab (admins only on <code>hub.&lt;domain&gt;</code>) shows the last 100 entries. On <code>people.&lt;domain&gt;</code>, <code>GET /api/directory/audit</code> is 403.</p>
+<h3 id="how-passwords-are-set">How passwords are set<a class="headerlink" href="#how-passwords-are-set" title="Permanent link">&para;</a></h3>
+<p>LLDAP stores passwords with OPAQUE. Its HTTP password endpoints need the client half of that protocol, so the Hub sets passwords over LDAP instead (the standard Password Modify operation, RFC 3062). LLDAP then does the OPAQUE step itself. This is the same mechanism <code>ldappasswd</code> uses. The password crosses the <code>portcullis</code> network in clear text, like Keycloak's and enroll's LDAP binds; core may switch to LDAPS with <code>LLDAP_LDAP_URL=ldaps://…</code>.</p>
+<h2 id="drift-detection">Drift detection<a class="headerlink" href="#drift-detection" title="Permanent link">&para;</a></h2>
+<p>The Hub keeps the desired state (enabled apps) in <code>state.yaml</code> and regularly
+compares it with the compose projects Docker actually runs:</p>
+<ul>
+<li>every <code>HUB_RECONCILE_INTERVAL</code> (default <code>1m</code>, at least <code>5s</code>)</li>
+<li>on Docker events</li>
+</ul>
+<p>Reconcile <strong>reports</strong> drift and never fixes it by itself. A yellow <strong>State
+drift</strong> box at the top of the catalog lists each mismatch with a message, the
+running/total container count, and buttons for the allowed actions:</p>
+<table>
+<thead>
+<tr>
+<th>Kind (<code>kind</code> in the API)</th>
+<th>Meaning</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled_not_running</code></td>
+<td>Enabled, but no container of the project runs (stopped, or none)</td>
+<td><strong>Start</strong> (<code>start</code>: compose up), <strong>Disable</strong> (<code>disable</code>)</td>
+</tr>
+<tr>
+<td><code>running_not_enabled</code></td>
+<td>Containers of <code>portcullis-&lt;id&gt;</code> run, but the app is not enabled (the message adds "its public-exception router bypasses forward-auth" if they carry one)</td>
+<td><strong>Stop &amp; remove</strong> (<code>stop</code>: compose down). <strong>Enable</strong> (<code>adopt</code>: mark it enabled and compose up) when a template with that ID exists</td>
+</tr>
+<tr>
+<td><code>stopped_not_enabled</code></td>
+<td>Stopped containers left behind by an app that is not enabled</td>
+<td><strong>Stop &amp; remove</strong> (<code>stop</code>)</td>
+</tr>
+<tr>
+<td><code>template_missing</code></td>
+<td>Enabled, but no valid template provides it any more (source removed, template deleted or now invalid)</td>
+<td><strong>Disable</strong> (<code>disable</code>)</td>
+</tr>
+<tr>
+<td><code>public_access_mismatch</code></td>
+<td>An exposure label of a running container (any router's <code>tls.options</code>, any label of the public router or its strip middleware, and for apps with <a href="../auth-policies/#apps-with-their-own-login">their own login</a> every router's <code>middlewares</code>, e.g. after switching the Sign-in mode without a restart) differs from what the Hub renders now — a widened rule, a missing guard or other middleware, a stale or missing public router (e.g. after a failed restart or a template change) — or a stored public choice can't be applied ("confirm a mode")</td>
+<td><strong>Apply settings</strong> (<code>apply</code>: regenerate the override and compose up), <strong>Disable</strong> (<code>disable</code>); none for "confirm a mode" (fix it in Settings)</td>
+</tr>
+</tbody>
+</table>
+<p>Destructive actions ask for confirmation. <strong>Re-check</strong> runs a reconcile
+immediately. Apps that are in the middle of an operation are skipped.</p>
+<p>The same is available over the API, which also needs the proxy secret:</p>
+<div class="highlight"><pre><span></span><code>GET  /api/drift            latest report: {checked_at, error?, items: [{id, kind, message, running, total, template_exists, actions}]}
+POST /api/drift            re-check now, returns the new report
+POST /api/drift/resolve    {"id": "&lt;app&gt;", "action": "start|disable|stop|adopt|apply"}
+</code></pre></div>
+<p>If Docker is unreachable, the report carries <code>error</code> and the UI shows
+"Docker unreachable".</p>
+<h3 id="fail-closed-behaviour">Fail-closed behaviour<a class="headerlink" href="#fail-closed-behaviour" title="Permanent link">&para;</a></h3>
+<p>Drift must never open access. That is why <code>state.yaml</code> keeps a <strong>snapshot</strong>
+(<code>published</code>) of each enabled app's last published config: subdomains, access
+group, admin paths, policy override, whether it ran with its own login only
+(then no group is published: its routers have no group-gate) and the public
+paths it opened (with <code>{token}</code>). The containers keep the public router they were started with, so
+the snapshot keeps showing it in the policy file's <code>public_paths</code>.</p>
+<ul>
+<li><strong>Template missing, snapshot present.</strong> If an enabled app's template stops
+  loading, the Hub keeps publishing the snapshot to group-gate, so the app
+  stays protected exactly as before. The drift message says "template missing
+  — still enforced from last known config", plus "configured for the app's own
+  login only" for such apps.</li>
+<li><strong>No snapshot.</strong> If an enabled app has no snapshot, or a <code>portcullis-&lt;id&gt;</code>
+  project runs without being enabled, the Hub reads the <code>Host()</code> rules from the
+  running containers' labels. It publishes the reserved group
+  <code>__portcullis_deny__</code> for those subdomains. group-gate then denies every
+  request to them ("The configuration of … is unavailable"), until you disable
+  or adopt the app. Never create an LLDAP group with that name.</li>
+<li><strong>Corrupt <code>state.yaml</code>.</strong> If the file can't be parsed (or is empty), the Hub
+  refuses to start rather than overwrite it with empty state.</li>
+</ul>
+<h2 id="template-rules-enforced-by-the-hub">Template rules enforced by the Hub<a class="headerlink" href="#template-rules-enforced-by-the-hub" title="Permanent link">&para;</a></h2>
+<p>Templates must load cleanly, or the Hub skips them and logs why:</p>
+<ul>
+<li>The manifest must satisfy the templates repo's
+  <a href="../../guides/manifest-reference/">schema</a>.</li>
+<li>The directory name must match <code>^[a-z0-9][a-z0-9_-]{0,63}$</code>.</li>
+<li>Setting, port and env keys must be valid <code>.env</code> keys.</li>
+<li>Port <code>bind</code> values must be IP addresses.</li>
+<li><code>auth.method</code> must be one of the schema's methods; <code>auth.native_login</code>
+  only with <code>method: custom</code>, <code>sso: false</code> and <code>supported: true</code>.</li>
+</ul>
+<p><strong>Strict Traefik rule parsing.</strong> group-gate keys every policy, group and path
+rule by subdomain. A host the Hub doesn't see would get no policy and no group,
+which fails open. So the Hub parses each <code>traefik.http.routers.&lt;name&gt;.rule</code>
+label in <code>compose.yml</code> and rejects the template if:</p>
+<ul>
+<li>a <code>Host()</code> argument is anything but a literal <code>`&lt;label&gt;.${PORTCULLIS_DOMAIN}`</code>
+  (a default such as <code>${PORTCULLIS_DOMAIN:-portcullis.local}</code> is allowed).
+  That rules out other domains, bare domains, and variables in the label part
+  (<code>${SUB}.${PORTCULLIS_DOMAIN}</code>)</li>
+<li>the rule uses <code>HostRegexp</code>, <code>HostHeader</code>, <code>HostSNI</code> or <code>HostSNIRegexp</code></li>
+<li>some way the rule can match is not restricted by <code>Host()</code>: a top-level <code>||</code>
+  branch without <code>Host()</code>, a negation, or a path-only rule</li>
+<li>a router has no rule, or a <code>traefik.enable=true</code> service has no HTTP router.
+  Traefik would then apply its default rule</li>
+<li>it declares a TCP router, which would bypass forward-auth</li>
+<li>it routes a core subdomain (<code>auth</code>, <code>traefik</code>, <code>hub</code>, <code>directory</code>, <code>enroll</code>, <code>metrics</code>)</li>
+</ul>
+<h2 id="keycloak-clients">Keycloak clients<a class="headerlink" href="#keycloak-clients" title="Permanent link">&para;</a></h2>
+<p>For templates with <code>keycloak_clients</code>, the Hub creates confidential OIDC
+clients in the <code>portcullis</code> realm. Each client gets:</p>
+<ul>
+<li>the secret from the app's generated env</li>
+<li>the manifest's redirect URIs, with <code>{{DOMAIN}}</code> replaced</li>
+<li><code>default.acr.values</code> set from the app's policy</li>
+<li>the default client scopes <code>openid</code>, <code>profile</code>, <code>email</code>, plus <strong><code>acr</code></strong> (puts
+  <code>acr</code>/<code>amr</code> in tokens for step-up) and <strong><code>groups</code></strong> (claim <code>groups</code> with
+  plain group names, so apps can map <code>users_&lt;app&gt;</code> / <code>admin_&lt;app&gt;</code>)</li>
+<li>with <code>email_verified_claim: false</code> in the manifest, <strong><code>email-unverified</code></strong>
+  instead of <code>email</code> (claim <code>email</code>, no <code>email_verified</code>; created by
+  <code>./portcullis keycloak configure</code>). The Hub attaches it first, then removes
+  <code>email</code> from the client's default and optional scopes, on create and on every
+  reconcile; without the realm scope it logs an error and leaves <code>email</code> in
+  place (<a href="../../guides/integration-contracts/#8-keycloak-clients-core-hub-templates">contract §8</a>)</li>
+</ul>
+<p><strong>Ownership.</strong> Each client the Hub creates is tagged with the attribute
+<code>portcullis.hub.template=&lt;template-id&gt;</code>. When the client already exists, the
+Hub updates its secret, redirect URIs, ACR and scopes only if:</p>
+<ul>
+<li><strong>the client is tagged</strong> and the tag names this template, or</li>
+<li><strong>the client is untagged</strong> and the Hub can prove it belongs to the template.
+  That means it has at least one redirect URI, and every redirect URI and web
+  origin is a plain <code>http(s)</code> URL without wildcards whose host is one of the
+  template's own <code>&lt;sub&gt;.&lt;domain&gt;</code> hosts.</li>
+</ul>
+<p>Anything else fails closed. The existing client is left untouched and the
+enable is <strong>refused with HTTP 409</strong> (<code>client "&lt;id&gt;" …</code> belongs to someone else).
+The app is not started, because it would be wired to a secret and redirect URIs
+it doesn't own. Resolve the clash in Keycloak, e.g. by deleting the foreign
+client or choosing another <code>client_id</code>. Other registration errors, such as
+Keycloak being unreachable, are logged as warnings, and the app still starts.</p>
+<p>Core and built-in clients are reserved and never touched:
+<code>portcullis-forward-auth</code>, <code>admin-cli</code>, <code>account</code>, <code>account-console</code>,
+<code>broker</code>, <code>realm-management</code> and <code>security-admin-console</code>.</p>
+<h2 id="per-app-isolation">Per-app isolation<a class="headerlink" href="#per-app-isolation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Separate compose project.</strong> Each app runs as <code>portcullis-&lt;app-id&gt;</code>, with its
+  own containers and <code>default</code> network.</li>
+<li><strong>Networks.</strong> Frontends join the external <code>portcullis-proxy</code> network (shared
+  with Traefik) and the app's <code>default</code> network. Internal services join only
+  <code>default</code>. Apps can't reach each other or the core services directly.</li>
+<li><strong>Template files.</strong> Before every <code>compose up</code>, the Hub copies the app's
+  template directory to <code>&lt;core&gt;/templates/&lt;app-id&gt;/</code>. Compose resolves relative
+  paths against the core checkout on the host
+  (<code>--project-directory = PROJECT_HOST_DIR</code>), which is what makes bind mounts
+  like <code>./templates/immich/setup.sh</code> work.</li>
+<li><strong>Separate <code>.env</code>.</strong> The Hub writes a per-app <code>.env</code> with the app's settings,
+  generated secrets (<code>generate: random</code> → 32 hex characters), and the core
+  variables its compose file references. It takes those core variables from
+  <code>/project/.env</code>, which is <strong>not</strong> the core <code>.env</code>: it is the generated subset
+  <code>secrets/hub/core.env</code> (see <a href="../hardening/#container-hardening">Security &amp; Hardening</a>).
+  Files are written atomically with mode <code>0600</code>.</li>
+</ul>
+<h2 id="template-sources">Template sources<a class="headerlink" href="#template-sources" title="Permanent link">&para;</a></h2>
+<p>Each source is a git repository with one directory per app (<code>manifest.yaml</code> +
+<code>compose.yml</code>).</p>
+<ul>
+<li><strong>Default source.</strong> On first start, the Hub clones
+  <a href="https://github.com/porelli/portcullis-templates">porelli/portcullis-templates</a>
+  (<code>DEFAULT_TEMPLATES_URL</code>) as the source named <code>portcullis</code>. It cannot be
+  removed.</li>
+<li><strong>Sync.</strong> Runs <code>git pull --ff-only</code> on every source and reports which failed
+  to fast-forward. The Hub never edits the clones (the Expert tab's custom
+  override lives in the Hub's data directory), so syncs fast-forward.</li>
+<li><strong>Community sources.</strong> Add more repositories in the <strong>Template Sources</strong> tab.<ul>
+<li>Source names use lowercase letters, digits, <code>-</code> and <code>_</code>.</li>
+<li>URLs must be <code>https://…</code>, <code>http://…</code>, <code>ssh://…</code> or <code>user@host:path</code>.</li>
+<li>Removing a source first stops every enabled app from it.</li>
+</ul>
+</li>
+</ul>
+<p>Templates from all sources are merged into one catalog. Remember that a
+template runs with what is effectively host-root power (see below). Only add
+sources you trust.</p>
+<h2 id="security-model">Security model<a class="headerlink" href="#security-model" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Authentication.</strong> The Hub has no login of its own. Traefik enforces
+  forward-auth and the <code>lldap_admin</code> group (<code>hub=lldap_admin</code> in core's
+  <code>group-gate-map.conf</code>) before a request reaches it.</li>
+<li><strong>Proxy secret.</strong> Every request except <code>GET /healthz</code> must carry
+  <code>X-Portcullis-Proxy-Secret</code> equal to <code>HUB_PROXY_SECRET</code>. The comparison is
+  constant-time, the secret must be at least 32 characters, and the Hub won't
+  start without it. Traefik's <code>hub-proxy-secret@docker</code> middleware adds the
+  header after forward-auth, so a container that reaches the Hub directly on
+  the <code>portcullis</code> network can't impersonate an admin by sending
+  <code>X-Forwarded-User</code>. See <a href="../hardening/#hub-proxy-secret">Security &amp; Hardening</a>.</li>
+<li><strong>Portal list.</strong> Next to the policy file the Hub writes <code>portal-apps.json</code>:
+  enabled apps with name, icon, URLs and required group, for core's landing
+  portal (<a href="../../guides/integration-contracts/#10-landing-portal-app-list-hub-core">Integration Contracts §10</a>).</li>
+<li><strong>CSRF.</strong> Every state-changing request (POST/PUT/DELETE) must be same-origin
+  (checked through <code>Sec-Fetch-Site</code>/<code>Origin</code>) and carry
+  <code>Content-Type: application/json</code>. The forward-auth cookie is shared across
+  all <code>*.&lt;domain&gt;</code> subdomains, so without this a page on any other app would
+  count as "same-site".</li>
+<li><strong>Docker access.</strong> The Hub has no Docker socket. It uses
+  <code>DOCKER_HOST=tcp://socket-proxy-hub:2375</code> both for the <code>docker compose</code> CLI
+  (only <code>up</code>/<code>down</code>) and for its own Engine API calls (status, logs, exec,
+  events). The socket proxy denies swarm, plugins, builds, secrets, configs and
+  system prune. The Hub can still start containers with any configuration, so
+  treat it as host-root-equivalent.</li>
+<li><strong>Runtime user.</strong> The image runs as <strong>uid/gid 10001</strong> with a read-only root
+  filesystem. It writes only <code>/data</code> (the <code>hub_data</code> volume), <code>/project/templates</code>
+  (chowned to 10001 by <code>./portcullis up</code>) and tmpfs. <code>secrets/</code> and <code>backups/</code>
+  of the core checkout are masked with empty tmpfs mounts.</li>
+<li><strong>Outbound calls.</strong> The Hub calls the Keycloak admin API, LLDAP (GraphQL,
+  plus LDAP only to set passwords) and core's invite API, with Go's HTTP
+  client: 20 s timeouts, TLS verification, no shelling out to <code>curl</code>.
+  Credentials never appear in process arguments or env vars: the LLDAP
+  service account and the invite secret are read-only files mounted by core.
+  The signed-in user shown in the header is <code>X-Forwarded-User</code> as-is, i.e.
+  the LLDAP username. The Hub never looks it up in LDAP.</li>
+<li><strong>LLDAP admin rights.</strong> The Hub's service account is in <code>lldap_admin</code>, so
+  the Hub can grant <code>lldap_admin</code>. That adds nothing to what it can already
+  do: through its socket proxy it is host-root-equivalent. Every change is
+  attributed to the signed-in admin and audited.</li>
+<li><strong>Timeouts.</strong> compose up 15 min, compose down 5 min, shell 15 min, git 5 min.</li>
+<li>
+<p><strong>Policy file.</strong> The Hub writes <code>group-gate-policy.json</code> (version 3)
+  atomically to <code>hub_data</code>. It is keyed <strong>by subdomain only</strong>:</p>
+<ul>
+<li><code>policies</code> for apps with an override (apps that inherit publish nothing;
+  group-gate uses <code>default</code>)</li>
+<li><code>groups</code> for enabled apps with <code>group_access: true</code></li>
+<li><code>path_groups</code> from <code>auth.admin_paths</code></li>
+<li>core subdomains are never published</li>
+</ul>
+<p>The format is defined in <a href="../../guides/integration-contracts/#4-policy-file-hub-group-gate">Integration Contracts §4</a>.</p>
+</li>
+</ul>
+<h2 id="image-tags-and-verification">Image tags and verification<a class="headerlink" href="#image-tags-and-verification" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Published when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>X.Y.Z</code>, <code>X.Y</code>, <code>X</code>, <code>sha-&lt;short&gt;</code></td>
+<td>A release tag <code>vX.Y.Z</code> is pushed</td>
+</tr>
+<tr>
+<td><code>edge</code></td>
+<td>Every push to <code>main</code></td>
+</tr>
+</tbody>
+</table>
+<p>There is <strong>no <code>latest</code> tag</strong>. On core <code>main</code>, <code>HUB_IMAGE</code> defaults to
+<code>ghcr.io/porelli/portcullis-hub:edge</code>. A core release pins a released Hub tag
+by digest, and <code>release.yml</code> enforces that. If you override it, pin a release
+by tag <strong>and</strong> digest in <code>.env</code>, then run <code>./portcullis up</code>.
+<code>./portcullis version</code> shows which image is configured and which one runs.</p>
+<p>Images are multi-arch (amd64, arm64) and carry SBOM and provenance attestations.
+Each one is signed with cosign (keyless, GitHub OIDC). Verify a tag before you
+pin it:</p>
+<div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/porelli/portcullis-hub:&lt;tag&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s1">'^https://github.com/porelli/portcullis-hub/'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
+</code></pre></div>
+<h2 id="common-tasks">Common tasks<a class="headerlink" href="#common-tasks" title="Permanent link">&para;</a></h2>
+<h3 id="changing-an-apps-subdomain-or-middlewares">Changing an app's subdomain or middlewares<a class="headerlink" href="#changing-an-apps-subdomain-or-middlewares" title="Permanent link">&para;</a></h3>
+<p>Routing comes from the template only. Change the <code>Host()</code> rule or the router
+middlewares in the template, in a template source you control (fork the
+template into your own source repository if needed), keep the rule in the
+<a href="#template-rules-enforced-by-the-hub">strict form</a> and keep the forward-auth
+pair (<code>portcullis-auth@docker,portcullis-groups@docker</code>, in this order) and
+<code>security-headers@file</code>. <strong>Sync</strong>, then restart the app. The new subdomain must
+not be used by another enabled app; the Hub re-publishes the group and policy
+under it. The Expert tab's custom override refuses <code>traefik.*</code> labels.</p>
+<h3 id="backing-up-app-data">Backing up app data<a class="headerlink" href="#backing-up-app-data" title="Permanent link">&para;</a></h3>
+<p>App data lives in Docker volumes named <code>portcullis_&lt;name&gt;</code> (templates declare
+explicit names). <code>./portcullis backup</code> covers the core volumes only. Back up
+app volumes with your usual tooling, e.g.:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>portcullis_jellyfin_config:/data<span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">"</span>:/backup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>alpine<span class="w"> </span>tar<span class="w"> </span>czf<span class="w"> </span>/backup/jellyfin-config.tar.gz<span class="w"> </span>-C<span class="w"> </span>/data<span class="w"> </span>.
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

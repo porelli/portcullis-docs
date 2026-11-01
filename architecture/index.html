@@ -1,0 +1,2636 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/architecture/">
+      
+      
+      
+        <link rel="prev" href="./..">
+      
+      
+        <link rel="next" href="../setup/quickstart/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Architecture - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#component-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Component Overview
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#component-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Component Roles
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repository-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repository Structure
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication Flows
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Authentication Flows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#forward-auth-oauth2-proxy-group-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Forward Auth (oauth2-proxy + group-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-oidc" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Native OIDC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#header-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Header Auth
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-client-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS (Client Certificate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tls-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TLS Tiers
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Network Topology
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-attributes-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom Attributes Flow
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Attributes Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-forward-auth-and-header-auth-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        For Forward-Auth and Header-Auth Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-native-oidc-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        For Native OIDC Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expiry-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Expiry Flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/vault-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔒 Vault UI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#component-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Component Overview
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#component-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Component Roles
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repository-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repository Structure
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication Flows
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Authentication Flows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#forward-auth-oauth2-proxy-group-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Forward Auth (oauth2-proxy + group-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-oidc" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Native OIDC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#header-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Header Auth
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtls-client-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        mTLS (Client Certificate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tls-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TLS Tiers
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Network Topology
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-attributes-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom Attributes Flow
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Attributes Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-forward-auth-and-header-auth-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        For Forward-Auth and Header-Auth Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-native-oidc-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        For Native OIDC Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expiry-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Expiry Flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
+<p>Portcullis is a collection of services that work together to provide unified authentication for self-hosted applications. This page describes how the components connect and how authentication flows work.</p>
+<h2 id="component-overview">Component Overview<a class="headerlink" href="#component-overview" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>graph TB
+    subgraph Internet
+        User[User / Browser&lt;br/&gt;+ YubiKey]
+    end
+
+    subgraph Portcullis
+        Traefik[Traefik&lt;br/&gt;Reverse Proxy]
+
+        subgraph Auth Layer
+            OAuth2[oauth2-proxy&lt;br/&gt;Forward Auth]
+            GroupGate[group-gate&lt;br/&gt;Groups, paths, policy,&lt;br/&gt;revocation]
+        end
+
+        subgraph Identity
+            Keycloak[Keycloak&lt;br/&gt;Identity Provider]
+            LLDAP[LLDAP&lt;br/&gt;User Directory]
+            Postgres[(PostgreSQL)]
+        end
+
+        subgraph PKI
+            Vault[Vault PKI&lt;br/&gt;Certificate Authority]
+            Enroll[Enrollment UI]
+        end
+
+        subgraph Management
+            Hub[Hub&lt;br/&gt;App Catalog]
+            SPH[socket-proxy-hub]
+            SPT[socket-proxy-traefik]
+            Docker[(Docker Engine)]
+        end
+
+        subgraph Applications
+            AppFA[Forward-Auth Apps&lt;br/&gt;Pi-hole, DokuWiki, ...]
+            AppOIDC[Native OIDC Apps&lt;br/&gt;Jellyfin, Immich, ...]
+            AppHeader[Header-Auth Apps&lt;br/&gt;Grafana, Kanboard, ...]
+            AppPublic[Public Apps&lt;br/&gt;Plex, Docs, ...]
+        end
+    end
+
+    User --&gt;|HTTPS + optional client cert| Traefik
+
+    Traefik --&gt;|forward-auth| OAuth2
+    OAuth2 --&gt;|OIDC| Keycloak
+    Traefik --&gt;|forward-auth| GroupGate
+    GroupGate -.-&gt;|CRL| Vault
+    GroupGate -.-&gt;|reads policy file| Hub
+    Traefik --&gt;|portcullis-auth network&lt;br/&gt;client cert header| Keycloak
+
+    Traefik --&gt; AppFA
+    Traefik --&gt; AppOIDC
+    Traefik --&gt; AppHeader
+    Traefik --&gt; AppPublic
+    Traefik --&gt;|+ proxy secret| Hub
+    Traefik --&gt; Enroll
+
+    AppOIDC --&gt;|OIDC| Keycloak
+
+    Keycloak --&gt;|LDAP federation| LLDAP
+    Keycloak --&gt; Postgres
+    Keycloak -.-&gt;|CRL| Vault
+    Enroll --&gt;|AppRole: sign CSR| Vault
+
+    Traefik --&gt;|read-only| SPT
+    Hub --&gt;|compose / Engine API| SPH
+    SPT --&gt; Docker
+    SPH --&gt; Docker
+    Hub --&gt;|clients| Keycloak</code></pre>
+<h3 id="component-roles">Component Roles<a class="headerlink" href="#component-roles" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Traefik</strong></td>
+<td>Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests client certificates. Reads Docker labels through its read-only socket proxy.</td>
+</tr>
+<tr>
+<td><strong>oauth2-proxy</strong></td>
+<td>Forward authentication. Redirects unauthenticated users to Keycloak (with per-request <code>acr_values</code> for step-up), and returns identity headers and the access token on success.</td>
+</tr>
+<tr>
+<td><strong>group-gate</strong></td>
+<td>Per-request authorization (forward-auth). Checks client-cert revocation, the app's auth policy (<code>acr</code>/<code>amr</code>, mTLS binding), the subdomain's required group and <code>path_groups</code>. Returns 403 or a step-up page.</td>
+</tr>
+<tr>
+<td><strong>Keycloak</strong></td>
+<td>Identity provider. WebAuthn (FIDO2), X.509 (YubiKey PIV) login with CRL checks, password, Level-of-Authentication step-up, OIDC/SAML for apps. Federates users from LLDAP.</td>
+</tr>
+<tr>
+<td><strong>LLDAP</strong></td>
+<td>Lightweight LDAP directory. Stores users and groups (custom user fields are LLDAP attributes). They are managed in the Hub; <code>directory.&lt;domain&gt;</code> redirects to <code>people.&lt;domain&gt;</code> (LLDAP's own UI has no SSO and is reachable only from the server: <code>portcullis lldap-ui</code>).</td>
+</tr>
+<tr>
+<td><strong>PostgreSQL</strong></td>
+<td>Database backend for Keycloak.</td>
+</tr>
+<tr>
+<td><strong>Vault PKI</strong></td>
+<td>Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL.</td>
+</tr>
+<tr>
+<td><strong>Enrollment UI</strong></td>
+<td><code>enroll.&lt;domain&gt;</code>: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at <code>/self</code>. Signs CSRs through a least-privilege Vault AppRole.</td>
+</tr>
+<tr>
+<td><strong>Hub</strong></td>
+<td>Two listeners: <code>hub.&lt;domain&gt;</code> (admins only): app catalog, runs each enabled template as its own compose project, registers Keycloak clients, writes the policy file and <code>user-attributes.json</code>, reports drift. <code>people.&lt;domain&gt;</code> (any signed-in user): Users &amp; Groups (People, Groups, Org chart, Import), with per-request permission checks (admins, or delegated <code>edit_details</code> / <code>invite</code> / <code>remove</code> permissions).</td>
+</tr>
+<tr>
+<td><strong>Monitoring</strong> (optional)</td>
+<td>Compose profile <code>monitoring</code>: Prometheus, Alertmanager, Grafana at <code>metrics.&lt;domain&gt;</code> (<code>lldap_admin</code>), blackbox and textfile exporters. See <a href="../operations/monitoring/">Monitoring</a>.</td>
+</tr>
+<tr>
+<td><strong>Socket proxies</strong></td>
+<td><code>socket-proxy-traefik</code> (read-only) and <code>socket-proxy-hub</code> (what compose needs): the only containers that mount the Docker socket. See <a href="../operations/hardening/#docker-socket-proxies">Security &amp; Hardening</a>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="repository-structure">Repository Structure<a class="headerlink" href="#repository-structure" title="Permanent link">&para;</a></h2>
+<p>Portcullis is organized as four separate repositories, each with a distinct responsibility. Their interfaces are defined in <a href="../guides/integration-contracts/">Integration Contracts</a>.</p>
+<ul>
+<li>
+<p><strong>Core repo</strong> (<a href="https://github.com/porelli/portcullis">porelli/portcullis</a>) -- <code>docker-compose.yml</code> for all core services, the <code>./portcullis</code> admin CLI (libraries in <code>scripts/lib/</code>), group-gate (<code>group-gate/</code>), the enrollment UI (<code>enroll/</code>), Traefik dynamic configuration (<code>traefik/</code>), Vault configuration (<code>vault/</code>) and the Keycloak realm export. This is the only repo you need to clone to deploy Portcullis.</p>
+</li>
+<li>
+<p><strong>Hub repo</strong> (<a href="https://github.com/porelli/portcullis-hub">porelli/portcullis-hub</a>) -- The management web UI, published as a signed container image at <code>ghcr.io/porelli/portcullis-hub</code> (selected with <code>HUB_IMAGE</code>).</p>
+</li>
+<li>
+<p><strong>Templates repo</strong> (<a href="https://github.com/porelli/portcullis-templates">porelli/portcullis-templates</a>) -- The app templates (<code>&lt;app-id&gt;/manifest.yaml</code> + <code>compose.yml</code>), the manifest JSON Schema and the template validator. The Hub clones it on first startup as the default template source. Accepts outside contributions.</p>
+</li>
+<li>
+<p><strong>Docs repo</strong> (<a href="https://github.com/porelli/portcullis-docs">porelli/portcullis-docs</a>) -- This documentation site, built with <a href="https://zensical.org">Zensical</a>. App catalog pages are generated from the template manifests.</p>
+</li>
+</ul>
+<h2 id="authentication-flows">Authentication Flows<a class="headerlink" href="#authentication-flows" title="Permanent link">&para;</a></h2>
+<p>Portcullis supports four authentication methods. Each app declares its method in its <code>manifest.yaml</code>.</p>
+<h3 id="forward-auth-oauth2-proxy-group-gate">Forward Auth (oauth2-proxy + group-gate)<a class="headerlink" href="#forward-auth-oauth2-proxy-group-gate" title="Permanent link">&para;</a></h3>
+<p>Used by apps that have no native SSO support (Pi-hole, DokuWiki, Scrutiny, etc.). Traefik delegates authentication to oauth2-proxy and authorization to group-gate before the request reaches the app. The router's middleware chain is <code>client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file</code>; <code>client-headers@file</code> must come first so group-gate sees the client certificate (for revocation and the mTLS binding).</p>
+<p>If the session does not satisfy the app's <a href="../operations/auth-policies/">access policy</a>, group-gate answers with a 403 step-up page that redirects to <code>https://auth.&lt;domain&gt;/oauth2/start?acr_values=&lt;needed&gt;&amp;prompt=login&amp;rd=https://&lt;app&gt;/</code>, and Keycloak prompts for the missing factor. (oauth2-proxy only serves <code>/oauth2/*</code> on <code>auth.&lt;domain&gt;</code>: a host-less router would get Traefik's default TLS options and be refused with 421 on every app host.)</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant T as Traefik
+    participant O as oauth2-proxy
+    participant G as group-gate
+    participant K as Keycloak
+    participant A as App
+
+    U-&gt;&gt;T: GET https://pihole.example.com
+    T-&gt;&gt;O: Forward auth check
+    O--&gt;&gt;T: 401 (no session)
+    T--&gt;&gt;U: 302 Redirect to oauth2-proxy /sign_in
+    U-&gt;&gt;O: Follow redirect
+    O--&gt;&gt;U: 302 Redirect to Keycloak
+    U-&gt;&gt;K: Keycloak login (WebAuthn / YubiKey tap)
+    K--&gt;&gt;U: 302 Redirect to oauth2-proxy /callback
+    U-&gt;&gt;O: Callback with auth code
+    O-&gt;&gt;K: Exchange code for tokens
+    K--&gt;&gt;O: ID token + access token (includes groups)
+    O--&gt;&gt;U: Set session cookie, redirect to app
+    U-&gt;&gt;T: GET https://pihole.example.com (with cookie)
+    T-&gt;&gt;O: Forward auth check
+    O--&gt;&gt;T: 200 OK (X-Auth-Request-*, access token)
+    T-&gt;&gt;G: Check (host, groups, access token, URI, client cert info)
+    Note over G: revocation, policy (acr/amr), group users_pihole, path_groups
+    G--&gt;&gt;T: 200 OK (X-Forwarded-User, X-Auth-Request-Groups)
+    T-&gt;&gt;A: Forward request
+    A--&gt;&gt;U: App response</code></pre>
+<h3 id="native-oidc">Native OIDC<a class="headerlink" href="#native-oidc" title="Permanent link">&para;</a></h3>
+<p>Used by apps with built-in OpenID Connect support (Jellyfin, Immich, Vaultwarden, Nextcloud, etc.). The app redirects to Keycloak directly, without oauth2-proxy.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant T as Traefik
+    participant A as App
+    participant K as Keycloak
+
+    U-&gt;&gt;T: GET https://photos.example.com
+    T-&gt;&gt;A: Forward request
+    A--&gt;&gt;U: 302 Redirect to Keycloak authorize endpoint
+    U-&gt;&gt;K: Keycloak login (WebAuthn / YubiKey tap)
+    K--&gt;&gt;U: 302 Redirect to app callback
+    U-&gt;&gt;T: GET https://photos.example.com/callback?code=...
+    T-&gt;&gt;A: Forward request
+    A-&gt;&gt;K: Exchange code for tokens
+    K--&gt;&gt;A: ID token + access token
+    A--&gt;&gt;U: Set session, app response</code></pre>
+<h3 id="header-auth">Header Auth<a class="headerlink" href="#header-auth" title="Permanent link">&para;</a></h3>
+<p>Used by apps that accept a trusted identity header from the reverse proxy (Grafana, Kanboard, Firefly III, Guacamole, CloudBeaver). The user authenticates via forward auth, and the app reads <code>X-Forwarded-User</code> (the LLDAP username, set by group-gate; the email travels separately in <code>X-Forwarded-Email</code>). The app accepts that header only from Traefik's fixed IP, so other containers on <code>portcullis-proxy</code> cannot impersonate users.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant T as Traefik
+    participant O as oauth2-proxy
+    participant G as group-gate
+    participant A as App
+
+    U-&gt;&gt;T: GET https://grafana.example.com
+    Note over T,O: Forward auth (same as above)
+    T-&gt;&gt;O: Forward auth check
+    O--&gt;&gt;T: 200 OK
+    T-&gt;&gt;G: Group check
+    G--&gt;&gt;T: 200 OK (X-Forwarded-User: alice)
+    T-&gt;&gt;A: Request from PORTCULLIS_TRAEFIK_IP with X-Forwarded-User
+    A--&gt;&gt;U: App logs in alice automatically</code></pre>
+<h3 id="mtls-client-certificate">mTLS (Client Certificate)<a class="headerlink" href="#mtls-client-certificate" title="Permanent link">&para;</a></h3>
+<p>When mTLS is enabled, the browser presents the X.509 certificate stored in the YubiKey's PIV slot during the TLS handshake. Traefik verifies it against the Portcullis CA chain, but <strong>does not check revocation</strong>; that happens in group-gate and Keycloak.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User + YubiKey
+    participant T as Traefik
+    participant K as Keycloak
+    participant G as group-gate
+    participant A as App
+
+    U-&gt;&gt;T: TLS handshake (client cert)
+    T-&gt;&gt;T: Verify chain against certs/ca-chain.crt
+    U-&gt;&gt;T: GET https://auth.example.com/... (login)
+    T-&gt;&gt;K: via portcullis-auth, X-Forwarded-Tls-Client-Cert (PEM)
+    Note over K: trusts the header only from Traefik's IP,&lt;br/&gt;re-validates chain + EKU, checks Vault CRL (fail closed)
+    K--&gt;&gt;U: Session with amr=mtls (LoA 3)
+    U-&gt;&gt;T: GET https://app.example.com (cookie + client cert)
+    T-&gt;&gt;G: forward-auth with X-Forwarded-Tls-Client-Cert-Info
+    Note over G: serial not revoked? policy needs mtls only?&lt;br/&gt;then cert CN must equal preferred_username
+    G--&gt;&gt;T: 200 OK
+    T-&gt;&gt;A: Forward request</code></pre>
+<p>Routers on the <code>protected</code> tier without forward-auth (e.g. the Vault UI template) rely on the TLS handshake alone: there the certificate works until it expires. See <a href="../setup/certificates/#revocation">TLS &amp; mTLS</a>.</p>
+<h2 id="tls-tiers">TLS Tiers<a class="headerlink" href="#tls-tiers" title="Permanent link">&para;</a></h2>
+<p>Traefik is configured with three TLS option sets. Each app chooses its tier based on its security requirements.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Traefik TLS Option</th>
+<th>Client Cert Behavior</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>protected</strong></td>
+<td><code>RequireAndVerifyClientCert</code></td>
+<td>Required -- TLS handshake fails without a valid cert</td>
+<td>Highest security apps (Vault UI)</td>
+</tr>
+<tr>
+<td><strong>authaware</strong></td>
+<td><code>VerifyClientCertIfGiven</code></td>
+<td>Optional -- verified if present, WebAuthn fallback if not</td>
+<td>Most apps (default for forward-auth and OIDC apps)</td>
+</tr>
+<tr>
+<td><strong>public</strong></td>
+<td><code>NoClientCert</code></td>
+<td>Not requested</td>
+<td>Public-facing apps, apps that manage their own auth</td>
+</tr>
+</tbody>
+</table>
+<p>When <code>MTLS_ENABLED=false</code> in <code>.env</code>, all three tiers behave like <code>public</code> -- no client certificates are requested for any app. Routers that relied on <code>protected</code> alone become unauthenticated.</p>
+<p>For apps the Hub sets the tier from the app's access policy, not from the template (see <a href="../operations/auth-policies/#traefik-tls-tier">Authentication Policies</a>).</p>
+<h2 id="network-topology">Network Topology<a class="headerlink" href="#network-topology" title="Permanent link">&para;</a></h2>
+<p>Traefik is the only service exposed to the internet (ports 80 and 443). It is attached to every network it has to reach; nothing else bridges them.</p>
+<ul>
+<li><strong><code>portcullis</code></strong> -- Core services: Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub, enroll. Apps are not on it and cannot reach these services directly.</li>
+<li><strong><code>portcullis-proxy</code></strong> -- Traefik and app frontend services; Traefik's docker provider routes over it. Fixed subnet (<code>PORTCULLIS_PROXY_SUBNET</code>, default <code>172.31.250.0/24</code>), Traefik always at <code>PORTCULLIS_TRAEFIK_IP</code> (default <code>172.31.250.2</code>), other containers from <code>PORTCULLIS_PROXY_IP_RANGE</code> (which excludes Traefik's IP). Header-auth apps trust identity headers only from Traefik's address.</li>
+<li><strong><code>portcullis-auth</code></strong> -- Internal network with only Traefik (fixed <code>PORTCULLIS_AUTH_TRAEFIK_IP</code>, default <code>172.31.251.2</code>) and Keycloak. Keycloak accepts proxy headers -- including the forwarded client certificate for X.509 login -- only from that address.</li>
+<li><strong><code>socket-proxy-traefik</code>, <code>socket-proxy-hub</code></strong> -- Internal networks, each shared by one client and its Docker socket proxy.</li>
+<li><strong>Per-app networks</strong> -- Each app's compose project (<code>portcullis-&lt;app-id&gt;</code>) has its own <code>default</code> network. Internal services (databases, caches, workers) live only there, isolated from all other apps.</li>
+</ul>
+<p>Frontend services join both <code>default</code> and <code>portcullis-proxy</code>; internal services only <code>default</code>.</p>
+<pre class="mermaid"><code>graph TB
+    Internet --&gt;|:80/:443| T
+
+    subgraph core ["Network: portcullis (core)"]
+        KC[Keycloak :8080]
+        LL[LLDAP :3890/:17170]
+        V[Vault :8200]
+        PG[(PostgreSQL :5432)]
+        O2[oauth2-proxy :4180]
+        GG[group-gate :8080]
+        Hub[Hub :8888]
+        EN[enroll :8443]
+    end
+
+    subgraph auth ["Network: portcullis-auth (internal)"]
+        T[Traefik :80/:443&lt;br/&gt;172.31.250.2 / 172.31.251.2]
+    end
+
+    subgraph sock ["Socket proxy networks (internal)"]
+        SPT[socket-proxy-traefik&lt;br/&gt;read-only]
+        SPH[socket-proxy-hub]
+    end
+
+    subgraph proxy ["Network: portcullis-proxy (routing)"]
+        AppA_FE[App A Frontend]
+        AppB_FE[App B Frontend]
+    end
+
+    subgraph appA ["portcullis-appA (isolated)"]
+        AppA_DB[(App A Database)]
+    end
+
+    subgraph appB ["portcullis-appB (isolated)"]
+        AppB_DB[(App B Database)]
+    end
+
+    T ---|portcullis| O2
+    T ---|portcullis| GG
+    T ---|portcullis| Hub
+    T ---|portcullis| EN
+    T ===|portcullis-auth| KC
+    T ---|portcullis-proxy| AppA_FE
+    T ---|portcullis-proxy| AppB_FE
+    T --- SPT
+    Hub --- SPH
+    AppA_FE --- AppA_DB
+    AppB_FE --- AppB_DB
+    KC --- LL
+    KC --- PG
+    O2 --- KC
+    GG --- V
+    EN --- V</code></pre>
+<p><a href="../operations/hardening/#networks">Security &amp; Hardening</a> lists every network's members and addressing rules.</p>
+<p>Native OIDC apps that need to reach Keycloak do so over HTTPS via the public URL (<code>https://auth.&lt;domain&gt;</code>), not via the internal network.</p>
+<p>DNS is configured as a wildcard record (<code>*.portcullis.example.com</code>), so all subdomains resolve to the same server IP. Traefik routes each subdomain to the correct container based on Docker labels.</p>
+<h2 id="custom-attributes-flow">Custom Attributes Flow<a class="headerlink" href="#custom-attributes-flow" title="Permanent link">&para;</a></h2>
+<p>Custom user fields (department, office, manager, etc.) defined in the Hub flow to apps in two ways:</p>
+<pre class="mermaid"><code>flowchart LR
+    LLDAP[(LLDAP&lt;br/&gt;custom attributes)]
+    Hub[Hub&lt;br/&gt;evaluates rules,&lt;br/&gt;reads attributes]
+    UAFile[user-attributes.json&lt;br/&gt;hub_data volume]
+    GG[group-gate]
+    App1[Forward-auth /&lt;br/&gt;Header-auth Apps]
+    KC[Keycloak&lt;br/&gt;LDAP mappers]
+    Scope[portcullis-attributes&lt;br/&gt;client scope]
+    App2[Native OIDC Apps]
+
+    LLDAP --&gt;|GraphQL| Hub
+    Hub --&gt;|writes atomically| UAFile
+    Hub --&gt;|creates mappers| KC
+    UAFile --&gt;|reads on every request| GG
+    GG --&gt;|X-Forwarded-Attr-*&lt;br/&gt;percent-encoded, ', ' joined| App1
+    KC --&gt;|LDAP sync| LLDAP
+    KC --&gt;|attr_&lt;field&gt; claims| Scope
+    Scope --&gt;|in ID token| App2</code></pre>
+<h3 id="for-forward-auth-and-header-auth-apps">For Forward-Auth and Header-Auth Apps<a class="headerlink" href="#for-forward-auth-and-header-auth-apps" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>LLDAP</strong>: stores users and custom attributes (created by the Hub as non-user-editable LLDAP user attributes).</li>
+<li><strong>Hub</strong>: reads field values via GraphQL, evaluates rules, writes <code>user-attributes.json</code> (only fields with <code>share_with_apps: true</code>) atomically with the policy file.</li>
+<li><strong>group-gate</strong>: reads <code>user-attributes.json</code> on every request. On allow, returns <code>X-Forwarded-Attr-&lt;Header-Name&gt;</code> headers. Values are percent-encoded (<code>%</code> → <code>%25</code>, <code>,</code> → <code>%2C</code>), joined with <code>,</code>, limited to 1 KB per value (before encoding).</li>
+<li><strong>Traefik</strong>: forwards these headers to the app (the <code>portcullis-groups</code> middleware uses <code>authResponseHeadersRegex: ^X-Forwarded-Attr-</code>). Client copies are stripped by the forwardAuth regex.</li>
+<li><strong>App</strong>: receives the headers. <strong>Apps must percent-decode each value after splitting on <code>,</code></strong>.</li>
+</ol>
+<h3 id="for-native-oidc-apps">For Native OIDC Apps<a class="headerlink" href="#for-native-oidc-apps" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>LLDAP</strong>: stores users and custom attributes.</li>
+<li><strong>Hub</strong>: on every field change (create, update, delete, or <code>share_with_apps</code> toggle), syncs Keycloak LDAP attribute mappers on the <code>portcullis-attributes</code> client scope via the Keycloak admin API. Each shared field gets:<ul>
+<li>an LDAP attribute mapper: <code>portcullis-attr-&lt;field&gt;</code> (reads <code>&lt;field&gt;</code> from LDAP)</li>
+<li>a protocol mapper: <code>attr_&lt;field&gt;</code> claim (user attribute <code>&lt;field&gt;</code> → claim <code>attr_&lt;field&gt;</code> in ID token, access token, userinfo)</li>
+</ul>
+</li>
+<li><strong>Keycloak</strong>: syncs users from LLDAP via LDAP federation (periodic and manual sync). The mappers read field values from LDAP.</li>
+<li><strong>App</strong>: receives <code>attr_&lt;field&gt;</code> claims in the ID token (no percent-encoding; multi-valued fields are JSON arrays).</li>
+</ol>
+<p>The Hub attaches the <code>portcullis-attributes</code> client scope as a default scope to every client it creates. On reconcile, it re-attaches missing mappers.</p>
+<h2 id="expiry-flow">Expiry Flow<a class="headerlink" href="#expiry-flow" title="Permanent link">&para;</a></h2>
+<p>Temporary group memberships (manual memberships with expiry, or exceptions with expiry in rule-based groups) are enforced strictly, even while the Hub is down.</p>
+<pre class="mermaid"><code>flowchart TD
+    Admin[Admin sets expiry&lt;br/&gt;or creates exception&lt;br/&gt;with expiry]
+    Hub[Hub writes entry&lt;br/&gt;to policy file&lt;br/&gt;expiring array]
+    LLDAP[(LLDAP&lt;br/&gt;membership&lt;br/&gt;still present)]
+    Eval[Hub evaluator&lt;br/&gt;runs ≤ 60s]
+    Check{now &gt;= at?}
+    GG[group-gate&lt;br/&gt;reads policy file&lt;br/&gt;on every request]
+    Remove[Hub removes&lt;br/&gt;from LLDAP,&lt;br/&gt;revokes Keycloak&lt;br/&gt;sessions]
+    Grace[Hub keeps entry&lt;br/&gt;+ 10 min grace]
+    Clear[Hub clears&lt;br/&gt;grace entry]
+
+    Admin --&gt; Hub
+    Hub --&gt;|immediately| LLDAP
+    Hub --&gt;|immediately| GG
+    Eval --&gt; Check
+    Check --&gt;|not yet| GG
+    Check --&gt;|yes| Remove
+    Remove --&gt; Grace
+    Grace --&gt;|on regrant| Clear
+    GG --&gt;|treats as absent&lt;br/&gt;withholds token| App[App denied]
+    Remove --&gt;|oauth2-proxy refresh 1m| App2[OIDC apps lose&lt;br/&gt;access within ~1 min]</code></pre>
+<ol>
+<li><strong>Admin</strong> sets an expiry (date/time) on a membership or exception in the Hub.</li>
+<li><strong>Hub</strong> writes the entry to the policy file's <code>expiring</code> array immediately: <code>{"user": "&lt;username&gt;", "group": "&lt;group&gt;", "at": "&lt;RFC 3339 UTC timestamp&gt;"}</code>. The entry stays in LLDAP.</li>
+<li><strong>group-gate</strong> reads the policy file on every request. When <code>now &gt;= at</code>, it treats the membership as <strong>absent</strong>, regardless of what the user's token says. It also withholds <code>Authorization</code> and <code>X-Forwarded-Access-Token</code> for that request.</li>
+<li><strong>Forward-auth apps</strong>: denied immediately (403 from group-gate).</li>
+<li><strong>Native OIDC apps</strong>: the token still has the group claim until the next Keycloak token refresh.</li>
+<li><strong>Hub evaluator</strong> runs at least every 60 seconds and on changes. When it finds an expired entry, it:<ul>
+<li>removes the membership from LLDAP,</li>
+<li>revokes the user's Keycloak sessions (so OIDC apps lose access at their next token refresh; oauth2-proxy cookie refresh is 1 minute, so this happens within ~1 minute),</li>
+<li>keeps the <code>expiring</code> entry (plus a 10-minute grace period) until the membership is actually removed and the grace ends, or until regrant (admin re-adds, exception include, rule change adds them back).</li>
+</ul>
+</li>
+</ol>
+<p>The grace period ensures enforcement stays strict even if the Hub is restarted or LLDAP removal fails: group-gate keeps denying based on the policy file until the Hub successfully removes the entry and clears it.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","search.highlight"],"redirect":null,"search":"../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>
