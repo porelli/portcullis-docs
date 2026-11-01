@@ -91,6 +91,12 @@ the internal PKI) and verifies:
     - on a fresh install publishes the built-in default auth policy `{factors: [webauthn]}`, which group-gate applies (step-up) to an app without its own policy
     - then gets a public default through `PUT /api/settings`, like an admin would; the revocation test checks that precondition, and every hand-written group-gate policy file in CI states its default explicitly
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
+- **Passkey-only sign-in and setup links.**
+    - the browser flow has no password executor, has the identity-provider redirector, a passkey step and LoA 2 = allow-access; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
+    - the invite identity provider is enabled, hidden, links existing users only (`idp-detect-existing-broker-user`, `idp-auto-link`), back-channel `http://enroll:8445`, PKCE; the service account `portcullis-enroll` has exactly view-users + manage-users
+    - `./portcullis invite`: link format, a new link revokes the older one, viewing doesn't consume it, a cross-site redeem is refused, `portcullis-hub` is refused, `admin` is allowed from the server
+    - the Hub's invite API (`enroll:8444`, contract §9.4): 201 for a user, 409 for `admin` / `portcullis-hub`, 404 for an unknown user, 401 with a wrong secret; the Hub's copy of the secret matches; the JWKS serves an ES256 key
+- **`./portcullis up` and the Hub's LLDAP account.** `portcullis-hub` is in `lldap_admin`, the 0640 / group 10001 password file logs in, a password changed in LLDAP is reset from the file on the next `up`, and the Hub sees `/run/portcullis/lldap` and `/run/portcullis/invite`.
 - **Revocation end to end**, once through `./portcullis cert revoke` and once through Vault's CRL alone.
 - **CLI.** `./portcullis status`.
 - **Backup round-trip.** It runs, in order:
@@ -112,16 +118,30 @@ the full chain: Traefik → oauth2-proxy → Keycloak (LLDAP users, WebAuthn, X.
 
 Scenarios:
 
-1. An unauthenticated request is redirected to Keycloak.
-2. A password login with passkey registration (required action) reaches the app.
-3. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped.
-4. `path_groups`: `/admin` needs `admin_e2e`. `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` are denied, while `/administrator` is allowed.
-5. Step-up: a WebAuthn policy after a password login.
-6. Group denial for a user not in `users_e2e`.
-7. X.509 login via Keycloak satisfies an mTLS policy.
-8. An mTLS session without the cert on the request is refused (mTLS binding).
-9. A revoked client cert is rejected.
-10. A client cert from a foreign CA is rejected in the TLS handshake.
+No user has a password and nothing is pre-assigned in Keycloak: the job
+creates one-time setup links with `./portcullis invite <user> --to <landing> --json`
+(for `e2e`, `e2e-other` and the bootstrap `admin`) and the test starts from
+them. Any password field fails the test.
+
+1. An unauthenticated request is redirected to a passkey-only Keycloak sign-in page.
+2. The setup link → **Register my key** → passkey registration → the webauthn-policy app (`hwk.`), with no second prompt.
+3. The setup link works once.
+4. The session reaches the app.
+5. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped.
+6. `path_groups`: `/admin` needs `admin_e2e`. `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` are denied, while `/administrator` is allowed.
+7. A second login in a fresh browser with the same key is one passkey assertion.
+8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
+9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link.
+10. X.509 login via Keycloak satisfies an mTLS policy.
+11. An mTLS session without the cert on the request is refused (mTLS binding).
+12. A revoked client cert is rejected.
+13. A client cert from a foreign CA is rejected in the TLS handshake.
+
+`tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
+checks (registration, no password, `acr`/`amr` = `hwk`, single use, one-touch
+second login, the invite identity provider refuses browsers without a link)
+against any running install, e.g. a live server with a throwaway user
+(`E2E_IGNORE_HTTPS_ERRORS=1` for ACME staging).
 
 After the browser tests, the job enables the **monitoring profile** and checks:
 

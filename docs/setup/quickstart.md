@@ -128,38 +128,37 @@ docker compose logs -f traefik 2>&1 | grep -i acme
 ./portcullis status        # overall health; exits 1 if something is down
 ```
 
-## Step 4: Create users in LLDAP
+## Step 4: First sign-in (setup link)
 
-Open `https://directory.<your-domain>` and log in as `admin` with
-`LLDAP_ADMIN_PASSWORD` from `.env`.
+Sign-in is **passkey-only**: there is no password anywhere in the browser
+flow. `./portcullis init` ends with a one-time **setup link** for the LLDAP
+`admin`:
 
-1. Click **Create user** and enter username, email and name. The **username**
-   is the user's identity everywhere (it can't be changed later). The email is
-   only profile data: users can edit it themselves, so it is never used to
-   identify or link accounts.
-2. Set a temporary password. It is needed for the first login, before a security key is registered.
-3. Add the user to the groups of the apps they need, e.g. `users_grafana`.
+1. Open the link, click **Register my key** and touch your YubiKey (set or
+   enter its PIN).
+2. You are signed in and land in the Hub. No LLDAP or Keycloak login.
+3. Every later sign-in is **Sign in with Passkey** and one touch.
+
+The link works once and expires after 72 h. A new one (expired link, lost
+key) only from the server: `./portcullis invite admin --to hub`. The Hub
+never issues links for `admin`.
+
+## Step 5: Create users
+
+In the Hub, **Users & Groups** (or LLDAP at `https://directory.<your-domain>`,
+which keeps its own `admin` / `LLDAP_ADMIN_PASSWORD` login):
+
+1. Create the user. The **username** is the user's identity everywhere (it
+   can't be changed later). The email is only profile data: users can edit it
+   themselves, so it is never used to identify or link accounts.
+2. Add the user to the groups of the apps they need, e.g. `users_grafana`.
    Members of `lldap_admin` can reach the core admin UIs (Hub, enrollment,
-   directory, Traefik dashboard, Keycloak admin).
+   directory, Traefik dashboard, Keycloak's realm console).
+3. Send the user their setup link (the Hub shows it once; on the server:
+   `./portcullis invite <user>`). It lands them on `https://<your-domain>/`,
+   the portal with the apps they may use.
 
 Keycloak reads users and groups from LLDAP through its LDAP federation.
-
-## Step 5: First login and security key
-
-1. Open the Hub at `https://hub.<your-domain>`. You are redirected to Keycloak.
-2. Log in as the LLDAP `admin` user (already in `lldap_admin`) with its password.
-3. Register a security key: in the Keycloak account console
-   (`https://auth.<your-domain>/realms/portcullis/account/` → *Signing in*),
-   or push the "register a passkey" required action onto a user from the
-   Hub's **Settings → Users** list, so Keycloak asks for it at the next login.
-4. Future logins need only a YubiKey tap.
-
-!!! note "Hardware keys are required by default"
-    Until you save a global default in the Hub (**Settings → Default access
-    policy**), every app requires **WebAuthn**: after a password login, users
-    are stepped up to their security key. Register a key (step 3) before you
-    open an app. To also accept YubiKey PIV certificates, save "any of mTLS /
-    WebAuthn". See [Authentication Policies](../operations/auth-policies.md).
 
 ## Step 6: Enable your first app
 

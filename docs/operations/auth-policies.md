@@ -6,11 +6,14 @@ Portcullis lets you require any combination of three authentication factors for 
 
 | Factor | How the user proves it | Keycloak executor | `amr` value | LoA |
 |--------|------------------------|-------------------|-------------|-----|
-| **Password** | Enters username + LLDAP password | `auth-username-password-form` | `pwd` | 1 |
+| **Password** | No password in the browser flow: met by any signed-in session (a passkey or a cert is stronger) | — | `pwd` | 1 |
 | **WebAuthn** | Taps a hardware security key (YubiKey, platform authenticator) | `webauthn-authenticator-passwordless` | `hwk` | 2 |
 | **mTLS** | Presents a client certificate over TLS (PIV / YubiKey cert) | `auth-x509-client-username-form` | `mtls` | 3 |
 
-LoA = Level of Authentication, a number Keycloak uses for step-up.
+LoA = Level of Authentication, a number Keycloak uses for step-up. Every
+sign-in is a passkey or a client cert and reaches LoA 2 in one touch
+(oauth2-proxy asks for `hwk` by default); LoA 3 needs the cert. First passkeys
+come from one-time setup links (`./portcullis invite`, the Hub's Users & Groups).
 
 ## Policy model
 
@@ -65,11 +68,11 @@ User logs into Docs (policy: public). Opens Grafana (policy: `any of [password]`
 
 ### Step-up on a stricter app
 
-User is logged in with password (`amr=[pwd]`). Opens Jellyfin with policy `mtls-required`. Keycloak sees the session's current LoA is 1, but Jellyfin's client requested `acr_values=mtls` (LoA 3). The `Condition - Level of Authentication` executor in the universal flow fires the mTLS subflow — user is prompted for their certificate. On success the session's LoA is upgraded to 3 and `amr` becomes `[pwd, mtls]`. No full re-login.
+User signed in with a passkey (`amr=[hwk]`, LoA 2). Opens Jellyfin with policy `mtls-required`. Keycloak sees the session's current LoA is 2, but Jellyfin's client requested `acr_values=mtls` (LoA 3). The `Condition - Level of Authentication` executor in the universal flow fires only the mTLS subflow — the certificate is asked for, nothing else. On success the session's LoA is upgraded to 3 and `amr` becomes `[hwk, mtls]`. No full re-login.
 
 ### Step-up on forward-auth apps
 
-oauth2-proxy ≥ 7.10 accepts per-request `acr_values` via the `loginURLParameters` alpha-config setting, which is what Portcullis runs (allowed values `pwd`, `hwk`, `mtls`, plus `prompt=login`). When `group-gate` detects a session that doesn't satisfy the app's policy, it returns a 403 "Additional authentication required" page. The page carries the URL in an `X-Stepup-URL` header and auto-redirects after 2 seconds to `https://auth.<domain>/oauth2/start?acr_values=<needed>&prompt=login&rd=https://<app>/`. The step-up always goes through `auth.<domain>`; there is no `/oauth2/` router on app hosts. There is no sign-out: `prompt=login` makes Keycloak re-run the flow instead of short-circuiting on its SSO cookie, and `acr_values` selects the matching LoA conditional subflow. The new token reflects the step-up. If the user doesn't have the required factor yet (e.g. WebAuthn not enrolled), the 403 page also surfaces a "No hardware key yet?" link to the Keycloak account console at `https://auth.<domain>/realms/portcullis/account/account-security/signing-in` where they can register a security key and retry.
+oauth2-proxy ≥ 7.10 accepts per-request `acr_values` via the `loginURLParameters` alpha-config setting, which is what Portcullis runs (allowed values `pwd`, `hwk`, `mtls`; default `hwk`; `kc_idp_hint=portcullis-invite` and `prompt=login` exist only for setup links). When `group-gate` detects a session that doesn't satisfy the app's policy, it returns a 403 "Additional authentication required" page with the URL in an `X-Stepup-URL` header: `https://auth.<domain>/oauth2/start?acr_values=<needed>&rd=https://<app>/`. The step-up always goes through `auth.<domain>`; there is no `/oauth2/` router on app hosts. There is no sign-out and no `prompt=login`: Keycloak's cookie authenticator runs the flow when the requested LoA is above the session's and asks only for the missing level. The new token reflects the step-up. When the missing factor is a hardware one (passkey / cert) the page does not auto-redirect: a **Continue** button, and links to register a passkey in the account console or enrol a certificate at `enroll.<domain>`. Other step-ups redirect after 2 seconds.
 
 ### Public policy
 
@@ -159,13 +162,11 @@ Policies decide *how* a user signed in; *who* the user is always comes from the 
 
 ## LLDAP passwords
 
-Password-based factor resolves against LLDAP. Users set (or rotate) their password in the LLDAP admin UI at `https://directory.<your-domain>/`. The Keycloak realm's LDAP federation is read-only, so password changes happen in LLDAP and Keycloak picks them up automatically.
-
-If you enable a password-including policy on an app before any user has a password set, those users will see "invalid credentials" until they set one. No silent fallback.
+The browser flow never asks for an LLDAP password. LLDAP passwords remain for LLDAP's own web UI and for apps that bind to LDAP themselves. A `password` policy factor is met by any signed-in session.
 
 ## Caveats
 
-- **`acr_values` is advisory at Keycloak.** The OIDC spec treats it as a hint; Keycloak only hard-rejects when a client requests via the `claims` parameter with `essential: true`. Portcullis uses the LoA conditional executors instead, which hard-fail when the user can't satisfy the level (e.g., asking for `hwk` with no enrolled key → "invalid username or password" at the Keycloak login form). `group-gate` *also* verifies `acr`/`amr` from the issued token as a belt-and-braces check — trust doesn't depend on Keycloak honoring the request.
+- **`acr_values` is advisory at Keycloak.** The OIDC spec treats it as a hint; Keycloak only hard-rejects when a client requests via the `claims` parameter with `essential: true`. Portcullis uses the LoA conditional executors instead, which hard-fail when the user can't satisfy the level (e.g. asking for `mtls` without a certificate). `group-gate` *also* verifies `acr`/`amr` from the issued token as a belt-and-braces check — trust doesn't depend on Keycloak honoring the request.
 - **Session LoA accumulates.** Once a user steps up to LoA 3 via mTLS, every subsequent app within the same session sees `acr=mtls` and `amr ⊇ [mtls, ...]`. Stricter apps pass without additional prompts. Loosening policies mid-session doesn't downgrade the session.
 - **`max_age` in the LoA conditions** is 10 hours (matching the session lifespan). Lower this in `realm-export.json` if you want the re-prompt window to be shorter.
 
