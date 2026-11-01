@@ -78,6 +78,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 - **Unknown values fail closed.** An unknown factor, op or key shape, a file that exists but can't be parsed, or a `version` newer than group-gate supports (currently 4) makes group-gate deny the request.
 - **Version 4** (**NEW**; the Hub always writes 4) adds the `expiring` array. group-gate serves **only** version 4. A group-gate that knows only version 3 denies every request on a version-4 file, so **the Hub and core must be upgraded together**.
     - **`expiring`**: an array of `{"user": "<lowercase username>", "group": "<LLDAP group>", "at": "<RFC 3339 UTC timestamp>"}` entries for temporary group memberships. group-gate treats the membership as **absent** once `now >= at`, regardless of what the user's token says. Usernames are lowercase; timestamps are RFC 3339 in UTC (e.g., `2027-03-31T23:59:59Z`).
+    - The Hub writes **at most one entry** per `(user, group)` pair: the **earliest** `at` when multiple expiries exist for the same membership.
     - The Hub writes every pending expiry into this array so that expiry enforcement is strict even while the Hub is down. On removal (whether by expiry, rule change, or explicit action), the Hub also revokes the user's Keycloak sessions so OIDC apps lose access at their next token refresh.
 - **Keys are subdomains only.** group-gate looks everything up by the request's subdomain, so `policies`, `groups` and `path_groups` are keyed by the lowercase subdomains that **enabled** templates route — never by template ID, which could equal another app's subdomain.
 - **Routing must be fully visible.** The Hub parses every `traefik.http.routers.*.rule` label in a template's compose file and only accepts literal `Host(\`<sub>.${PORTCULLIS_DOMAIN…}\`)` hosts. It rejects any template with `HostRegexp`/`HostHeader`/`HostSNI`, other domains, variables in the label, routers without a rule, TCP routers, or a rule branch that is not restricted by `Host()`. A host the Hub can't see would get no policy and no group (fail open).
@@ -88,8 +89,8 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 - **`path_groups`** comes from enabled templates that declare `auth.admin_paths` (a list of path prefixes). Each prefix requires `auth.admin_group`, **in addition** to the subdomain's group.
     - Matching uses group-gate's normalized `X-Forwarded-Uri` path: percent-decoded once, `//` collapsed, dot-segments resolved.
     - It is a prefix match on segment boundaries (`/admin` matches `/admin` and `/admin/x`, not `/administrator`). The longest matching prefix wins.
-- **Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) are never taken from this file. `group-gate-map.conf` in core owns them.
-    - `metrics` (Grafana of core's optional [monitoring](../operations/monitoring.md) profile) is a core subdomain too, in group-gate, the Hub (`policy.CoreSubdomains`) and the templates validator.
+- **Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`) are never taken from this file. `group-gate-map.conf` in core owns them.
+    - `people` is accessible to any signed-in user (§5.1); `metrics` (Grafana of core's optional [monitoring](../operations/monitoring.md) profile) is a core subdomain too. All appear in group-gate, the Hub (`policy.CoreSubdomains`) and the templates validator.
 - **`public_paths`** is, per subdomain, the configuration of core's public guard (§5) for an enabled app whose public router exists:
     - `paths`: `{path, match}` patterns. `match` is `prefix` (segment boundary), `exact` or `static` (files below `path`: dot-free directories, a file name with one of `static_extensions`). One whole segment may be `{token}`, which matches one segment that `token_pattern` (anchored) accepts. Listed share tokens are published as `{token}`: tokens are secrets and stay in the Hub's `state.yaml`; Traefik's rule routes only the listed ones.
     - `credential_headers` (always including `Authorization` and `Proxy-Authorization`), `credential_cookies`, `credential_query`: credentials the guard refuses.
@@ -124,10 +125,11 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
 }
 ```
 
-- **`fields`**: maps each custom field name to its header name. The header name has each underscore-separated word capitalized (e.g., `cost_center` → `Cost-Center`). Only fields with the **ShareWithApps** flag are included.
+- **`fields`**: maps each custom field name to its header name. The header name has each underscore-separated word capitalized (e.g., `cost_center` → `Cost-Center`). Only fields with the **ShareWithApps** flag are included. Field names match `^[a-z][a-z0-9_]{0,30}$`, so the underscore-to-hyphen-plus-capitalize mapping is **injective** (no collisions possible).
 - **`users`**: maps each lowercase username to their field values. Each field is an array of strings (even for single-valued fields). Users with no shared field values are omitted.
 - **Written atomically** with mode `0644`, using temp file + rename, at the same time as the policy file.
 - **Security:** group-gate returns these headers only on **allow** (after auth factors are satisfied). The `portcullis-groups` middleware forwards them downstream with `authResponseHeadersRegex: ^X-Forwarded-Attr-`. The `client-headers` middleware (on every core entrypoint) strips any `X-Forwarded-Attr-*` headers sent by the client, so clients can never forge attribute values.
+- **Logging:** A corrupt `user-attributes.json` file is logged by group-gate; no attribute headers are sent (never a deny). Values longer than 1 KB are **dropped** from the header (not truncated) and logged.
 
 ## 5. Hub ⇄ Traefik
 
@@ -141,10 +143,11 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
     - `X-Auth-Request-Groups`: comma-separated groups
 
     Traefik guarantees these because each one is listed in the forward-auth middlewares' `authResponseHeaders`, so client copies are deleted. The Hub shows `X-Forwarded-User` as-is and never looks the signed-in user up in LDAP to identify them. Its LLDAP service account (§9) is used only for user and group management.
-- **Attribute headers (NEW).** When custom user fields are defined (§9.6) and the **ShareWithApps** flag is enabled on a field, group-gate returns additional headers on **allow**:
+- **Attribute headers (NEW).** When custom user fields are defined (§9.6) and the **ShareWithApps** flag is enabled on a field, group-gate returns additional headers on **every request it allows** through `portcullis-groups`:
     - **`X-Forwarded-Attr-<Header-Name>`**, where `<Header-Name>` is the field's name with each underscore-separated word capitalized (e.g., `cost_center` → `Cost-Center`).
-    - **Values** are joined with `, ` (comma-space). Control characters (ASCII 0x00–0x1F and 0x7F) are stripped from each value. Each individual value is limited to **1 KB**; longer values are truncated.
-    - group-gate reads field values from `user-attributes.json` (§4.1). A missing or corrupt file results in no attribute headers (never a deny).
+    - **Values** are joined with `, ` (comma-space). Control characters (ASCII 0x00–0x1F and 0x7F) are stripped from each value. Each individual value is limited to **1 KB**; longer values are **dropped** (not truncated) and logged by group-gate.
+    - group-gate reads field values from `user-attributes.json` (§4.1). A missing or corrupt file results in no attribute headers (never a deny). Users absent from the file get no attribute headers.
+    - **Scope:** attribute headers are returned for **all requests** that pass through `portcullis-groups`, including app subdomains and core subdomains (`auth`, `traefik`, `hub`, `enroll`, `people`, `metrics`). They are **not** returned on public routers (which have no `portcullis-auth` or `portcullis-groups` middlewares).
     - The `portcullis-groups` middleware forwards these headers with `authResponseHeadersRegex: ^X-Forwarded-Attr-`.
     - The `client-headers` middleware strips any `X-Forwarded-Attr-*` headers sent by the client, preventing forgery.
 - **Email is never an identity or linking key.** No repo may authorise, create, match or link accounts by email. Native-OIDC templates key accounts on `sub` / `preferred_username`.
@@ -155,7 +158,7 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
     - middlewares `portcullis-public-guard@docker,portcullis-public-strip-<app>@docker,rate-limit@file,security-headers@file` (`rate-limit` and `security-headers` come from core's `traefik/dynamic/middlewares.yml`). No `portcullis-auth`, no `portcullis-groups`;
     - `traefik.http.middlewares.portcullis-public-strip-<app>.headers.customrequestheaders.<H>: ""` for each core identity header (`X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-Groups`, `X-Forwarded-Preferred-Username`, `X-Forwarded-Access-Token`, `X-Auth-Request-User`, `-Email`, `-Groups`, `-Preferred-Username`, `-Access-Token`, `Remote-User`, `-Email`, `-Groups`, `-Name`), `Authorization`, `Proxy-Authorization`, each `auth.identity_headers` and `public_access.credential_headers` entry, each also with `_` for `-`. Without forward-auth nothing else deletes client copies; core's entrypoints also drop alias headers (`aliasHeadersStrategy=delete`).
 - **Public guard (core).** `portcullis-public-guard@docker` is a forwardAuth middleware defined on group-gate (`http://group-gate:8080/public-guard`, no `authResponseHeaders`). It runs first, so it sees the request before the strip middleware. It answers 403 (no redirect) unless:
-    - the policy file is version 3 and has a `public_paths` entry for the request's subdomain (never a core subdomain);
+    - the policy file is version 4 and has a `public_paths` entry for the request's subdomain (never a core subdomain);
     - `X-Forwarded-Uri` has no `#`, no encoded `/`, `\`, NUL or `#` in the path, and every normalised form of the path (decoded once, `//` collapsed, dot-segments resolved; as for `path_groups`) is inside a published pattern;
     - no request header is a credential header (case-insensitive, `_` read as `-`);
     - no cookie (every `Cookie` header, split on `;` and `,`) and no query key (everything after the first `?`, split on `&` and `;`) names a credential. Names are compared case-insensitively after PHP's mangling (php-src `main/php_variables.c`, `php_register_variable_ex`: leading spaces dropped, ` ` and `.` become `_`, `name[…]` is `name`, an unclosed `[` becomes `_`, NUL ends the name), both raw and percent- / `+`-decoded; a name that isn't valid UTF-8 after decoding (overlong forms) or has control characters is refused.
@@ -344,7 +347,7 @@ fields:
 - **Rules.** A rule combines conditions with all/any blocks (nestable). Conditions: `is`, `is not`, `is one of`, `is empty`, and for person fields, `reports to (directly or indirectly)`.
 - **Exceptions.** On a rule-based group, a person can be **added** (although they don't match) or **kept out** (although they match). Every exception requires a written **reason**, which is stored and shown.
 - **Expiry.** Any membership (exceptions, and members of manual groups too) can have an **expiry date/time**. When a membership expires, the person is removed automatically, and the Hub writes the expiry into the policy file's `expiring` array (§4) so group-gate enforces it strictly.
-- **Reconciliation.** The Hub writes computed membership into the real LLDAP groups. group-gate, Keycloak and apps treat rule-based groups exactly like manual groups. Re-evaluation happens on every detail change, rule change, import, exception change, and periodically (at least every minute) for expiries.
+- **Reconciliation.** The Hub writes computed membership into the real LLDAP groups. group-gate, Keycloak and apps treat rule-based groups exactly like manual groups. Re-evaluation happens on every detail change, rule change, import, exception change, and **periodically at most every 60 seconds** (binding). group-gate enforces `expiring` entries exactly regardless of the Hub's reconcile cadence.
 - **Audit.** Every membership change from rules, expiry or import is audited with its cause.
 
 **Example rule (conceptual; stored in directory.yaml):**
@@ -416,7 +419,7 @@ permissions:
 
 #### Fields reach apps
 
-- **Native-OIDC apps:** The Hub creates a Keycloak client scope `portcullis-attributes` with LDAP attribute mappers and protocol mappers for each shared field. Each field becomes a claim `attr_<field>` (e.g., `attr_department`). The scope is optionally a default scope on Hub-registered clients.
+- **Native-OIDC apps:** The Hub creates a Keycloak client scope `portcullis-attributes` with LDAP attribute mappers and protocol mappers for each shared field. Each field becomes a claim `attr_<field>` (e.g., `attr_department`) in **access tokens, ID tokens and userinfo**. The scope is a **default client scope** on Hub-registered clients (always included).
 - **Forward-auth and header-auth apps:** The Hub writes `user-attributes.json` (§4.1); group-gate returns `X-Forwarded-Attr-<Header-Name>` headers (§5); the `portcullis-groups` middleware forwards them.
 
 ## 10. Landing portal app list (Hub → core)

@@ -66,7 +66,7 @@ zensical build --strict   # what CI runs
 - Every operator action goes through `./portcullis <command>`; never document `docker compose` invocations where a CLI command exists, and never reference the removed `scripts/*.sh`.
 - Verify statements against the code in the other three repos (they are the source of truth); report inconsistencies instead of papering over them.
 - Backups / monitoring: the core repo's `docs/backups.md` / `docs/monitoring.md` are authoritative; the pages here summarise them and must stay in line.
-- One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`.
+- One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`.
 
 ### Verify before committing
 
