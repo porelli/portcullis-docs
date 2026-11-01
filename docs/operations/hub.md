@@ -331,10 +331,11 @@ shows a warning and the copy is listed under
 
 You can create groups, delete them (type the name to confirm), and add or
 remove members. Each group shows its member count and the apps that use it.
-**Groups your enabled apps need that don't exist yet** lists the
-`access_group` / `admin_group` (e.g. `users_<app>`, `admin_<app>`) of the apps
-you have **enabled** that are missing from LLDAP, with a one-click
-**Create**. Templates you haven't enabled add nothing here. Administrator
+**Missing groups** lists the `access_group` / `admin_group` (e.g.
+`users_<app>`, `admin_<app>`) of the apps you have enabled that don't exist in
+LLDAP yet — until they do, nobody can use the app (or administer it). Each
+line says what membership grants ("Members can sign in to Kanboard",
+"Members become Kanboard administrators") and has a one-click **Create**. Templates you haven't enabled add nothing here. Administrator
 groups are marked, and adding someone to one asks for confirmation.
 
 ### Administrators
