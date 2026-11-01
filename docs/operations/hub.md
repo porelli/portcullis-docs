@@ -212,9 +212,95 @@ TLS tier the host gets, and a template can't open paths by itself.
   Changing it re-applies it to every enabled app that inherits it, and
   restarts only the apps whose Traefik TLS tier actually changed. Saving an
   unchanged default does nothing.
-- **Users.** Lists Keycloak users. You can push the "register a passkey"
-  required action onto a user's next login, e.g. before you make WebAuthn
-  mandatory, or clear it again.
+
+User administration moved to the [Users & Groups tab](#users-groups-tab).
+
+## Users & Groups tab
+
+Day-to-day user and group administration, so you don't have to sign in to
+LLDAP's own web UI a second time. LLDAP's UI (`directory.<domain>`) still
+works as a fallback. The Hub uses its own LLDAP service account,
+`portcullis-hub`, which core creates and mounts as files (see
+[Integration Contracts §9](../guides/integration-contracts.md#9-hub-lldap-users-groups)).
+If core doesn't provide it, the tab says user management is disabled and
+everything else keeps working.
+
+### Users
+
+The table shows, for every LLDAP user:
+
+- username, display name, email and creation date
+- groups
+- Keycloak status:
+    - **not in Keycloak yet**: LDAP users are imported at first sign-in or
+      when the Hub needs them;
+    - the number of passkeys, or **no passkey**;
+    - pending required actions.
+
+Client certificates aren't shown; see enroll.
+
+**New user.** Enter a username (lowercase letters, digits, `.`, `_`, `-`),
+an email, an optional display name and the groups. By default the user gets
+a **one-time invite link**, shown once with a copy button and its expiry.
+They open it, register their security key and are signed in. They never get
+a password. Sending a new invite cancels the previous one.
+
+Under **Advanced** you can use a password instead. The Hub either generates
+a strong one (shown once) or takes one you type (at least 12 characters).
+"Require passkey registration at first login" is on by default. The Hub
+imports the user into Keycloak right away so this required action applies.
+
+Per-user actions:
+
+| Action | What it does |
+|--------|--------------|
+| Edit | Change email and display name |
+| Send new invite | New one-time link; earlier unused links stop working |
+| Require passkey | Adds the passkey registration action for the next sign-in (imports the user into Keycloak if needed) |
+| Clear pending | Removes pending required actions |
+| Reset passkeys | Deletes all of the user's passkeys, signs them out everywhere and creates a new invite (type the username to confirm) |
+| Password… | Fallback: set or generate a password; signs the user out |
+| Delete | Deletes the user from LLDAP and Keycloak (type the username to confirm) |
+
+### Groups
+
+You can create groups, delete them (type the name to confirm), and add or
+remove members. Each group shows its member count and the apps that use it.
+**Groups your templates use that don't exist yet** lists every template's
+`access_group` / `admin_group` (e.g. `users_<app>`, `admin_<app>`) missing
+from LLDAP, enabled apps first, with a one-click **Create**.
+
+### Guardrails
+
+- `portcullis-hub` (the Hub's own account) and `admin` (the bootstrap LLDAP
+  admin, which Keycloak and enroll bind as) are read-only here: no edits,
+  passwords, invites, passkey actions or group changes. An invite for
+  `admin` would hand over the root account, so recover it on the server
+  with `./portcullis invite admin`.
+- Sending an invite to another administrator (`lldap_admin` member),
+  resetting their passkeys or setting their password lets you sign in as
+  them. You have to type their username to confirm, and the audit entry is
+  flagged.
+- `admin` and `portcullis-hub` can't be created. `lldap_*` group names are
+  reserved, and built-in groups can't be deleted.
+- You can't delete yourself or remove yourself from `lldap_admin`.
+- The last human member of `lldap_admin` can't be deleted or removed from it.
+- Every change goes through the same proxy-secret and CSRF checks as the
+  rest of the Hub, and needs a signed-in user.
+
+### Audit log
+
+Every change, including refused and failed attempts, is appended to
+`audit.jsonl` in the Hub's data directory (`hub_data`, mode 0600). Each entry
+records who, what, the target, the time and the result. The log never
+contains passwords or invite links. The tab shows the last 100 entries.
+
+### How passwords are set
+
+LLDAP stores passwords with OPAQUE. Its HTTP password endpoints need the
+client half of that protocol, so the Hub sets passwords over LDAP instead
+(the standard Password Modify operation). LLDAP then does the OPAQUE step
+itself. This is the same mechanism `ldappasswd` uses.
 
 ## Drift detection
 
@@ -389,6 +475,9 @@ sources you trust.
   header after forward-auth, so a container that reaches the Hub directly on
   the `portcullis` network can't impersonate an admin by sending
   `X-Forwarded-User`. See [Security & Hardening](hardening.md#hub-proxy-secret).
+- **Portal list.** Next to the policy file the Hub writes `portal-apps.json`:
+  enabled apps with name, icon, URLs and required group, for core's landing
+  portal ([Integration Contracts §10](../guides/integration-contracts.md#10-landing-portal-app-list-hub-core)).
 - **CSRF.** Every state-changing request (POST/PUT/DELETE) must be same-origin
   (checked through `Sec-Fetch-Site`/`Origin`) and carry
   `Content-Type: application/json`. The forward-auth cookie is shared across
@@ -404,11 +493,17 @@ sources you trust.
   filesystem. It writes only `/data` (the `hub_data` volume), `/project/templates`
   (chowned to 10001 by `./portcullis up`) and tmpfs. `secrets/` and `backups/`
   of the core checkout are masked with empty tmpfs mounts.
-- **Outbound calls.** The Hub only calls the Keycloak admin API, with Go's
-  HTTP client: 20 s timeout, TLS verification, no shelling out to `curl`.
-  Credentials never appear in process arguments. The Hub has **no LLDAP
-  credentials** and does no LDAP lookups. The signed-in user shown in the
-  header is `X-Forwarded-User` as-is, i.e. the LLDAP username.
+- **Outbound calls.** The Hub calls the Keycloak admin API, LLDAP (GraphQL,
+  plus LDAP only to set passwords) and core's invite API, with Go's HTTP
+  client: 20 s timeouts, TLS verification, no shelling out to `curl`.
+  Credentials never appear in process arguments or env vars: the LLDAP
+  service account and the invite secret are read-only files mounted by core.
+  The signed-in user shown in the header is `X-Forwarded-User` as-is, i.e.
+  the LLDAP username. The Hub never looks it up in LDAP.
+- **LLDAP admin rights.** The Hub's service account is in `lldap_admin`, so
+  the Hub can grant `lldap_admin`. That adds nothing to what it can already
+  do: through its socket proxy it is host-root-equivalent. Every change is
+  attributed to the signed-in admin and audited.
 - **Timeouts.** compose up 15 min, compose down 5 min, shell 15 min, git 5 min.
 - **Policy file.** The Hub writes `group-gate-policy.json` (version 3)
   atomically to `hub_data`. It is keyed **by subdomain only**:
