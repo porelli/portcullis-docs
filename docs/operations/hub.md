@@ -235,12 +235,37 @@ The table shows, for every LLDAP user:
 - groups, and an **administrator** badge for members of an
   [administrator group](#administrators)
 - Keycloak status (none for `portcullis-hub`, which isn't in Keycloak):
-    - **not in Keycloak yet**: LDAP users are imported at first sign-in or
-      when the Hub needs them;
+    - **not signed in yet**: Keycloak has no copy of the user. LDAP users
+      are imported at first sign-in or when the Hub needs them. This is not
+      an error;
     - the number of passkeys, or **no passkey**;
-    - pending required actions.
+    - pending required actions;
+    - **Keycloak status unavailable** with the reason, when Keycloak
+      couldn't return that user's credentials. Only that row is affected.
 
 Client certificates aren't shown; see enroll.
+
+The Hub reads each user's status separately, at most 8 Keycloak calls at a
+time and 15 seconds in total. A failure for one user marks only that user's
+row. If Keycloak itself is unreachable (sign-in, user list or federation
+list fails), the tab shows one "Keycloak status unavailable" banner and the
+users and groups still load. Past the 15 seconds, the banner says some
+statuses are missing.
+
+### Stale Keycloak records
+
+This section appears only when Keycloak has a user that was imported from
+LLDAP (its federation link is the LDAP provider) but LLDAP no longer has
+that username. This happens when a user is deleted outside the Hub, for
+example in the LLDAP UI. Keycloak keeps its copy and usually answers 404 or
+500 for it. The list shows the username, the Keycloak id and the reason.
+
+**Remove** deletes only the Keycloak copy (type the username to confirm).
+The federation is read-only, so LLDAP isn't touched. The change is in the
+audit log as `keycloak.remove_stale`, with the Keycloak id. The Hub refuses
+it for `admin`, `portcullis-hub`, any username that exists in LLDAP, and
+Keycloak users that aren't linked to the LDAP federation. Manage those in
+the Keycloak admin console.
 
 **New user.** Enter a username (lowercase letters, digits, `.`, `_`, `-`),
 an email, an optional display name and the groups. By default the user gets
@@ -268,6 +293,12 @@ Per-user actions:
 | Reset passkeys | Deletes all of the user's passkeys and signs them out everywhere (type the username to confirm). Then it creates a new invite; for an administrator it shows `./portcullis invite <user>` instead |
 | Password… | Fallback: set or generate a password; signs the user out |
 | Delete | Deletes the user from LLDAP and Keycloak (type the username to confirm) |
+
+**Delete** removes the user from LLDAP, then deletes the Keycloak copy. The
+audit entry records what happened to the copy: `keycloak_copy=removed`,
+`none` (never imported) or `FAILED`. If removing the copy fails, the Hub
+shows a warning and the copy is listed under
+[Stale Keycloak records](#stale-keycloak-records), where you can remove it.
 
 ### Groups
 
