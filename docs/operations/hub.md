@@ -396,6 +396,8 @@ The tab has four sections: **People**, **Groups**, **Org chart** and **Setup** (
     - **invite**: create new accounts with no groups (invite links only)
     - **remove**: delete accounts
 
+Administrators signed in on `people.<domain>` get the same admin operations there as on `hub.<domain>`: core lets any signed-in user reach `people.<domain>`, and the Hub's own `lldap_admin` check (re-checked on every change) is the gate for admin operations on that listener.
+
 Delegates cannot target themselves, administrators, the protected accounts (`admin`, `portcullis-hub`), or members of any permission group. Delegates cannot touch manual groups, exceptions or expiries; they can fill in fields that make people match rule-based groups. See [Delegated permissions](#delegated-permissions).
 
 ### People
@@ -418,7 +420,7 @@ The **People** table shows every LLDAP user, with the custom field columns, grou
 | Password… | Admins | Fallback: set or generate a password; signs the user out |
 | Remove | Admins, delegates with `remove` | Deletes the user from LLDAP and Keycloak. Type the username to confirm |
 
-**Remove** deletes the user from LLDAP first (saved as a tombstone to prevent re-creation of names still in exceptions/expiries), then deletes the Keycloak copy. The audit entry records what happened to the copy: `keycloak_copy=removed`, `none` (never imported) or `FAILED`. Delegates can remove only non-protected, non-administrator accounts not in any permission group. If the Keycloak removal fails, the copy is listed under **Stale Keycloak records** (admins only), where it can be removed by id.
+**Remove** deletes the user from LLDAP first (saved as a tombstone to prevent re-creation of names still in exceptions/expiries), then deletes the Keycloak copy. The audit entry records what happened to the copy: `keycloak_copy=removed`, `none` (never imported) or `FAILED`. Delegates can remove only non-protected, non-administrator accounts not in any permission group. If the Keycloak removal fails, the copy is listed under **Stale Keycloak records** (admins only), where it can be removed by id. (Keycloak sometimes answers HTTP 500 after it has removed a federated user's copy; the Hub then looks the user up again and treats "not found" as removed.) The result also warns when other people's person fields (e.g. `manager`) or a rule's `reports to` still name the deleted user — update those.
 
 #### Keycloak status (admins only)
 
@@ -443,11 +445,11 @@ Users Keycloak has (federation link = LDAP provider) but LLDAP no longer has (de
 
 Lists every LLDAP group with its member count, rule status (manual or rule-based), exceptions, expiries and the apps that use it. Clicking a group expands its details: members (with how they got in: manual, rule, or exception), the rule editor (for rule-based groups), exceptions and expiries, and the apps.
 
-**Create** (admins): enter a group name (`[A-Za-z0-9][A-Za-z0-9_.-]{0,127}`, not starting with `lldap_`; case-insensitively unique). New groups are manual.
+**Create** (admins): enter a group name (`[A-Za-z0-9][A-Za-z0-9_.-]{0,127}`, not starting with `lldap_`; case-insensitively unique). New groups are manual and start clean: if the Hub still has a rule, exceptions, expiries or a permission grant for that name (a group deleted in LLDAP's own UI), they are removed first and a warning lists them.
 
-**Delete** (admins): type the name to confirm. Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) can't be deleted.
+**Delete** (admins): type the name to confirm. Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) can't be deleted. The group is deleted in LLDAP first (if that fails, nothing changes); then its rule, exceptions, expiries and any delegated permission granted to it are removed, so a group created later with the same name inherits nothing. Its former members are signed out of Keycloak.
 
-**Add / Remove member** (admins): for manual groups only. Adding someone to an administrator group asks for confirmation. Removing yourself from `lldap_admin` is refused, and the last human member of `lldap_admin` stays.
+**Add / Remove member** (admins): for manual groups only. Adding someone to an administrator group asks for confirmation. Removing yourself from `lldap_admin` is refused, and the last human member of `lldap_admin` stays. Removing a member also drops their expiry in that group (a later re-add starts without one) and signs them out of Keycloak; if the sign-out fails, the removal stands and a warning says so.
 
 **Set expiry** (admins): for manual groups only. Pick a date/time (browser local time, converted to UTC); the membership is removed automatically when it expires. Clear it with **No end**. Refused for `lldap_admin` and for rule-based groups (use an exception instead).
 
@@ -472,6 +474,10 @@ A **preview** shows who matches (count and names, live-updated). The Hub evaluat
 
 Rules of **administrator groups** (see [Administrators](#administrators)), **permission groups** (the groups holding a delegated permission) and **app admin groups** (any group used as an app's `admin_group` or in `path_groups`) may only reference **admin-only fields**. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).
 
+A protected group's rule also **must not match a person with no details** (e.g. `office is empty` or `not office = "HQ"`): every new account starts empty, so such a rule would hand the group to whoever creates accounts (409).
+
+**Delegate-created accounts** (`created_by`, see [Delegated permissions](#delegated-permissions)) are never added to a protected group by the evaluator, even if they match its rule; the evaluator reports them each run. They join once an admin acts on the account (sets a password, sends an invite, removes passkeys or requires a passkey), which clears `created_by`.
+
 Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) and permission groups cannot be rule-based.
 
 #### The evaluator
@@ -481,7 +487,8 @@ Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups)
 - **The Hub owns rule-group membership.** A manual change made in LLDAP to a rule-based group (e.g. in `portcullis lldap-ui`) is reverted at the next evaluation and audited as such.
 - Handles cycles in the manager field (the `reports to` condition stops at the first repeat).
 - Removes expired memberships (manual and exceptions) from LLDAP after their expiry time. Expired entries are kept in the policy file's `expiring` array (plus a 10-minute grace period) so enforcement is strict even while the Hub is down. When group-gate withholds an expired membership for a request, it also withholds `Authorization` and `X-Forwarded-Access-Token`.
-- On every removal, the Hub revokes the user's Keycloak sessions, so OIDC apps lose access at their next token refresh (oauth2-proxy cookie refresh is 1 minute, so removals take effect within ~1 minute).
+- On every removal, the Hub revokes the user's Keycloak sessions, so OIDC apps lose access at their next token refresh (oauth2-proxy cookie refresh is 1 minute, so removals take effect within ~1 minute). The same happens for an admin's **Remove member**, a group **Delete** (all former members) and a **password** change; deleting a user deletes their Keycloak copy. Keycloak's LDAP federation caches no users, so group and field changes are read from LLDAP at that refresh.
+- An "added" exception with an end date is not published as expiring while the person is a member and matches the rule anyway (they stay by rule after the end); manual expiries and the 10-minute grace entries are always published.
 
 ### Org chart
 
@@ -509,7 +516,7 @@ Per field:
 - **Share with apps** (default on): the field becomes an OIDC claim (`attr_<field>`) for native-OIDC apps and an `X-Forwarded-Attr-<Header-Name>` header for forward-auth/header-auth apps. Attribute values are percent-encoded (`%` → `%25`, `,` → `%2C`), joined with `, `, limited to 1 KB per value (before encoding; longer values are dropped and logged). Apps must percent-decode each value after splitting on `, `. See [Integration Contracts §4.1, §5](../guides/integration-contracts.md#41-user-attributes-file-hub-group-gate-new).
 - **Admin-only** (off by default): only admins may edit it, and only admin-only fields may be used in rules of protected groups (administrator, permission and app-admin groups).
 
-**Create**: name (`[a-z][a-z0-9_]{0,30}`, unique, not reserved: `username`, `email`, `display_name`, `id`, `uuid`, `groups`, `created`), label, kind, multi-valued (not for person fields), share with apps, admin-only. For list fields, add the allowed values.
+**Create**: name (`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`, at most 31 characters: lowercase letters and digits, starting with a letter, `_` only between two of them — not at the end, not doubled; so its header name is always valid and unique; unique, not reserved: `username`, `email`, `display_name`, `id`, `uuid`, `groups`, `created`), label, kind, multi-valued (not for person fields), share with apps, admin-only. For list fields, add the allowed values.
 
 **Edit**: change the label, values (list fields; can't remove a value in use), share-with-apps and admin-only flags. Can't change kind or multi. Can't turn off admin-only while a protected group's rule uses the field (409).
 

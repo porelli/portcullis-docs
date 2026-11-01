@@ -246,6 +246,11 @@ are refused. `./portcullis up` rewrites the file in place. `secrets/` and
   `authResponseHeaders` entry from the upstream request and re-adds only the
   values oauth2-proxy and group-gate return. A client can't send its own
   `X-Forwarded-User` or `X-Auth-Request-Groups` through.
+- **No stale groups from Keycloak's cache.** Keycloak's LDAP federation runs
+  with `cachePolicy=NO_CACHE` (realm export, enforced on existing realms by
+  `./portcullis keycloak configure`): a removed membership or changed
+  attribute in LLDAP is in the user's next token (forward-auth refreshes
+  every minute), not held in a cached user until eviction or the daily sync.
 - **Identity is the LLDAP username, never the email.** LLDAP lets users edit
   their own mail, including to someone else's address. So:
     - Keycloak's LDAP federation does not trust it (`trustEmail=false`, tokens carry `email_verified=false`).
