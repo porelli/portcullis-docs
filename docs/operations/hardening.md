@@ -289,6 +289,7 @@ mounts.
 - **Identity is the LLDAP username, never the email.** LLDAP lets users edit
   their own mail, including to someone else's address. So:
     - Keycloak's LDAP federation does not trust it (`trustEmail=false`, tokens carry `email_verified=false`).
+    - Keycloak's LDAP federation has `cachePolicy=NO_CACHE` (realm export + `./portcullis keycloak configure`): group memberships and attributes are read from LLDAP on every lookup, so a removal or attribute change in LLDAP is in the next token (oauth2-proxy refreshes every minute) instead of a cached copy surviving until eviction or the daily sync.
     - oauth2-proxy's session user is always the token's `sub` (Keycloak's user UUID). Its alpha `userIDClaim` is only a deprecated alias of `emailClaim`, so it is not used (CI rejects it). Instead `oauth2-proxy/alpha.yaml` builds `X-Auth-Request-User`, `X-Forwarded-User` and `X-Auth-Request-Preferred-Username` from the `preferred_username` claim, keeps `emailClaim: email`, and accepts the unverified email (`insecureAllowUnverifiedEmail`) because nothing authorises by it.
     - group-gate reads the username **only** from `X-Auth-Request-Preferred-Username` (set by `portcullis-auth`, which must run first) and denies the request when it is missing. It never falls back to the email or `sub`.
     - Apps get `X-Forwarded-User` / `X-Auth-Request-User` = immutable username, and `X-Forwarded-Email` / `X-Auth-Request-Email` = email (display only).
@@ -328,9 +329,12 @@ signed-in user's shared custom fields, read from the Hub's
 - then `%` → `%25` and `,` → `%2C` in every value (so `Doe, Jane` stays one
   value; apps percent-decode each item), and the values are joined with `, `.
   Non-ASCII is sent as UTF-8 bytes
+- field names must match `^[a-z][a-z0-9]*(_[a-z0-9]+)*$` (at most 31
+  characters) and header names `^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$`; a field with
+  an invalid name or header name is skipped (logged), the others still get
+  their headers
 - a missing or corrupt file (logged) means no attribute headers, never a deny.
-  Header names must match `^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$` and be unique
-  case-insensitively (two fields on one header = corrupt)
+  Two fields on one header (compared case-insensitively) make the file corrupt
 
 `portcullis-groups` forwards them with
 `authResponseHeadersRegex: ^X-Forwarded-Attr-`. A headers middleware can only
