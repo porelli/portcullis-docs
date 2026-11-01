@@ -26,7 +26,8 @@ Several types recur throughout the schema:
 | *env key* | `^[A-Za-z_][A-Za-z0-9_]{0,127}$`. It becomes a key in the per-app `.env` |
 | *group* | An LLDAP group name: `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` |
 | *service* | A service name from the template's `compose.yml`: `^[a-zA-Z0-9][a-zA-Z0-9_.-]*$` |
-| `{{DOMAIN}}` | In `urls` and redirect URIs, replaced with `PORTCULLIS_DOMAIN` |
+| `{{DOMAIN}}` | In `urls` and redirect URIs, replaced with `PORTCULLIS_DOMAIN` (the main domain) |
+| `{{HOST_<ROUTER>}}` | **NEW (contract v2).** In `urls` and redirect URIs, replaced with the instance's full hostname for host router `<router>` (`<ROUTER>` as in [instances](#instances)) |
 
 **No other keys are allowed.** Every object in the schema sets
 `additionalProperties: false`, so a typo is an error, not a silently ignored
@@ -48,6 +49,7 @@ field.
 | `keycloak_clients` | list | No; required (at least one) for `native-oidc` | See [keycloak_clients](#keycloak_clients) |
 | `config_files` | list | No | See [config_files](#config_files) |
 | `urls` | list | No | See [urls](#urls) |
+| `instances` | `multi` or `single` | No (default `single`) | **NEW (contract v2).** Whether the Hub may run more than the default instance. See [instances](#instances) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
 `networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
@@ -60,8 +62,8 @@ field.
 | `sso` | `true`, `false` or `"partial"` | Yes | Whether single sign-on is supported |
 | `group_access` | boolean | Yes | group-gate restricts the app's subdomains to `access_group`. For `custom` apps only while Portcullis sign-in is in front of them (`native_login`) |
 | `group_admin` | boolean | Yes | The app maps `admin_group` to its admin role |
-| `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>` |
-| `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>` |
+| `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>`. It is the **default instance's** group; every other instance uses `users_<instance-id>` ([instances](#instances)) |
+| `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>`. The default instance's; other instances use `admin_<instance-id>` |
 | `admin_paths` | list of path prefixes | No | Paths that additionally require `admin_group` (see below) |
 | `public_access` | object | No | Public path exceptions: share-link paths the Hub can open without forward-auth (see [auth.public_access](#authpublic_access)) |
 | `native_login` | object | No | The app has its own login and no SSO (`method: custom` only); enables the Hub's Sign-in setting (see [auth.native_login](#authnative_login)) |
@@ -436,7 +438,7 @@ OIDC clients the Hub registers in Keycloak when the app is enabled. Required
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `client_id` | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | Yes | Keycloak client ID. Core clients such as `portcullis-forward-auth` are reserved |
+| `client_id` | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | Yes | Keycloak client ID of the default instance. Other instances get `<instance-id>` (first entry) and `<instance-id>-<client_id>` (further entries); compose reads the id from `PORTCULLIS_OIDC_CLIENT_ID` / `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`. Core clients such as `portcullis-forward-auth` are reserved |
 | `secret_env` | env key | Yes | The `env` entry (with `generate: random`) holding the client secret |
 | `name` | single line, non-empty | Yes | Display name in Keycloak |
 | `redirect_uri` | URI | Exactly one of the two | A single redirect URI |
@@ -444,7 +446,9 @@ OIDC clients the Hub registers in Keycloak when the app is enabled. Required
 | `email_verified_claim` | boolean | No (default `true`) | `false`: the client gets the `email-unverified` scope instead of `email`, so tokens carry `email` but no `email_verified` claim. For apps that refuse `email_verified=false` but accept the claim being absent (Vaultwarden). The app must then not request the `email` scope |
 
 Redirect URIs must match `^[a-z][a-z0-9+.-]*://\S+$`, so custom schemes such
-as `app.immich:///oauth-callback` work. `{{DOMAIN}}` is replaced.
+as `app.immich:///oauth-callback` work. `{{DOMAIN}}` and `{{HOST_<ROUTER>}}`
+are replaced; a `multi` template names its own hosts only as
+`{{HOST_<ROUTER>}}` (e.g. `https://{{HOST_IMMICH}}/auth/login`).
 
 The Hub tags each client with the template that owns it, and attaches the
 `acr` and `groups` scopes (see [Hub → Keycloak clients](../operations/hub.md#keycloak-clients)).
@@ -502,13 +506,59 @@ Links shown in the Hub.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `label` | single line, non-empty | Yes | Link text |
-| `url` | `^https?://\S+$` | Yes | URL, with `{{DOMAIN}}` replaced |
+| `url` | `^https?://\S+$` | Yes | URL, with `{{DOMAIN}}` and `{{HOST_<ROUTER>}}` replaced. A `multi` template uses `{{HOST_<ROUTER>}}` for its own hosts |
 
 ```yaml
 urls:
   - label: Vault
     url: "https://passwords.{{DOMAIN}}"
 ```
+
+## instances
+
+**NEW (contract v2).** `instances: multi` lets the Hub run several fully
+separate instances of the template, each with its own project, volumes,
+settings, secrets, Keycloak clients, groups and hostnames
+([Integration Contracts §3.1](integration-contracts.md#31-template-contract-v2-instances-and-hostname-variables-new-contract-v2)
+and [§11](integration-contracts.md#11-app-instances-hub-new-instances)).
+`single` (the default) means only the default instance, whose id is the
+template id. Keep a template `single` only when it needs host-level uniqueness
+(e.g. fixed host devices), and say why in `auth.notes`. Host ports are no
+reason: they are per-instance settings.
+
+```yaml
+instances: multi
+```
+
+**Hostname variables.** Each hostname the template serves has one *host
+router* (a rule with `Host()` alone; path-scoped routers on the same host reuse
+its variable). The Hub sets `PORTCULLIS_HOST_<ROUTER>` to the instance's full
+hostname for it; `<ROUTER>` is the router name upper-cased, with `-` and `.`
+turned into `_`. Router rules use it with the default subdomain:
+
+```yaml
+traefik.http.routers.grafana.rule: Host(`${PORTCULLIS_HOST_GRAFANA:-grafana.portcullis.local}`)
+traefik.http.routers.vaultwarden-admin.rule: Host(`${PORTCULLIS_HOST_VAULTWARDEN:-passwords.portcullis.local}`) && PathPrefix(`/admin`)
+```
+
+**Instance variables** the Hub sets for every instance (never declare them in
+`env`, `settings` or `ports`; always use the default form with the default
+instance's value):
+
+| Variable | Value |
+|----------|-------|
+| `PORTCULLIS_INSTANCE` | Instance id (the template id for the default instance) |
+| `PORTCULLIS_HOST_<ROUTER>` | Full hostname for host router `<router>` |
+| `PORTCULLIS_OIDC_CLIENT_ID` | Keycloak client id of the first `keycloak_clients` entry |
+| `PORTCULLIS_OIDC_CLIENT_ID_<KEY>` | Keycloak client id of each entry; `<KEY>` = its `client_id` upper-cased, `-`/`.` → `_` |
+| `PORTCULLIS_ACCESS_GROUP` | The instance's access group (`access_group` for the default instance, else `users_<id>`) |
+| `PORTCULLIS_ADMIN_GROUP` | The instance's admin group (`admin_group` for the default instance, else `admin_<id>`) |
+
+A `multi` template has no `${PORTCULLIS_DOMAIN}` in router rules (it may still
+use it for core hosts such as `auth.${PORTCULLIS_DOMAIN:-portcullis.local}`),
+no volume `name:` (the Hub sets `portcullis_<key>` for the default instance and
+`portcullis_<instance-id>-<key>` for the others), and no hard-coded Keycloak
+client id or group name in `compose.yml`.
 
 ## Validation
 
@@ -544,11 +594,12 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 
 - Traefik-routed services use `networks: [default, portcullis-proxy]`, and internal services stay off `portcullis-proxy`
 - `portcullis-proxy` is declared `external: true`, and no other networks are used
-- volumes declare `name: portcullis_<volume>`, unique across templates and never external
+- volumes of `single` templates declare `name: portcullis_<volume>`, unique across templates and never external; volumes of `multi` templates declare no `name:` (**NEW**, contract v2)
 
 **Variables**
 
 - core variables use their default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`
+- instance variables (`PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_*`, `PORTCULLIS_OIDC_CLIENT_ID*`, `PORTCULLIS_ACCESS_GROUP`, `PORTCULLIS_ADMIN_GROUP`) use their default form with the default instance's value, the same default at every use, and are never declared in the manifest (**NEW**, contract v2)
 - every other variable is declared in the manifest
 - required `${VAR:?}` variables are `generate: random` env entries
 
@@ -564,7 +615,8 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 
 **Routers**
 
-- every router has a rule of the form `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) ``, and no core subdomain
+- every router has a rule of the form `` Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) `` (**NEW**, contract v2), optionally `&& <path matchers>`, where `<ROUTER>` is the host router of that hostname; `single` templates may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) ``. No core subdomain
+- each hostname has exactly one host router, and no two host routers map to the same variable
 - `entrypoints: websecure`, and `tls.options` one of `authaware@file`, `public@file`, `protected@file` (`mtls` apps need `protected@file`)
 - `security-headers@file` is in the middlewares
 - `portcullis-auth@docker` and `portcullis-groups@docker` always appear together, in that order
@@ -583,6 +635,15 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 
 - header-auth apps restrict identity headers to Traefik's IP
 - nothing trusts `**`, `0.0.0.0/0`, `::/0` or the proxy subnet
+
+**Instances** (**NEW**, contract v2; `instances: multi`)
+
+- no `${PORTCULLIS_DOMAIN}` in any router rule
+- every env value, `hostname:` or label that names one of the template's own hosts uses its `PORTCULLIS_HOST_<ROUTER>` variable (no `https://<sub>.${PORTCULLIS_DOMAIN…}` for its own subdomains)
+- `urls` and redirect URIs name the template's own hosts only as `{{HOST_<ROUTER>}}`
+- no hard-coded Keycloak client id or group name in `compose.yml` (use `PORTCULLIS_OIDC_CLIENT_ID*`, `PORTCULLIS_ACCESS_GROUP`, `PORTCULLIS_ADMIN_GROUP`)
+- no router, service or middleware name starting with `portcullis-`, and no own paths under `/oauth2/`
+- bind mounts of support files are read-only (`:ro`)
 
 **Cross-template**
 
