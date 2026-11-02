@@ -277,12 +277,19 @@ manifest's [`tests.signin`](../guides/manifest-reference.md#testssignin), per ap
    any password field fails unless the manifest documents it; an outsider
    refusal when nobody could sign in is reported `inconclusive`.
 
-`expected_fail` marks known failures (reported, not fatal; a marked check that
-passes fails the run so the marker is removed). Today: the outsider check of
+`expected_fail` marks known failures: reported, not fatal, only when the
+failure matches the entry's `match` regex (evidence, page, app logs); any other
+failure or an exception fails, and a marked check that passes fails the run so
+the marker is removed. Behind group-gate (forward-auth / header-auth) only an
+HTTP 403 counts as the outsider's refusal, and each setup link must register
+exactly one passkey. Today: the outsider check of
 the native-OIDC apps with `group_access: false` that let every Portcullis user
 in (Headscale/Headplane, Immich) until the Hub restricts Keycloak clients per
 app; the member check of the apps that admit only their first user (the
-owner) and users the owner adds or approves (Actual Budget, NetBird) — the
+owner) and users the owner adds or approves (Actual Budget, NetBird); the
+member and admin checks of Nextcloud, whose HTTP client refuses a local TLD
+(`.local`) or private address for Keycloak (match: "violates local access
+rules"; its outsider check is then `inconclusive`) — the
 test never widens an app's access to make a check pass. `skip`: docs
 (public), Plex (custom, plex.tv), Vault UI (mtls). Each run starts the app
 from fresh volumes.

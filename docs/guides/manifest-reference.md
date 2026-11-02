@@ -539,7 +539,9 @@ explains it.
 | `admin` | check | Required when `auth.group_admin` is true. How to recognise admin rights |
 | `password` | string | Why a password field on the app's pages is expected (a documented own login or break-glass) |
 | `setup` | list of `{service, command, save_env, user}` or `{restart: true}` | Post-start steps an admin would do: run `command` in `service` (as `user`); with `save_env`, save the last output line as that env/setting and restart the app; `restart: true` restarts the app (a documented restart after the first start) |
-| `expected_fail` | `{member, admin, outsider}: reason` | Known failures: reported, not fatal; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
+| `expected_fail` | `{member, admin, outsider}: {reason, match}` | Known failures: reported, not fatal, only if the failure matches the `match` regex (case-insensitive; searched in the check's evidence, the page and the app's container logs / `log_files`) — any other failure or an exception fails; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
+| `refused_users` | list of usernames | Extra users in `access_group` and `admin_group` that must be refused with HTTP 403 (names the app reserves, e.g. CloudBeaver's `cbadmin-*`) |
+| `log_files` | list of `{service, path}` | Files inside the app's containers, searched by `expected_fail.match` and kept as artifacts |
 | `boot_timeout`, `timeout`, `refused_after` | seconds | Container readiness (600), per-user sign-in (240), how long the outsider is watched once on the app (45) |
 
 A **check** is one of:
@@ -562,9 +564,20 @@ tests:
   signin:
     path: /
     signed_in:
-      json: {url: /api/user, field: login}
-    admin:
-      json: {url: /api/user, field: isGrafanaAdmin, equals: true}
+      json: {url: /api/user, field: login}     # Grafana (group_admin: false: no admin check)
+```
+
+With admin rights mapped from `admin_group` (DokuWiki) and a known failure:
+
+```yaml
+tests:
+  signin:
+    path: /doku.php?do=login
+    login: ["a:has-text('Portcullis')"]
+    signed_in: {text: "{username}", absent: "Permission Denied"}
+    admin: {reach: /doku.php?do=admin, text: "Access Control List"}
+    expected_fail:
+      outsider: {reason: "no OIDC group restriction until Hub Task 4b", match: "e2eoutsider signed in"}
 ```
 
 ## instances
