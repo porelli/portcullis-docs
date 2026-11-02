@@ -49,6 +49,7 @@ field.
 | `keycloak_clients` | list | No; required (at least one) for `native-oidc` | See [keycloak_clients](#keycloak_clients) |
 | `config_files` | list | No | See [config_files](#config_files) |
 | `urls` | list | No | See [urls](#urls) |
+| `tests` | object | Yes, for templates in the default catalog (`tests.signin`; validate.py) | CI only, the Hub ignores it. See [tests.signin](#testssignin) |
 | `instances` | `multi` or `single` | No (default `single`) | **NEW (contract v2).** Whether the Hub may run more than the default instance. See [instances](#instances) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
@@ -513,6 +514,57 @@ Links shown in the Hub.
 urls:
   - label: Vault
     url: "https://passwords.{{DOMAIN}}"
+```
+
+## tests.signin
+
+How CI signs real users in to the app (`tests/e2e/app_signin.py` in the
+templates repo, run by `test-apps.yml` after the app's shell test). The Hub
+ignores `tests`. The test creates `e2eadmin` (access + admin group),
+`e2emember` (access group) and `e2eoutsider` (no group), registers the
+template's Keycloak clients and group-gate policy as the Hub would, and signs
+each in through a setup link with a virtual security key. It passes when the
+member is signed in (and not admin), the admin has admin rights and the
+outsider is refused; a visible password field fails it unless `password`
+explains it.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `skip` | string | Why the app can't be signed into in CI. Only for `public`, `custom` and `mtls` apps; then nothing else is set |
+| `path` | `^/` | Required otherwise. Page opened on the host; the setup link lands there |
+| `host` | `{{HOST_<ROUTER>}}` | Host to sign in on (default: the host of the first `urls` entry) |
+| `login` | list of Playwright selectors | The app's own SSO buttons, clicked when visible |
+| `fill` | list of `{selector, value}` | Inputs filled before clicking |
+| `signed_in` | check | Required otherwise. How to recognise the signed-in user |
+| `admin` | check | Required when `auth.group_admin` is true. How to recognise admin rights |
+| `password` | string | Why a password field on the app's pages is expected (a documented own login or break-glass) |
+| `setup` | list of `{service, command, save_env, user}` or `{restart: true}` | Post-start steps an admin would do: run `command` in `service` (as `user`); with `save_env`, save the last output line as that env/setting and restart the app; `restart: true` restarts the app (a documented restart after the first start) |
+| `expected_fail` | `{member, admin, outsider}: reason` | Known failures: reported, not fatal; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
+| `boot_timeout`, `timeout`, `refused_after` | seconds | Container readiness (600), per-user sign-in (240), how long the outsider is watched once on the app (45) |
+
+A **check** is one of:
+
+| Form | Passes when |
+|------|-------------|
+| `text: "{username}"` (+ `url: /path`) | the visible text contains it (case-insensitive) |
+| `html: "{username}"` | the page source contains it |
+| `json: {url, field, equals, contains, headers}` | `GET url` with the session's cookies answers JSON whose dotted `field` equals `equals` (default `{username}`) or is a list containing `contains` |
+| `js: "<expression>"` (+ `equals`, `url`) | the expression, evaluated in the app's page (after opening `url`, if set; may return a promise), equals `equals` (default `{username}`) |
+| `reach: /path` (+ `text`) | the path answers 2xx on the app host (and shows `text`) |
+
+Plus `wait` (seconds to poll, default 10), `url_contains` and `absent` (text
+that must not be on the page: the app's own denial, e.g. DokuWiki's
+"Permission Denied" for a session without rights). Strings may use
+`{username}`, `{email}`, `{access_group}` and `{admin_group}`.
+
+```yaml
+tests:
+  signin:
+    path: /
+    signed_in:
+      json: {url: /api/user, field: login}
+    admin:
+      json: {url: /api/user, field: isGrafanaAdmin, equals: true}
 ```
 
 ## instances

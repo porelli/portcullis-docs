@@ -314,6 +314,31 @@ compose_down "$APP_ID"
 
 See [Testing & CI](../operations/testing.md) for the helpers.
 
+### The sign-in test
+
+Every template also declares, in `manifest.yaml`, how CI signs real users in
+to it ([`tests.signin`](manifest-reference.md#testssignin)). After your shell
+test, CI creates a member, an admin and an outsider, signs each in through a
+setup link with a virtual security key and the app's own sign-in, and checks
+the member sees their username, only the admin has admin rights and the
+outsider is refused:
+
+```yaml
+tests:
+  signin:
+    path: /login
+    login: ["button:has-text('Sign in with SSO')"]   # the app's SSO button, if it has one
+    signed_in:
+      text: "{username}"
+    admin:                                         # if auth.group_admin is true
+      reach: /admin
+```
+
+`public`, `custom` and `mtls` apps set `skip: "<reason>"` instead. Dependabot
+image bumps run it too, so a new release that breaks sign-in is caught in its
+PR. On failure, the run's `e2e-<app>` artifact has a screenshot of every
+step, a Playwright trace per user and the logs.
+
 ## Step 7: Run the local checks
 
 No Docker daemon is needed:
@@ -371,4 +396,5 @@ docker compose logs group-gate | grep myapp   # DENIED / ALLOW-UNMAPPED / STEPUP
 - [ ] Header-auth: identity header trusted only from `PORTCULLIS_TRAEFIK_IP`
 - [ ] Images pinned `tag@sha256:…`; directory added to `.github/dependabot.yml`
 - [ ] `tests/apps/<app-id>.sh` added
+- [ ] `tests.signin` in `manifest.yaml` (or `skip` with the reason for public / custom / mtls apps)
 - [ ] `python3 tests/validate.py` and `tests/compose-config.sh` pass
