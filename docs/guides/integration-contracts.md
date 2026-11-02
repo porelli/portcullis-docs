@@ -732,20 +732,21 @@ Instance and domain operations live on the Hub listener only (never on the peopl
 | Route | Body | Does |
 |-------|------|------|
 | `GET /api/instances` | — | Every instance (shape below) |
-| `POST /api/instances` | `{"template": "grafana", "id": "grafana-team-a", "hosts": {"grafana": "grafana-team-a.portcullis.example.com"}}` | Create without enabling (state `created`; §11.1–11.3); `hosts` omitted = the defaults on the main domain; `201` with the instance |
-| `PUT /api/instances/{id}/hosts` | `{"hosts": {"<host router>": "<hostname>"}}` | Change hostnames (§11.3) |
-| `DELETE /api/instances/{id}` | `{"confirm": "<id>"}` | Guarded delete (§11.4) |
+| `POST /api/instances` | `{"template": "grafana", "id": "grafana-team-a", "hosts": {"grafana": "grafana-team-a.portcullis.example.com"}}` | Create without enabling (state `created`; §11.1–11.3) and its empty groups `users_<id>` / `admin_<id>` through the Users & Groups guardrails as the acting admin (who must resolve as an LLDAP administrator before anything is created; an existing group is kept with a warning; a failure creating a group removes the instance again); `hosts` omitted = the defaults on the main domain; `201` with the instance plus `"warnings": [...]` |
+| `GET /api/instances/defaults?template=<t>&id=<id>&domain=<d>` | — | For the hostname editor: `{"template", "id", "domain", "multi", "legacy", "routers": [{"router", "subdomain", "immutable"}], "domains": [{"name", "main", "state", "assignable"}], "hosts": {"<router>": "<pre-filled hostname>"}}` — the main domain first, then the enrolled domains (`assignable` only when `ready`); `hosts` are the pre-filled hostnames of `id` on `domain` (default: the main domain; §11.3), empty for an invalid id; an unknown `domain` is `400` |
+| `PUT /api/instances/{id}/hosts` | `{"hosts": {"<host router>": "<hostname>"}}` | Change hostnames (§11.3); `200` with the instance |
+| `DELETE /api/instances/{id}` | `{"confirm": "<id>"}` | Guarded delete (§11.4); `200` with `{"backup": "<archive>", "warnings": [...]}` |
 | `GET /api/backups` | — | Every archive under `<data>/backups/`, deleted instances' included (shape below) |
 | `GET /api/instances/{id}/backups` | — | The same, for one instance id |
 | `POST /api/instances/{id}/backups` | — | Back up now (§11.5); `201` with the backup entry |
-| `POST /api/instances/{id}/restore` | `{"archive": "grafana-team-a/20261102T153000Z.tar"}` | Restore into the same instance (§11.6); the archive must belong to `{id}` |
-| `POST /api/instances/restore` | `{"archive": "grafana-team-a/20261102T153000Z.tar", "id": "grafana-team-c"}` | Restore into a new instance (§11.6); default hostnames |
+| `POST /api/instances/{id}/restore` | `{"archive": "grafana-team-a/20261102T153000Z.tar"}` | Restore into the same instance (§11.6); the archive must belong to `{id}`; `200` with `{"pre_restore_backup": "<archive>", "warnings": [...]}` |
+| `POST /api/instances/restore` | `{"archive": "grafana-team-a/20261102T153000Z.tar", "id": "grafana-team-c"}` | Restore into a new instance (§11.6); default hostnames; `201` with `{"warnings": [...]}` |
 | `GET /api/domains` | — | The domains service's list (§12.2), passed through; `503` with `{"error": "…", "domains": [<last known list>]}` while it is unreachable, plus `"disabled": true` without a readable secret file |
 | `POST /api/domains` | `{"name": "team-b.example.org", "provider": "cloudflare", "credentials": {"api_token": "…"}}` | Enroll (§12.3); `202` with the domain object |
 | `POST /api/domains/{name}/token` | `{"provider": "cloudflare", "credentials": {…}}` | Replace the credentials; `202` with the domain object |
 | `DELETE /api/domains/{name}` | — | Remove; `204`, or `200` with the service's `{"warning"}`; `409` while any instance uses the domain |
 
-`archive` is always `<instance-id>/<timestamp>.tar`, relative to `<data>/backups/`; anything else is `400`.
+`archive` is always `<instance-id>/<timestamp>.tar`, relative to `<data>/backups/`; anything else is `400`. Errors are plain text, or for a failed lifecycle step (`OpError`) JSON `{error, op, output, hint, rolled_back}`; `409` covers refusals and a busy instance (another operation holds its lock), `507` too little free space (§11.5). Bodies are strict JSON (unknown fields: `400`). Backups and restores run synchronously within the request.
 
 `GET /api/instances` returns, sorted by `id`:
 
