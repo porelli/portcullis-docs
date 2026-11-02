@@ -251,8 +251,8 @@ user must be able to run docker.
 ### restore
 
 ```
-portcullis restore [--yes] <backup-dir>
-portcullis restore [--yes] --from-offsite [SNAPSHOT]
+portcullis restore [--yes] [--allow-empty-lldap] <backup-dir>
+portcullis restore [--yes] [--allow-empty-lldap] --from-offsite [SNAPSHOT]
 portcullis restore --list [--offsite]
 ```
 
@@ -264,7 +264,10 @@ Stops Portcullis and restores a backup made by `portcullis backup` or
 - the Keycloak database: `pg_restore` into a fresh Postgres
 - the LLDAP, Hub and ACME volumes
 
-Then everything is started again. The backup's checksums are verified first.
+Then everything is started again — unless LLDAP has no users while the
+restored Keycloak database has some: then it stops with Postgres and Vault up
+(Keycloak would delete those users' copies and passkeys at their next lookup;
+see [Backups](backups.md#restore)). The backup's checksums are verified first.
 The current `.env`, `secrets/` and `certs/` are saved to
 `backups/pre-restore-<timestamp>/`.
 
@@ -276,6 +279,7 @@ the backup.
 | Option | Meaning |
 |--------|---------|
 | `-y`, `--yes` | Do not ask for confirmation |
+| `--allow-empty-lldap` | Start even if LLDAP has no users (their Keycloak copies and passkeys are then removed) |
 | `--from-offsite` | Restore from the restic repository |
 | `--list` | List local backups (`--offsite`: restic snapshots) |
 

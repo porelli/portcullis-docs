@@ -173,9 +173,23 @@ Portcullis and:
 2. Recreates the Postgres and Vault volumes, and `pg_restore`s the Keycloak database into the fresh Postgres.
 3. Initialises the fresh Vault with throwaway keys, then force-restores the raft snapshot, which brings back the original keyring. It installs the backed-up `secrets/` and recreates Vault, which auto-unseals with the **original** unseal key.
 4. Restores the LLDAP, Hub and ACME volumes.
-5. Runs `vault init`, which refreshes the enroll AppRole secret and the metrics token. Then it starts everything and waits for Vault, Postgres, LLDAP and Keycloak.
+5. **Checks LLDAP before Keycloak starts.** Keycloak deletes its copy of an LDAP
+   user — passkeys included — as soon as a lookup (a sign-in attempt, the Hub's
+   cleanup) doesn't find the user in LLDAP. If LLDAP has no users besides
+   `admin` and `portcullis-hub` (or no user database at all, e.g. a backup
+   without `lldap_data.tar.gz` on a new host) while the restored Keycloak
+   database has users, the restore **stops here**: Postgres and Vault are up,
+   nothing else is started. Restore a backup that includes LLDAP, or, if the
+   users really are gone, re-run with `--allow-empty-lldap`.
+6. Runs `vault init`, which refreshes the enroll AppRole secret and the metrics token. Then it starts everything and waits for Vault, Postgres, LLDAP and Keycloak.
 
 Use `--yes` to skip the confirmation.
+
+!!! warning "Restore LLDAP before Keycloak runs"
+    Never start the stack with an empty or wrong LLDAP database over a Keycloak
+    database that has users: every user's Keycloak copy and passkeys go at the
+    next sign-in attempt. `restore` checks this; the Hub's stale-record cleanup
+    pauses itself when LLDAP looks wrong ([Hub](hub.md#stale-keycloak-records-admins-only)).
 
 ### On a new host
 

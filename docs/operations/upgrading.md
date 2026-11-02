@@ -218,8 +218,10 @@ the same notes in its `CHANGELOG.md`.
   account `portcullis-hub` is filtered out of the federation on purpose.
   **Never start the stack with an empty or wrong LLDAP database** (a lost
   `lldap_data` volume): Keycloak would then remove every user's copy,
-  passkeys included. Restore LLDAP from a backup first
-  ([Backups](backups.md)).
+  passkeys included, at their next sign-in attempt. Restore LLDAP from a
+  backup first ([Backups](backups.md#restore): `restore` refuses to start
+  Keycloak over an empty LLDAP). The Hub's cleanup pauses itself when LLDAP
+  looks wrong ([Stale Keycloak records](hub.md#stale-keycloak-records-admins-only)).
 - **Failed hostname changes are not re-applied.** The Hub now keeps the last
   hostname change in its own record. A hostname change that failed under an
   older Hub isn't re-applied after the upgrade: repeat it once (save the same
