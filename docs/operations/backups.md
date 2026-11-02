@@ -38,14 +38,23 @@ A backup is built in `backups/<timestamp>.partial/` and renamed to
 
 App data in Hub-managed apps (their own `portcullis_*` volumes) is **not** part
 of the core backup.
-Back those up per app instance in the Hub (an instance backup: its volumes,
-env with the generated secrets, overrides and settings, in
-`<hub data>/backups/<instance>/<UTC timestamp>.tar`; the Hub also takes one
-before every delete and every restore — [integration contracts
-§11.5](../guides/integration-contracts.md#115-backups)). Those archives live in
-`hub_data`, so the core backup (and `--offsite`) includes every instance
-backup taken so far. They are never pruned automatically and hold app secrets
-in clear: protect them like the rest of the backup.
+Back those up per app instance in the Hub (**instance backups**): the Hub's
+**Backups** tab (per instance) can back up, restore and delete instances
+([Hub Management](hub.md#instance-backups)). An instance backup archives:
+
+- the instance's Docker volumes (via helper containers, with owner uid/gid preserved)
+- its state, settings, `.env` (including generated secrets), custom override and published policy
+
+These are stored in `<hub data>/backups/<instance-id>/<UTC timestamp>.tar`
+(sha256-checksummed). The Hub also takes an automatic backup before every
+instance restore and delete. Instance backups live in `hub_data`, so the **core
+backup** (and `--offsite`) includes every instance backup taken so far. They are
+never pruned automatically and hold app secrets in clear: protect them like the
+rest of the backup.
+
+An instance backup can be restored into the same instance (replacing its data)
+or into a **new instance id** (creating a copy). See [integration contracts
+§11.5](../guides/integration-contracts.md#115-backups).
 
 !!! note "First backup on a fresh host"
     On a host without the `group-gate` image (a fresh install before the first `portcullis up`, or after `docker image rm`), `./portcullis backup` builds it first (needs network access to Docker Hub and PyPI for the pinned, hashed Python dependencies: cryptography, PyJWT).

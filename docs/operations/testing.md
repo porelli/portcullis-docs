@@ -92,6 +92,30 @@ the internal PKI) and verifies:
 - **Socket proxies.** A real `docker compose` project runs through
   `socket-proxy-hub`, and the denied sections (build, swarm, plugins, secrets,
   system, ...) fail. Traefik's proxy is read-only.
+- **Domains service (Pebble e2e).** The image is built with `GO_TAGS=testprovider`
+  (adds provider `fake` with records in memory + a DNS server on `:8053`). CI
+  runs Pebble (`-dnsserver domains:8053`) and configures the service to use
+  `fake`, Pebble's minica root, and `DOMAINS_RESOLVERS=127.0.0.1:8053`. It checks:
+    - enrolling a domain, the records check, ACME DNS-01 order, serving the certificate
+    - `DELETE` stops serving it
+    - the served document contains only `tls.certificates` (no routers, services, middlewares)
+    - every served certificate's SANs are exactly `{<d>, *.<d>}` for an enrolled domain
+    - Traefik picks up the certificate by SNI within ~25 s without restarting (`StartedAt` unchanged)
+    - core hosts still serve the main-domain certificate, never a certificate from the HTTP provider
+    - Traefik's API lists no `@http` object (routers, services, middlewares, serverstransports)
+    - mTLS refusal: the endpoint refuses requests without the client certificate
+    - a kept domain survives backup/restore
+  
+  **The production image is built without `testprovider`** (no fake provider).
+
+- **Live Keycloak access role test (opt-in).** When `PORTCULLIS_KEYCLOAK_LIVE_URL`
+  (e.g. `http://keycloak:8080`) and `PORTCULLIS_KEYCLOAK_LIVE_WIPE=portcullis`
+  are set, the Hub runs `TestLiveClientAccess`: it **wipes realm `portcullis`**,
+  rebuilds it from the export, creates an LDAP group and a test client with the
+  access role enforced, and drives the flow to verify the role is checked and
+  fails closed. This is the live proof of contract §8. It requires a running
+  Keycloak and is off by default.
+
 - **Hub**
     - runs as non-root
     - talks to Docker only via its proxy

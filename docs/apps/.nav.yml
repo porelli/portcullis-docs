@@ -1,8 +1,20 @@
 nav:
   - Overview: index.md
   - 🤖 LiteLLM: litellm.md
+  - 💬 Matrix (Synapse + Element): matrix.md
+  - 📏 CADCraft: cadcraft.md
+  - 📐 DesignCraft: designcraft.md
+  - 🎬 EffectCraft: effectcraft.md
+  - 🧩 FigCraft: figcraft.md
+  - 🎞 FilmCraft: filmcraft.md
+  - 🌅 LightCraft: lightcraft.md
+  - 📷 PhotoCraft: photocraft.md
+  - 🎚 SoundCraft: soundcraft.md
+  - 🧱 TextureCraft: texturecraft.md
+  - 🖋 VectorCraft: vectorcraft.md
   - 🗃 CloudBeaver: cloudbeaver.md
   - 🦊 GitLab: gitlab.md
+  - 🍵 Gitea: gitea.md
   - 💰 Actual Budget: actual-budget.md
   - 💸 Firefly III: firefly-iii.md
   - 📷 Immich: immich.md
@@ -12,10 +24,17 @@ nav:
   - 💾 Scrutiny: scrutiny.md
   - 🛡 AdGuard Home: adguard.md
   - 🚫 Pi-hole: pihole.md
+  - 🔍 Craft Anything: craft-anything.md
+  - 📽 DeckCraft: deckcraft.md
   - 📝 DokuWiki: dokuwiki.md
+  - 🧮 GridCraft: gridcraft.md
   - 📋 Kanboard: kanboard.md
+  - 🍽 Mealie: mealie.md
   - ☁ Nextcloud: nextcloud.md
+  - 📄 Paperless-ngx: paperless.md
+  - 📄 PdfCraft: pdfcraft.md
   - 📖 Wiki.js: wiki.md
+  - 📝 WordCraft: wordcraft.md
   - 📄 Docs Site: docs.md
   - 🖥 Apache Guacamole: guacamole.md
   - 🔒 Vault UI: vault-ui.md

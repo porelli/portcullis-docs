@@ -11,7 +11,7 @@
 |----------|-------|
 | **Method** | `native-oidc` |
 | **SSO** | :white_check_mark: Yes |
-| **Group Access** | :x: |
+| **Group Access** | :white_check_mark: |
 | **Group Admin** | :x: |
 | **Access Group** | `users_netbird` |
 | **Admin Group** | `admin_netbird` |

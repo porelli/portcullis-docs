@@ -23,6 +23,8 @@ The main view lists every template from every [template source](#template-source
 | **Method** | `forward-auth`, `native-oidc`, `header-auth`, `mtls`, `custom` or `public` |
 
 - whether the app is enabled and running
+- **+ Add instance** button (for `instances: multi` templates): create additional
+  independent deployments with their own data and settings. See [App instances](#app-instances).
 
 ### Enabling an app
 
@@ -358,6 +360,316 @@ The router is generated from the manifest, not shipped in `compose.yml`: only
 the Hub knows whether the exception is on, which shares are listed and which
 TLS tier the host gets, and a template can't open paths by itself.
 
+## App instances
+
+A template can run as multiple fully independent **instances**. Each instance has its own:
+
+- compose project, containers and volumes (data is never shared)
+- settings, environment variables and generated secrets
+- Keycloak clients (one per manifest `keycloak_clients` entry)
+- access and admin groups (`users_<id>`, `admin_<id>`)
+- auth policy, public exceptions and sign-in mode
+- drift tracking and last-operation record
+
+Templates declare `instances: multi` or `instances: single` in their manifest.
+**Multi** templates show **+ Add instance** on their card and can be instantiated
+as many times as needed. **Single** templates run only as their default instance
+(e.g., templates that bind fixed hardware).
+
+### Default instance
+
+Every template has a **default instance** whose id is the template id itself. For
+existing enabled apps, nothing changes: they are their template's default
+instance, with today's project name, hostnames, groups and volumes. No migration
+is needed.
+
+### Creating an instance
+
+On a multi-instance template card, click **+ Add instance**. A dialog shows:
+
+- **Instance ID** (required): a DNS label (`^[a-z][a-z0-9-]{0,30}$`), pre-filled
+  as `<template>-<suffix>` (e.g. `grafana-team-a`). It may not start with
+  `portcullis` or duplicate any template id or instance id.
+
+- **Domain**: select the main domain or an enrolled extra domain (see
+  [Enrolling extra domains](#enrolling-extra-domains)).
+
+- **Hostnames**: one per host router the template serves (e.g. `grafana`,
+  `grafana-api`). Pre-filled from the instance name and domain as
+  `<subdomain>-<suffix>.<domain>` (truncated to 63 characters). Each hostname
+  is individually editable.
+
+The Hub refuses:
+
+- an instance id that is already a template id (from any source), another
+  instance's id, or a running compose project name `portcullis-<id>`
+- derived names (project, volumes, groups, Keycloak clients) that collide with
+  another instance's or template's default instance, case-insensitively
+- hostnames that collide with core subdomains (`auth`, `hub`, `people`, …), the
+  apex `<domain>`, `<core sub>.<domain>`, another instance's hostnames, or
+  enrolled domain names themselves
+- hostnames on an enrolled domain that is not in state `ready` (records not OK
+  or certificate expired)
+- an instance of a single-only template (409, "This template runs only as one instance")
+
+After validation, the Hub:
+
+1. Creates the access and admin groups (`users_<id>`, `admin_<id>`) as empty
+   LLDAP groups, owned by the acting administrator
+2. Generates the instance `.env` with instance-scoped variables:
+   - `PORTCULLIS_INSTANCE=<id>`
+   - `PORTCULLIS_HOST_<ROUTER>=<hostname>` (one per host router)
+   - `PORTCULLIS_OIDC_CLIENT_ID[_<KEY>]=<id>[-<key>]` (per Keycloak client)
+   - `PORTCULLIS_ACCESS_GROUP=users_<id>`
+   - `PORTCULLIS_ADMIN_GROUP=admin_<id>`
+3. Generates the compose override (volumes, host ports, Traefik labels with
+   renamed routers/services/middlewares for non-default instances, TLS tiers)
+4. Registers Keycloak clients with redirect URIs for the instance's hostnames
+5. Runs `docker compose up` (creates, then starts)
+6. Publishes the instance's policy to group-gate
+7. Records the instance as `state: created` (or enabled if the up succeeded)
+
+The instance is listed in the template card's **Instances** section and in the
+**App Catalog → Instances** table.
+
+### Instance detail
+
+Click an instance chip or row to open its detail panel. Non-default instances
+have tabs:
+
+- **Overview**: id, template, hostnames (see [Changing hostnames](#changing-hostnames)),
+  state, groups, last operation
+- **Settings**, **Logs**, **Expert**: same as the default instance (see
+  [App detail panel](#app-detail-panel)), but instance-scoped
+- **Backups**: see [Instance backups](#instance-backups)
+- **Delete**: see [Deleting an instance](#deleting-an-instance)
+
+The default instance's detail is the template detail, as before.
+
+### Changing hostnames
+
+An instance's hostnames can be changed at any time (enabled or not) on the
+**Overview** tab. Each hostname is individually editable. Hostnames must be:
+
+- valid hostnames (at most 253 characters, `<label>.<domain>` where each label
+  is `[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?`)
+- either `<label>.<main domain>` or `<d>` / `<label>.<d>` for an enrolled domain
+  `<d>` that is in state `ready` (records OK, valid certificate)
+- not already used by another instance, a core subdomain, or the enrolled domain
+  names themselves
+
+Some templates mark host routers as **immutable** (`hosts.immutable` in the
+manifest): their hostnames cannot be changed after the instance is created. This
+is for apps that store their own URL in their database (e.g. Matrix homeserver
+domain).
+
+When you save, the Hub:
+
+1. Validates the new hostnames (collision checks, enrolled-domain state)
+2. Updates the instance's Keycloak clients' redirect URIs and web origins, and
+   the extra-domain sign-in callback URIs (see [Cross-domain sign-in](#cross-domain-sign-in))
+3. Regenerates the instance's `.env` and compose override with the new hostnames
+4. Saves the instance state (**commit point** — if this succeeds, the old
+   hostnames are gone)
+5. Publishes the new policy to group-gate and updates the portal
+6. Restarts the instance if it is enabled
+
+The change is audited as `instance.update` with the acting administrator. If
+step 6 fails, the instance's last-operation record shows `op: hosts` and the
+error; the new hostnames are already in effect, but the app is not running with
+them — retrying **Save hostnames** re-applies everything.
+
+**Changing the main domain** (`PORTCULLIS_DOMAIN` in core's `.env`) moves every
+default instance's hostnames to the new domain, which **breaks apps that store
+their own URL** (e.g. Matrix, GitLab). See [DNS Configuration](../setup/dns.md).
+
+### Enrolling extra domains
+
+The **Settings → Domains** section (Hub admins only) lists enrolled domains and
+their status. To enroll a domain:
+
+1. Click **+ Enroll domain**
+2. Enter the domain name (e.g. `team-a.example.org` or `team-a.<main domain>`)
+3. Select the DNS provider (Cloudflare, Porkbun, Route 53, DigitalOcean, Hetzner)
+4. Paste the provider's API token or credentials
+
+The Hub sends the credentials **once** to the domains service (see
+[Domains service](#domains-service)) and never stores them in its own state,
+logs, audit or errors. The domains service:
+
+- stores them encrypted at rest with an age key
+- creates `<d>` and `*.<d>` DNS records (A, and AAAA if the server has IPv6)
+- obtains a Let's Encrypt wildcard certificate for `*.<d>` and `<d>` via DNS-01
+- renews the certificate 30 days before expiry
+- publishes the certificate to Traefik via its HTTP provider
+
+The domain is listed with:
+
+- **Records**: OK (both public resolvers 1.1.1.1 and 8.8.8.8 answer with the
+  server's addresses) or the last error
+- **Certificate**: valid until (RFC 3339), or "none" / "expired"
+- **State**: `pending` → `records` → `issuing` → `ready`, or `renewing` (< 30
+  days left), or `error` (retried with backoff)
+
+A domain is **assignable** (usable for instance hostnames) only while `records_ok`
+is true, the certificate is valid and the domains service is reachable. Existing
+hostnames on a domain that stops being assignable are kept, but new assignments
+and hostname changes to it get HTTP 503.
+
+**Replacing the token**: click **Replace token** on the domain, paste the new
+credentials and save. The domains service re-runs the records step and, if
+needed, issuance.
+
+**Removing a domain**: click **Remove** on the domain. The Hub refuses (409)
+while any instance has a hostname on it. After the Hub's check, the service
+removes the DNS records (and retries once on failure) and stops serving the
+certificate.
+
+Credentials reach the domains service over an internal API with a shared bearer
+secret, never through the Hub's logs, state, errors or API responses. The
+domains service stores them in one age-encrypted file with its ACME account and
+certificates (the age key is in core's `secrets/`, so the encrypted backup must
+be protected like Vault's). See [Domains service](#domains-service) and
+[Security & Hardening](hardening.md#domains-service).
+
+### Cross-domain sign-in
+
+Portcullis supports single sign-on across the main domain and enrolled domains
+with **no extra key touch** (like Amazon Midway). When a signed-in user opens an
+instance on an enrolled domain:
+
+1. The instance's Traefik router uses `portcullis-auth-ext@docker`, a second
+   oauth2-proxy service (`forward-auth-ext`) that runs alongside `forward-auth`
+2. `forward-auth-ext` redirects to Keycloak with a relative callback
+   `/oauth2/callback` (resolved to `https://<enrolled host>/oauth2/callback`)
+3. The user's existing Keycloak session at `auth.<main domain>` satisfies the
+   sign-in **silently** (no prompt) unless the instance's policy needs a stronger
+   factor than the session has (then it prompts for step-up, as on the main
+   domain)
+4. Keycloak redirects back to `https://<enrolled host>/oauth2/callback`
+   (the Hub maintains these URIs in the `portcullis-forward-auth` client's
+   redirect URIs)
+5. `forward-auth-ext` sets a **host-only** session cookie `__Host-portcullis_ext`
+   (the `__Host-` prefix: browsers accept it only `Secure`, without `Domain`,
+   with `Path=/`, so sibling hosts can't plant or widen it)
+6. The user reaches the app
+
+**Key points**:
+
+- The main-domain cookie (`.<main domain>`) and host-only enrolled-domain cookies
+  (`__Host-portcullis_ext`) coexist without interfering
+- The Hub adds a sign-in router `portcullis-oauth2-<id>_<router>` per
+  extra-domain host: `Host(<host>) && PathPrefix(/oauth2/)` → `forward-auth-ext`
+- Core never routes to extra domains: the portal, Hub, people, auth, directory,
+  enroll, traefik and metrics pages exist only on the main domain
+- Both oauth2-proxy services use PKCE (S256) as required by the Keycloak client
+
+### Instance backups
+
+**Admin-only.** The Hub can back up any instance on demand or before a restore /
+delete. A backup archives:
+
+- the instance's **Docker volumes** (using helper containers, never starting
+  them, with the owner uid/gid preserved)
+- its state, settings, `.env`, custom override and published policy
+
+Backups are stored in `<data>/backups/<instance-id>/<YYYYMMDDTHHMMSSZ>.tar`
+(sha256-checksummed). Core's `./portcullis backup` includes the `backups/`
+directory, so `--offsite` ships instance backups too.
+
+**To back up an instance**:
+
+1. Open the instance detail (or the template detail for the default instance)
+2. Go to the **Backups** tab
+3. Click **Back up now**
+
+A running instance is **stopped** (`docker compose down`) during the backup for
+database consistency, then started again. The backup is listed with its timestamp,
+size and result. A failed backup shows the error.
+
+**Free space**: the Hub checks free space before starting (> 2 GB margin on the
+data volume); if there isn't enough it refuses with HTTP 507.
+
+### Restoring an instance
+
+**Admin-only.** A backup can be restored into the same instance (replacing its
+data and settings) or into a **new instance id** (creating a copy).
+
+**Same instance**:
+
+1. Go to **Backups** tab
+2. Click **Restore** on a backup row
+3. Confirm
+
+The Hub:
+
+1. Takes a **pre-restore backup** of the current state
+2. Marks the instance `restoring` (while in this state, enable / settings / other
+   operations are refused with HTTP 409)
+3. Removes the instance's volumes and recreates them from the archive
+4. Restores env, override and settings (hostnames are kept)
+5. Clears `restoring` or, if any step failed, rolls back from the pre-restore
+   backup
+
+While `restoring`, if the Hub or the process crashes, the next `Init` or
+`RestoreInstance` call **rolls back** from the pre-restore backup automatically.
+A failed restore leaves an `OpError` with `op: restore` and `rolled_back: true`.
+
+**New instance**:
+
+1. Go to **Backups** tab
+2. Click **Restore as new** on a backup row
+3. Enter a new instance id
+4. Review the pre-filled hostnames (the backup's hostnames with the new suffix)
+5. Confirm
+
+The Hub:
+
+- creates the new instance in `state: created`
+- recreates volumes, env, override
+- regenerates client secrets (`secret_env`)
+- creates groups (`users_<new-id>`, `admin_<new-id>`) as empty, owned by the
+  acting administrator
+- updates Keycloak clients with the new id and hostnames
+
+Immutable-host routers: the Hub refuses (409) if the backup's hostnames for
+immutable routers don't match the new instance's pre-filled ones (you can't
+restore a Matrix instance with a different homeserver domain).
+
+Both forms are audited as `instance.restore` with the acting administrator and
+the archive path.
+
+### Deleting an instance
+
+**Admin-only, guarded.** Deleting an instance:
+
+1. Takes an automatic backup (stored in `backups/<id>/`)
+2. Marks the instance `deleting` (other operations refused with HTTP 409)
+3. Runs `docker compose down` and removes volumes
+4. Removes the Keycloak clients (only those owned by this instance), the access
+   role (if any), and extra-domain sign-in callback URIs for this instance's hosts
+5. Deletes groups **only if they are not shared** with another instance or
+   template, and are not built-in, administrator, permission or rule groups
+6. Removes env, override, settings, ops records and the state entry
+
+**To delete**:
+
+1. Open the instance detail
+2. Click **Delete instance**
+3. Type the instance id to confirm
+4. Click **Delete**
+
+The operation is audited as `instance.delete`. If any step fails after the
+backup, the instance stays in `state: deleting` and the error is shown; a retry
+continues from where it left off (it does not take another backup).
+
+The automatic backup is listed in the **App Catalog → Backups** dialog with a
+`reason: delete` label. The Hub shows the backup path and warnings (e.g., if
+some groups were kept because they're shared, or if no IdP is configured so
+client deletion was skipped).
+
+Deleting the default instance deletes the template's deployment, just like
+disabling it did before instances existed.
 ## Settings tab (global)
 
 - **Default access policy.** Applies to every app without its own policy.
@@ -795,14 +1107,21 @@ sources you trust.
   the Hub can grant `lldap_admin`. That adds nothing to what it can already
   do: through its socket proxy it is host-root-equivalent. Every change is
   attributed to the signed-in admin and audited.
+- **Domains service.** The Hub enrolls extra domains through core's `domains`
+  service (a separate Go service). Credentials are sent to the service once over
+  an internal API (bearer secret) and never appear in the Hub's state, logs,
+  audit or errors. The service stores them encrypted at rest with an age key.
+  The Hub reads only domain status (records OK, certificate expiry) from the
+  service's API. See [Domains service](#domains-service) below.
 - **Timeouts.** compose up 15 min, compose down 5 min, shell 15 min, git 5 min.
-- **Policy file.** The Hub writes `group-gate-policy.json` (version 3)
-  atomically to `hub_data`. It is keyed **by subdomain only**:
-    - `policies` for apps with an override (apps that inherit publish nothing;
-      group-gate uses `default`)
-    - `groups` for enabled apps with `group_access: true`
+- **Policy file.** The Hub writes `group-gate-policy.json` (version 5)
+  atomically to `hub_data`. It is keyed **by full hostname**:
+    - `policies` for instances with an override (instances that inherit publish
+      nothing; group-gate uses `default`)
+    - `groups` for enabled instances with `group_access: true`
     - `path_groups` from `auth.admin_paths`
-    - core subdomains are never published
+    - `extra_domains` lists enrolled domains
+    - core hosts are never published (they come from `group-gate-map.conf`)
 
     The format is defined in [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
 
@@ -830,6 +1149,71 @@ cosign verify ghcr.io/porelli/portcullis-hub:<tag> \
 ```
 
 ## Common tasks
+## Domains service
+
+The Hub enrolls extra domains (beyond the main domain) through core's **domains**
+service. See [Enrolling extra domains](#enrolling-extra-domains) above for the
+operator workflow.
+
+### How it works
+
+The domains service is a separate Go service that:
+
+- **Receives enrollment requests** over an internal HTTP API (bearer secret at
+  `HUB_DOMAINS_SECRET_FILE`, shared with the Hub)
+- **Stores DNS credentials encrypted** at rest with an age key
+  (`secrets/domains/age.key`). The encrypted store (`domains_data/store.age`)
+  is in core backups, so protect it like Vault's raft snapshot.
+- **Creates DNS records** (`<d>` and `*.<d>`: A, and AAAA if the server has IPv6)
+  via provider APIs (Cloudflare, Porkbun, Route 53, DigitalOcean, Hetzner)
+- **Obtains wildcard certificates** for each enrolled domain via ACME DNS-01
+- **Serves certificates to Traefik** via its HTTP provider (inline PEM, polled
+  every 10 s), with mutual TLS authentication
+
+Credentials are sent to the service **once** and never appear in the Hub's state,
+logs, audit or errors. The service redacts provider errors (which may echo tokens)
+before logging or returning them. The Hub reads only domain status from the service:
+
+- `records_ok` (A/AAAA verified at 1.1.1.1 and 8.8.8.8)
+- `cert_not_after` (RFC 3339)
+- `last_error`
+- `state` (pending, records, issuing, ready, renewing, error)
+
+The Hub stores this status in `state.yaml` (no credentials).
+
+### Network isolation
+
+The service sits on three isolated networks:
+
+- **`portcullis-domains`**: domains + Hub (internal, fixed subnet
+  `172.31.252.0/28`). The API accepts connections only addressed to this subnet
+  or loopback.
+- **`domains-egress`**: domains only. It reaches ACME and DNS providers over
+  this, isolated from other services.
+- **`portcullis-certs`**: domains + Traefik (internal). The certificate endpoint
+  (`:8443`) uses mutual TLS with a private CA.
+
+Traefik never routes the domains service.
+
+### Certificate endpoint
+
+Traefik fetches certificates from `https://domains:8443/traefik/dynamic` via its
+HTTP provider. The endpoint:
+
+- **Requires and verifies** a client certificate (TLS `RequireAndVerifyClientCert`
+  against a private CA generated by `./portcullis init`)
+- **Returns only** `tls.certificates` with inline PEM (cert chain + key), never
+  routers, services, middlewares or other Traefik config
+- **Checks every certificate's SANs** before serving: they must be exactly `<d>`
+  and `*.<d>` for an enrolled domain `<d>`, never the main domain or any host at
+  or under it (except enrolled subdomains of the main domain themselves)
+
+Certificates and keys are never on a shared volume.
+
+See [Integration Contracts](../guides/integration-contracts.md) §12 (Domains service)
+and [Security & Hardening](hardening.md#domains-service) for complete details.
+
+
 
 ### Changing an app's subdomain or middlewares
 

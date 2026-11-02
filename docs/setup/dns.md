@@ -221,3 +221,31 @@ For local development without a real domain or ACME:
 
 !!! note
     mTLS with client certificates works the same way locally. The only difference is the server certificate is self-signed instead of from Let's Encrypt.
+
+## Enrolling extra domains
+
+Beyond the main domain, Portcullis can serve **extra domains** with their own
+wildcard certificates. Extra domains are enrolled through the Hub's
+**Settings → Domains** section (see [Hub Management](../operations/hub.md#enrolling-extra-domains)).
+
+Each enrolled domain:
+
+- has its own A/AAAA records (`<d>` and `*.<d>`) managed by the domains service
+- gets its own Let's Encrypt wildcard certificate via DNS-01
+- can host app instances with hostnames on that domain
+
+**Supported providers**: Cloudflare, Porkbun, Route 53, DigitalOcean, Hetzner
+(the same list as the main domain's `dns setup`, minus `none`).
+
+**Enrolled subdomains of the main domain** (e.g. `team-a.<main domain>`) are
+allowed. This lets you delegate zones of your main domain to Portcullis without
+changing the main domain's DNS setup. The enrolled subdomain gets its own
+wildcard certificate, and app instances on it use the cross-domain sign-in flow
+(see [Hub Management](../operations/hub.md#cross-domain-sign-in)).
+
+**Core services stay on the main domain**: the portal, Hub, people, auth,
+directory, enroll, traefik and metrics pages are never served on extra domains.
+
+**Removing an enrolled domain** is allowed only when no app instance has a
+hostname on it. The domains service removes the DNS records it created (and
+retries once on failure).
