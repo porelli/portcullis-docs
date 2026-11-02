@@ -36,4 +36,4 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Access URLs
 
-- **Vault UI**: `https://vault.{{DOMAIN}}`
+- **Vault UI**: `https://{{HOST_VAULT_UI}}`

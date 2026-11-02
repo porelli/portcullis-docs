@@ -46,4 +46,4 @@ User-configurable options available in the Hub UI:
 
 ## Access URLs
 
-- **Kanboard**: `https://kanboard.{{DOMAIN}}`
+- **Kanboard**: `https://{{HOST_KANBOARD}}`

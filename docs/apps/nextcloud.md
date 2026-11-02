@@ -9,20 +9,20 @@
 
 | Property | Value |
 |----------|-------|
-| **Method** | `forward-auth` |
-| **SSO** | :x: No |
+| **Method** | `native-oidc` |
+| **SSO** | :white_check_mark: Yes |
 | **Group Access** | :white_check_mark: |
-| **Group Admin** | :x: |
+| **Group Admin** | :white_check_mark: |
 | **Access Group** | `users_nextcloud` |
 | **Admin Group** | `admin_nextcloud` |
 | **Subdomain** | `cloud` |
 
 !!! info "Auth Notes"
-    Access gated by forward-auth + group-gate; Nextcloud then shows its own login (admin account uses NEXTCLOUD_ADMIN_PASSWORD). No OIDC app is installed yet. Desktop/mobile sync clients and WebDAV cannot pass the forward-auth redirect. Nextcloud does not read the Portcullis identity headers (no user_oidc / header login), so the user-editable LLDAP email plays no part in which Nextcloud account is used. Public exceptions (Hub, off for every share until listed): only the listed share links and the static files their page needs bypass the gateway; logins (Basic auth, remember-me cookies) are not honoured there. The PDF viewer page (a PHP route) is not public, so PDFs on a share download instead of opening inline; Markdown renders only in mode all. Share-password brute force then faces the internet, limited by Nextcloud's own brute-force protection (it sees the client IP via TRUSTED_PROXIES = Traefik). Apps installed under /custom_apps that hook the share page are not covered. Upgrades: the image is pinned; Nextcloud only upgrades one major version at a time, so step through every major (e.g. 33 -> 34 -> 35) and never skip one.
+    Native OIDC through Nextcloud's official user_oidc app (pinned v8.11.0, installed and configured by setup.sh at every start; upgrade it there). Sign-in is one Portcullis login: the login page redirects to Keycloak. Accounts are created on the first SSO login and keyed on the LLDAP username (preferred_username, unique-uid off, so the Nextcloud user id is the username); soft auto-provisioning is off, so an SSO login is never attached to an existing local account and nothing is matched by email (the user-editable email only fills the profile). A local account with the same name as an LLDAP user (e.g. the break-glass "admin") makes that user's SSO login fail with "User conflict" until it is renamed or removed (occ files:transfer-ownership moves its files). Only members of users_nextcloud or admin_nextcloud may sign in (user_oidc group whitelist + login restriction); both groups are synced into Nextcloud at each login, and members of admin_nextcloud become Nextcloud admins within a minute (nextcloud-cron maps them into Nextcloud's "admin" group and removes SSO accounts that left it; local accounts are never touched). Desktop/mobile clients use Login Flow v2 and get app passwords; WebDAV/OCS accept only app passwords or tokens (token_auth_enforced), never an account password. Break-glass: the local "admin" account (NEXTCLOUD_ADMIN_PASSWORD) signs in at /login?direct=1; /login sits behind forward-auth + group-gate (users_nextcloud), so its password form never faces the internet. Last resort: occ inside the container. Removing a user from the groups blocks new SSO logins and drops the groups at their next login, not sessions or app passwords already issued (disable the user in Nextcloud for that); single logout is off because the Keycloak client has no post-logout redirect URI. Hostname: setup.sh re-applies trusted_domains, overwrite.cli.url, overwritehost and overwriteprotocol from the instance's hostname at every start, so a hostname change only needs a restart. Existing installs: the first start installs user_oidc; local accounts created by hand keep working with their passwords only through /login?direct=1 (behind the gateway) and app passwords. Public exceptions: with native OIDC the host is not behind forward-auth, so share links work like on any Nextcloud (share token, password, expiry and Nextcloud's brute-force protection, which sees the client IP via TRUSTED_PROXIES = Traefik). The Hub exception matters when the host's policy requires a client certificate: then only the listed share links (or all, in mode all) and the static files their page needs skip it, and logins (Basic auth, remember-me cookies) are refused there. The PDF viewer page (a PHP route) is not in the list, so on such hosts PDFs on a share download instead of opening inline; Markdown renders only in mode all. Apps installed under /custom_apps that hook the share page are not covered. Upgrades: the image is pinned; Nextcloud only upgrades one major version at a time, so step through every major (e.g. 33 -> 34 -> 35) and never skip one. Keep nextcloud and nextcloud-cron on the same image.
 
 ## Public Exceptions
 
-Public share links (/s/&lt;token&gt;) for people without a Portcullis account. Nextcloud's share password, expiry and download limits still apply; the gateway (forward-auth, group-gate, YubiKey) does not.
+Public share links (/s/&lt;token&gt;) for visitors without a client certificate. Nextcloud's share password, expiry and download limits still apply.
 
 When an admin turns them on in the Hub, these paths skip forward-auth and group-gate (see [Public exceptions](../operations/auth-policies.md#public-exceptions)).
 
@@ -59,7 +59,8 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `nextcloud` | `cloud.<domain>` | all | `authaware@file` | :white_check_mark: |
+| `nextcloud` | `cloud.<domain>` | all | `authaware@file` | :x: |
+| `nextcloud-login` | `cloud.<domain>` | `/login (exact)`, `/index.php/login (exact)` | `authaware@file` | :white_check_mark: |
 
 ## Images
 
@@ -68,6 +69,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `nextcloud` | `nextcloud:34.0.5-apache` | `sha256:515c072ea1cf…` |
+| `nextcloud-cron` | `nextcloud:34.0.5-apache` | `sha256:515c072ea1cf…` |
 
 ## Environment Variables
 
@@ -75,8 +77,17 @@ Per-app variables in the generated `.env`; `random` ones are generated by the Hu
 
 | Variable | Description | Generation |
 |----------|-------------|------------|
-| `NEXTCLOUD_ADMIN_PASSWORD` | Nextcloud admin password | `random` |
+| `NEXTCLOUD_ADMIN_PASSWORD` | Password of the break-glass local Nextcloud admin (sign in at /login?direct=1) | `random` |
+| `NEXTCLOUD_OIDC_SECRET` | Nextcloud OIDC client secret | `random` |
+
+## Keycloak Clients
+
+**Nextcloud** (`nextcloud`)
+
+Redirect URIs:
+- `https://{{HOST_NEXTCLOUD}}/apps/user_oidc/code`
+- `https://{{HOST_NEXTCLOUD}}/index.php/apps/user_oidc/code`
 
 ## Access URLs
 
-- **Nextcloud**: `https://cloud.{{DOMAIN}}`
+- **Nextcloud**: `https://{{HOST_NEXTCLOUD}}`

@@ -21,10 +21,10 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 💾 [Scrutiny](scrutiny.md) | `disks` | monitoring | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 🛡 [AdGuard Home](adguard.md) | `adguard` | networking | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 🚫 [Pi-hole](pihole.md) | `pihole` | networking | `forward-auth` | :x: No | :white_check_mark: | :x: |
-| 📝 [DokuWiki](dokuwiki.md) | `dokuwiki` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
+| 📝 [DokuWiki](dokuwiki.md) | `dokuwiki` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📋 [Kanboard](kanboard.md) | `kanboard` | productivity | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
-| ☁ [Nextcloud](nextcloud.md) | `cloud` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
-| 📖 [Wiki.js](wiki.md) | `wiki` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
+| ☁ [Nextcloud](nextcloud.md) | `cloud` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
+| 📖 [Wiki.js](wiki.md) | `wiki` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📄 [Docs Site](docs.md) | `docs` | public | `public` | :x: No | :x: | :x: |
 | 🖥 [Apache Guacamole](guacamole.md) | `remote` | remote-access | `header-auth` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🔒 [Vault UI](vault-ui.md) | `vault` | security | `mtls` | :x: No | :x: | :x: |

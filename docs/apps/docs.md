@@ -36,4 +36,4 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Access URLs
 
-- **Docs**: `https://docs.{{DOMAIN}}`
+- **Docs**: `https://{{HOST_DOCS}}`

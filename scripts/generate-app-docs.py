@@ -54,9 +54,12 @@ def load_manifests(source_dir: Path) -> list[dict]:
 # ── compose.yml parsing (routing + images) ─────────────────────────────
 
 HOST_RE = re.compile(r"Host\(\s*`([^`]*)`\s*\)")
-PATH_RE = re.compile(r"PathPrefix\(\s*`([^`]*)`\s*\)")
+PATH_RE = re.compile(r"(PathPrefix|Path)\(\s*`([^`]*)`\s*\)")
 ROUTER_RE = re.compile(r"^traefik\.http\.routers\.([^.]+)\.(.+)$")
 DOMAIN_VAR_RE = re.compile(r"\$\{PORTCULLIS_DOMAIN[^}]*\}")
+# Contract v2: ${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local} is the
+# instance's hostname; the default instance's is <sub>.<domain>.
+HOST_VAR_RE = re.compile(r"\$\{PORTCULLIS_HOST_[A-Z0-9_]+:-([a-z0-9-]+)\.portcullis\.local\}")
 
 
 def _labels(svc: dict) -> dict:
@@ -81,13 +84,14 @@ def compose_routers(compose: dict) -> list[dict]:
                 per.setdefault(m.group(1), {})[m.group(2)] = v
         for rname, attrs in sorted(per.items()):
             rule = attrs.get("rule", "")
-            hosts = [DOMAIN_VAR_RE.sub("<domain>", h) for h in HOST_RE.findall(rule)]
+            hosts = [HOST_VAR_RE.sub(r"\1.<domain>", DOMAIN_VAR_RE.sub("<domain>", h)) for h in HOST_RE.findall(rule)]
             mws = [m.strip() for m in attrs.get("middlewares", "").split(",") if m.strip()]
             routers.append({
                 "service": sname,
                 "name": rname,
                 "hosts": hosts,
-                "paths": PATH_RE.findall(rule),
+                # Path(`/x`) is that path only, PathPrefix(`/x`) the prefix.
+                "paths": [p if kind == "PathPrefix" else f"{p} (exact)" for kind, p in PATH_RE.findall(rule)],
                 "tls": attrs.get("tls.options", ""),
                 "middlewares": mws,
             })

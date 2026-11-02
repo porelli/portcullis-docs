@@ -18,7 +18,7 @@
 | **Subdomain** | `adguard` |
 
 !!! info "Auth Notes"
-    No SSO support. Has its own local admin password set during setup wizard. Access gated by group-gate middleware.
+    No SSO in AdGuard Home (local accounts only). Access is gated by forward-auth + group-gate, and AdGuard's own admin password (set in its setup wizard) stays on purpose: upstream can only disable it by leaving users empty, which turns authentication off for every peer (https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration, users), and its web server has no client allowlist, so every other container on portcullis-proxy would get the full admin API unauthenticated. The same web server also answers DNS-over-HTTPS (/dns-query); through Portcullis it is behind forward-auth, so DoH clients can't use it.
 
 ## Routing
 
@@ -47,4 +47,4 @@ Ports this app binds on the host. Collisions with other enabled apps block enabl
 
 ## Access URLs
 
-- **Dashboard**: `https://adguard.{{DOMAIN}}`
+- **Dashboard**: `https://{{HOST_ADGUARD}}`

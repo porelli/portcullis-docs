@@ -39,4 +39,4 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Access URLs
 
-- **Database Manager**: `https://db.{{DOMAIN}}`
+- **Database Manager**: `https://{{HOST_CLOUDBEAVER}}`
