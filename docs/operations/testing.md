@@ -29,7 +29,7 @@ exactly as on a real install. Every step drives the stack through
     - `cert sync`, which must never empty the revoked list when Vault fails
     - `pki setup` idempotency, including resuming a partial run
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
-    - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then LoA 2; the marker scope is no default anywhere in the export
+    - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then LoA 1 (`portcullis-invite-loa-1`) and LoA 2 (`portcullis-invite-loa`), amr `hwk`; the marker scope is no default anywhere in the export
 - **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
     - policy file v5: maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, v4 and older deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and enrolled domains denied
     - core hosts from the map file (`<sub>` → `<sub>.<domain>`, the apex included), never from the policy file; merging the map file with the Hub's `groups`

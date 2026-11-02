@@ -669,7 +669,11 @@ A `multi` template has no `${PORTCULLIS_DOMAIN}` in router rules (it may still
 use it for core hosts such as `auth.${PORTCULLIS_DOMAIN:-portcullis.local}`),
 no volume `name:` (the Hub sets `portcullis_<key>` for the default instance and
 `portcullis_<instance-id>-<key>` for the others), and no hard-coded Keycloak
-client id or group name in `compose.yml`.
+client id or group name in `compose.yml`. Routers that may serve
+extra-domain hostnames list `portcullis-auth@docker` on the router itself,
+never inside a chain middleware (the Hub swaps it for the extra-domain sign-in
+there, and refuses extra-domain hostnames for a router whose own chain reaches
+it).
 
 ### hosts.immutable
 
@@ -684,9 +688,11 @@ hosts:
 
 The admin chooses the hostname when creating the instance; the Hub refuses
 every later change (`409`), the default instance's too, and moving it means a
-new instance. The default instance's immutable hosts are `<sub>.<main domain>`,
-so changing Portcullis's main domain breaks such apps. A backup of such an
-instance restores into the same instance only
+new instance. The default instance's immutable hosts start as
+`<sub>.<main domain>` and are pinned on its first enable: a later main-domain
+change never moves them (the instance shows as error until the old domain is
+enrolled as an extra domain). A restore into a new id keeps the archive's
+hostname for such routers
 ([contract §11.3, §11.6](integration-contracts.md#11-app-instances-hub-new-instances)).
 `tests/validate.py` requires the list where it knows the app needs it
 (`IMMUTABLE_HOSTS`: matrix).

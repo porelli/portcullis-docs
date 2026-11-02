@@ -41,6 +41,14 @@ up first.
    secrets from `.env`), then recreates forward-auth so it picks up a newly
    generated client secret.
 
+It also checks the Hub image: before the upgrade it warns when `HUB_IMAGE` is
+pinned (in `.env` or the environment: a pinned Hub doesn't move with core), and after the start it
+compares the Hub's policy file version with the one group-gate serves (and
+looks for group-gate's "is not supported" log line). On a mismatch it prints
+the fix — drop or align `HUB_IMAGE`, then `./portcullis up` — and never fails
+the run: until then group-gate denies every app request (the Hub and core must
+be upgraded together).
+
 Check the result with `./portcullis status`.
 
 Apps enabled in the Hub are separate compose projects. `upgrade` does not

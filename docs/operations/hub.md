@@ -486,11 +486,23 @@ When you save, the Hub:
 The change is audited as `instance.update` with the acting administrator. If
 step 6 fails, the instance's last-operation record shows `op: hosts` and the
 error; the new hostnames are already in effect, but the app is not running with
-them — retrying **Save hostnames** re-applies everything.
+them — retrying **Save hostnames** with the same hostnames re-applies
+everything (the Hub keeps the last hostname-change record apart from the other
+operations, so a backup in between doesn't hide the failure).
 
 **Changing the main domain** (`PORTCULLIS_DOMAIN` in core's `.env`) moves every
 default instance's hostnames to the new domain, which **breaks apps that store
-their own URL** (e.g. Matrix, GitLab). See [DNS Configuration](../setup/dns.md).
+their own URL** (e.g. GitLab). Default instances of templates with
+`hosts.immutable` (Matrix) are the exception: their hostnames are pinned on
+their first enable and never moved; such an instance is listed as error (and
+stays denied) until you enroll the old domain as an extra domain or fix its
+hostnames. See [DNS Configuration](../setup/dns.md).
+
+Hostnames are also refused while another instance's running project still
+routes them (409, "restart or stop it first"), and a hostname set a router
+can't serve is a 400 at once: one router mixing main-domain and extra-domain
+hostnames, or an extra-domain router that reaches `portcullis-auth` through the
+template's own chain middleware.
 
 ### Enrolling extra domains
 
@@ -518,7 +530,11 @@ The domain is listed with:
   server's addresses) or the last error
 - **Certificate**: valid until (RFC 3339), or "none" / "expired"
 - **State**: `pending` → `records` → `issuing` → `ready`, or `renewing` (< 30
-  days left), or `error` (retried with backoff)
+  days left), or `error` (retried with backoff), or `missing`: the domains
+  service no longer lists a domain that instances still use. The Hub keeps it
+  (its hostnames stay extra-domain hosts and keep their policy and sign-in),
+  refuses new hostnames on it (409, "re-enroll it") and logs it; re-enroll the
+  same name to bring it back. It is dropped once no instance uses it
 
 A domain is **assignable** (usable for instance hostnames) only while `records_ok`
 is true, the certificate is valid and the domains service is reachable. Existing
@@ -572,6 +588,15 @@ instance on an enrolled domain:
 - Core never routes to extra domains: the portal, Hub, people, auth, directory,
   enroll, traefik and metrics pages exist only on the main domain
 - Both oauth2-proxy services use PKCE (S256) as required by the Keycloak client
+- The callback URIs follow the instance: added on enable (a failed enable
+  removes them again), changed with its hostnames and with its sign-in mode
+  (gateway ↔ app's own login; the Keycloak update comes first, a failure is a
+  502 and nothing changes), removed on disable and delete; the Hub's access
+  sync loop re-asserts them for running instances
+- The Hub swaps `portcullis-auth@docker` for `portcullis-auth-ext@docker` only
+  where it is listed on the router itself: a template whose router reaches
+  forward-auth through its own chain middleware can't get extra-domain
+  hostnames (400)
 
 ### Instance backups
 
@@ -603,7 +628,9 @@ Backups, restores and deletes run in the background: the Hub accepts the
 request at once and the dialog follows the operation until it finishes, then
 shows its result and warnings (also under **Last operation**). Closing the
 dialog doesn't stop it; another operation on the same instance is refused
-(busy) until it ends.
+(busy) until it ends. On shutdown the Hub waits up to about 50 s for a running
+operation; one it couldn't finish is recorded as failed ("interrupted") at the
+next start. A running operation never shows as a failure.
 
 **Free space**: a backup needs at least 64 MiB free on the Hub's data volume
 before it starts, and the copied size plus 64 MiB before the archive is
@@ -645,9 +672,15 @@ A failed restore leaves an `OpError` with `op: restore` and `rolled_back: true`.
 
 The Hub:
 
-- creates the new instance in `state: created` (not started), with the
-  **new id's default hostnames on the main domain** (change them afterwards on
-  the **Overview** tab)
+- creates the new instance with the hostnames given in the request (the API's
+  optional `hosts`); otherwise each
+  `hosts.immutable` router keeps the archive's hostname and every other router
+  gets the **new id's default hostname on the main domain** (change them
+  afterwards on the **Overview** tab). The hostnames are validated like a new
+  instance's
+- shows it as `restoring` while it runs and `created` (not started) when it is
+  done; a restore the Hub didn't finish (it stopped half-way) is removed at the
+  next Hub start (its groups may remain, logged)
 - creates new volumes (labelled with the new project) and fills them from the
   archive; restores the archive's settings, policy, public exceptions and share
   tokens, sign-in mode, custom override and env, with the instance variables
@@ -661,8 +694,8 @@ The Hub:
 `type: path` settings keep the same host path: the result warns that both
 instances now share that directory.
 
-Immutable-host routers: the Hub refuses (409) if a `hosts.immutable` router of
-the new instance would get a different hostname than the archived one (you can't
+Immutable-host routers: the Hub refuses (409) a `hosts.immutable` router given a
+different hostname than the archived one (you can't
 restore a Matrix instance with a different homeserver domain).
 
 Both forms are audited as `instance.restore` with the acting administrator and

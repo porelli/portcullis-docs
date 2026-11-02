@@ -5,7 +5,7 @@ command: `./portcullis init`.
 
 ## Prerequisites
 
-- **Docker** with the **compose plugin** (v2) -- [Install Docker](https://docs.docker.com/get-docker/)
+- **Docker** with the **compose plugin**, v2.24.4 or later (`env_file` with `required: false`, the Hub's `!override` labels) -- [Install Docker](https://docs.docker.com/get-docker/)
 - `openssl`, `jq` and `curl` on the host (the CLI checks for them)
 - **A domain you control**, with DNS hosted at a provider Traefik's ACME client (lego) supports: Cloudflare, Porkbun, Route53, DigitalOcean, Hetzner, ... (see [DNS Configuration](dns.md))
 - **A server** with ports 80 and 443 reachable (VPS, home server, or local machine)

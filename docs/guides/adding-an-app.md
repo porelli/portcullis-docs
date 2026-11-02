@@ -156,6 +156,10 @@ urls:
     - Include `security-headers@file` in the middlewares.
 - **Middleware order** for gated routers:
   `client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file`.
+  List `portcullis-auth@docker` on the router itself, never inside a chain
+  middleware of your own: on an extra-domain hostname the Hub swaps it for the
+  extra-domain sign-in, and it refuses (400) extra-domain hostnames for a
+  router whose own chain reaches `portcullis-auth`.
   `client-headers@file` first lets group-gate check client-cert revocation.
 - **Volumes** declare **no** `name:` in a `multi` template: the Hub's override
   names them, `portcullis_<key>` for the default instance and
