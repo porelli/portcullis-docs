@@ -24,21 +24,28 @@ A template is:
 tests/apps/<app-id>.sh   # its CI test
 ```
 
-When a user enables the app, the Hub:
+A template can run as several **instances** (template contract v2,
+[contracts §3.1](integration-contracts.md#31-template-contract-v2-instances-and-hostname-variables-new-contract-v2)): the default instance, whose id is the app ID, and any
+number of others an admin creates in the Hub, each with its own id, hostnames,
+data volumes, Keycloak clients and groups. When an admin enables an instance,
+the Hub:
 
-1. generates a per-app `.env` from the manifest (settings, `generate: random` secrets, referenced core variables)
-2. copies the directory to `<core>/templates/<app-id>/`
-3. registers the manifest's Keycloak clients
-4. starts the compose file as its own project, `portcullis-<app-id>`
-5. publishes the app's subdomains, group, admin paths and policy to group-gate
+1. generates the instance's `.env` from the manifest (settings, `generate: random` secrets, referenced core variables) plus the instance variables: `PORTCULLIS_INSTANCE`, one `PORTCULLIS_HOST_<ROUTER>` per host router (the full hostname), `PORTCULLIS_OIDC_CLIENT_ID(_<KEY>)`, `PORTCULLIS_ACCESS_GROUP`, `PORTCULLIS_ADMIN_GROUP`
+2. copies the directory to `<core>/templates/<app-id>/` (every instance shares it)
+3. registers the instance's Keycloak clients (client id = the instance id)
+4. starts the compose file with the Hub's override as its own project, `portcullis-<instance-id>`
+5. publishes the instance's hostnames, group, admin paths and policy to group-gate (policy file keyed by full hostname)
 
-## Step 1: Pick an app ID and a subdomain
+## Step 1: Pick an app ID and a default subdomain
 
 The app ID is lowercase and matches `^[a-z0-9][a-z0-9_-]{0,63}$`, e.g.
-`uptime-kuma`. It is the directory name and the compose project scope. Pick a
-subdomain no other template routes. Core subdomains (`auth`, `traefik`, `hub`,
-`directory`, `enroll`, `metrics`) are off limits. The Hub refuses to enable two apps that
-route the same subdomain.
+`uptime-kuma`. It is the directory name and the default instance's id (other
+instances get ids an admin chooses). Pick a default subdomain `<sub>` no other
+template uses: the default instance runs on `<sub>.<main domain>`, a new
+instance is pre-filled with `<sub>-<suffix>.<domain>` on the domain the admin
+picks, and every hostname can be edited in the Hub. Core subdomains (`auth`,
+`traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`) are off limits. A
+hostname belongs to at most one instance: the Hub refuses a second one.
 
 ```bash
 git clone https://github.com/porelli/portcullis-templates.git
@@ -94,6 +101,7 @@ description: A brief description of what the app does
 icon: "\U0001F4E6"
 category: productivity
 tags: [example, demo]
+instances: multi   # contract v2: one or many instances
 
 auth:
   method: forward-auth
@@ -114,7 +122,7 @@ config_files: []
 
 urls:
   - label: My App
-    url: "https://myapp.{{DOMAIN}}"
+    url: "https://{{HOST_MYAPP}}"   # the instance's hostname of router myapp
 ```
 
 ## Step 4: Write `compose.yml`
@@ -129,9 +137,19 @@ urls:
   networks.
 - **Routers.**
     - Use exactly the form
-      `` rule: Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) ``. The Hub
-      parses it strictly and rejects anything it can't fully resolve (see
+      `` rule: Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) ``,
+      optionally `` && <path matchers> ``. `<ROUTER>` is the name of the host
+      router (the one whose rule is `Host()` alone) upper-cased, with `-` and
+      `.` turned into `_` (`myapp-ui` → `PORTCULLIS_HOST_MYAPP_UI`); the value is
+      the instance's full hostname. Path routers on the same host reuse the
+      host router's variable. The Hub parses the rule strictly and rejects
+      anything it can't fully resolve (see
       [Hub → Template rules](../operations/hub.md#template-rules-enforced-by-the-hub)).
+    - Use the same variable, with the same default, wherever the app needs its
+      own hostname (base URL, redirect URIs, `hostname:`), and
+      `{{HOST_<ROUTER>}}` in the manifest's `urls` and redirect URIs.
+    - No `_` in Traefik router, service or middleware names (the Hub renames
+      them per instance with `<instance-id>_<name>`).
     - Set `entrypoints: websecure`.
     - Set `tls.options` to `authaware@file`, `public@file` or `protected@file`.
       The Hub overrides it from the app's access policy.
@@ -139,14 +157,21 @@ urls:
 - **Middleware order** for gated routers:
   `client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file`.
   `client-headers@file` first lets group-gate check client-cert revocation.
-- **Volumes** declare `name: portcullis_<volume>`, unique across templates.
+- **Volumes** declare **no** `name:` in a `multi` template: the Hub's override
+  names them, `portcullis_<key>` for the default instance and
+  `portcullis_<instance-id>-<key>` for the others. Never rename a volume key
+  later: it is the default instance's data volume name.
 - **Files** shipped with the template are mounted as
   `./templates/<app-id>/<file>`, never `./<file>`. Compose resolves relative
   paths against the core checkout on the host. From core, only
   `./certs/ca-bundle.crt:<path>:ro` may be mounted.
 - **Variables.** Core variables (`PORTCULLIS_DOMAIN`, `PORTCULLIS_PROXY_SUBNET`,
   `PORTCULLIS_PROXY_IP_RANGE`, `PORTCULLIS_TRAEFIK_IP`) always use their default
-  form. Every other variable must be declared in the manifest. Required ones
+  form. Instance values come from the instance variables, always in the
+  default form with the default instance's value:
+  `${PORTCULLIS_OIDC_CLIENT_ID:-myapp}`, `${PORTCULLIS_ACCESS_GROUP:-users_myapp}`,
+  `${PORTCULLIS_ADMIN_GROUP:-admin_myapp}` (also in support files, passed through
+  `environment:`). Every other variable must be declared in the manifest. Required ones
   (`${VAR:?…}`) must be `env` entries with `generate: random`. Use `$$VAR` for
   variables the container shell should expand.
 - **No** `ports:` (declare host ports in the manifest), `build:`,
@@ -168,15 +193,14 @@ services:
       - portcullis-proxy
     labels:
       traefik.enable: "true"
-      traefik.http.routers.myapp.rule: Host(`myapp.${PORTCULLIS_DOMAIN:-portcullis.local}`)
+      traefik.http.routers.myapp.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`)
       traefik.http.routers.myapp.entrypoints: websecure
       traefik.http.routers.myapp.tls.options: authaware@file
       traefik.http.routers.myapp.middlewares: client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file
       traefik.http.services.myapp.loadbalancer.server.port: "8080"
 
 volumes:
-  myapp-data:
-    name: portcullis_myapp_data
+  myapp-data: {}   # no name: the Hub sets it per instance
 
 networks:
   portcullis-proxy:
@@ -195,7 +219,9 @@ services:
     image: myorg/myapp:1.4.2@sha256:<index digest>
     environment:
       OIDC_ISSUER: https://auth.${PORTCULLIS_DOMAIN:-portcullis.local}/realms/portcullis
-      OIDC_CLIENT_ID: myapp
+      OIDC_CLIENT_ID: ${PORTCULLIS_OIDC_CLIENT_ID:-myapp}
+      OIDC_REDIRECT_URI: https://${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}/callback
+      OIDC_ALLOWED_GROUP: ${PORTCULLIS_ACCESS_GROUP:-users_myapp}
       OIDC_CLIENT_SECRET: ${MYAPP_OIDC_SECRET:?generated by the Hub}
       SSL_CERT_FILE: /certs/ca-bundle.crt   # trust the internal/staging CA
     volumes:
@@ -205,7 +231,7 @@ services:
       - portcullis-proxy
     labels:
       traefik.enable: "true"
-      traefik.http.routers.myapp.rule: Host(`myapp.${PORTCULLIS_DOMAIN:-portcullis.local}`)
+      traefik.http.routers.myapp.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`)
       traefik.http.routers.myapp.entrypoints: websecure
       traefik.http.routers.myapp.tls.options: authaware@file
       traefik.http.routers.myapp.middlewares: security-headers@file
@@ -227,7 +253,7 @@ env:
 keycloak_clients:
   - client_id: myapp
     secret_env: MYAPP_OIDC_SECRET
-    redirect_uri: "https://myapp.{{DOMAIN}}/callback"
+    redirect_uri: "https://{{HOST_MYAPP}}/callback"
     name: My App
 ```
 
@@ -235,7 +261,7 @@ Gate an admin path of a native-OIDC app with a second router and
 `auth.admin_paths: ["/admin"]`:
 
 ```yaml
-      traefik.http.routers.myapp-admin.rule: Host(`myapp.${PORTCULLIS_DOMAIN:-portcullis.local}`) && PathPrefix(`/admin`)
+      traefik.http.routers.myapp-admin.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`) && PathPrefix(`/admin`)
       traefik.http.routers.myapp-admin.priority: "100"
       traefik.http.routers.myapp-admin.entrypoints: websecure
       traefik.http.routers.myapp-admin.tls.options: authaware@file
@@ -389,9 +415,9 @@ docker compose logs group-gate | grep myapp   # DENIED / ALLOW-UNMAPPED / STEPUP
 
 ## Checklist
 
-- [ ] App ID and subdomain are unique; no core subdomain
+- [ ] App ID and default subdomain are unique; no core subdomain; `instances: multi`
 - [ ] `manifest.yaml` passes the schema; auth method fits the app
-- [ ] `compose.yml`: networks, `Host()` form, middleware order, `security-headers@file`, named volumes, no `ports:`
+- [ ] `compose.yml`: networks, `` Host(`${PORTCULLIS_HOST_<ROUTER>:-…}`) `` form, own hostname / client id / groups via the instance variables, middleware order, `security-headers@file`, volumes without `name:`, no `ports:`
 - [ ] Secrets are `generate: random`; no default passwords
 - [ ] Header-auth: identity header trusted only from `PORTCULLIS_TRAEFIK_IP`
 - [ ] Images pinned `tag@sha256:…`; directory added to `.github/dependabot.yml`

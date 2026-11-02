@@ -25,28 +25,39 @@ In the manifest, this is `auth.method: header-auth`. The templates validator (`t
 
 ## Step 1: Deploy the App
 
-Create a compose.yml with the forward-auth middleware chain:
+Create a compose.yml with the forward-auth middleware chain, in the template
+contract v2 form ([contracts §3.1](integration-contracts.md#31-template-contract-v2-instances-and-hostname-variables-new-contract-v2)): the manifest sets `instances: multi`,
+the router rule takes the instance's hostname from `PORTCULLIS_HOST_<ROUTER>`
+(here `PORTCULLIS_HOST_MYAPP` for router `myapp`, default `myapp.portcullis.local`),
+and the volume has no `name:` (the Hub names it per instance):
 
 ```yaml
 services:
   myapp:
-    image: myapp/myapp:latest
+    image: myapp/myapp:1.4.2@sha256:<index digest>
     environment:
       # Enable reverse proxy authentication (app-specific setting)
       AUTH_PROXY_ENABLED: "true"
       AUTH_PROXY_HEADER: "X-Forwarded-User"
       # Accept the header ONLY from Traefik (app-specific setting)
       AUTH_PROXY_TRUSTED_IPS: ${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}
+      # The app's own URL: the instance's hostname
+      APP_BASE_URL: https://${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}
+    volumes:
+      - myapp-data:/data
     networks:
       - default
       - portcullis-proxy
     labels:
       traefik.enable: "true"
-      traefik.http.routers.myapp.rule: Host(`myapp.${PORTCULLIS_DOMAIN:-portcullis.local}`)
+      traefik.http.routers.myapp.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`)
       traefik.http.routers.myapp.entrypoints: websecure
       traefik.http.routers.myapp.tls.options: authaware@file
       traefik.http.routers.myapp.middlewares: client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file
       traefik.http.services.myapp.loadbalancer.server.port: "8080"
+
+volumes:
+  myapp-data: {}   # no name: the Hub sets it per instance
 
 networks:
   portcullis-proxy:
@@ -145,7 +156,7 @@ environment:
 
 ## Step 3: Test the Integration
 
-1. Navigate to `https://myapp.<your-domain>`
+1. Navigate to the instance's hostname (`https://myapp.<your-domain>` for the default instance)
 2. You should be redirected to Keycloak (via oauth2-proxy)
 3. Authenticate with your YubiKey
 4. You should be logged into the app automatically as the authenticated user
@@ -204,7 +215,7 @@ Header auth typically creates users with the lowest privilege level. Admin must 
 
 ### "403 Forbidden" from group-gate
 
-The user is authenticated but not in the required LLDAP group for this app. Add the user to the `users_<app>` group in LLDAP.
+The user is authenticated but not in the required LLDAP group for this app. Add the user to the instance's access group in LLDAP (`users_<app>` for the default instance, `users_<instance-id>` for the others).
 
 ### App receives no headers
 
