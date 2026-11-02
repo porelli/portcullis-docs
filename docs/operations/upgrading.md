@@ -40,6 +40,18 @@ up first.
    settings, X.509/CRL settings, scopes, LDAP bind) and `oidc register` (client
    secrets from `.env`), then recreates forward-auth so it picks up a newly
    generated client secret.
+8. **Refreshes the Hub's templates.** It has the Hub sync its template sources
+   (`SIGHUP`; the Hub also syncs at every start, so a recreated Hub has already
+   done it) and prints each source's result: up to date, updated to
+   `<commit>`, or not updated and why. A newer Hub rejects template versions it
+   no longer accepts and denies their apps (fail closed); this step makes sure
+   it judges the current templates, not the checkout of the previous run. A
+   failed pull keeps the previous checkout, and a version that would take an
+   enabled app's template away is reset to the previous one — nothing is
+   opened. Apps still without a valid template are named, with the fix. An
+   older Hub image (one that doesn't report syncs) gets a warning instead:
+   press **Sync All Sources** in the Hub's Template Sources tab. See
+   [Template sources](hub.md#template-sources).
 
 It also checks the Hub image: before the upgrade it warns when `HUB_IMAGE` is
 pinned (in `.env` or the environment: a pinned Hub doesn't move with core), and after the start it
@@ -86,7 +98,8 @@ How the four repositories are versioned is defined in
   LLDAP, oauth2-proxy, PostgreSQL, socket-proxy and monitoring versions run.
   Dependabot proposes updates weekly; CI fails on anything unpinned.
 - **Templates.** The Hub tracks the default branch of each template source;
-  pull updates with **Sync** in the Hub. The templates CI tests against the
+  it pulls updates at every start, during `./portcullis upgrade` and with
+  **Sync All Sources** in the Hub. The templates CI tests against the
   core ref in its `.core-ref`.
 
 Check what you run:
@@ -185,6 +198,28 @@ the same notes in its `CHANGELOG.md`.
   `guacadmin-<generated suffix>`.
 - The Hub and core must be upgraded together (policy file version 5, see
   above).
+- **Missing app groups.** Enabling an app now creates its missing
+  `users_<id>` / `admin_<id>` groups as the enabling admin. Apps enabled
+  earlier whose groups don't exist (e.g. `users_headscale`,
+  `users_vaultwarden`, `users_actual-budget` deleted in LLDAP) let nobody sign
+  in: the App Catalog shows them in a **Missing groups** banner — click
+  **Create missing groups**, then add the people who need access
+  ([Missing groups](hub.md#missing-groups)).
+- **Keycloak forgets users and groups deleted in LLDAP.** `keycloak configure`
+  (run by `upgrade`) sets the LDAP federation to remove its copy of a user
+  LLDAP no longer has (at the user's next lookup — the Hub lists all users
+  every 15 minutes; Keycloak's LDAP sync itself never removes users) and to
+  drop Keycloak groups LLDAP no longer has at the next sync (hourly).
+  Copies left by earlier deletions go within about 15 minutes
+  (users) or an hour (groups) after the upgrade. Nothing is removed while
+  LLDAP is unreachable. Core's own accounts are not affected: the federation
+  is read-only (Keycloak never writes LLDAP), local Keycloak users and the
+  master realm's admin are never checked against LDAP, and the Hub's service
+  account `portcullis-hub` is filtered out of the federation on purpose.
+  **Never start the stack with an empty or wrong LLDAP database** (a lost
+  `lldap_data` volume): Keycloak would then remove every user's copy,
+  passkeys included. Restore LLDAP from a backup first
+  ([Backups](backups.md)).
 - **Failed hostname changes are not re-applied.** The Hub now keeps the last
   hostname change in its own record. A hostname change that failed under an
   older Hub isn't re-applied after the upgrade: repeat it once (save the same

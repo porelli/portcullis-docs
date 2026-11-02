@@ -42,6 +42,17 @@ Before anything starts, the Hub refuses to enable the app if:
   is still routed by one (HTTP 409). Every hostname has exactly one owner,
   because group-gate keys groups and policies by full hostname (policy v5).
 
+It then creates the app's **missing access and admin groups** in LLDAP, as you
+(the enabling admin, through the same audited Users & Groups operation as
+creating a group): `users_<id>` / `admin_<id>` for an instance, and for the
+default instance the manifest's `access_group` / `admin_group` when they are
+exactly `users_<template>` / `admin_<template>`. Existing groups are left
+alone. A group with any other name (a group the template shares with other
+apps) is never created for you: the enable answers a warning and you create it
+in Users & Groups. If creating a group fails, the app isn't enabled; a group
+created before a later failure stays (empty — the app needs it anyway). The
+toast lists the groups it created.
+
 It then generates the per-app `.env` and compose override, copies the template
 directory to `<core>/templates/<app-id>/`, registers the template's Keycloak
 clients (a client ID owned by another template or by nobody provable aborts
@@ -54,6 +65,20 @@ The Hub can't test host ports outside Docker from inside its container (a
 service on the host, e.g. `systemd-resolved` on `127.0.0.53:53`), so those
 conflicts surface as a `compose up` failure. See
 [When an operation fails](#when-an-operation-fails).
+
+### Missing groups
+
+An enabled app whose access or admin group isn't in LLDAP (deleted in LLDAP's
+own UI, or the app was enabled before the Hub created groups on enable) lets
+**nobody** sign in: Keycloak and group-gate find no member. The App Catalog
+then shows a **Missing groups** banner listing each such app and its missing
+groups (checked every minute). **Create missing groups** creates every listed
+`users_<id>` / `admin_<id>` group as you (audited as `group.create`); **Create**
+on a row does it for one app. Groups with other names are listed with "create
+in Users & Groups". The new groups are empty: add the people who should have
+access. The Hub log's warning `group … not found in keycloak` points to the
+same button. API: `GET /api/instances/missing-groups`,
+`POST /api/instances/missing-groups` with `{}` (all) or `{"ids": ["<id>"]}`.
 
 ### When an operation fails
 
@@ -680,7 +705,9 @@ The Hub:
   afterwards on the **Overview** tab). The hostnames are validated like a new
   instance's
 - shows it as `restoring` while it runs and `created` (not started) when it is
-  done; a restore the Hub didn't finish (it stopped half-way) is removed at the
+  done — **enable it by hand** afterwards (instance detail → **Enable**: the
+  restored copy never starts on its own, so you can check its hostnames and
+  settings first, and add members to its new, empty groups); a restore the Hub didn't finish (it stopped half-way) is removed at the
   next Hub start (its groups may remain, logged)
 - creates new volumes (labelled with the new project) and fills them from the
   archive; restores the archive's settings, policy, public exceptions and share
@@ -815,6 +842,8 @@ Client certificates aren't shown; see `enroll.<domain>`.
 #### Stale Keycloak records (admins only)
 
 Users Keycloak has (federation link = LDAP provider) but LLDAP no longer has (deleted outside the Hub, e.g. in `portcullis lldap-ui`). The Hub lists the username, Keycloak id and reason.
+
+They rarely appear any more: Keycloak removes its copy of such a user by itself the next time the user is looked up (core sets `removeInvalidUsersEnabled` on the LDAP federation), and the Hub lists every Keycloak user every 15 minutes so each one is looked up. Keycloak decides per user by asking LLDAP; while LLDAP is unreachable nothing is removed. Groups deleted in LLDAP leave Keycloak at its next LDAP sync (hourly). A record that still shows here (e.g. Keycloak answered with an error) can be removed by hand:
 
 **Remove** deletes only the Keycloak copy (type the username to confirm). The federation is read-only, so LLDAP isn't touched. Logged as `keycloak.remove_stale` with the id. Refused for `admin`, `portcullis-hub`, any username LLDAP has, and Keycloak users not linked to the LDAP federation.
 
@@ -1134,6 +1163,25 @@ Each source is a git repository with one directory per app (`manifest.yaml` +
 - **Sync.** Runs `git pull --ff-only` on every source and reports which failed
   to fast-forward. The Hub never edits the clones (the Expert tab's custom
   override lives in the Hub's data directory), so syncs fast-forward.
+    - **Automatic.** The Hub syncs at **every start**, before it writes its first
+      policy file (each pull bounded to a minute; group-gate keeps serving the
+      previous policy meanwhile), and when it receives `SIGHUP` —
+      `./portcullis upgrade` sends it and prints the result (see
+      [Upgrading](upgrading.md)). **Sync All Sources** in the Template Sources
+      tab does the same on demand. `HUB_SYNC_SOURCES_AT_START=false` turns the
+      start-up sync off.
+    - **Fail-safe.** A failed pull (remote unreachable, or local changes block the
+      fast-forward) leaves the checkout as it was: the last good copy keeps
+      serving. If the new version has no valid template for an app that is
+      enabled (e.g. it needs a newer Hub), the source is put back to the commit it
+      had (`git reset --keep`) and the sync reports "the previous version is
+      kept". A sync never opens anything: an enabled app whose template is
+      missing or rejected stays **denied** (fail closed) until a template it
+      accepts is there.
+    - **Status.** The Template Sources tab shows the last sync (start-up, upgrade
+      or button): each source up to date / updated to `<commit>` / not updated
+      and why, and enabled apps still without a valid template. Also
+      `GET /api/sources/sync` and `<data>/source-sync.json`.
 - **Community sources.** Add more repositories in the **Template Sources** tab.
     - Source names use lowercase letters, digits, `-` and `_`.
     - URLs must be `https://…`, `http://…`, `ssh://…` or `user@host:path`.
