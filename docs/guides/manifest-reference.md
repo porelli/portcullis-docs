@@ -542,6 +542,7 @@ explains it.
 | `expected_fail` | `{member, admin, outsider}: {reason, match}` | Known failures: reported, not fatal, only if the failure matches the `match` regex (case-insensitive; searched in the check's evidence, the page and the app's container logs / `log_files`) — any other failure or an exception fails; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
 | `refused_users` | list of usernames | Extra users in `access_group` and `admin_group` that must be refused with HTTP 403 (names the app reserves, e.g. CloudBeaver's `cbadmin-*`) |
 | `log_files` | list of `{service, path}` | Files inside the app's containers, searched by `expected_fail.match` and kept as artifacts |
+| `max_clicks` | integer | How often each `login` selector may be clicked per user (default 5; lower for apps that rate-limit logins, e.g. Actual) |
 | `boot_timeout`, `timeout`, `refused_after` | seconds | Container readiness (600), per-user sign-in (240), how long the outsider is watched once on the app (45) |
 
 A **check** is one of:
