@@ -587,6 +587,12 @@ A running instance is **stopped** (`docker compose down`) during the backup for
 database consistency, then started again. The backup is listed with its timestamp,
 size and result. A failed backup shows the error.
 
+Backups, restores and deletes run in the background: the Hub accepts the
+request at once and the dialog follows the operation until it finishes, then
+shows its result and warnings (also under **Last operation**). Closing the
+dialog doesn't stop it; another operation on the same instance is refused
+(busy) until it ends.
+
 **Free space**: the Hub checks free space before starting (> 2 GB margin on the
 data volume); if there isn't enough it refuses with HTTP 507.
 
