@@ -1,4 +1,4 @@
-# ☁ Nextcloud
+# ☁️ Nextcloud
 
 > Self-hosted productivity platform — files, calendar, contacts, office
 

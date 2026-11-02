@@ -39,7 +39,7 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 🧮 [GridCraft](gridcraft.md) | `gridcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📋 [Kanboard](kanboard.md) | `kanboard` | productivity | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
 | 🍽 [Mealie](mealie.md) | `recipes` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
-| ☁ [Nextcloud](nextcloud.md) | `cloud` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
+| ☁️ [Nextcloud](nextcloud.md) | `cloud` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📄 [Paperless-ngx](paperless.md) | `paperless` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📄 [PdfCraft](pdfcraft.md) | `pdfcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📖 [Wiki.js](wiki.md) | `wiki` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
