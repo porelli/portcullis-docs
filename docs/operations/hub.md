@@ -590,8 +590,9 @@ instance on an enrolled domain:
 - Both oauth2-proxy services use PKCE (S256) as required by the Keycloak client
 - The callback URIs follow the instance: added on enable (a failed enable
   removes them again), changed with its hostnames and with its sign-in mode
-  (gateway ↔ app's own login; the Keycloak update comes first, a failure is a
-  502 and nothing changes), removed on disable and delete; the Hub's access
+  (gateway ↔ app's own login; the change waits for no other operation: 409
+  busy while one runs on the instance; the Keycloak update comes first, a
+  failure is a 502 and nothing changes), removed on disable and delete; the Hub's access
   sync loop re-asserts them for running instances
 - The Hub swaps `portcullis-auth@docker` for `portcullis-auth-ext@docker` only
   where it is listed on the router itself: a template whose router reaches

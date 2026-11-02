@@ -240,8 +240,9 @@ Each enrolled domain:
 **Server addresses.** The records point at the server's public IPv4 (and
 IPv6), from `PORTCULLIS_PUBLIC_IPV4` / `_IPV6` in `.env` or detected by
 `./portcullis up`. While no domain is enrolled, `./portcullis` doesn't look them
-up: if you haven't set `PORTCULLIS_PUBLIC_IPV4`, run `./portcullis up` once
-after enrolling the first domain (see
+up and publishes no address unless `.env` sets them: the first enrolled domain
+may need one more `./portcullis up` (or set `PORTCULLIS_PUBLIC_IPV4` / `_IPV6`
+in `.env`) (see
 [Security & Hardening](../operations/hardening.md#public-ip-detection)).
 
 **Enrolled subdomains of the main domain** (e.g. `team-a.<main domain>`) are

@@ -185,6 +185,10 @@ the same notes in its `CHANGELOG.md`.
   `guacadmin-<generated suffix>`.
 - The Hub and core must be upgraded together (policy file version 5, see
   above).
+- **Failed hostname changes are not re-applied.** The Hub now keeps the last
+  hostname change in its own record. A hostname change that failed under an
+  older Hub isn't re-applied after the upgrade: repeat it once (save the same
+  hostnames again).
 
 ## Changing settings during an upgrade
 

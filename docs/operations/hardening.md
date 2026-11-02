@@ -567,14 +567,16 @@ Anything else gives no address. Without an IPv4, the service publishes no record
 and sets the domain's `last_error`. Without an IPv6, it publishes no AAAA and
 removes existing AAAA records at `<d>` and `*.<d>`.
 
-A failed IPv4 or IPv6 detection keeps the last detected address
+A detection that ran and failed keeps the last detected address
 (`secrets/domains/last-public-ipv4` / `last-public-ipv6`), because "no IPv6"
-removes the AAAA records. The addresses reach the service through
+removes the AAAA records; a skipped lookup never uses it. The addresses reach the service through
 `secrets/domains/public-ips.env` (mode 0600, compose `env_file`), never through
 the compose `environment:`. While no domain is enrolled, `./portcullis` does no
-lookups at all; after enrolling the first domain on a server without
-`PORTCULLIS_PUBLIC_IPV4`, run `./portcullis up` once. With the IPv4 unknown, the
-service keeps the records it set before and still renews certificates.
+lookups at all and publishes no address unless `.env` sets
+`PORTCULLIS_PUBLIC_IPV4` / `_IPV6`: the first enrolled domain may need one more
+`./portcullis up` (or the address set in `.env`). With the IPv4 unknown, the
+service keeps the records it set before, still uses a configured IPv6 and still
+renews certificates.
 
 `PORTCULLIS_DOMAINS_SUBNET` (the API network `portcullis-domains`, default
 `172.31.252.0/28`) is validated by `./portcullis`: a valid CIDR of at least /29,
