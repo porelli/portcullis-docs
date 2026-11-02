@@ -394,7 +394,9 @@ to the latest release of `storytold/<app>`, once the GitHub asset digest,
 `actions: write`). PRs opened with that token start no `pull_request`
 workflows, so the script dispatches **Test Apps** (`pr=<n>`, `apps=<app>`,
 core ref from the PR's base) and **Lint** (on the branch) for each PR it
-opens; `workflow_dispatch` is the one event `GITHUB_TOKEN` may start.
+opens; `workflow_dispatch` is the one event `GITHUB_TOKEN` may start. The
+Test Apps run is dispatched on the base branch, so its check attaches to the
+base commit, not the PR: the script links the run in the PR body.
 
 ### Test helpers (`tests/lib.sh`)
 
