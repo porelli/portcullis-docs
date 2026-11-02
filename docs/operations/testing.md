@@ -49,6 +49,7 @@ exactly as on a real install. Every step drives the stack through
     - every service has `no-new-privileges`, `cap_drop: ALL` and memory/pid limits
     - Keycloak's `--proxy-trusted-addresses` is Traefik's `portcullis-auth` IP, and only Keycloak and Traefik are on that network
     - `group-gate-map.conf` has `people=*`
+    - `forward-auth-ext` mirrors `forward-auth` (image, command, secrets, trusted proxies; `portcullis-auth-ext` has every `portcullis-auth` forwardauth setting), defines no router, uses the relative callback `/oauth2/callback` and the host-only cookie `__Host-portcullis_ext` (`Secure`, `Path=/`, no cookie domain, no whitelist); `oauth2-proxy/alpha.yaml` sends PKCE S256
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub, which comes from `HUB_IMAGE`. The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
@@ -73,6 +74,7 @@ the internal PKI) and verifies:
     - the OIDC discovery and SAML descriptor endpoints
     - the WebAuthn policy
     - the `portcullis-forward-auth` client
+    - `portcullis-forward-auth` requires PKCE S256: an authorization request without a code challenge gets no code, the X.509 login with one does (oauth2-proxy's `alpha.yaml` must keep `code_challenge_method: S256`)
     - the invite post-broker flow admits only clients with the `portcullis-invite-client` scope (only `portcullis-forward-auth`, never a realm default), and a second `keycloak configure` keeps an extra-domain callback on `portcullis-forward-auth` while dropping a wildcard
     - LLDAP users show up through the federation
     - the `email-unverified` scope has exactly one mapper (`email`), also after a second `keycloak configure`; a throwaway direct-grant client with that scope instead of `email` gets `email` but no `email_verified` in the ID token, access token and userinfo, while the built-in `email` scope sends `email_verified: false`
@@ -85,7 +87,6 @@ the internal PKI) and verifies:
     - the same cert as a forged header sent straight to Keycloak (from the
       `portcullis` and `portcullis-auth` networks and from `127.0.0.1:8080`)
       must **not** yield an authorization code
-- **Enrolled-domain certificates.** A certificate pair and `certs.yml` written into the `domains_certs` volume (like the domains service does) are served by SNI within ~20 s without restarting Traefik (`traefik-certs-reload` sends `SIGHUP`), and an emptied `certs.yml` removes it again.
 - **Header spoofing.** Client-supplied cert headers and their aliases are
   dropped, and group-gate's path rules see `X-Forwarded-Uri`.
 - **Socket proxies.** A real `docker compose` project runs through
