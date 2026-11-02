@@ -28,9 +28,12 @@ exactly as on a real install. Every step drives the stack through
     - network validation
     - `cert sync`, which must never empty the revoked list when Vault fails
     - `pki setup` idempotency, including resuming a partial run
+    - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
+    - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then LoA 2; the marker scope is no default anywhere in the export
 - **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
-    - host normalisation and the case/port bypass regression
-    - merging the map file with the Hub's `groups`
+    - policy file v5: maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, v4 and older deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and enrolled domains denied
+    - core hosts from the map file (`<sub>` → `<sub>.<domain>`, the apex included), never from the policy file; merging the map file with the Hub's `groups`
+    - step-up URLs: `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
     - fail-closed policies (version without `version` key → deny) and the reserved deny group
     - `path_groups`, including bypass variants
     - the mTLS binding
@@ -70,6 +73,7 @@ the internal PKI) and verifies:
     - the OIDC discovery and SAML descriptor endpoints
     - the WebAuthn policy
     - the `portcullis-forward-auth` client
+    - the invite post-broker flow admits only clients with the `portcullis-invite-client` scope (only `portcullis-forward-auth`, never a realm default), and a second `keycloak configure` keeps an extra-domain callback on `portcullis-forward-auth` while dropping a wildcard
     - LLDAP users show up through the federation
     - the `email-unverified` scope has exactly one mapper (`email`), also after a second `keycloak configure`; a throwaway direct-grant client with that scope instead of `email` gets `email` but no `email_verified` in the ID token, access token and userinfo, while the built-in `email` scope sends `email_verified: false`
 - **mTLS**
@@ -81,6 +85,7 @@ the internal PKI) and verifies:
     - the same cert as a forged header sent straight to Keycloak (from the
       `portcullis` and `portcullis-auth` networks and from `127.0.0.1:8080`)
       must **not** yield an authorization code
+- **Enrolled-domain certificates.** A certificate pair and `certs.yml` written into the `domains_certs` volume (like the domains service does) are served by SNI within ~20 s without restarting Traefik (`traefik-certs-reload` sends `SIGHUP`), and an emptied `certs.yml` removes it again.
 - **Header spoofing.** Client-supplied cert headers and their aliases are
   dropped, and group-gate's path rules see `X-Forwarded-Uri`.
 - **Socket proxies.** A real `docker compose` project runs through
@@ -123,7 +128,7 @@ Scenarios:
 
 No user has a password and nothing is pre-assigned in Keycloak: the job
 creates one-time setup links with `./portcullis invite <user> --to <landing> --json`
-(for `e2e`, `e2e-other` and the bootstrap `admin`) and the test starts from
+(for `e2e`, `e2e-other`, `e2e-bypass` and the bootstrap `admin`) and the test starts from
 them. Any password field fails the test.
 
 1. An unauthenticated request is redirected to a passkey-only Keycloak sign-in page.
@@ -135,10 +140,11 @@ them. Any password field fails the test.
 7. A second login in a fresh browser with the same key is one passkey assertion.
 8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
 9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link.
-10. X.509 login via Keycloak satisfies an mTLS policy.
-11. An mTLS session without the cert on the request is refused (mTLS binding).
-12. A revoked client cert is rejected.
-13. A client cert from a foreign CA is rejected in the TLS handshake.
+10. An unused setup link, redeemed and then steered to another client's authorize endpoint with `kc_idp_hint=portcullis-invite` (client `e2e-invite-bypass`, created by the job), is denied by the invite post-broker flow: no code for the client, no passkey registered.
+11. X.509 login via Keycloak satisfies an mTLS policy.
+12. An mTLS session without the cert on the request is refused (mTLS binding).
+13. A revoked client cert is rejected.
+14. A client cert from a foreign CA is rejected in the TLS handshake.
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
 checks (registration, no password, `acr`/`amr` = `hwk`, single use, one-touch
