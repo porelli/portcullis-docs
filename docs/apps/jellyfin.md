@@ -18,7 +18,7 @@
 | **Subdomain** | `media` |
 
 !!! info "Auth Notes"
-    SSO-Auth plugin with group enforcement. Users must be in access_group to log in. Members of admin_group get Jellyfin admin. Configured automatically by setup sidecar. Identity: the plugin creates and matches Jellyfin users by preferred_username (the immutable LLDAP username; DefaultUsernameClaim) and never sees the email (no email scope). An SSO login whose username equals an existing local Jellyfin user (e.g. the LLDAP "admin" and the local admin created by setup) is linked to it.
+    SSO-Auth plugin with group enforcement. Users must be in access_group to log in. Members of admin_group get Jellyfin admin. The plugin is pinned (version + SHA-256, jellyfin/plugin.py) and installed by the jellyfin-plugin one-shot before Jellyfin starts (Jellyfin doesn't start if the download doesn't match); the plugin catalog is not used. The jellyfin-setup sidecar configures it at every start. Jellyfin's own login form stays on the ungated router (the Jellyfin apps use it), but no account set up by Portcullis can sign in with a password: SSO-created accounts get a random password and the plugin's authentication provider, and setup moves the local admin it creates to that provider too (setup then authenticates with its own API key, kept in the config volume). Break-glass: admin_jellyfin members are Jellyfin administrators through SSO. Local users an administrator creates by hand do get a password login there; avoid them, or use strong passwords. TV and mobile apps sign in with Quick Connect from a signed-in browser session. Identity: the plugin creates and matches Jellyfin users by preferred_username (the immutable LLDAP username; DefaultUsernameClaim) and never sees the email (no email scope). An SSO login whose username equals an existing local Jellyfin user (e.g. the LLDAP "admin" and the local admin created by setup) is linked to it.
 
 ## Routing
 
@@ -35,6 +35,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `jellyfin` | `jellyfin/jellyfin:12.4` | `sha256:fea863d0cd9e…` |
+| `jellyfin-plugin` | `python:3.15.2-alpine` | `sha256:20a82dbc2783…` |
 | `jellyfin-setup` | `python:3.15.2-alpine` | `sha256:20a82dbc2783…` |
 
 ## Settings

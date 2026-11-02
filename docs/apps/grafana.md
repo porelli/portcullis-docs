@@ -53,7 +53,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `grafana` | `grafana/grafana:13.3.0` | `sha256:488984b716c0…` |
+| `dashboards` | `grafana/grafana:13.3.0` | `sha256:488984b716c0…` |
 
 ## Environment Variables
 
