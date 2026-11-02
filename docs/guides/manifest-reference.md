@@ -418,7 +418,7 @@ settings:
 
 | Delivery | Form | For |
 |----------|------|-----|
-| `env` | `{env: <NAME>}` | Instance, group options. Person-entered as a collection (with `join` or `format: json`) |
+| `env` | `{env: <NAME>}` or `{env: <NAME_{n}>}` (indexed for lists) | Instance, group options. Person-entered as a collection (with `join` or `format: json`). Indexed form for `type: list`, `scope: instance` writes `NAME_1..NAME_<max_items>` |
 | `path` | (same as today's `path` settings) | `type: path`, `scope: instance` |
 | `claim` | `{claim: {client, name, json_type, render}}` | `person`, `person_entered`. Requires `method: native-oidc` |
 | `header` | `{header: {name, render}}` | `person`, `person_entered`. Name must be `X-Forwarded-Attr-<Name>` |

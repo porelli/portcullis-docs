@@ -1155,11 +1155,12 @@ Each option has at least one delivery. The value is rendered per delivery.
 
 **env**
 
-- Form: `{env: <NAME>}`
+- Form: `{env: <NAME>}` or `{env: <NAME_{n}>}` (indexed, for `type: list` with `scope: instance`)
 - The variable name (env key). An instance option with no `delivery` defaults to `env: <UPPER(key)>`
 - Reserved names (§2) and names hard-coded in `compose.yml` are refused. Duplicate env names across the template's settings are refused
 - `person` options may not use env delivery (per-person env is refused). A `person_entered` option may deliver as env with `render.join` or `render.format: json` (the collection, not per-person values)
 - Instance and group options write directly to the `.env`. Person-entered env lists are written by the delivery engine outside the flat-map flow
+- **Indexed env delivery** (for `type: list`, `scope: instance`): the form `{env: NAME_{n}}` writes `NAME_1`, `NAME_2`, ..., `NAME_<max_items>` as separate variables (1-indexed). Unused indices are written as empty strings. The validator requires `max_items` and that every index `{n}` the template references in `compose.yml` is declared (through `max_items`). Used for device lists (scrutiny `SCRUTINY_DISK_1..8`, motioneye `MOTIONEYE_VIDEO_1..4`) where compose needs separate variables for `devices:` entries
 
 **path (mounts)**
 
