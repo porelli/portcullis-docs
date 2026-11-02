@@ -285,11 +285,15 @@ manifest's [`tests.signin`](../guides/manifest-reference.md#testssignin), per ap
    refusal when nobody could sign in is reported `inconclusive`.
 
 `expected_fail` marks known failures: reported, not fatal, only when the
-failure matches the entry's `match` regex (evidence, page, app logs); any other
-failure or an exception fails, and a marked check that passes fails the run so
-the marker is removed. Behind group-gate (forward-auth / header-auth) only an
-HTTP 403 counts as the outsider's refusal, and each setup link must register
-exactly one passkey. Today: the outsider check of
+failure matches the entry's `match` (and not its `not_match`) in that check's
+own evidence: its detail, the pages its flow saw, the app's logs since its
+flow started. A flow the test broke (password field, Keycloak/enroll or browser
+error, never on the app) or an exception fails, and a marked check that passes
+fails the run so the marker is removed. Where group-gate decides (forward-auth,
+header-auth, and the login-path gates of GitLab, LiteLLM and Vaultwarden) only
+group-gate's own refusal counts for the outsider: its HTTP 403, its "not
+authorized" page and its `DENIED user=… host=…` log line. Each setup link must
+register exactly one passkey. Today: the outsider check of
 the native-OIDC apps with `group_access: false` that let every Portcullis user
 in (Headscale/Headplane, Immich) until the Hub restricts Keycloak clients per
 app; the member check of the apps that admit only their first user (the

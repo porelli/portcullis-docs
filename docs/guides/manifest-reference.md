@@ -539,9 +539,10 @@ explains it.
 | `admin` | check | Required when `auth.group_admin` is true. How to recognise admin rights |
 | `password` | string | Why a password field on the app's pages is expected (a documented own login or break-glass) |
 | `setup` | list of `{service, command, save_env, user}` or `{restart: true}` | Post-start steps an admin would do: run `command` in `service` (as `user`); with `save_env`, save the last output line as that env/setting and restart the app; `restart: true` restarts the app (a documented restart after the first start) |
-| `expected_fail` | `{member, admin, outsider}: {reason, match}` | Known failures: reported, not fatal, only if the failure matches the `match` regex (case-insensitive; searched in the check's evidence, the page and the app's container logs / `log_files`) — any other failure or an exception fails; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
+| `expected_fail` | `{member, admin, outsider}: {reason, match, not_match}` | Known failures: reported, not fatal, only if the failure matches `match` and not `not_match` (regexes, case-insensitive), searched in that check's own evidence only: its detail, the pages its flow saw, and the app's container logs / `log_files` since its flow started. A flow the test broke (password field, Keycloak/enroll or browser error, never on the app) or an exception always fails; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
 | `refused_users` | list of usernames | Extra users in `access_group` and `admin_group` that must be refused with HTTP 403 (names the app reserves, e.g. CloudBeaver's `cbadmin-*`) |
 | `log_files` | list of `{service, path}` | Files inside the app's containers, searched by `expected_fail.match` and kept as artifacts |
+| `pause_between_users` | seconds | Wait between the users' sign-ins, for apps whose per-client rate limits CI's single client address would trip (Actual: 500 requests a minute) |
 | `max_clicks` | integer | How often each `login` selector may be clicked per user (default 5; lower for apps that rate-limit logins, e.g. Actual) |
 | `boot_timeout`, `timeout`, `refused_after` | seconds | Container readiness (600), per-user sign-in (240), how long the outsider is watched once on the app (45) |
 
@@ -568,7 +569,7 @@ tests:
       json: {url: /api/user, field: login}     # Grafana (group_admin: false: no admin check)
 ```
 
-With admin rights mapped from `admin_group` (DokuWiki) and a known failure:
+With admin rights mapped from `admin_group` (DokuWiki):
 
 ```yaml
 tests:
@@ -577,8 +578,21 @@ tests:
     login: ["a:has-text('Portcullis')"]
     signed_in: {text: "{username}", absent: "Permission Denied"}
     admin: {reach: /doku.php?do=admin, text: "Access Control List"}
+```
+
+A known failure (Immich: native OIDC with `group_access: false`, so every
+Portcullis user gets in until the Hub restricts its Keycloak client):
+
+```yaml
+tests:
+  signin:
+    path: /auth/login
+    signed_in:
+      json: {url: /api/users/me, field: storageLabel}
     expected_fail:
-      outsider: {reason: "no OIDC group restriction until Hub Task 4b", match: "e2eoutsider signed in"}
+      outsider:
+        reason: "group_access: false: no OIDC group restriction until the Hub's per-app Keycloak client access"
+        match: "e2eoutsider signed in"
 ```
 
 ## instances
