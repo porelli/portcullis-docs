@@ -158,6 +158,34 @@ docker buildx imagetools inspect ghcr.io/porelli/portcullis-hub:1.2.3   # top-le
     `edge`, and the templates CI tests against core `main`. `CHANGELOG.md`
     collects everything under `[Unreleased]`.
 
+## Upgrade notes
+
+Changes that need an admin action when you upgrade. The templates repo keeps
+the same notes in its `CHANGELOG.md`.
+
+### App instances and extra domains (Hub v5, core v5, templates contract v2)
+
+- **Nextcloud admins must be in `users_nextcloud`.** The Nextcloud template
+  now sets [`keycloak_access_role`](../guides/manifest-reference.md#auth):
+  Keycloak lets only members of the instance's access group (`users_nextcloud`
+  for the default instance, `users_<instance-id>` for others) sign in. A member
+  of `admin_nextcloud` who isn't also in `users_nextcloud` could sign in before
+  (user_oidc's group whitelist) and is now denied. Before you upgrade, add every
+  Nextcloud admin to `users_nextcloud` (Hub → Users & Groups).
+- Paperless-ngx, Vaultwarden and GitLab set `keycloak_access_role` too; their
+  sign-in already required the access group, so nothing changes for their
+  users.
+- **Vaultwarden** runs with `SSO_ONLY`: the email + master password login is
+  off; the master password only decrypts the vault after the SSO login.
+- **Jellyfin**: the local `admin` account loses its password login (setup moves
+  it to the SSO plugin's provider). Administrators sign in through SSO
+  (`admin_jellyfin`).
+- **Guacamole**: header logins as `guacadmin*` are refused (403). Databases
+  created from now on name the built-in administrator
+  `guacadmin-<generated suffix>`.
+- The Hub and core must be upgraded together (policy file version 5, see
+  above).
+
 ## Changing settings during an upgrade
 
 | You changed | Run |
