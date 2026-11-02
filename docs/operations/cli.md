@@ -438,7 +438,7 @@ admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 - pushes the X.509 authenticator settings from the file to the realm: CRL check against Vault's `pki_int` CRL, trust re-validation, `clientAuth` EKU
 - checks the AMR reference values, and ensures the `amr` mapper and the `groups` scope
 - ensures the `email-unverified` scope (`email` claim, no `email_verified`) that Hub templates opt into with `keycloak_clients[].email_verified_claim: false`
-- sets the `acr`/`groups` scopes and the redirect URI on `portcullis-forward-auth`
+- `portcullis-forward-auth`: the `acr`/`groups` scopes, requires PKCE S256, the `auth.<domain>` callback (keeps the Hub's extra-domain callbacks), and the `portcullis-invite-client` scope (setup links work only through it; removed from every other client)
 - creates a credential-less `testuser` and applies the `PORTAL_DISPLAY_NAME` branding
 
 | Option | Meaning |
