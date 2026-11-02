@@ -18,7 +18,7 @@ The main view lists every template from every [template source](#template-source
 | Badge | Meaning |
 |-------|---------|
 | **SSO** | The app supports single sign-on via Keycloak (`auth.sso`) |
-| **Group Access** | group-gate restricts the app's subdomains to the `users_<app>` group (`auth.group_access`) |
+| **Group Access** | group-gate restricts the instance's hostnames to its access group (`users_<app>` for the default instance; `auth.group_access`) |
 | **Group Admin** | The app maps the `admin_<app>` group to its admin role (`auth.group_admin`) |
 | **Method** | `forward-auth`, `native-oidc`, `header-auth`, `mtls`, `custom` or `public` |
 
@@ -38,9 +38,9 @@ Before anything starts, the Hub refuses to enable the app if:
 - one of its host ports (from Settings or its [custom override](#custom-override))
   overlaps a host port of another enabled app (HTTP 409, "port
   0.0.0.0:3300/tcp already claimed by enabled app …"), or
-- one of its subdomains is already routed by another enabled app (HTTP 409,
-  "subdomain … is already routed by enabled app …"). Every subdomain has
-  exactly one owner, because group-gate keys groups and policies by subdomain.
+- one of its hostnames is already used by another instance, enabled or not, or
+  is still routed by one (HTTP 409). Every hostname has exactly one owner,
+  because group-gate keys groups and policies by full hostname (policy v5).
 
 It then generates the per-app `.env` and compose override, copies the template
 directory to `<core>/templates/<app-id>/`, registers the template's Keycloak
@@ -227,8 +227,8 @@ signed-in user, the size and a SHA-256 prefix, never the content (it may hold
 env values). The file is mode 0600.
 
 The Hub refuses anything that would bypass Portcullis' routing or isolation.
-group-gate keys every policy and group by the subdomains the Hub reads from the
-template's Traefik labels, and the Hub's override sets each router's TLS
+group-gate keys every policy and group by the full hostnames of the
+instance's Traefik routers (policy v5), and the Hub's override sets each router's TLS
 options and middlewares, so the custom override may not change them:
 
 - **Top level:** only `services`, `volumes`, `networks`. Must be a mapping;
@@ -367,7 +367,8 @@ A template can run as multiple fully independent **instances**. Each instance ha
 - compose project, containers and volumes (data is never shared)
 - settings, environment variables and generated secrets
 - Keycloak clients (one per manifest `keycloak_clients` entry)
-- access and admin groups (`users_<id>`, `admin_<id>`)
+- access and admin groups (`users_<id>`, `admin_<id>`; the default instance
+  keeps the manifest's groups)
 - auth policy, public exceptions and sign-in mode
 - drift tracking and last-operation record
 
@@ -412,22 +413,30 @@ The Hub refuses:
   or certificate expired)
 - an instance of a single-only template (409, "This template runs only as one instance")
 
-After validation, the Hub:
+After validation, the Hub **creates the instance without enabling it**:
 
-1. Creates the access and admin groups (`users_<id>`, `admin_<id>`) as empty
-   LLDAP groups, owned by the acting administrator
-2. Generates the instance `.env` with instance-scoped variables:
-   - `PORTCULLIS_INSTANCE=<id>`
-   - `PORTCULLIS_HOST_<ROUTER>=<hostname>` (one per host router)
-   - `PORTCULLIS_OIDC_CLIENT_ID[_<KEY>]=<id>[-<key>]` (per Keycloak client)
-   - `PORTCULLIS_ACCESS_GROUP=users_<id>`
-   - `PORTCULLIS_ADMIN_GROUP=admin_<id>`
-3. Generates the compose override (volumes, host ports, Traefik labels with
-   renamed routers/services/middlewares for non-default instances, TLS tiers)
-4. Registers Keycloak clients with redirect URIs for the instance's hostnames
-5. Runs `docker compose up` (creates, then starts)
-6. Publishes the instance's policy to group-gate
-7. Records the instance as `state: created` (or enabled if the up succeeded)
+1. Creates the access and admin groups (`users_<id>`, `admin_<id>`, only for
+   groups the manifest declares) as empty manual LLDAP groups, through the
+   Users & Groups guardrails as the acting administrator (who must be an LLDAP
+   administrator). An existing group of that name is kept, with a warning: its
+   members get access
+2. Generates fresh values for every `generate: random` secret and records the
+   instance as `state: created`, with its hostnames
+
+Nothing starts yet, and no Keycloak client is registered. **Enable** the
+instance (like any app) to generate its `.env` and compose override, register
+its Keycloak clients (redirect URIs for its hostnames), run
+`docker compose up` and publish its policy to group-gate. The `.env` carries
+the instance variables:
+
+- `PORTCULLIS_INSTANCE=<id>`
+- `PORTCULLIS_HOST_<ROUTER>=<hostname>` (one per host router)
+- `PORTCULLIS_OIDC_CLIENT_ID[_<KEY>]=<id>[-<client id>]` (per Keycloak client)
+- `PORTCULLIS_ACCESS_GROUP=users_<id>`
+- `PORTCULLIS_ADMIN_GROUP=admin_<id>`
+
+The override names the volumes `portcullis_<id>-<key>` and renames the
+template's routers, services and middlewares to `<id>_<name>`.
 
 The instance is listed in the template card's **Instances** section and in the
 **App Catalog → Instances** table.
@@ -567,7 +576,10 @@ instance on an enrolled domain:
 ### Instance backups
 
 **Admin-only.** The Hub can back up any instance on demand or before a restore /
-delete. A backup archives:
+delete. Backups, restores and deletes run in the background: the API answers
+`202` with an operation id, and the UI polls the instance's op record
+(`GET /api/instances/<id>/op`) until it is done
+([contract §11.7](../guides/integration-contracts.md#117-hub-api-and-audit)). A backup archives:
 
 - the instance's **Docker volumes** (using helper containers, never starting
   them, with the owner uid/gid preserved)
@@ -593,8 +605,11 @@ shows its result and warnings (also under **Last operation**). Closing the
 dialog doesn't stop it; another operation on the same instance is refused
 (busy) until it ends.
 
-**Free space**: the Hub checks free space before starting (> 2 GB margin on the
-data volume); if there isn't enough it refuses with HTTP 507.
+**Free space**: a backup needs at least 64 MiB free on the Hub's data volume
+before it starts, and the copied size plus 64 MiB before the archive is
+assembled; staging an archive for a restore needs its size plus 64 MiB.
+Otherwise the operation fails with HTTP 507 (no archive is written, and an
+instance stopped for a manual backup is started again).
 
 ### Restoring an instance
 
@@ -626,20 +641,28 @@ A failed restore leaves an `OpError` with `op: restore` and `rolled_back: true`.
 1. Go to **Backups** tab
 2. Click **Restore as new** on a backup row
 3. Enter a new instance id
-4. Review the pre-filled hostnames (the backup's hostnames with the new suffix)
-5. Confirm
+4. Confirm
 
 The Hub:
 
-- creates the new instance in `state: created`
-- recreates volumes, env, override
-- regenerates client secrets (`secret_env`)
-- creates groups (`users_<new-id>`, `admin_<new-id>`) as empty, owned by the
-  acting administrator
-- updates Keycloak clients with the new id and hostnames
+- creates the new instance in `state: created` (not started), with the
+  **new id's default hostnames on the main domain** (change them afterwards on
+  the **Overview** tab)
+- creates new volumes (labelled with the new project) and fills them from the
+  archive; restores the archive's settings, policy, public exceptions and share
+  tokens, sign-in mode, custom override and env, with the instance variables
+  rewritten for the new id
+- regenerates each Keycloak client's secret (`secret_env`)
+- creates the groups `users_<new-id>` / `admin_<new-id>` as empty manual groups
+  (an existing group of that name is kept, with a warning)
+- creates its Keycloak clients only when it is first enabled, as for any
+  instance
 
-Immutable-host routers: the Hub refuses (409) if the backup's hostnames for
-immutable routers don't match the new instance's pre-filled ones (you can't
+`type: path` settings keep the same host path: the result warns that both
+instances now share that directory.
+
+Immutable-host routers: the Hub refuses (409) if a `hosts.immutable` router of
+the new instance would get a different hostname than the archived one (you can't
 restore a Matrix instance with a different homeserver domain).
 
 Both forms are audited as `instance.restore` with the acting administrator and
@@ -654,8 +677,10 @@ the archive path.
 3. Runs `docker compose down` and removes volumes
 4. Removes the Keycloak clients (only those owned by this instance), the access
    role (if any), and extra-domain sign-in callback URIs for this instance's hosts
-5. Deletes groups **only if they are not shared** with another instance or
-   template, and are not built-in, administrator, permission or rule groups
+5. Deletes the groups named exactly `users_<id>` / `admin_<id>`, through the
+   Users & Groups guardrails, **only if they are not shared** with another
+   instance or template and are not built-in, administrator, permission or
+   rule groups (others are kept, with a warning)
 6. Removes env, override, settings, ops records and the state entry
 
 **To delete**:
@@ -943,7 +968,7 @@ If Docker is unreachable, the report carries `error` and the UI shows
 ### Fail-closed behaviour
 
 Drift must never open access. That is why `state.yaml` keeps a **snapshot**
-(`published`) of each enabled app's last published config: subdomains, access
+(`published`) of each enabled app's last published config: hostnames, access
 group, admin paths, policy override, whether it ran with its own login only
 (then no group is published: its routers have no group-gate) and the public
 paths it opened (with `{token}`). The containers keep the public router they were started with, so
@@ -957,7 +982,7 @@ the snapshot keeps showing it in the policy file's `public_paths`.
 - **No snapshot.** If an enabled app has no snapshot, or a `portcullis-<id>`
   project runs without being enabled, the Hub reads the `Host()` rules from the
   running containers' labels. It publishes the reserved group
-  `__portcullis_deny__` for those subdomains. group-gate then denies every
+  `__portcullis_deny__` for those hostnames. group-gate then denies every
   request to them ("The configuration of … is unavailable"), until you disable
   or adopt the app. Never create an LLDAP group with that name.
 - **Corrupt `state.yaml`.** If the file can't be parsed (or is empty), the Hub
@@ -976,21 +1001,33 @@ Templates must load cleanly, or the Hub skips them and logs why:
   only with `method: custom`, `sso: false` and `supported: true`.
 
 **Strict Traefik rule parsing.** group-gate keys every policy, group and path
-rule by subdomain. A host the Hub doesn't see would get no policy and no group,
-which fails open. So the Hub parses each `traefik.http.routers.<name>.rule`
-label in `compose.yml` and rejects the template if:
+rule by full hostname (policy v5). A host the Hub doesn't see would get no
+policy and no group, which fails open. So the Hub parses each
+`traefik.http.routers.<name>.rule` label in `compose.yml` (template contract
+v2, [contracts §3.1](../guides/integration-contracts.md#31-template-contract-v2-instances-and-hostname-variables-new-contract-v2)) and rejects the template if:
 
-- a `Host()` argument is anything but a literal `` `<label>.${PORTCULLIS_DOMAIN}` ``
-  (a default such as `${PORTCULLIS_DOMAIN:-portcullis.local}` is allowed).
-  That rules out other domains, bare domains, and variables in the label part
-  (`${SUB}.${PORTCULLIS_DOMAIN}`)
+- a `Host()` argument is anything but exactly
+  `` `${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}` ``, where
+  `<ROUTER>` is the host router's name (the router whose rule is `Host()`
+  alone) upper-cased with `-` and `.` turned into `_`, and `<sub>` a single DNS
+  label (the default subdomain). That rules out literal domains, bare
+  domains, and other variables. The Hub sets the variable to the instance's
+  full hostname, on the main domain or an enrolled domain. During the
+  conversion period an `instances: single` template may still use
+  `` `<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}` `` for all its routers
+  (no mixing); it runs only as its default instance on fixed hostnames
 - the rule uses `HostRegexp`, `HostHeader`, `HostSNI` or `HostSNIRegexp`
 - some way the rule can match is not restricted by `Host()`: a top-level `||`
   branch without `Host()`, a negation, or a path-only rule
+- a hostname has no host router, two host routers map to the same variable,
+  or a variable is written with different defaults
 - a router has no rule, or a `traefik.enable=true` service has no HTTP router.
   Traefik would then apply its default rule
-- it declares a TCP router, which would bypass forward-auth
-- it routes a core subdomain (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`)
+- it declares a TCP or UDP router, which would bypass forward-auth
+- its default hostname is a core host (`<main domain>` itself and the core
+  subdomains `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`,
+  `metrics`); instance hostnames that are core hosts are refused when they are
+  set
 
 ## Keycloak clients
 
@@ -1095,7 +1132,9 @@ sources you trust.
 - **Docker access.** The Hub has no Docker socket. It uses
   `DOCKER_HOST=tcp://socket-proxy-hub:2375` both for the `docker compose` CLI
   (only `up`/`down`) and for its own Engine API calls (status, logs, exec,
-  events). The socket proxy denies swarm, plugins, builds, secrets, configs and
+  events, and the container archive endpoints of the never-started helper
+  containers that copy volumes for instance backups and restores:
+  `ALLOW_ARCHIVE`). The socket proxy denies swarm, plugins, builds, secrets, configs and
   system prune. The Hub can still start containers with any configuration, so
   treat it as host-root-equivalent.
 - **Runtime user.** The image runs as **uid/gid 10001** with a read-only root
@@ -1221,24 +1260,27 @@ and [Security & Hardening](hardening.md#domains-service) for complete details.
 
 
 
-### Changing an app's subdomain or middlewares
+### Changing an app's hostname or middlewares
 
-Routing comes from the template only. Change the `Host()` rule or the router
-middlewares in the template, in a template source you control (fork the
+Hostnames are per instance: change them in the Hub on the instance's
+**Overview** tab (see [Changing hostnames](#changing-hostnames)); the default
+instance's are `<sub>.<main domain>` unless edited. The router middlewares come
+from the template only. Change them in a template source you control (fork the
 template into your own source repository if needed), keep the rule in the
 [strict form](#template-rules-enforced-by-the-hub) and keep the forward-auth
 pair (`portcullis-auth@docker,portcullis-groups@docker`, in this order) and
-`security-headers@file`. **Sync**, then restart the app. The new subdomain must
-not be used by another enabled app; the Hub re-publishes the group and policy
-under it. The Expert tab's custom override refuses `traefik.*` labels.
+`security-headers@file`. **Sync**, then restart the app. The Expert tab's custom
+override refuses `traefik.*` labels.
 
 ### Backing up app data
 
-App data lives in Docker volumes named `portcullis_<name>` (templates declare
-explicit names). `./portcullis backup` covers the core volumes only. Back up
-app volumes with your usual tooling, e.g.:
+App data lives in Docker volumes: `portcullis_<key>` for a default instance,
+`portcullis_<instance-id>-<key>` for the others (the Hub's override names
+them). Use the Hub's [instance backups](#instance-backups) (archived under
+`hub_data`, so `./portcullis backup` ships them), or back up app volumes with
+your usual tooling, e.g.:
 
 ```bash
-docker run --rm -v portcullis_jellyfin_config:/data -v "$PWD":/backup \
+docker run --rm -v portcullis_jellyfin-config:/data -v "$PWD":/backup \
   alpine tar czf /backup/jellyfin-config.tar.gz -C /data .
 ```
