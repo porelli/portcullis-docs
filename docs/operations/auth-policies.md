@@ -199,7 +199,7 @@ unchanged.
 
 ## Where policies are published
 
-The Hub writes per-app policies into `group-gate-policy.json` **keyed by every subdomain the app routes** (never by template ID); apps that inherit the default publish nothing and group-gate uses the file's `default`. A policy with an unknown factor or op makes group-gate deny the request (fail closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
+The Hub writes per-app policies into `group-gate-policy.json` (version 5) **keyed by every full hostname the instance routes** (never by template or instance ID); apps that inherit the default publish nothing and group-gate uses the file's `default`. A policy with an unknown factor or op makes group-gate deny the request (fail closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
 
 For native-OIDC apps the policy also sets the Keycloak client's `default.acr.values`, so Keycloak prompts for the right level at login.
 

@@ -20,7 +20,7 @@ settings, the secrets containers read, and header trust.
 | Lost or stolen YubiKey cert | Keeps working until expiry | Revocation is checked on every request (group-gate), at Keycloak X.509 login (CRL, fail closed), and by the mTLS binding. On removal or expiry, group-gate also withholds `Authorization` and `X-Forwarded-Access-Token` |
 | Expired group membership | Keeps working while Hub is down | Every pending expiry is in the policy file's `expiring` array (plus a 10-min grace after LLDAP removal). group-gate treats it as absent. The Hub also revokes Keycloak sessions (oauth2-proxy cookie refresh is 1 min, so removals and Keycloak logouts take effect within ~1 min; sessions end at Keycloak's idle 8h / max 12h) |
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
-| Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses subdomain collisions and core subdomains, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets |
+| Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses hostname collisions and core hosts, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets |
 | Public exceptions (share links, off unless an admin turns them on) | Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps | Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; `rate-limit@file`; see [Public exceptions](#public-exceptions) |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
@@ -92,8 +92,8 @@ What it can't do:
 
 Trade-off: an app user signed in with a remember-me cookie gets the
 guard's 403 on a public link in the same browser (open it in a private
-window). The guard serves only version 4 of the policy file, so the Hub and
-core are upgraded together.
+window). The guard serves only version 5 of the policy file (keyed by full
+hostname), so the Hub and core are upgraded together.
 
 Not everything with a share feature can be scoped: Vaultwarden Send needs the
 web vault at `/` and the password-login token endpoint, and Kanboard's router
@@ -354,9 +354,9 @@ backends must never trust those headers (none of them reads them).
 
 ### Sessions, temporary memberships and the people directory
 
-- **Temporary memberships.** The policy file (version 4, the only version
-  group-gate serves) lists `expiring` `{user, group, at}` entries. group-gate
-  treats a membership as absent once `now >= at` (for the subdomain and
+- **Temporary memberships.** The policy file (version 5, the only version
+  group-gate serves; keyed by full hostname) lists `expiring` `{user, group, at}` entries. group-gate
+  treats a membership as absent once `now >= at` (for the host and
   path-group checks and in the `X-Auth-Request-Groups` it returns), whatever
   the token says, so expiry holds even while the Hub is down. A malformed entry
   denies (fail closed). The access token still names the expired group, so when
@@ -445,8 +445,8 @@ forward-auth.
   routers) have no forward-auth: nothing is signed in and no identity header is
   passed (the Hub's strip middleware deletes client copies). Their first
   middleware, `portcullis-public-guard@docker` (group-gate `/public-guard`),
-  returns 403 unless the policy file (version 4) publishes the subdomain in
-  `public_paths`, the normalised path is inside one of its patterns (prefix /
+  returns 403 unless the policy file (version 5) publishes the request's full
+  hostname in `public_paths`, the normalised path is inside one of its patterns (prefix /
   exact / static files; encoded `/`, `\`, NUL or `#` denied, and so is any `#`
   in `X-Forwarded-Uri`: browsers never send fragments), and the request carries
   none of `Authorization`, `Proxy-Authorization`, the app's

@@ -109,7 +109,7 @@ oauth2-proxy (forward auth)
   v  X-Auth-Request-Groups header
 group-gate (access check)
   |
-  v  subdomain -> required group mapping
+  v  hostname -> required group mapping
 App (allowed or denied)
 ```
 
@@ -118,12 +118,12 @@ App (allowed or denied)
 1. **LLDAP** stores users and groups. An admin creates groups and assigns users to them.
 2. **Keycloak** federates from LLDAP via its LDAP user storage provider. Groups are synced periodically (and can be triggered manually).
 3. **oauth2-proxy** authenticates users via Keycloak's OIDC endpoint. The ID token includes a `groups` claim with the user's LLDAP groups.
-4. **group-gate** receives the `X-Auth-Request-Groups` header (set by oauth2-proxy) and checks whether the user belongs to the required group for the requested subdomain.
+4. **group-gate** receives the `X-Auth-Request-Groups` header (set by oauth2-proxy) and checks whether the user belongs to the required group for the requested hostname.
 
 ## group-gate and the Subdomain Map
 
 group-gate is the forward-auth service behind the `portcullis-groups@docker`
-middleware. It maps **subdomains** to required groups. Two sources are merged,
+middleware. It maps **hostnames** to required groups. Two sources are merged,
 and both are re-read on every request:
 
 1. **`group-gate/group-gate-map.conf`** in the core repo (mounted read-only
@@ -136,24 +136,28 @@ and both are re-read on every request:
     grafana=users_grafana
     ```
 
-    Edits take effect on the next request; no restart is needed.
+    Each `<sub>` means `<sub>.<main domain>` (group-gate expands it with
+    `PORTCULLIS_DOMAIN`). Edits take effect on the next request; no restart is
+    needed.
 
-2. **The Hub's `group-gate-policy.json`** (version 3, on the `hub_data` volume)
-   has a `groups` map. The Hub rewrites it whenever an app is enabled,
-   disabled or reconfigured. For every **enabled** template with
-   `auth.group_access: true`, each subdomain the template routes maps to the
-   manifest's `auth.access_group`. For example, Nextcloud routes
-   `cloud.<domain>` and declares `users_nextcloud`, so it yields
-   `cloud = users_nextcloud`. Hub entries add to or override the map file for
-   app subdomains.
+2. **The Hub's `group-gate-policy.json`** (version 5, on the `hub_data` volume)
+   has a `groups` map keyed by **full lowercase hostname**. The Hub rewrites it
+   whenever an instance is enabled, disabled or reconfigured. For every
+   **enabled** instance with `auth.group_access: true`, each hostname it
+   routes maps to the instance's access group. For example, Nextcloud's
+   default instance routes `cloud.<main domain>` and declares
+   `users_nextcloud`, so it yields `"cloud.<main domain>": "users_nextcloud"`;
+   an instance `nextcloud-team-b` on `cloud.team-b.example.org` yields
+   `"cloud.team-b.example.org": "users_nextcloud-team-b"`. Hub entries add to
+   or override the map file's expanded entries.
 
-**Keys are subdomains only.** Policies, groups and path rules are never keyed
-by template ID, because an ID could equal another app's subdomain. The Hub
-refuses to enable a template that routes a subdomain another enabled app
-already routes, and rejects templates whose `Host()` rules it can't fully
-resolve (see [Hub → Template rules](hub.md#template-rules-enforced-by-the-hub)).
+**Keys are full hostnames only.** Policies, groups and path rules are never
+keyed by template or instance ID. A hostname belongs to at most one instance:
+the Hub refuses a hostname another instance uses, and rejects templates whose
+`Host()` rules it can't fully resolve (see
+[Hub → Template rules](hub.md#template-rules-enforced-by-the-hub)).
 
-**Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `metrics`) always
+**Core subdomains** (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, on the main domain) always
 come from the map file. The Hub never publishes them, and group-gate ignores
 them in the policy file. If they are missing from the map file they default to
 `lldap_admin`.
@@ -164,10 +168,12 @@ When a request for `grafana.<domain>` arrives, group-gate runs these checks in
 order and stops at the first failure:
 
 1. **Host.** It takes the host from `X-Forwarded-Host`, lowercases it, and
-   strips any port and trailing dot. The host must be exactly
-   `<label>.<PORTCULLIS_DOMAIN>`; anything else gets a 403. Traefik matches
-   hosts case-insensitively, so without normalisation `HUB.<domain>` would
-   miss the `hub` entry.
+   strips any port and trailing dot, and looks it up exactly (no
+   parent-domain fallback). The host must be a core host,
+   `<label>.<PORTCULLIS_DOMAIN>`, or an enrolled domain `<d>` / `<label>.<d>`
+   that the policy file lists in `extra_domains`; anything else gets a 403.
+   Traefik matches hosts case-insensitively, so without normalisation
+   `HUB.<domain>` would miss the `hub.<domain>` entry.
 2. **Reserved group.** A user whose groups include `__portcullis_deny__` is
    denied.
 3. **Revocation.** If the request carries a client certificate (via
@@ -178,10 +184,10 @@ order and stops at the first failure:
    step-up page. Policies satisfied only through `mtls` also need the current
    request's certificate to match the user (mTLS binding). See
    [Authentication Policies](auth-policies.md).
-5. **Group.** It looks up the subdomain's required group (`users_grafana`) and
+5. **Group.** It looks up the hostname's required group (`users_grafana`) and
    compares it with `X-Auth-Request-Groups` (set by oauth2-proxy). The header
    is split on commas only, and the match must be exact.
-6. **Path rules.** If the subdomain has `path_groups`, the group of the matching
+6. **Path rules.** If the hostname has `path_groups`, the group of the matching
    path rule is required **in addition** (see below).
 7. **Allow.** It returns `200 OK` and sets `X-Forwarded-User` /
    `X-Auth-Request-User` (the LLDAP username), `X-Forwarded-Email` /
@@ -194,22 +200,22 @@ order and stops at the first failure:
 "public":
 
 - a policy file that exists but can't be parsed
-- a `version` newer than group-gate understands
+- a `version` other than 5 (older files are denied too)
 - an unknown factor, op or rule shape
 
-If a subdomain has no mapping at all, group-gate allows any authenticated user
+If a hostname has no mapping at all, group-gate allows any authenticated user
 and logs `ALLOW-UNMAPPED`. This is the passthrough for apps without group-based
 access.
 
 ### The reserved group `__portcullis_deny__`
 
-The Hub publishes `groups[sub] = "__portcullis_deny__"` for subdomains it knows
+The Hub publishes `groups[host] = "__portcullis_deny__"` for hostnames it knows
 are routed but can't attribute a config to. That happens when:
 
 - an enabled app has neither a template nor a stored snapshot
 - a `portcullis-<id>` project runs without being enabled
 
-Nobody is a member of that group, so every request to those subdomains is
+Nobody is a member of that group, so every request to those hostnames is
 denied ("The configuration of … is unavailable"). A user who *claims*
 membership is denied everywhere.
 
@@ -220,7 +226,7 @@ See [Hub → Fail-closed behaviour](hub.md#fail-closed-behaviour).
 
 ### Path rules (`path_groups` and `admin_paths`)
 
-Some apps keep an admin area on a path of the same subdomain, e.g.
+Some apps keep an admin area on a path of the same hostname, e.g.
 Vaultwarden's `/admin`. A template lists such prefixes in its manifest:
 
 ```yaml
@@ -229,10 +235,11 @@ auth:
   admin_paths: ["/admin"]
 ```
 
-For every subdomain of an enabled template, the Hub publishes
-`path_groups[sub] = [{"prefix": "/admin", "group": "admin_vaultwarden"}]`. On
-requests under that prefix, group-gate then requires `admin_group` **in
-addition** to the subdomain's group.
+For every hostname of an enabled instance, the Hub publishes
+`path_groups[host] = [{"prefix": "/admin", "group": "admin_vaultwarden"}]` (the
+instance's admin group: `admin_<id>` for instances other than the default). On
+requests under that prefix, group-gate then requires the admin group **in
+addition** to the hostname's group.
 
 Matching:
 
@@ -262,7 +269,7 @@ Matching:
 ### `/authenticated`: any signed-in user
 
 group-gate also serves `/authenticated`, used by the core middleware
-`portcullis-self@docker`. It runs every check except the subdomain group check
+`portcullis-self@docker`. It runs every check except the hostname group check
 (step 5): host, revocation, policy, path rules, and a signed-in user. Core uses
 it for `enroll.<domain>/self`, where every user may renew **their own**
 certificate without being in `lldap_admin`.

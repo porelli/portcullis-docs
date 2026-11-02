@@ -1,13 +1,13 @@
-*[Group Access]: Restricts app hostnames to members of the access group via group-gate
-*[Group access]: Restricts app hostnames to members of the access group via group-gate
-*[GROUP ACCESS]: Restricts app hostnames to members of the access group via group-gate
+*[Group Access]: Restricts an instance's hostnames to members of its access group via group-gate
+*[Group access]: Restricts an instance's hostnames to members of its access group via group-gate
+*[GROUP ACCESS]: Restricts an instance's hostnames to members of its access group via group-gate
 *[group_access]: Manifest flag enabling group-gate restriction to the access group
 *[Group Admin]: Maps the admin group to the app's admin role
 *[Group admin]: Maps the admin group to the app's admin role
 *[GROUP ADMIN]: Maps the admin group to the app's admin role
 *[group_admin]: Manifest flag enabling admin group mapping
-*[access_group]: LLDAP group required for app access (default: users_<app>)
-*[admin_group]: LLDAP group granting admin privileges (default: admin_<app>)
+*[access_group]: LLDAP group required for app access (default instance: users_<app>; other instances: users_<instance-id>)
+*[admin_group]: LLDAP group granting admin privileges (default instance: admin_<app>; other instances: admin_<instance-id>)
 *[path_groups]: Per-path group requirements within an app
 *[admin_paths]: App paths requiring admin group membership
 *[forward-auth]: Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate
@@ -23,7 +23,7 @@
 *[group-gate]: Per-request authorization middleware checking groups, policies, and revocation
 *[LLDAP]: Light LDAP directory server storing users and groups
 *[Keycloak]: Identity provider handling WebAuthn, X.509, and OIDC/SAML
-*[Traefik]: Reverse proxy terminating TLS and routing requests by subdomain
+*[Traefik]: Reverse proxy terminating TLS and routing requests by hostname
 *[oauth2-proxy]: Forward authentication service redirecting to Keycloak for sign-in
 *[OIDC]: OpenID Connect - authentication layer on top of OAuth 2.0
 *[SAML]: Security Assertion Markup Language - XML-based SSO protocol
@@ -36,7 +36,7 @@
 *[DNS-01]: ACME challenge proving domain control via DNS TXT records
 *[ACME]: Automated Certificate Management Environment - protocol for issuing certificates
 *[wildcard certificate]: TLS certificate valid for all subdomains (*.domain)
-*[policy file]: JSON file mapping subdomains to groups, auth policies, and expiries
+*[policy file]: JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries
 *[public exception]: Unauthenticated paths for share links (off by default)
 *[public exceptions]: Unauthenticated paths for share links (off by default)
 *[share token]: URL token granting anonymous access to a specific resource
