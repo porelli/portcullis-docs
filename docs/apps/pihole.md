@@ -1,6 +1,6 @@
 # 🚫 Pi-hole
 
-> Network-wide ad blocking via DNS sinkhole
+> Network-wide ad blocking via DNS sinkhole (every member of the access group is a full Pi-hole admin; Pi-hole has no roles)
 
 **Category:** networking  
 **Tags:** `dns`, `adblock`, `privacy`, `filtering`

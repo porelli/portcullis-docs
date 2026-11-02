@@ -265,8 +265,16 @@ def generate_app_page(app: dict, output_dir: Path):
         if pa.get("description"):
             lines.append(md_cell(html.escape(str(pa["description"]).strip(), quote=False)))
             lines.append("")
-        lines.append("When an admin turns them on in the Hub, these paths skip forward-auth and group-gate "
-                     "(see [Public exceptions](../operations/auth-policies.md#public-exceptions)).")
+        if (app.get("auth") or {}).get("method") == "native-oidc":
+            # No forward-auth on the host anyway: the exception only lifts a
+            # client-certificate requirement of the host's policy.
+            lines.append("The app signs users in itself (native OIDC), so these paths are reachable without "
+                         "Portcullis sign-in anyway. When an admin turns them on in the Hub, they are also served "
+                         "without a client certificate on hosts whose policy requires one "
+                         "(see [Public exceptions](../operations/auth-policies.md#public-exceptions)).")
+        else:
+            lines.append("When an admin turns them on in the Hub, these paths skip forward-auth and group-gate "
+                         "(see [Public exceptions](../operations/auth-policies.md#public-exceptions)).")
         lines.append("")
         lines.append(f"**Default:** {'on' if pa.get('enabled_by_default') else 'off'}, mode `{mode}`  ")
         if pa.get("token_pattern"):

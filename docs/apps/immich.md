@@ -24,7 +24,7 @@
 
 Shared links (/share/&lt;key&gt;, /s/&lt;slug&gt;) for visitors without a client certificate. Immich's shared-link key, password and expiry still apply.
 
-When an admin turns them on in the Hub, these paths skip forward-auth and group-gate (see [Public exceptions](../operations/auth-policies.md#public-exceptions)).
+The app signs users in itself (native OIDC), so these paths are reachable without Portcullis sign-in anyway. When an admin turns them on in the Hub, they are also served without a client certificate on hosts whose policy requires one (see [Public exceptions](../operations/auth-policies.md#public-exceptions)).
 
 **Default:** off, mode `all`  
 **Refused by the public guard (login credentials):** header `Authorization`, header `Proxy-Authorization`, header `x-api-key`, header `x-immich-user-token`, header `x-immich-session-token`, cookie `immich_access_token`, cookie `immich_maintenance_token`, query `apiKey`, query `sessionKey`  
