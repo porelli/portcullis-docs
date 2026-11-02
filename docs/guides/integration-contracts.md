@@ -94,7 +94,7 @@ urls:
 ```yaml
 # compose.yml (excerpt)
 services:
-  grafana:
+  dashboards:                     # not grafana: core's monitoring service name is reserved (§3)
     environment:
       GF_SERVER_ROOT_URL: https://${PORTCULLIS_HOST_GRAFANA:-grafana.portcullis.local}
     volumes:
@@ -654,7 +654,15 @@ A template can run as several fully separate **instances**. Each instance has it
 - **Immutable hostnames.** A host router listed in the manifest's `hosts.immutable` (e.g. Synapse's `server_name`) keeps the hostname the instance was created with: creating an instance may set it, every later change is refused (`409`), the default instance's too. The default instance's immutable hosts are `<sub>.<main domain>`: **changing Portcullis's main domain changes them and breaks such apps** (their data is bound to the old name). A backup of such an instance restores into the same instance only (§11.6).
 - **Valid hostnames.** A hostname is a valid hostname (§4) and either lies on an **assignable** enrolled domain `<d>` (§12.3) — `<d>` itself or `<label>.<d>`; enrolled domains never nest (§12.3), so at most one matches — or, if it is at or under no enrolled domain, is a main-domain host `<label>.<main domain>`. `<label>` matches `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`. Deeper names are refused: the wildcard certificates cover one label. An enrolled subdomain of the main domain (e.g. `team-a.<main domain>`) is assignable as its own apex only as an extra-domain host, on that enrolled domain.
 - **Refused before anything changes** (`400` invalid, `409` collision): a hostname that is invalid, on a domain that isn't enrolled or isn't assignable, a core host (§4), used by any other instance (enabled or not), or used twice within the instance. Templates still using `${PORTCULLIS_DOMAIN}` rules (§3.1) can't change hostnames at all (`409`).
-- **A change applies immediately.** In order: the Hub records the new hostnames in its state, regenerates the instance's env and override, updates its Keycloak clients' redirect URIs and web origins, updates the `portcullis-forward-auth` callback URIs (§5), rewrites the policy file and `portal-apps.json` (the old hostnames vanish from them at once), and restarts the instance (`compose up`). Public share links keep their tokens and move to the new host. **There are no redirects:** the old hostnames stop routing. A step that fails after validation is reported like any lifecycle operation (`OpError`) and the instance is reconciled by retrying the change.
+- **A change applies immediately.** In order:
+    1. **Validate** (the refusals above): nothing has changed yet.
+    2. **Keycloak**: the instance's clients' redirect URIs and web origins, and the `portcullis-forward-auth` callback URIs (§5), are updated for the new hostnames.
+    3. **Env and override**: the instance's `.env` and compose override are regenerated with the new hostnames.
+    4. **Save state — the commit point.** The Hub records the new hostnames in its state. A failure before this step leaves the recorded hostnames, the policy file and the routing as they were; retrying the change reconciles Keycloak, env and override.
+    5. **Policy**: the policy file and `portal-apps.json` are rewritten (the old hostnames vanish from them at once).
+    6. **Restart** the instance (`compose up`).
+
+    Public share links keep their tokens and move to the new host. **There are no redirects:** the old hostnames stop routing. A step that fails after the commit point is reported like any lifecycle operation (`OpError`), and the instance is reconciled by retrying the change.
 - Audited as `instance.update` with the old and new hostnames.
 
 ### 11.4 Guarded delete
