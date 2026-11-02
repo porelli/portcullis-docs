@@ -329,64 +329,127 @@ auth:
 
 ## settings
 
-User-configurable settings shown in the Hub. Each `key` becomes a key in the
-per-app `.env`.
+Template contract v3 settings (§13 in [Integration Contracts](integration-contracts.md#13-settings)). Each option has a type, scope, constraints and deliveries. The Hub validates, resolves and delivers values; templates stay declarative.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `key` | env key | Yes | Variable name |
-| `label` | single line, non-empty | Yes | Label shown in the Hub |
-| `type` | enum | Yes | `text`, `path`, `paths`, `boolean` or `select` |
-| `description` | string | No | Help text |
-| `required` | boolean | No | The setting must be filled in |
-| `default` | string without control chars | No | Default value |
-| `options` | list of strings without control chars | Required (at least one) for `select` | The choices of a `select` |
-| `target` | object | No | Bind-mount target for `path` / `paths` (see below) |
-
-### Setting types
-
-| Type | Input | Example |
-|------|-------|---------|
-| `text` | Free-form text | API keys, custom names |
-| `path` | One host directory | `/mnt/media/movies` |
-| `paths` | Several host directories | Several media folders |
-| `boolean` | On/off toggle | Feature flags |
-| `select` | Dropdown of `options` | Log level |
-
-`options` is a **list of plain strings**. Each string is both the stored value
-and the label:
+**Immich example (abridged):**
 
 ```yaml
 settings:
-  - key: MYAPP_LOG_LEVEL
-    label: Log level
-    type: select
-    options: [info, debug, warn]
-    default: info
+  sections: [Storage, Accounts, Library]
+  options:
+    - key: trash_days
+      label: Keep deleted items for
+      type: int
+      unit: days
+      min: 0
+      max: 3650
+      default: 30
+      scope: instance
+      section: Library
+      applies: restart
+      delivery: [{env: IMMICH_TRASH_DAYS}]
+    - key: storage_quota
+      label: Storage quota
+      type: size
+      step: 1GiB
+      allow_unlimited: true
+      scope: person
+      default: 100GiB
+      resolve: max
+      resolve_choices: [max, min, priority]
+      section: Storage
+      applies: next_sign_in
+      delivery:
+        - claim: {client: immich, name: immich_quota, json_type: int,
+                  render: {unit: GiB, unlimited: "-1"}}
+    - key: role
+      label: Role
+      type: enum
+      options: [{value: user, label: User}, {value: admin, label: Administrator}]
+      scope: person
+      privileged: true
+      default: user
+      group_values: {"{{ADMIN_GROUP}}": admin}
+      resolve: max
+      section: Accounts
+      applies: next_sign_in
+      delivery: [{claim: {client: immich, name: immich_role, json_type: string}}]
+    - key: external_library
+      label: External photo library
+      type: path
+      mode: ro
+      needs: read
+      writes_as: {uid: 0, gid: 0}
+      target: {service: immich-server, mount: /usr/src/app/external}
+      scope: instance
+      applies: restart
 ```
 
-### target
+### Type table
 
-For `path` and `paths`, `target` says where the host path is mounted:
+| Type | What it holds | Constraints |
+|------|---------------|-------------|
+| `string` | Text | `pattern`, `min_len`, `max_len`, `format` (hostname, ip, cidr, url, email, iana_tz, locale, cron, semver, hex) |
+| `int` | Integer | `min`, `max`, `step`, `unit` (label) |
+| `size` | Bytes (int64, ≥ 0) | `step`, `allow_unlimited`. UI uses binary units (MiB, GiB, TiB) |
+| `duration` | Seconds (int64, ≥ 0) | `min`, `max` |
+| `bool` | True or false | — |
+| `enum` | One option | `options: [{value, label}]`. Order = rank |
+| `multi_enum` | Set of options | `options: [{value, label}]` |
+| `list` | Array of scalar items | `items` (type + constraints), `min_items`, `max_items`, `unique` |
+| `table` | Records with typed columns | `columns: [{name, label, type, …}]`, `key_column` |
+| `path` | Host directory | `target: {service, mount}`, `mode` (ro/rw), `needs` (read/write), `writes_as: {uid, gid}` |
+| `secret` | Write-only value | `generate: {length, charset}` (optional). GET returns `{set, updated_at}` only |
+| `group` / `groups` | LLDAP group name(s) | — |
+| `user` / `users` | LLDAP username(s) | — |
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `service` | service | Yes | Compose service to mount into |
-| `mount` | `^/[^:]*$` (absolute, no `:`, no control chars) | Yes | Container path |
+**Reserved for later features:** `folder`, `person_secret`, `person_id` (types); `folder`, `checks`, `hash`, `length`, `revoke_on_leave`, `on_restore`, `pool`, `username`, `mount` (option keys). A Hub that doesn't implement them refuses the template.
+
+### Scopes
+
+| Scope | Who | Values from |
+|-------|-----|-------------|
+| `instance` | The whole instance | One value |
+| `person` | Resolved per person | Default + per-group rows. Requires `default` and at least one per-person delivery (claim, header, file, hook) |
+| `group` | Per group, not resolved | Records the admin adds. No `default`. Delivered as a map |
+| `person_entered` | Each person enters their own | No default, no group rows. See §13.13 |
+
+### Deliveries
+
+| Delivery | Form | For |
+|----------|------|-----|
+| `env` | `{env: <NAME>}` | Instance, group options. Person-entered as a collection (with `join` or `format: json`) |
+| `path` | (same as today's `path` settings) | `type: path`, `scope: instance` |
+| `claim` | `{claim: {client, name, json_type, render}}` | `person`, `person_entered`. Requires `method: native-oidc` |
+| `header` | `{header: {name, render}}` | `person`, `person_entered`. Name must be `X-Forwarded-Attr-<Name>` |
+| `file` | `{file: {name, field?, render}}` | Any scope. Requires a declared `files[]` entry |
+| `hook` | `{hook: <name>, render}` | Any scope. Requires a declared `hooks[]` entry |
+
+**Top-level manifest fields for settings:**
 
 ```yaml
 settings:
-  - key: JELLYFIN_MOVIES_PATH
-    label: Movies folder
-    description: Host path to your movies library
-    type: path
-    target:
-      service: jellyfin
-      mount: /data/movies
+  sections: [<section names>]    # optional
+  options: [...]                 # list of options
+files:                            # optional, for file delivery
+  - name: <key>
+    service: <service>
+    mount: <container directory>
+    on_membership_change: restart|reload|hook|none
+hooks:                            # optional, for hook delivery
+  - name: <key>
+    service: <service>
+    command: [<argv>]
+    user: <user>                  # optional
+    when: [start, settings_change, membership_change]
+    timeout: <duration>           # optional, default 30s
+reload:                           # optional, at most one
+  service: <service>
+  signal: HUP|USR1|USR2
+  # or: hook: <hook name>
 ```
 
-When the user sets it to `/mnt/media/movies`, the Hub's per-app override gets
-the bind mount `"/mnt/media/movies:/data/movies"`.
+See [Integration Contracts §13](integration-contracts.md#13-settings) for the full specification, resolution rules, applies levels, person-entered values, and the data-file and hook-input formats.
 
 ## ports
 
@@ -431,13 +494,13 @@ ports:
 
 ## env
 
-Per-app environment variables.
+Per-app environment variables. **Contract v3:** `env` entries with `generate: none` are refused. An admin-entered variable is a `settings` option (see above).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `key` | env key | Yes | Variable name |
 | `description` | non-empty string | Yes | What it is for |
-| `generate` | `random`, `none` or `""` | No | `random`: the Hub generates 32 hex characters on first enable and writes them to the per-app `.env` |
+| `generate` | `random` or `""` | No | `random`: the Hub generates 32 hex characters on first enable and writes them to the per-app `.env` |
 | `required` | boolean | No | The variable must have a value |
 
 Secrets (passwords, OIDC client secrets, app keys) must be `generate: random`
