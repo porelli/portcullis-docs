@@ -215,7 +215,7 @@ sequenceDiagram
     T->>A: Forward request
 ```
 
-Routers on the `protected` tier without forward-auth (e.g. the Vault UI template) rely on the TLS handshake alone: there the certificate works until it expires. See [TLS & mTLS](setup/certificates.md#revocation).
+Routers on the `protected` tier without forward-auth (`mtls`-method apps) rely on the TLS handshake alone: there the certificate works until it expires. See [TLS & mTLS](setup/certificates.md#revocation).
 
 ## TLS Tiers
 
@@ -223,7 +223,7 @@ Traefik is configured with three TLS option sets. Each app chooses its tier base
 
 | Tier | Traefik TLS Option | Client Cert Behavior | Use Case |
 |------|-------------------|---------------------|----------|
-| **protected** | `RequireAndVerifyClientCert` | Required -- TLS handshake fails without a valid cert | Highest security apps (Vault UI) |
+| **protected** | `RequireAndVerifyClientCert` | Required -- TLS handshake fails without a valid cert | Highest security apps (`mtls`-method apps) |
 | **authaware** | `VerifyClientCertIfGiven` | Optional -- verified if present, WebAuthn fallback if not | Most apps (default for forward-auth and OIDC apps) |
 | **public** | `NoClientCert` | Not requested | Public-facing apps, apps that manage their own auth |
 

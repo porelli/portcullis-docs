@@ -297,7 +297,8 @@ every contributor gets this feedback:
 
 ### `test-apps.yml`: integration tests
 
-Triggers: push to `main`, pull requests from branches of the repo, and manual
+Triggers: push to `main`, pull requests to `main` (from forks too: core is
+public and no job uses a secret), and manual
 `workflow_dispatch` (inputs `pr`, `ref`, `apps`; `apps = all` tests every
 template). Dependabot's image bumps are pull requests, so each runs the tests of
 the app it touches. It boots core infrastructure and, for the affected
@@ -308,7 +309,7 @@ per job:
 | Job | Secrets | What it does |
 |-----|---------|--------------|
 | `gate` | none | Resolves what to test. Fork PRs run like any other PR (core is public; no job uses a secret), with `.core-ref` taken from the PR's base. For a manual run with `pr = <n>`, it resolves the PR head commit to test |
-| `changes` | none | Verifies the commit under test. Picks the apps: changed `<app>/` directories and changed `tests/apps/<app>.sh`. A change to `tests/lib.sh`, `tests/e2e/`, `.github/` or `.core-ref` tests **all** apps. With no usable base, all apps are tested |
+| `changes` | none | Verifies the commit under test. Picks the apps: changed `<app>/` directories and changed `tests/apps/<app>.sh`. A change to `tests/lib.sh`, `tests/app-images.sh`, `tests/e2e/`, `.github/` or `.core-ref` tests **all** apps. With no usable base, all apps are tested |
 | `fetch-core` | none | Checks out nothing from the PR except `.core-ref`, read from a trusted commit (for PR runs: the PR's *base*, so a PR can't point CI at another core ref). Clones the public core repo anonymously at that ref, resolves the infra image list with `docker compose config --images` against a throwaway `.env` from `portcullis init --env-only` (failing on an empty list), packs core as an artifact, and writes the infra image cache |
 | `app-images` (matrix per app, push to `main` only) | none | Never runs for PRs or manual runs. For each tested app whose test boots it, reads the image list from its `compose.yml` (`tests/app-images.sh`), pulls the pinned images and writes that app's image cache (key: hash of the list). Starts no container |
 | `e2e-browser` (push to `main` only) | none | Installs the hash-pinned `tests/e2e/requirements.txt` and that Playwright version's Chromium and writes their cache (key: hash of the requirements). Runs no template code |
@@ -355,15 +356,17 @@ header-auth, and the login-path gates of GitLab, LiteLLM and Vaultwarden) only
 group-gate's own refusal counts for the outsider: its HTTP 403, its "not
 authorized" page and its `DENIED user=… host=…` log line. Each setup link must
 register exactly one passkey. Today: the outsider check of
-the native-OIDC apps with `group_access: false` that let every Portcullis user
-in (Headscale/Headplane, Immich) until the Hub restricts Keycloak clients per
-app; the member check of the apps that admit only their first user (the
+the native-OIDC apps with no group restriction of their own that let every
+test user in (Headscale/Headplane, Immich): with the Hub, its Keycloak access
+role (`keycloak_access_role`) refuses outsiders at Keycloak, but CI has no Hub
+(the test registers plain clients), so the role is not applied there; the
+member check of the apps that admit only their first user (the
 owner) and users the owner adds or approves (Actual Budget, NetBird); the
 member and admin checks of Nextcloud, whose HTTP client refuses a local TLD
 (`.local`) or private address for Keycloak (match: "violates local access
 rules"; its outsider check is then `inconclusive`) — the
 test never widens an app's access to make a check pass. `skip`: docs
-(public), Plex (custom, plex.tv), Vault UI (mtls). Each run starts the app
+(public), Plex (custom, plex.tv). Each run starts the app
 from fresh volumes.
 
 CI stand-ins for public DNS: every app hostname is a network alias of Traefik
@@ -380,6 +383,18 @@ On push to `main` it sends a `templates-updated` `repository_dispatch` to this
 docs repo, which regenerates the [App Catalog](../apps/index.md). It needs the
 `DOCS_DISPATCH_TOKEN` secret. Without it the step is skipped with a notice, and
 the docs pick the change up on their daily rebuild.
+
+### `craft-releases.yml`
+
+Weekly (and on dispatch), `tests/craft-releases.sh` bumps each Craft
+template's pinned web release (`${CRAFT_VERSION:-…}` / `${CRAFT_SHA256:-…}`)
+to the latest release of `storytold/<app>`, once the GitHub asset digest,
+`SHA256SUMS.txt` and the download agree, and opens one PR per app on
+`craft/<app>-<ver>`. It uses only `GITHUB_TOKEN` (`contents`, `pull-requests`,
+`actions: write`). PRs opened with that token start no `pull_request`
+workflows, so the script dispatches **Test Apps** (`pr=<n>`, `apps=<app>`,
+core ref from the PR's base) and **Lint** (on the branch) for each PR it
+opens; `workflow_dispatch` is the one event `GITHUB_TOKEN` may start.
 
 ### Test helpers (`tests/lib.sh`)
 

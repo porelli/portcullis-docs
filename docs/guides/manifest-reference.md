@@ -51,6 +51,7 @@ field.
 | `urls` | list | No | See [urls](#urls) |
 | `tests` | object | Yes, for templates in the default catalog (`tests.signin`; validate.py) | CI only, the Hub ignores it. See [tests.signin](#testssignin) |
 | `instances` | `multi` or `single` | No (default `single`) | **NEW (contract v2).** Whether the Hub may run more than the default instance. See [instances](#instances) |
+| `hosts` | object | No | Per-host properties by host router name; today only `immutable`. See [hosts.immutable](#hostsimmutable) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
 `networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
@@ -68,6 +69,7 @@ field.
 | `admin_paths` | list of path prefixes | No | Paths that additionally require `admin_group` (see below) |
 | `public_access` | object | No | Public path exceptions: share-link paths the Hub can open without forward-auth (see [auth.public_access](#authpublic_access)) |
 | `native_login` | object | No | The app has its own login and no SSO (`method: custom` only); enables the Hub's Sign-in setting (see [auth.native_login](#authnative_login)) |
+| `keycloak_access_role` | boolean | No | `native-oidc` only, needs `access_group`. Keycloak itself refuses sign-in to anyone outside the instance's access group (see below) |
 | `identity_headers` | list of header names | If `method: header-auth` and `public_access` is set | Headers the app reads the user from (e.g. `X-Forwarded-User`); the Hub strips them on public paths |
 | `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page. Upgrade constraints go here too |
 
@@ -82,9 +84,30 @@ Constraints the schema enforces:
   or `native-oidc`; with `header-auth` it requires a non-empty
   `identity_headers` (each `^[A-Za-z][A-Za-z0-9-]{0,63}$`, unique).
 - `native_login` requires `method: custom` and `sso: false`.
+- `keycloak_access_role: true` requires `method: native-oidc` and
+  `access_group`; so does `method: native-oidc` with `group_access: false`.
 
 `access_group` is only *enforced* by group-gate when `group_access: true`.
-Otherwise it is informational.
+Otherwise it is informational, unless the Keycloak access role applies.
+
+**`keycloak_access_role`.** The Hub restricts sign-in to the instance's access
+group in Keycloak ([contract §8](integration-contracts.md#8-keycloak-clients-core-hub-templates),
+"Access role"): every client of the instance gets a client role `access`, the
+access group gets that role, and the client's browser flow denies sign-in
+without it (also when the user already has a Keycloak session). The Hub does
+the same for every `native-oidc` template with `group_access: false`. Set it
+for apps that can't restrict sign-in to a group themselves or that let
+outsiders create accounts without rights (Immich, Headscale, NetBird,
+DokuWiki, Wiki.js, Actual), and as defence in depth on apps whose login paths
+are gated by group-gate or that check groups themselves (Paperless,
+Vaultwarden, GitLab, Nextcloud). It fails closed: without the group or the
+role nobody signs in. Only access-group members sign in — admin-group members
+too only if they are also in the access group. Every client of such an app has
+direct access grants, implicit flow, service accounts, device and CIBA grants
+and standard token exchange switched off (only the browser flow signs in):
+don't use it for an app whose client needs one of them. CI has no Hub, so the
+sign-in test runs without the access role (see
+[tests.signin](#testssignin) `expected_fail`).
 
 ### Auth methods
 
@@ -444,6 +467,7 @@ OIDC clients the Hub registers in Keycloak when the app is enabled. Required
 | `name` | single line, non-empty | Yes | Display name in Keycloak |
 | `redirect_uri` | URI | Exactly one of the two | A single redirect URI |
 | `redirect_uris` | list of URIs (at least one) | Exactly one of the two | Several redirect URIs |
+| `backchannel_logout_url` | `https://{{HOST_<ROUTER>}}/<path>` | No | The app's OIDC back-channel logout endpoint on one of its own hosts (`single` templates may use `https://<sub>.{{DOMAIN}}/<path>`). The Hub sets it as the client's back-channel logout URL with "session required" (logout tokens carry `sid`), so a Keycloak sign-out — the Hub signs users out when they leave a group — ends the app's session too. It follows hostname changes. The path must be routed without forward-auth (Keycloak posts to it server-to-server). Nextcloud uses it |
 | `email_verified_claim` | boolean | No (default `true`) | `false`: the client gets the `email-unverified` scope instead of `email`, so tokens carry `email` but no `email_verified` claim. For apps that refuse `email_verified=false` but accept the claim being absent (Vaultwarden). The app must then not request the `email` scope |
 
 Redirect URIs must match `^[a-z][a-z0-9+.-]*://\S+$`, so custom schemes such
@@ -470,7 +494,7 @@ the app must never link accounts by email
 keycloak_clients:
   - client_id: vaultwarden
     secret_env: VAULTWARDEN_OIDC_SECRET
-    redirect_uri: "https://passwords.{{DOMAIN}}/identity/connect/oidc-signin"
+    redirect_uri: "https://{{HOST_VAULTWARDEN}}/identity/connect/oidc-signin"
     name: Vaultwarden
     email_verified_claim: false
 ```
@@ -480,8 +504,8 @@ keycloak_clients:
   - client_id: immich
     secret_env: IMMICH_OIDC_SECRET
     redirect_uris:
-      - "https://photos.{{DOMAIN}}/auth/login"
-      - "https://photos.{{DOMAIN}}/user-settings"
+      - "https://{{HOST_IMMICH}}/auth/login"
+      - "https://{{HOST_IMMICH}}/user-settings"
       - "app.immich:///oauth-callback"
     name: Immich
 ```
@@ -522,11 +546,14 @@ How CI signs real users in to the app (`tests/e2e/app_signin.py` in the
 templates repo, run by `test-apps.yml` after the app's shell test). The Hub
 ignores `tests`. The test creates `e2eadmin` (access + admin group),
 `e2emember` (access group) and `e2eoutsider` (no group), registers the
-template's Keycloak clients and group-gate policy as the Hub would, and signs
+template's Keycloak clients and writes the group-gate policy as the Hub would,
+and signs
 each in through a setup link with a virtual security key. It passes when the
 member is signed in (and not admin), the admin has admin rights and the
 outsider is refused; a visible password field fails it unless `password`
-explains it.
+explains it. CI runs **without the Hub**: the clients are plain Keycloak
+clients, so the Hub's Keycloak access role
+([`keycloak_access_role`](#auth)) is not applied there.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -539,7 +566,7 @@ explains it.
 | `admin` | check | Required when `auth.group_admin` is true. How to recognise admin rights |
 | `password` | string | Why a password field on the app's pages is expected (a documented own login or break-glass) |
 | `setup` | list of `{service, command, save_env, user}` or `{restart: true}` | Post-start steps an admin would do: run `command` in `service` (as `user`); with `save_env`, save the last output line as that env/setting and restart the app; `restart: true` restarts the app (a documented restart after the first start) |
-| `expected_fail` | `{member, admin, outsider}: {reason, match, not_match}` | Known failures: reported, not fatal, only if the failure matches `match` and not `not_match` (regexes, case-insensitive), searched in that check's own evidence only: its detail, the pages its flow saw, and the app's container logs / `log_files` since its flow started. A flow the test broke (password field, Keycloak/enroll or browser error, never on the app) or an exception always fails; a marked check that passes fails the run. A `native-oidc` app with `group_access: false` that lets outsiders in marks `outsider` (until the Hub restricts Keycloak clients per app); `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
+| `expected_fail` | `{member, admin, outsider}: {reason, match, not_match}` | Known failures: reported, not fatal, only if the failure matches `match` and not `not_match` (regexes, case-insensitive), searched in that check's own evidence only: its detail, the pages its flow saw, and the app's container logs / `log_files` since its flow started. A flow the test broke (password field, Keycloak/enroll or browser error, never on the app) or an exception always fails; a marked check that passes fails the run. A `native-oidc` app that can't restrict sign-in by group itself (`group_access: false`, or `keycloak_access_role: true`) and lets outsiders in marks `outsider`: with the Hub its access role refuses them at Keycloak, but CI has no Hub and doesn't apply the role. `forward-auth` / `header-auth` apps never may. Never widen an app's access (e.g. auto-provisioning) to make a check pass: mark it |
 | `refused_users` | list of usernames | Extra users in `access_group` and `admin_group` that must be refused with HTTP 403 (names the app reserves, e.g. CloudBeaver's `cbadmin-*`) |
 | `log_files` | list of `{service, path}` | Files inside the app's containers, searched by `expected_fail.match` and kept as artifacts |
 | `pause_between_users` | seconds | Wait between the users' sign-ins, for apps whose per-client rate limits CI's single client address would trip (Actual: 500 requests a minute) |
@@ -580,8 +607,9 @@ tests:
     admin: {reach: /doku.php?do=admin, text: "Access Control List"}
 ```
 
-A known failure (Immich: native OIDC with `group_access: false`, so every
-Portcullis user gets in until the Hub restricts its Keycloak client):
+A known failure (Immich: native OIDC with no group restriction of its own;
+with the Hub its Keycloak access role keeps outsiders out, but CI runs without
+the Hub, so every test user gets in there):
 
 ```yaml
 tests:
@@ -591,7 +619,7 @@ tests:
       json: {url: /api/users/me, field: storageLabel}
     expected_fail:
       outsider:
-        reason: "group_access: false: no OIDC group restriction until the Hub's per-app Keycloak client access"
+        reason: "Immich has no OIDC group restriction of its own: only the Hub's Keycloak access role (keycloak_access_role) keeps outsiders out, and CI runs without the Hub (app_signin.py registers plain clients)"
         match: "e2eoutsider signed in"
 ```
 
@@ -642,6 +670,26 @@ use it for core hosts such as `auth.${PORTCULLIS_DOMAIN:-portcullis.local}`),
 no volume `name:` (the Hub sets `portcullis_<key>` for the default instance and
 `portcullis_<instance-id>-<key>` for the others), and no hard-coded Keycloak
 client id or group name in `compose.yml`.
+
+### hosts.immutable
+
+Host routers whose hostname is fixed once the instance exists, for apps that
+bind their data to their own hostname (Synapse's `server_name` is part of
+every user and room id):
+
+```yaml
+hosts:
+  immutable: [matrix]   # host router names
+```
+
+The admin chooses the hostname when creating the instance; the Hub refuses
+every later change (`409`), the default instance's too, and moving it means a
+new instance. The default instance's immutable hosts are `<sub>.<main domain>`,
+so changing Portcullis's main domain breaks such apps. A backup of such an
+instance restores into the same instance only
+([contract §11.3, §11.6](integration-contracts.md#11-app-instances-hub-new-instances)).
+`tests/validate.py` requires the list where it knows the app needs it
+(`IMMUTABLE_HOSTS`: matrix).
 
 ## Validation
 

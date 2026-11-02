@@ -336,7 +336,7 @@ tap-to-authenticate.
 !!! danger "Routers that rely on mTLS alone become unauthenticated"
     WebAuthn only protects routers that also run forward-auth
     (`portcullis-auth@docker`). A router on the `protected` tier with no
-    forward-auth middleware, such as the Vault UI template, relied on the
+    forward-auth middleware (an `mtls`-method app) relied on the
     client certificate *as* its authentication. With `MTLS_ENABLED=false`,
     that router becomes **open**: there is no WebAuthn fallback. Before you
     disable mTLS, add `portcullis-auth@docker,portcullis-groups@docker` to such
