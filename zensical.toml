@@ -20,6 +20,7 @@ features = [
   "navigation.indexes",
   "navigation.top",
   "content.code.copy",
+  "content.tooltips",
   "search.highlight",
 ]
 icon.repo = "fontawesome/brands/github"
@@ -42,6 +43,7 @@ toggle.name = "Switch to dark mode"
 [project.plugins.awesome-nav]
 
 [project.markdown_extensions]
+abbr = {}
 admonition = {}
 attr_list = {}
 md_in_html = {}
@@ -50,6 +52,9 @@ toc.permalink = true
 pymdownx.details = {}
 pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
 pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.snippets.auto_append = ["includes/abbreviations.md"]
+pymdownx.snippets.base_path = ["."]
+pymdownx.snippets.check_paths = true
 pymdownx.superfences.custom_fences = [
   { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
 ]
