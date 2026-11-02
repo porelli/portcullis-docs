@@ -12,7 +12,7 @@ settings, the secrets containers read, and header trust.
 | Logins | Phishing, password reuse | WebAuthn (FIDO2) and PIV client certificates. Both are bound to the origin or the TLS handshake. Per-app [policies](auth-policies.md) can require them |
 | User identity | A user changes their own LLDAP email to someone else's | Identity is the immutable username everywhere; email is never used to authorise or link accounts |
 | Identity headers (`X-Forwarded-User`, client-cert headers) | Spoofed by an internet client | Traefik deletes client-supplied `X-Forwarded-*` and cert headers on the entrypoint, and forward-auth replaces the identity headers |
-| Attribute headers (`X-Forwarded-Attr-*`) | Spoofed by an internet client or by routers without forwardAuth | Client copies stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on every forwardAuth middleware (Traefik can't delete headers by prefix in a headers middleware). Routers without forwardAuth (keycloak, vault-ui, enroll-invite, headscale, netbird, docs) don't strip them; backends there must not trust them |
+| Attribute headers (`X-Forwarded-Attr-*`) | Spoofed by an internet client or by routers without forwardAuth | Client copies stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on every forwardAuth middleware (Traefik can't delete headers by prefix in a headers middleware). Routers without forwardAuth (keycloak, enroll-invite, headscale, netbird, docs) don't strip them; backends there must not trust them |
 | Identity headers | Spoofed by another container on `portcullis-proxy` | Header-auth apps trust only Traefik's fixed IP (`PORTCULLIS_TRAEFIK_IP`). Keycloak trusts proxy headers only from Traefik's fixed IP on the internal `portcullis-auth` network |
 | Hub (runs compose, so it is effectively host root) | Reached without passing forward-auth | Hub: requires `lldap_admin` and the `X-Portcullis-Proxy-Secret` header. People listener (`people.<domain>`): any signed-in user (group-gate-map.conf `people=*`), per-request permission checks |
 | Docker API | A compromised Traefik or Hub takes over the host | No service mounts the socket except two socket proxies with per-client allow-lists |
@@ -348,9 +348,9 @@ are dropped by the entrypoints (`aliasHeadersStrategy`). CI sends forged ones
 through the gated and public test routers.
 
 Routers with **no** forwardAuth middleware (`keycloak`, `keycloak-resources`,
-`lldap` (redirect only), `vault-ui`, `enroll-invite`, and in the app overlays
-`headscale`, `netbird-*`, `docs`) do not strip client-sent `X-Forwarded-Attr-*`.
-Their backends must never trust those headers (none of them reads them).
+`lldap` (redirect only), `enroll-invite`, and in the app overlays `headscale`,
+`netbird-*`, `docs`) do not strip client-sent `X-Forwarded-Attr-*`. Their
+backends must never trust those headers (none of them reads them).
 
 ### Sessions, temporary memberships and the people directory
 

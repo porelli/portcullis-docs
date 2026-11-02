@@ -46,7 +46,6 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 📝 [WordCraft](wordcraft.md) | `wordcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📄 [Docs Site](docs.md) | `docs` | public | `public` | :x: No | :x: | :x: |
 | 🖥 [Apache Guacamole](guacamole.md) | `remote` | remote-access | `header-auth` | :white_check_mark: Yes | :white_check_mark: | :x: |
-| 🔒 [Vault UI](vault-ui.md) | `vault` | security | `mtls` | :x: No | :x: | :x: |
 | 🔐 [Vaultwarden](vaultwarden.md) | `passwords` | security | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🌐 [Headscale](headscale.md) | `vpn-admin`, `vpn` | vpn | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🐦 [NetBird](netbird.md) | `netbird` | vpn | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
