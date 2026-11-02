@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
@@ -193,6 +193,43 @@ After the browser tests, the job enables the **monitoring profile** and checks:
 
 On failure, screenshots, HTML, traces and service logs are uploaded as
 artifacts. The test needs a live stack and is not collected by pytest.
+
+### `e2e-instances` (app instances, extra domains)
+
+The whole stack plus the Hub, the domains service against Pebble with the fake
+DNS provider, and the enrolled domain `team-b.test` (enrolled on the domains
+API with the fake provider, which the Hub refuses; the Hub picks it up from the
+service's list). The Hub's only template source is the CI template
+`tests/e2e/apps/echo` (`traefik/whoami` behind Portcullis sign-in, plus a
+`hold` service that ignores SIGTERM so a backup can be made slow), seeded into
+`hub_data` as a local source. Through the Hub's API the job creates `echo-a`
+and `echo-c` on `team-b.test` and `echo-b` on the main domain (`echo-c` with
+policy mtls), checks the published policy file (v5, host keys, groups per
+instance, `extra_domains`), the rendered labels (`portcullis-auth-ext` and the
+`/oauth2/` router to `forward-auth-ext` on extra-domain hosts only), the
+callbacks on `portcullis-forward-auth` and the SNI certificate. Then
+`tests/e2e/e2e_instances.py`:
+
+- cross-domain SSO: signed in on the main domain, `echo-a` opens with no
+  further WebAuthn assertion, through the host's own callback, PKCE S256 and a
+  host-only `__Host-portcullis_ext` cookie; a stale ext cookie signs in again
+  without a loop; `echo-c` steps up to mtls exactly once (a returning user's
+  passkey session, the client certificate available);
+- two instances, two groups: each user reaches only their instance;
+- a backup longer than 60 s through `hub.<domain>`: `202`, a concurrent
+  request `409`, the op record ends ok (Traefik keeps its default timeouts).
+
+Finally, on the real daemon: backup (the helper image pulled by digest,
+helpers removed), the typed-id delete (refusals first, then containers,
+volume and routing gone, the backup listed), restore into a new id (file and
+volume-root owners and modes kept, the new volume labelled for its project,
+the instance enables).
+
+**Cross-repo branches.** `ci.yml` also runs on `workflow_dispatch`. On a
+branch whose name exists in porelli/portcullis-hub (not `main`, not a tag),
+`.github/actions/hub-image` builds the Hub from that branch instead of pulling
+`edge`; the Hub's `build.yml` likewise tests against the same-named branch of
+the templates and core repos, else `main`.
 
 ### Caching
 
