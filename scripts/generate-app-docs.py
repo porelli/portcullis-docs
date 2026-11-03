@@ -41,6 +41,14 @@ def load_manifests(source_dir: Path) -> list[dict]:
             continue
         with open(manifest_path) as f:
             manifest = yaml.safe_load(f)
+        settings = manifest.get("settings")
+        if settings is not None and not isinstance(settings, dict):
+            # A v2 settings list would silently publish pages without
+            # their settings: refuse it before writing anything.
+            kind = "a list (template contract v2)" if isinstance(settings, list) else type(settings).__name__
+            print(f"ERROR: {manifest_path}: settings is {kind}; the docs need contract v3 "
+                  "(settings: {options: [...]}). Point --source at a v3 templates checkout.", file=sys.stderr)
+            sys.exit(1)
         manifest["_id"] = entry.name
         compose_path = entry / "compose.yml"
         manifest["_compose"] = {}

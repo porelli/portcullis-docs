@@ -20,7 +20,7 @@
 | **Subdomain** | `grafana` |
 
 !!! info "Auth Notes"
-    Proxy auth with X-Forwarded-User header, accepted only from Traefik (GF_AUTH_PROXY_WHITELIST = PORTCULLIS_TRAEFIK_IP). Auto-creates users. Each person's organization role (Viewer, Editor or Admin) comes from the instance's Role setting: group-gate sends it as X-Forwarded-Attr-Grafana-Role on every request and Grafana syncs it on every request (GF_AUTH_PROXY_SYNC_TTL 0). Members of the admin group are Admin by default, everyone else Viewer; other groups are set per group (privileged: only groups delegates can't steer). A role changed in the Grafana UI is overwritten by the next request. Access gated by group-gate.
+    Proxy auth with X-Forwarded-User header, accepted only from Traefik (GF_AUTH_PROXY_WHITELIST = PORTCULLIS_TRAEFIK_IP). Auto-creates users. Each person's organization role (Viewer, Editor or Admin) comes from the instance's Role setting: group-gate sends it as X-Forwarded-Attr-Grafana-Role on every request and Grafana syncs it on every request (GF_AUTH_PROXY_SYNC_TTL 0). Members of the admin group are Admin by default, everyone else Viewer; other groups are set per group (privileged: only groups delegates can't steer). A role changed in the Grafana UI is overwritten by the next request. A request without the role header (the person's role can't be resolved, or group-gate can't read the Hub's attributes file) keeps the last synced role: Grafana doesn't fall back to Viewer, so remove a person from the instance's access group to take access away. Access gated by group-gate.
 
 ## Public Exceptions
 
