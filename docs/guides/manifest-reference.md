@@ -434,12 +434,12 @@ settings:
 | `section` | one of `settings.sections` | No | Panel section |
 | `type` | see [Types](#types) | Yes | |
 | `scope` | `instance`, `person`, `group`, `person_entered` | No (default `instance`) | See [Scopes](#scopes) |
-| `required` | boolean | No | The value must be non-empty. A set secret counts as non-empty |
+| `required` | boolean | No | The value must be non-empty. A set secret counts as non-empty. On `person` scope the default must be non-empty; not for `group` scope |
 | `default` | a value of the option's type | `person`: yes; refused for `group`, `person_entered` and secrets | The template's default (for `person`: everyone else with access) |
 | `applies` | `live`, `reload`, `next_request`, `next_sign_in`, `restart`, `account_creation` | No | When a change takes effect. Default: `next_sign_in` with a claim delivery, `next_request` with a header delivery, otherwise `restart`. See [Applies](#applies) |
 | `requires` | list of option keys | No | Instance options only: other instance options that must be non-empty when this one is (not itself) |
 | `delivery` | list of [deliveries](#deliveries) | See [Deliveries](#deliveries) | How the value reaches the app |
-| `resolve` | `max`, `min`, `priority`, `union`, `intersection`, `any`, `all` | `person` only | How one value is picked for a person in several groups. See [Scopes](#scopes) |
+| `resolve` | `max`, `min`, `priority`, `union`, `intersection`, `any`, `all` | `person` only, and required there | How one value is picked for a person in several groups. See [Scopes](#scopes) |
 | `resolve_choices` | list of the above | `person` only | Other rules the admin may switch to; each must fit the type |
 | `group_values` | map `{{ACCESS_GROUP}}` / `{{ADMIN_GROUP}}` → value | `person` only | Preset rows for the instance's own groups (the manifest needs `access_group` / `admin_group`). Other group names are refused: the admin picks them |
 | `privileged` | boolean | `person` only | The option grants a privilege. Only `enum` and `bool`; the default must be the lowest value (the first `options` entry, or `false`); no `{{ACCESS_GROUP}}` preset |
@@ -1079,7 +1079,16 @@ green Lint means the Hub lists the template. Besides the field rules above:
   declared; signal `HUP`, `USR1` or `USR2`.
 - **Person-entered:** the rules of [Person-entered options](#person-entered-options).
 - **Render:** units, `integer`, `unlimited` (required with
-  `allow_unlimited`), `true` / `false`, `join` and `format` fit the type.
+  `allow_unlimited`), `true` / `false`, `join` and `format` fit the type;
+  `yaml` / `csv` only on file and hook deliveries (never for a
+  `person_entered` scalar); on an env delivery `true`, `false`,
+  `unlimited` and `join` without `'` or `\`; a numeric `unlimited` no size
+  within `min` / `max` renders as.
+- **Values:** the `default` and every `group_values` value render through
+  every delivery (the implicit `UPPER(key)` env included), and an env value
+  holds no `'`, `\` or line break (JSON text: no `\"` escapes either).
+- **Secrets:** `scope: instance` only; `generate.length` within `min_len` /
+  `max_len`.
 
 The validator also warns when a service reads a secrets file but runs
 neither as root nor as `user: "10001"`.

@@ -973,12 +973,12 @@ Every option has these fields:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `key` | `^[a-z][a-z0-9_]{0,39}$` | Yes | Identifier (not an env name). Must be unique across the template's settings |
-| `label` | single line, non-empty, ≤ 64 | Yes | Display label |
+| `label` | single line, non-empty, ≤ 64 characters (runes, also for choice and column labels) | Yes | Display label |
 | `description` | text, ≤ 500 | No | Help text shown in the panel |
 | `section` | `^[A-Za-z0-9][A-Za-z0-9 ]{0,31}$` | No | Panel section name. Options in the same section are grouped |
 | `type` | enum | Yes | `string`, `int`, `size`, `duration`, `bool`, `enum`, `multi_enum`, `list`, `table`, `path`, `secret`, `group`, `groups`, `user`, `users`. See §13.2 |
 | `scope` | `instance`, `person`, `group` or `person_entered` | No (default `instance`) | Who the option applies to. See §13.3 |
-| `required` | boolean | No (default `false`) | The value must be non-empty. For `person` scope, every person in the population must get a non-empty resolved value (the default is non-empty or at least one group row exists) |
+| `required` | boolean | No (default `false`) | The value must be non-empty. For `person` scope the default must be non-empty (the validator refuses an empty one), so every person in the population gets a non-empty resolved value. Not for `group` scope (its records are optional) |
 | `default` | typed value | Contextual | Fallback value. Required for `person` scope; refused for `person_entered` and `group` scopes. For other scopes it is optional |
 | `privileged` | boolean | No (default `false`) | The option grants a privilege (role, admin flag). Per-group values may come only from groups delegates can't steer (§13.3). Requires `scope: person` and type `enum` or `bool`; the default must be the lowest-ranked value (the first option, or `false`) and `group_values` may not use `{{ACCESS_GROUP}}` |
 | `self_visible` | boolean | No (default `true`) | Whether the option is shown on My apps (`GET /api/me/apps`, §5.1). `false` hides sensitive resolved values from people. Requires `scope: person`. Refused for `person_entered` |
@@ -986,7 +986,7 @@ Every option has these fields:
 | `requires` | list of option keys | No | Other instance options that must be non-empty when this one is. See §13.9 |
 | `delivery` | list | Yes, except an instance option (default `env: <UPPER(key)>`) and `path` (delivered as its `target`) | How the value reaches the app. See §13.6 |
 
-Type-specific constraints are in §13.2. A `person` option needs at least one per-person delivery (claim, header, file or hook). Per-group options (`scope: group`) are delivered as maps through env (JSON), files or hooks. Person-entered options (`scope: person_entered`) follow the rules of §13.13.
+Type-specific constraints are in §13.2. A `person` option needs `resolve` (§13.4) and at least one per-person delivery (claim, header, file or hook). Per-group options (`scope: group`) are delivered as maps through env (JSON), files or hooks. Person-entered options (`scope: person_entered`) follow the rules of §13.13.
 
 ### 13.2 Types
 
@@ -1054,8 +1054,9 @@ Each type has validation constraints:
 
 **secret**
 
+- `scope: instance` only (a group or person value would be stored and shown in plaintext; a per-person credential is `person_secret`, project 3)
 - Write-only value
-- `generate`: `{length, charset}` or absent. When present, the Hub can generate a value (`crypto/rand`). `length` is 8–128; `charset` is one of `hex` (0-9a-f), `alphanumeric` (A-Za-z0-9), `ascii_printable` (printable ASCII without space, `'` and `\`: 0x21–0x7E minus `'` and `\`)
+- `generate`: `{length, charset}` or absent. When present, the Hub can generate a value (`crypto/rand`). `length` is 8–128 and within the option's `min_len` / `max_len`; `charset` is one of `hex` (0-9a-f), `alphanumeric` (A-Za-z0-9), `ascii_printable` (printable ASCII without space, `'` and `\`: 0x21–0x7E minus `'` and `\`)
 - `min_len` / `max_len`; no `default`. A value may not contain `'` or control characters
 - GET returns `{set: true|false, updated_at}` only, never the value
 - Delivered through env (in the 0600 `.env`), file (a secrets file, mode 0600) or hook stdin. Never in argv, logs or the audit
@@ -1149,11 +1150,13 @@ Values are stored in canonical form (bytes, seconds, typed JSON). Each delivery 
 - `unlimited`: for `size` with `allow_unlimited`, and required there. What this delivery renders when the stored value is the string `"unlimited"` (e.g. `"0"`, `"-1"`, `"none"`): an app's own sentinel, never a stored value
 - `true` / `false`: for `bool`. The strings rendered for true and false (default `"true"` / `"false"`)
 - `join`: for `list`, `multi_enum`, `groups`, `users`. The separator (default `","`). Items are rendered in their stored order (list) or sorted (sets)
-- `format`: for structured values that don't fit a single env value. One of `json`, `yaml`, `csv`
+- `format`: for structured values that don't fit a single env value. One of `json`, `yaml`, `csv`. `yaml` and `csv` are multi-line: only file and hook deliveries take them, and never for a `person_entered` scalar (outside env it is the person's own value). `json` is compact and never HTML-escapes `&`, `<`, `>`
 
 A value that doesn't fit a delivery's granularity (e.g. 1.5 GiB rendered as an integer-GiB claim) is refused at save, naming the app and its unit.
 
-**Env values** are single-quoted. Values containing `'`, `\` or newlines are refused at save, naming the option and the variable (structured values use `format: json`). Env, header and claim values are one line; a header value is at most 1024 bytes and a claim value 4096 bytes.
+**Checked at discovery.** The validator renders the default and every `group_values` value through every delivery (the implicit `env: <UPPER(key)>` and each `NAME_{n}` item included), with the env rule below: a template whose own values can't be delivered is refused. On an env delivery, `render.true`, `false`, `unlimited` and `join` may not contain `'` or `\`. With `allow_unlimited`, a numeric `render.unlimited` that a size within the option's `min`/`max` also renders as (e.g. `"0"` with no `min`) is refused: the app would take that value for unlimited.
+
+**Env values** are single-quoted. Values containing `'`, `\` or newlines are refused at save, naming the option and the variable (structured values use `format: json`; JSON escapes a `"` or `\` inside a string with a backslash, so such items can't go in an env value either). Env, header and claim values are one line; a header value is at most 1024 bytes and a claim value 4096 bytes.
 
 ### 13.6 Deliveries
 
