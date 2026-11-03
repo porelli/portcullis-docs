@@ -363,7 +363,7 @@ Values people enter for themselves work the same way with accounts: each remembe
 
 To give user `alice` access to Grafana:
 
-1. Create the `users_grafana` group in LLDAP if it doesn't exist yet (the Hub does not create groups)
+1. Enabling Grafana in the Hub creates the `users_grafana` and `admin_grafana` groups if they are missing (or use the App Catalog banner, see [Missing groups](hub.md#missing-groups))
 2. Add `alice` to the `users_grafana` group in LLDAP
 3. Wait for Keycloak sync (or trigger manually)
 4. `alice` can now access `https://grafana.<your-domain>`
