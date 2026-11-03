@@ -491,7 +491,7 @@ and [§14](integration-contracts.md#14-shared-folders-and-the-doctor).
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `access` | `read` / `write` | Yes | `read` always mounts read-only |
-| `runs_as` | `{uid, gid}` numbers, or `{uid_env, gid_env}` env names of instance `int` options; one source per id (`uid_from` / `gid_from`: reserved, project 3) | Yes | The uid and gid the app uses on this mount; numbers must match the service's compose `user:` |
+| `runs_as` | `{uid, gid}` numbers, or `{uid_env, gid_env}` env names of instance `int` options; one source per id (`uid_from` / `gid_from`: reserved, project 3) | Yes | The uid and gid the app uses on this mount; numbers must match the service's compose `user:` when the service sets one |
 | `joins_group` | `group_add` / `gid_env` / `template` | No (default `group_add`) | How the app joins the folder's group; `gid_env` needs `runs_as.gid_env` |
 | `must_own` | boolean | No | The Hub also sets the owner to the app's uid. Writers only |
 
