@@ -468,7 +468,7 @@ refused) and durations with a unit (`30d`, `90m`, `60s`). `default`, `min` /
 | `multi_enum` | A set of choices | `options` as for `enum`, `min_items` / `max_items`; stored in option order |
 | `list` | Ordered items | `items: {type, …}` (`string`, `int`, `bool` or `enum`, with that type's constraints), `min_items` / `max_items` (0–1000), `unique` |
 | `table` | Records | `min_items` / `max_items`, `columns: [{name, label, type, required, …}]` (name `^[a-z][a-z0-9_]{0,31}$`, unique; type `string`, `int`, `bool` or `enum` with its constraints), `key_column` (that column's values are unique; records are delivered keyed by it) |
-| `path` | A host directory, bind-mounted | `target: {service, mount}` (an absolute, clean container path), `mode` (`ro` / `rw`), `needs` (`read` / `write`; `write` with `ro` is refused), `writes_as: {uid, gid}` (numbers, or keys of instance `int` / `string` options; shown in the panel). Instance scope only, no `delivery`: the target is the delivery |
+| `path` | A host directory, bind-mounted | `target: {service, mount}` (an absolute, clean container path), `mode` (`ro` / `rw`), `needs` (`read` / `write`; `write` with `ro` is refused), `writes_as: {uid, gid}` (numbers, or keys of instance `int` / `string` options; shown in the panel), or instead of those three a `folder` block, and `checks` ([Shared folders](#shared-folders-folder-checks-lan_only)). Instance scope only, no `delivery`: the target is the delivery. The value is a host path or `folder:<id>[/<subpath>]` |
 | `secret` | A write-only value | `min_len` / `max_len`, `generate: {length, charset}` (length 8–128; charset `hex`, `alphanumeric` or `ascii_printable`: printable ASCII without space, `'` and `\`). No `default`. Values can't contain `'` or control characters |
 | `group` / `groups` | One / a set of LLDAP groups | `groups`: `min_items` / `max_items` |
 | `user` / `users` | One / a set of LLDAP usernames (lowercased; never an email) | `users`: `min_items` / `max_items` |
@@ -476,10 +476,55 @@ refused) and durations with a unit (`30d`, `90m`, `60s`). `default`, `min` /
 **Refused:** the contract v2 types `text`, `boolean`, `select` and `paths`
 (use `string`, `bool`, `enum` with `options: [{value, label}]`, and one `path`
 per directory), and the reserved types `folder`, `person_secret`,
-`person_id` and option fields `folder`, `checks`, `hash`, `length`,
-`revoke_on_leave`, `on_restore`, `pool`, `username`, `mount` (later
-features). `env[].generate: none` is gone: a value the admin enters is a
+`person_id`, option fields `hash`, `length`, `revoke_on_leave`,
+`on_restore`, `pool`, `username`, `mount` and `runs_as.uid_from` /
+`gid_from` (later features). `env[].generate: none` is gone: a value the admin enters is a
 setting.
+
+### Shared folders (`folder`, `checks`, `lan_only`)
+
+[Integration Contracts §13.15](integration-contracts.md#1315-shared-folders-checks-and-lan-only-ports)
+and [§14](integration-contracts.md#14-shared-folders-and-the-doctor).
+
+**`folder`** (a `path` option; replaces `mode`, `needs` and `writes_as`):
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `access` | `read` / `write` | Yes | `read` always mounts read-only |
+| `runs_as` | `{uid, gid}` numbers, or `{uid_env, gid_env}` env names of instance `int` options; one source per id (`uid_from` / `gid_from`: reserved, project 3) | Yes | The uid and gid the app uses on this mount; numbers must match the service's compose `user:` |
+| `joins_group` | `group_add` / `gid_env` / `template` | No (default `group_add`) | How the app joins the folder's group; `gid_env` needs `runs_as.gid_env` |
+| `must_own` | boolean | No | The Hub also sets the owner to the app's uid. Writers only |
+
+**`checks`** (option level, next to `folder`): a list of `{kind, reason, …}`;
+`reason` is required (one line, ≤ 200 characters).
+
+| `kind` | On | Parameters |
+|--------|----|------------|
+| `filesystem` | a `path` option with `folder` | `needs`: from `[xattr, acl]`; `not`: from `[nfs, cifs, fuse]` |
+| `exclusive` | a `path` option with `folder.access: write` | — |
+| `free_space` | a `path` option | `min`: a size in binary units (`500GiB`) |
+| `requires_group_value` | a `scope: person` option | — |
+
+**`ports[].lan_only`**: see [ports](#ports).
+
+**Jellyfin example:**
+
+```yaml
+settings:
+  sections: [Libraries]
+  options:
+    - key: movies_path
+      label: Movies folder
+      description: Host path to your movies library
+      section: Libraries
+      type: path
+      target: {service: jellyfin, mount: /data/movies}
+      folder:
+        access: read
+        runs_as: {uid: 0, gid: 0}
+        joins_group: group_add
+      applies: restart
+```
 
 ### Scopes
 
@@ -657,6 +702,7 @@ HTTP always goes through Traefik). The Hub:
 | `required` | boolean | No | If not `true`, the user can clear the host port to disable the binding |
 | `description` | string | No | Help text |
 | `network_mode_host` | boolean | No | The service uses `network_mode: host`. Ports are claimed globally and can't be rebound |
+| `lan_only` | boolean | No | The port should be reachable only from the local networks; the Hub's doctor warns when it is bound to all interfaces or a public address ([§14.7](integration-contracts.md#147-local-networks-and-exposure)) |
 
 ```yaml
 ports:

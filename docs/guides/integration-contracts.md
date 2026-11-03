@@ -20,6 +20,7 @@ Portcullis is split across four repositories that meet at a few well-defined int
 - **Templates pin their images.** Every template image is `tag@sha256:…` (enforced by `tests/validate.py`); Dependabot proposes updates.
 - **Templates are versioned by tag.** The Hub tracks the source's default branch.
 - **Template contract v3** (§13 Settings, §4.1 user-attributes v2, §5.1 `/api/me/apps`, §6 exec stdin and kill, §8 per-client setting mappers) is a MAJOR bump.
+- **Shared folders** (§13.15 the `path` option's `folder` block, `checks` and `ports[].lan_only`; the `folder:<id>` value form; §6 the folder fixer; §14) add optional fields to template contract v3: a MINOR bump. A Hub without them refuses `folder` and `checks` (reserved fields, §13.2) and ignores `lan_only`, so a template that uses them lands only after a Hub that implements §14 is published (`edge`): merge order docs → Hub → templates → core.
 - **Current state.** No repository has a release tag yet: `HUB_IMAGE` defaults to `edge` and `.core-ref` is `main`.
 
 ## 2. Core environment variables available to templates
@@ -35,7 +36,7 @@ When a template's `compose.yml` references a variable, the Hub copies its value 
 
 Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any other required variable must be declared in the manifest's `env:` with `generate: random`. The Hub writes those into the per-app `.env`.
 
-**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest.
+**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest. For shared folders (§13.15, §14) it also writes `PORTCULLIS_FOLDER_GID_<KEY>` and `PORTCULLIS_FOLDER_UID_<KEY>` for every `path` option; the whole prefix `PORTCULLIS_FOLDER_` is reserved.
 
 ## 3. Template layout
 
@@ -333,7 +334,20 @@ Neither Traefik nor the Hub mounts `/var/run/docker.sock` directly. Each gets it
 | Traefik | `tcp://socket-proxy-traefik:2375` | read-only (`POST=0`): containers, networks, events, version, ping |
 | Hub | `tcp://socket-proxy-hub:2375` | containers, images, networks, volumes, exec, events, info, version, ping, logs, plus POST/PUT/DELETE. No build, commit, swarm, nodes, services, tasks, plugins, secrets, configs, system (df/prune), auth, distribution or session |
 
-The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`) and its own Engine API calls (status, logs, exec, events, and for instance backups (§11.5): volume list / inspect / create / remove, image pull of the helper image, container create / remove and the archive endpoints `GET`/`PUT /containers/{id}/archive`). The Hub never starts a helper container: the daemon reads and writes the mounted volume itself. `CONTAINERS`, `IMAGES`, `VOLUMES` and `POST=1` above cover it, plus `ALLOW_ARCHIVE=1`: the proxy denies `/containers/{id}/archive` without it (the Hub's exec rights already reach any container's files, so it adds no new kind of access). Core CI checks that only the two proxies mount the socket and that each proxy network has exactly its two members. See [Security & Hardening](../operations/hardening.md#docker-socket-proxies).
+The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`) and its own Engine API calls (status, logs, exec, events, and for instance backups (§11.5): volume list / inspect / create / remove, image pull of the helper image, container create / remove and the archive endpoints `GET`/`PUT /containers/{id}/archive`). `CONTAINERS`, `IMAGES`, `VOLUMES` and `POST=1` above cover it, plus `ALLOW_ARCHIVE=1`: the proxy denies `/containers/{id}/archive` without it (the Hub's exec rights already reach any container's files, so it adds no new kind of access). Core CI checks that only the two proxies mount the socket and that each proxy network has exactly its two members. See [Security & Hardening](../operations/hardening.md#docker-socket-proxies).
+
+**Helper containers.** The Hub uses two kinds, both labelled `io.portcullis.hub.helper` and both removed at Hub start if one was left behind (§11.5 Leftovers):
+
+- **Volume helper** (§11.5), **created but never started.** The daemon itself reads and writes the one volume it mounts, through the archive endpoints. Unchanged.
+- **Folder fixer** (§14), **started.** Docker's archive endpoints can't change group owners recursively, set modes in place or write ACLs, so shared folders need a process. It is the only helper that runs:
+    - **Image:** the Hub's own image, by **image ID** (`sha256:…`), found by inspecting the Hub's own container (its hostname). No new image to trust or pull. `HUB_FIXER_IMAGE` (must contain `@sha256:`) replaces it for development only: it is honoured only with `HUB_DEV=1` and refused otherwise (an env-selected, root-capable image would be a privilege pivot). Image not found: every folder disk operation answers `503` "the Hub can't find its own image".
+    - **Command:** `Entrypoint` is the full argv `["/usr/local/bin/hub", "folderfix", <mode>, <flags>…]`, built from a Go struct, never a shell; `Cmd` is empty. Modes `probe`, `scan`, `snapshot`, `apply`, `restore` (§14.2–14.4). Paths aren't secrets, and no secret is ever passed.
+    - **Isolation:** `User "0:0"`, `NetworkMode "none"`, `no-new-privileges`, read-only rootfs, `CapDrop: ALL`, `Privileged false`, no devices, no port bindings, pids 16, memory 256 MiB, `Healthcheck {Test: ["NONE"]}` (the Hub image's own `HEALTHCHECK` would run `wget`), `LogConfig {Type: "json-file"}` (the report is read from the logs), no `Tty` / `OpenStdin`, `AutoRemove false` (the Hub removes it), label value `folder:<id>` for a folder's runs.
+    - **Mounts:** one bind mount (`Type: bind`, never the `Binds` string form), at `/folder`: the folder (or a hand-typed path the doctor scans), read-only for `scan` and `snapshot`. `probe` binds the folder's **bind root** at `/broot` instead (read-only; read-write only for `probe --create`). Anonymous scratch volumes `/out` (`snapshot`) and `/in` (`restore`) only where the mode needs them; removing the container removes them. Docker's `CreateMountpoint` is never used: it would create a missing host path following host symlinks in its ancestors. Missing directories are created by `probe --create` (`mkdirat` under an `O_DIRECTORY|O_NOFOLLOW` fd of `/broot`, with no capability beyond `DAC_READ_SEARCH`; any failure is a `409`) and by `apply --mkdir` inside the folder.
+    - **Capabilities by mode:** `probe`, `scan`, `snapshot` → `DAC_READ_SEARCH`; `apply`, `restore` → `CHOWN`, `FOWNER`, `FSETID`, `DAC_OVERRIDE`, `DAC_READ_SEARCH`. `FSETID` is needed because the fixer runs as uid 0, which isn't in the folder's group: without it the kernel clears setgid when it sets a directory's mode or access ACL. A `chown` clears setuid/setgid bits whatever the capabilities, so the fixer sets the mode again after changing the owner (order in §14.2).
+    - **Run:** create → copy `/in` (restore) → start → wait for not-running (called after start; a timeout kills it and fails the run) → logs (demuxed) → copy `/out` (snapshot) → remove, always, also on failure. Exit `0` = done, `2` = refused (`409` with the report's first error; nothing changed), `1` = failed (`500`). The report is the last non-empty stdout line, one JSON document (≤ 256 KiB, decoded strictly; stderr ≤ 16 KiB, crashes only).
+    - **Refusals before any run:** a daemon whose `Info` reports `userns` or `rootless` in `SecurityOptions` (ids inside the helper are translated: owners would read as 65534 and ACL entries would be written for the wrong ids) → `503`, explain-only. Every run passes the folder root's expected device and inode (`--expect-dev`, `--expect-ino`); the fixer exits `2` with nothing changed when `/folder` isn't that directory, or when the root of its mount in `/proc/self/mountinfo` doesn't end with the folder's path below its bind root (a symlink Docker resolved on the host).
+- **Proxy flags.** `CONTAINERS` and `POST` (plus the existing `ALLOW_LOGS`, `ALLOW_ARCHIVE` and `INFO`) already cover create, start, wait, kill, logs, archive and info. **No flag of `socket-proxy-hub` changes.** The compose `up` path already starts containers through the same proxy.
 
 **Exec with stdin (§13.8).** The Hub runs `POST /containers/{id}/exec` with `AttachStdin: true` and hijacks the connection to send JSON on stdin to the process. Used for hooks that receive the full desired state.
 
@@ -750,7 +764,8 @@ The **default instance** can be deleted the same way. That removes the manifest'
     ```
 
     `reason` is `manual`, `delete` or `restore`; `volumes` maps each volume key to the volume name it was copied from (the volumes compose labelled with the instance's project; an instance that never ran has none); `template_commit` is the template checkout's git commit and is left out when unknown. Members are written with mode `0600`. `config/instance.yaml` holds `id`, `template`, `default`, `hosts`, `enabled`, `settings` (the typed settings as in §13, person-entered values included), `auth_policy`, `public_access`, `public_mode`, `public_tokens`, `sign_in` and `published`. `config/settings-secrets.json` (also in `config/`) holds the secret store. Restore drops per-group rows whose group id no longer matches (warning).
-- **Offsite.** Core's `./portcullis backup` archives the `hub_data` volume, so `<data>/backups/` is included (and shipped with `--offsite`).
+- **Shared folders are not backed up.** An instance backup copies the instance's volumes only. Shared folders (§14) and every other host path a `path` option mounts are host data: their contents are never in an archive. A `folder:<id>[/<subpath>]` value is a setting and is archived as text in `config/instance.yaml`, like a host path. The folder definitions and permission snapshots (§14.4) live in the Hub's state and `<data>/folder-snapshots/`, not in instance archives.
+- **Offsite.** Core's `./portcullis backup` archives the `hub_data` volume, so `<data>/backups/` is included (and shipped with `--offsite`), and so are `<data>/folder-snapshots/` and the folder definitions in `state.yaml`.
 - The archive contains the instance's generated secrets in clear; it is protected like the rest of `hub_data`.
 
 ### 11.6 Restore
@@ -760,6 +775,10 @@ A backup restores into the **same** instance (replacing its data) or into a **ne
 - **Checks first, nothing changes on failure:** `MANIFEST.json` is the first member and its `version` is 1; every listed file is present once, as a regular file, with a matching sha256 and there are no unlisted files; every volume archive's entries lie under `data/` (no `..`, no device files, hard links inside the volume); `config/instance.yaml` names the manifest's instance and template (any mismatch: `409`, refused). The archive's settings, sign-in mode, policy override and public exceptions must pass the same checks as saving them in the Hub's settings, against the template as it is now (`409` listing every problem). The archive is unpacked to a staging directory under `<data>/backups/.staging/` and verified there before anything else happens. The template exists and has every archived volume key. For a new id: the id rules and collisions of §11.1 (Docker volumes included), the template must be `multi`, and the hostnames (below) must be placeable and free, validated like a create (§11.3).
 - **Same instance** (`POST /api/instances/{id}/restore`). The Hub takes a backup (reason `restore`) and stops the instance. It replaces every volume's contents, the env (`config/env`), the custom override (`config/user.yml`, removed if the archive has none) and the instance's state from `config/instance.yaml`, **except its hostnames: the current hostnames are kept**. The Hub override is **regenerated**, not restored (`config/override.yml` is informational). Before the first destructive step the Hub records `restoring` with the pre-restore backup in its state and marks the instance disabled; while `restoring` the instance is refused like a `deleting` one (`409`) and listed with state `restoring`. A restore the Hub didn't finish (it stopped half-way) is rolled back from that pre-restore backup at the next start or by the next restore of the instance — only if the recorded archive is the instance's own pre-restore backup (its directory and manifest name the instance, its template is the instance's, its reason is `restore`) and verifies; otherwise `409` and nothing is touched. The record is cleared when the restore or the rollback completes (an instance that was `created` stays `created`); a failed save of that is reported as a warning. Deleting a `restoring` instance warns with the pre-restore backup's name. A restored policy is stored normalised (a legacy factor rewritten, never weaker); public exceptions that can't be routed are refused like on save. The project's volumes the archive doesn't have are emptied (warning; their data is in the pre-restore backup). Then, if it was enabled, the Hub enables it again exactly like an enable (the Keycloak clients with the restored secrets, access role, forward-auth callback URIs, policy file and `portal-apps.json`, `compose up`); a disabled instance stays disabled. If any step fails, it puts the pre-restore backup back the same way (volumes it lacks are emptied) and reports the failure (`OpError`, op `restore`, `rolled_back: true`): the instance's previous data is kept.
 - **New id** (`POST /api/instances/restore`), from any listed archive, including one of a deleted instance; the deleted instance's id may be reused. The Hub creates the instance from the archive's config with: the hostnames given in the request's optional `hosts`, otherwise the archive's hostname for each `hosts.immutable` router (an immutable router given a different hostname is a `409`) and the new id's defaults on the main domain (§11.3) for every other router, new empty groups `users_<id>` / `admin_<id>` (created through the Users & Groups guardrails; an existing group is kept with a warning — its members get access), new volumes (labelled with the new project) filled from the archive, the archive's settings, policy, public exceptions and share tokens, sign-in mode, custom override and env with the instance variables rewritten, except each Keycloak client's `secret_env`, which is regenerated. Its Keycloak clients are created when it is first enabled, as for any instance. `type: path` settings keep the same host path: the result warns that the two instances share that directory. The acting admin must resolve as an LLDAP administrator before anything is created. A volume is only filled if it really is new (it must not exist before, and must carry the new project's labels after creation). Setuid/setgid bits and every other mode bit are restored as archived (archives are written by the Hub). A failure after the instance was created removes it again (state, files, the volumes and groups it created). While it runs the new instance is in state `restoring` (`restore_as: <archive>` in `state.yaml`), and `created` (not started) once it completes — it is never started on its own: an admin enables it (which also creates any of its groups still missing); a restore into a new id that the Hub didn't finish is removed at the next Hub start (project volumes, files, per-instance state and the entry; the groups it may have created stay and are logged, as there is no acting admin at start-up).
+
+- **Shared-folder values** (§14), both restores. Before the checks above, every setting value that names a shared folder that doesn't exist (`folder:gone`) is cleared (the option is back to its default), with the warning "setting <key> named shared folder <id>, which doesn't exist; cleared". A restore never runs the folder fixer and changes nothing on disk.
+    - **Same instance:** values naming an existing folder are kept; the next `up` mounts the folder with its group as for any assigned instance (§13.15).
+    - **New id:** folder values are **kept** (it is the same host data). The new instance gets folder access without an assignment preview, so the result warns "instance <new id> now uses shared folder <name> (read-only)" or "(write, as its template declares)". An admin's write confirmation for a template without a `folder` block (§13.15) is per instance and is **not** copied: such a use is mounted read-only until an assignment confirms write again. The doctor's config checks run right after and show any `exclusive` conflict, plus an Info finding "restored into a shared folder" (§14.5).
 
 ### 11.7 Hub API and audit
 
@@ -1051,6 +1070,9 @@ Each type has validation constraints:
 - `mode`: `ro` or `rw`
 - `needs`: `read` or `write`. Documents what the app does with the path (shown in the panel)
 - `writes_as`: `{uid, gid}`. Numbers or references to other instance option keys (e.g. `{uid: puid, gid: pgid}` when the template has integer options `puid` and `pgid`). Documents the identity the app writes files as
+- `folder`: what the app needs on a shared folder (`access`, `runs_as`, `joins_group`, `must_own`). It **replaces** `mode`, `needs` and `writes_as` (refused together). See §13.15
+- `checks`: template-declared doctor checks on this option (§13.15)
+- The value is a host path, or a shared folder: `folder:<id>` or `folder:<id>/<subpath>` (§13.15). Folder values are set only by an assignment (§14.3), never by a settings save
 
 **secret**
 
@@ -1075,8 +1097,11 @@ Each type has validation constraints:
 
 **Reserved types and option keys.** The following are reserved for later features; a Hub that doesn't implement them refuses the template with a clear reason:
 
-- Types: `folder`, `person_secret`, `person_id`
-- Option keys: `folder`, `checks`, `hash`, `length`, `revoke_on_leave`, `on_restore`, `pool`, `username`, `mount`
+- Types: `folder`, `person_secret`, `person_id` (shared folders add no type: they are `path` values, §13.15)
+- Option keys: `hash`, `length`, `revoke_on_leave`, `on_restore`, `pool`, `username`, `mount`
+- Fields `runs_as.uid_from` / `runs_as.gid_from` of the `folder` block (file sharing, project 3; §13.15)
+
+A Hub without §14 refuses the option keys `folder` and `checks` as reserved (§1).
 
 ### 13.3 Scopes and population
 
@@ -1176,6 +1201,7 @@ Each option has at least one delivery. The value is rendered per delivery.
 
 - The same bind mount mechanism as today's `path` settings. The Hub writes the bind mount into its override
 - Only for `type: path`, `scope: instance`
+- Read-only whenever the option's `folder.access` is `read`; shared-folder values in compose's long syntax with `create_host_path: false`, plus the folder's group (§13.15)
 
 **claim**
 
@@ -1511,3 +1537,270 @@ The app-updates preview lists both before an update is applied.
 
 Until then, resolution ignores values that don't match the current option.
 
+### 13.15 Shared folders, checks and LAN-only ports
+
+Three optional template fields (a MINOR addition to contract v3, §1) let a `path` option use a **shared folder** (§14): a host directory the admin defines once and several app instances use with consistent ownership. They also declare doctor checks and LAN-only ports. The templates repo's schema, `tests/validate.py` and the Hub implement exactly what this section says.
+
+**The `folder` block** (on a `type: path` option, `scope: instance` only):
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `access` | Yes | `read` or `write`: what the app does on this mount. `read` is **always** mounted read-only, on a shared folder and on a custom host path alike |
+| `runs_as` | Yes | The uid and gid the app's process uses on this mount. Each of `uid` and `gid` has exactly one source: a number (`uid`, `gid`), or the env name of an instance `int` option of the same template (`uid_env`, `gid_env`; e.g. `PUID` / `PGID` images), or the reserved `uid_from` / `gid_from` (an option key; file sharing, project 3: refused until then with "file sharing (project 3)"). Both ids need a source |
+| `joins_group` | No (default `group_add`) | How the app joins the folder's group: `group_add` (the Hub adds the folder gid as a supplementary group of the target service), `gid_env` (the folder gid becomes the app's primary group through `runs_as.gid_env`, which is then required), or `template` (the template does it itself, e.g. Samba's `force group`, from `PORTCULLIS_FOLDER_GID_<KEY>`) |
+| `must_own` | No (default `false`) | The app refuses files it doesn't own: the Hub also sets the owner to the app's uid. Only with `access: write`; at most one `must_own` use per folder (§14.3) |
+
+The validator refuses, naming the option and the reason:
+
+- `folder` on any type but `path`, or on a `path` with another scope;
+- `folder` together with `mode`, `needs` or `writes_as`, with the hint "folder.access and folder.runs_as replace them";
+- a missing or unknown `access`, a missing `runs_as`, two sources for one id or none for one;
+- a `uid_env` / `gid_env` that isn't the env name (`EnvName()`: its `env` delivery, else `UPPER(key)`) of an instance `int` option of the template; any `PORTCULLIS_*` name;
+- numeric `runs_as` ids that don't match the service's compose `user:` when it sets one; a `user:` of the form `${PUID:-1000}:${PGID:-1000}` matches only the `_env` form naming those variables; a non-numeric `user:` (`www-data`) next to a `folder` block ("give numbers in compose `user:`");
+- a numeric `runs_as.gid`, `writes_as.gid` or compose `user:` gid in **60000–60999** (the folder groups, §14.1);
+- `joins_group` outside the three values, `gid_env` without `runs_as.gid_env`, `must_own` with `access: read`;
+- two folder options of one service naming the same `uid_env` or `gid_env` with different `runs_as` or `joins_group` (one primary gid per process; sharing the variable with identical blocks is normal).
+
+**Values.** A `path` option holds a host path or a shared folder: `folder:<id>` or `folder:<id>/<subpath>`. The id matches `^[a-z][a-z0-9-]{0,30}$` (§14.1). The subpath is relative, equal to its own `path.Clean` (no `//`, no trailing `/`, no `.` segment), has no `..`, no `:`, no control characters and is at most 255 bytes; the apply creates it when missing (§14.3). A template without a `folder` block can be pointed at a shared folder too (the doctor reports "this template doesn't say how it writes", Info); its mount is read-only unless the admin confirmed write access in the assignment (stored per instance and option).
+
+**Rendering** of a folder value (host path = the folder's path, plus `/<subpath>`):
+
+- **Mount:** compose's long syntax, `{type: bind, source: <host path>, target: <mount>, read_only: <bool>, bind: {create_host_path: false}}` (`$` written as `$$`), so a missing folder or subpath fails the `up` instead of Docker creating it as a `root:root 0755` directory. Read-only when `access: read`, or when there is no `folder` block and no confirmed write.
+- **Group:** with `joins_group: group_add` (and for options without a `folder` block), `group_add: ["<gid>"]` on the target service (strings; compose merges them with the template's own list). Only the gids of the folders the instance mounts. Never in the custom override: `group_add` stays forbidden there and the Hub never writes that file.
+- **`gid_env`:** the variable named by `runs_as.gid_env` is written with the folder gid instead of the option's stored value, on every `.env` write (save, start, delivery); no `group_add`.
+- **`template`:** no `group_add`; the template reads the variable below.
+- **Variables:** for **every** `path` option of the instance, every `.env` write carries `PORTCULLIS_FOLDER_GID_<UPPER(key)>` (the folder gid when the value is a folder value, else empty) and `PORTCULLIS_FOLDER_UID_<UPPER(key)>` (the `must_own` use's uid when the folder has one, else empty), single-quoted like every Hub-written value. Writing them empty clears them when a folder is unassigned. The prefix `PORTCULLIS_FOLDER_` is reserved (§2): no template may declare a name under it, and the Expert env editor refuses to change one ("set by the Hub").
+- Before every `up` of an instance with a folder value that has a subpath, a read-only probe checks the subpath (§14.2).
+
+**Settings saves.** Folder values change only through an assignment (§14.3). A settings save **and** its preview (§13.12) refuse (`409`):
+
+- a value `folder:…`, or replacing or clearing one: "assign through Settings → Shared folders";
+- a change of an option a folder writes through `gid_env`: "set by shared folder <name> (gid <N>)";
+- a value in 60000–60999 for an `int` option a `runs_as.uid_env` or `gid_env` names: "gid 60000–60999 is reserved for shared folder groups" (only an assignment writes such a value).
+
+Restores don't apply these refusals; they clear values naming a missing folder instead (§11.6).
+
+**`checks`** (option level, next to `folder`, never inside it): a list of doctor checks from a fixed catalog. Each entry has `kind` and a required `reason` (one line, ≤ 200 characters, no control characters) that the doctor shows. Adding a check kind is Hub work and a contract change; adding a check is template work.
+
+| `kind` | On | Parameters | Finding (§14.5) |
+|--------|----|------------|-----------------|
+| `filesystem` | a `path` option with a `folder` block | `needs`: subset of `[xattr, acl]`; `not`: subset of `[nfs, cifs, fuse]` | Disk: the path's filesystem lacks a `needs` feature or is in `not` → Problem, explain-only |
+| `exclusive` | a `path` option with `folder.access: write` | — | Config: another instance (of the same template too) writes the same folder or host path → Problem, explain-only |
+| `free_space` | a `path` option | `min`: a size in binary units (`500GiB`; `500GB` and `lots` are refused, as for `size` options) | Disk: less free space than `min` → Warning |
+| `requires_group_value` | a `scope: person` option | — | Config: no group row sets the option → Warning (instead of Info) |
+
+An unknown kind is refused, listing the catalog; `kind: lan_only` is refused with the hint "set lan_only: true on the port"; a parameter the kind doesn't take is refused.
+
+**`ports[].lan_only`** (boolean, default `false`): the port should be reachable only from the local networks (LAN, VPN). It changes nothing in how the port is bound; the doctor judges its binding (§14.7). A Hub without §14 ignores it. Ports without it are never an exposure finding.
+
+**Example** (`jellyfin`, as converted):
+
+```yaml
+# manifest.yaml (excerpt)
+settings:
+  sections: [Libraries]
+  options:
+    - key: movies_path
+      label: Movies folder
+      description: Host path to your movies library
+      section: Libraries
+      type: path
+      target: {service: jellyfin, mount: /data/movies}
+      folder:
+        access: read                  # always mounted read-only
+        runs_as: {uid: 0, gid: 0}     # the image runs as root (no compose user:)
+        joins_group: group_add        # the default
+      applies: restart
+```
+
+With `movies_path` = `folder:media/movies` (folder `media` at `/srv/media`, gid 60001) the Hub's override gets:
+
+```yaml
+services:
+  jellyfin:
+    group_add: ["60001"]
+    volumes:
+      - type: bind
+        source: /srv/media/movies
+        target: /data/movies
+        read_only: true
+        bind: {create_host_path: false}
+```
+
+and the `.env` `PORTCULLIS_FOLDER_GID_MOVIES_PATH='60001'` and an empty `PORTCULLIS_FOLDER_UID_MOVIES_PATH` (no `must_own` use).
+
+**Example** (Samba, **project 3**: `uid_from` and the `person_id` option it names are still refused):
+
+```yaml
+# manifest.yaml (excerpt)
+settings:
+  options:
+    - key: share_path
+      label: Shared folder
+      type: path
+      target: {service: samba, mount: /shares/family}
+      folder:
+        access: write
+        runs_as: {uid_from: person_uid, gid: 0}   # project 3: each person's Hub-allocated uid
+        joins_group: template                     # reads PORTCULLIS_FOLDER_GID_SHARE_PATH
+      checks:                                     # option level, next to folder
+        - kind: filesystem
+          needs: [xattr, acl]
+          not: [nfs, cifs, fuse]
+          reason: macOS clients store metadata in extended attributes
+ports:
+  - key: SAMBA_SMB
+    label: SMB
+    container: 445
+    default: 445
+    protocol: tcp
+    service: samba
+    lan_only: true
+```
+
+## 14. Shared folders and the doctor
+
+The admin defines a **shared folder** once (name, host path) and assigns the app instances that use it. The Hub keeps its ownership consistent: one group per folder, setgid directories, default ACLs, so the apps' uids and umasks don't matter. It does so only through the folder fixer helper (§6), never a host shell or SSH. The **doctor** checks the whole setup, folders set up by hand included, reports findings by severity, and offers previewed, audited one-click fixes where they are safe; risky ones it only explains.
+
+Everything here is **admin-only, on the Hub listener, audited** (§14.8), and needs Users & Groups (like settings, §13.12: `503` without it). Nothing on disk changes without a preview the admin applied: the doctor never fixes anything by itself.
+
+### 14.1 Folder definitions and groups
+
+- **Fields:** `id` (`^[a-z][a-z0-9-]{0,30}$`, immutable), `name` (≤ 64 characters, one line), `description` (≤ 500), `path`. No control characters anywhere.
+- **Path rules** (checked on create and on every path change; the stored path is the cleaned one):
+    - absolute and `path.Clean`ed before any comparison (`/srv/photos/` and `/srv//photos` are `/srv/photos`); no `..`, `:`, `$` or control characters;
+    - strictly under one of the Hub's bind roots (`HUB_OVERRIDE_BIND_ROOTS`, §3), never a bind root itself;
+    - not a system path or a sensitive path (the custom override's lists: `/proc`, `/sys`, `/dev`, `/etc`, `/var/lib`, Docker's and containerd's storage and sockets, …), not at, above or under the core checkout (`PROJECT_HOST_DIR`), not at, above or under the data files' host directory (`HUB_APPFILES_HOST_DIR`, §13.7);
+    - no symlink in any component below the bind root (the probe, §14.2); the bind root itself is operator configuration and trusted;
+    - no overlap with another shared folder (neither at nor under the other);
+    - not on `nfs`, `cifs` / `smb2`, `fuse`, `overlay` or `tmpfs` (by `statfs` magic): the Hub can't keep ownership consistent where the server or a userspace driver decides it.
+- **Check path** (`POST /api/folders/check`): a probe (optionally creating the path, §6) and a scan capped at 30 s. Answer: `exists`, `created`, `fs_type`, ACL and xattr support, files, dirs, `partial`, the top owners, `problems` in plain words and a summary such as "exists · ext4 · ACLs and xattrs supported · 12,410 files · owners 1000:1000 (all)".
+- **Create** runs the probe and the check outside the Hub's lock, then saves under it, re-checking the overlap (a lost race is `409`). It stores the folder root's device and inode from the probe; every later fixer run must find them (§14.2).
+- **Group (gid)** per folder, a number only: no `/etc/group`, no LLDAP group, no group created in containers. The display name is the folder's name ("gid 60001 is allocated for this folder (shown as *Family photos*)").
+    - **Allocated** from **60000–60999**, lowest free first, in the same locked save as the definition; stable and **never reused**: `state.yaml` `folder_gids` keeps every gid ever allocated, so deleting a folder doesn't free its gid. All used: `409` "no free folder group".
+    - **Adopted** (an existing host group, typed by number; the Hub never looks up host group names): ≥ 1000, not 65534, outside 60000–60999, not 10001 (the Hub, which reads the data files) or 10002 (enroll's secrets), not used by another folder. The answer carries the warning "anything mounted with gid <N> becomes reachable by this folder's apps".
+- **State** (`state.yaml`): `folders` (id → name, path, description, gid, adopted, created_at, the root's device and inode, the per-use write confirmations, `last_apply` `{at, files, owner_uid, snapshot}`) and `folder_gids`. A corrupt entry stops the Hub at start, like any corrupt `state.yaml`.
+- **Uses are derived** from the setting values (`folder:<id>[/<subpath>]`), never stored separately: "assigned but not applied" is never a stored state (§14.3).
+- **Update:** name and description at any time; a path change while any instance uses the folder is `409`. **Delete:** `409` while any instance's value names it (listing them); it never touches files and its gid stays used. Deleting an instance drops its uses (its values go with it) and its write confirmations; the folder stays.
+
+### 14.2 On disk
+
+**Consistent ownership** (what an apply produces and the doctor's disk check expects):
+
+- the group owner of every entry is the folder gid;
+- directories get `g+rwx` and setgid; regular files `g+rw` when any use writes, `g+r` when every use only reads (`g+x` only where the file's user bits have `x`);
+- every directory gets access and default ACL entries for the owning group (`rwx`) and a mask of `rwx`, so files created later land in the folder's group with group write whatever the app's umask;
+- groups that had permissions keep them through named group entries with the same bits (on directories in the default ACL too); under `must_own` the previous owner uids keep theirs through named user entries the same way ("group 1000 keeps rw through an ACL on 12,410 files");
+- before the mask is raised, every existing named entry is narrowed to what it grants today (entry ∧ old mask): nobody's effective rights change, and the preview counts them ("4 existing ACL entries are narrowed to what they grant today");
+- file owners are left alone except under `must_own`; "others" bits are never changed; nothing is ever removed;
+- regular files with setgid are never given another group, and under `must_own` setuid files never another owner (keeping the bit across the change would let anyone who can run the file act as the folder's group or the app's uid): they are skipped and counted (`setid`, an explain-only finding). A setuid file's group change keeps its setuid bit (its owner is unchanged).
+- Order per entry: `fchown` → set the access ACL → `fchmod` (user and other bits as before, group bits = the mask, setgid on directories, the kept setuid/setgid bits of files) → set the default ACL (directories). ACLs are the `system.posix_acl_access` / `system.posix_acl_default` xattrs (version 2), validated like the kernel's `posix_acl_valid` before every write (an invalid one is a refusal with nothing written).
+- **Without ACL support** the fix is group + setgid + mode only. A change that would cut a previous group's or owner's bits is explain-only; under `must_own` the owner change is dropped with the warning "uid <N> would lose access: ownership stays; the group part still applies".
+
+**Walk rules** (every mode):
+
+- the walk never leaves the root's device: a directory on another device is not entered, not changed, and reported;
+- each entry is first `fstatat(…, AT_SYMLINK_NOFOLLOW)`; only regular files and directories are opened (`openat` relative to the parent's fd, `O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC`, `O_DIRECTORY` for directories), and the opened fd's device, inode and type must equal the `fstatat` result (a race is skipped and counted); every change goes through that fd;
+- symlinks are never followed and never changed; regular files with more than one link are skipped and reported (their inode may be reachable outside the folder); devices, sockets and FIFOs are skipped and reported, never opened;
+- the root must be the stored device and inode, and its mount root must match (§6), or the run exits `2` with nothing changed.
+
+**The probe** (`probe`, the bind root mounted at `/broot`) answers the path's device, inode, the first symlink component (if any), whether it exists (and was created, with `--create`) and its mount root. **Before every `up`** of an instance with a folder value that has a subpath, a read-only probe checks that the subpath has no symlink component and that the folder root's device and inode equal the stored ones; otherwise the `up` fails with `409` "shared folder <name> changed on disk: re-apply it". (A writer app could replace a subpath with a symlink, and Docker resolves bind sources on the host.)
+
+### 14.3 Assignment and apply
+
+- **The definition** (name, id, path, description) is a plain synchronous save: it allocates the gid and changes nothing on disk or in any app.
+- **Assigning** is one previewed, asynchronous operation, like a doctor fix. The request is the **full desired set** of uses of the folder: `{"uses": [{"instance", "key", "subpath", "write"}]}` (`write` only for options without a `folder` block: the admin's write confirmation).
+- **Preview** (`POST /api/folders/{id}/assign/preview`) changes nothing (a probe and a scan capped at 30 s run). It answers the plan: per use `add` / `remove` / `keep` with its access, read-only flag, `joins_group` and env; the disk plan (files `rw`/`r`, owner under `must_own`, subpaths to create, counts per change: group, setgid, default ACL, owner, narrowed entries, previous groups and owners kept); the instances restarted; the downtime; the preview text (e.g. "gid 60001 is allocated for this folder (shown as *Family photos*). 12,410 files and 312 folders change group 1000 → 60001; group 1000 keeps read/write through an ACL. … Immich mounts it read-only. Samba and Immich are stopped for about 1 minute, then started. A permissions snapshot is saved first."), warnings and the **plan hash**. Only removals: no disk plan, no fixer run.
+- **Refusals** (`400` for an unknown instance or key or a non-`path` option; otherwise `409`): two options of one service whose `uid_env` / `gid_env` would get different values ("point both settings at the same shared folder", no `group_add` fallback: PUID images drop supplementary groups); two `must_own` uses; an option that already uses another folder ("unassign it from <name> first"); a change that would remove someone's access on a filesystem without ACLs (explain-only); a rendering or custom-override problem (below).
+- **Plan hash:** sha256 of the canonical JSON of the plan's decisions (folder id, path, gid, every use without its label, the disk plan without its counts, the restarts) plus the current values of every affected option and port. Apply (`POST /api/folders/{id}/assign/apply` `{plan_hash, uses}`) recomputes the plan: any difference is `409` "the setup changed since the preview", before the operation is accepted. Then `202` (§14.8).
+- **Locks:** the folder's lock (try-lock; busy `409`) → the per-instance lock of **every** affected instance in sorted id order, all or none (the first busy one releases those taken; `409`) → the delivery lock, only inside each instance's `up`. The folder lock is never taken while holding an instance or delivery lock. The Hub's state lock is never held across a Docker call.
+- **While it runs** the affected instances are marked "applying": settings saves and previews, Expert env and custom override saves, hostname changes, backups and drift start/apply on them answer `409` "shared folder <name> is being applied"; enable, disable, restart, restore and delete get `409` busy from their lock. The settings delivery engine sees them busy and re-queues.
+- **Sequence:**
+    1. Render every affected instance's override and env from the **planned** values (a dry run on a copy) and check its custom override. Any refusal is `409` and nothing stops.
+    2. Write the marker `<data>/folders/<id>.applying.json` `{instances, snapshot, phase: "disk"}`.
+    3. Stop (`compose down`, volumes kept) the affected instances that were running when the operation started. Enabled-but-stopped ones are regenerated but not started (the result says so).
+    4. With a disk plan: free-space check on `<data>` (`507`), `snapshot` run (§14.4), `apply --expect <N> --mkdir <subpath>…` (the fixer re-plans and refuses, unchanged, when its count differs), then a verify `scan`: every conformance count must be 0.
+    5. Phase `state`: under the Hub's lock set the values to `folder:<id>[/<subpath>]` (removed uses: the value is deleted, back to the default), the write confirmations and `last_apply`; save `state.yaml`.
+    6. Regenerate env and override, start the stopped instances (`compose up`, which also clears an owed restart), remove the marker.
+    7. Queue a settings delivery (trigger save, effect none: the apply restarted the apps itself, so nothing is owed) for every instance whose values changed, store the verify scan as the folder's doctor scan, and audit: `settings.change` for every changed key (actor the admin), `folder.assign`, and `folder.apply` when the disk changed.
+- **Failure** before the state save: the stopped instances are started again with their old configuration, the values are unchanged, and the op record names the snapshot (the doctor then shows the drift with an undo). After it: the op fails with the new state kept.
+- **Interrupted** (the Hub stopped mid-apply): at the next start, after restores are recovered and before owed restarts are re-queued, in the background: phase `disk` → the listed instances are started with their unchanged configuration; phase `state` → regenerated and started with the new one; the op record is marked interrupted and names the snapshot. The fixer itself was removed by the start-up sweep (§11.5).
+- **Downtime** is estimated from the scan's entry count (5,000 entries a second for each of the three runs: "under a minute", "about N minutes"). An apply that holds an instance lock beyond 20 minutes makes restarts queued for it give up; they stay owed and run at the next Hub start (§13.9).
+- Op key `_folder.<id>` (instance ids can't start with `_` or contain `.`), polled at `GET /api/folders/{id}/op`. Folder and doctor op records are never listed as failed apps.
+
+### 14.4 Snapshots and undo
+
+- **The backup before a permissions fix is a permissions snapshot:** path, inode, type, uid, gid, mode and both ACL xattrs of every entry the fix will change. A data copy of a multi-terabyte folder isn't practical, and the contents don't change.
+- **Format:** gzip NDJSON. A header `{"version":1,"root_dev":D,"root_ino":I,"gid":N,"created_at":"…","entries":N}`, then one `{"p":"<relative path>","t":"d|f","ino":I,"u":U,"g":G,"m":MODE,"a":"<base64 access xattr>","d":"<base64 default xattr>"}` per entry.
+- **Transfer:** the fixer writes `/out/snapshot.ndjson.gz`; the Hub accepts exactly one regular tar entry `out/snapshot.ndjson.gz` from the archive endpoint, at most 2 GiB and within the free space left after the 64 MiB margin (§11.5; checked first), and computes the sha256 itself while streaming.
+- **Storage:** `<data>/folder-snapshots/<folder>/<YYYYMMDDTHHMMSSZ>.ndjson.gz` plus `<same>.sha256`, data then checksum, each atomic; files `0600`, directories `0700`; the last **3** per folder are kept. The checksum catches corruption only: write access to `<data>` is Hub compromise.
+- **Undo last fix** is itself a previewed fix (`POST /api/folders/{id}/undo/preview` / `…/undo/apply {plan_hash}`) built from `last_apply.snapshot`; none is `404`. The preview names the snapshot time and entry count, the uses that lose group access, and the entries "changed since the fix". It runs the apply's sequence: stop → a new snapshot (it becomes `last_apply.snapshot`) → `restore` (the snapshot copied in at `/in`) → verify → start. The setting values don't change. Audited `folder.apply` (`undo snapshot=<ts>`).
+- **Restore** validates the header (`root_dev`, `root_ino` and `gid` equal the folder's) and every `p` (clean, relative, no `..`, ≤ 4096 bytes), walks to each entry with `openat` per component (`O_NOFOLLOW`, never a joined path string), and rewrites an entry only while its type and inode are the recorded ones **and** its uid, gid, mode and ACLs are still exactly what the apply produced from that line (recomputed). Anything else is skipped and counted "changed since the fix", so an undo never takes away access granted since.
+
+### 14.5 The doctor
+
+- **Severities:** `problem` (broken or unsafe now: a writer can't write, a LAN-only port on a public address), `warning` (likely to break or weaker than intended: drift, a LAN-only port on all interfaces, no ACL support), `info` (worth knowing: a per-person option with no group values, a template that doesn't say how it writes).
+- **Findings** say what is wrong, why it matters, which instances, folders and paths are affected, and what the fix would do: `{fp, kind, severity, title, why, fix_text, instances, folders, paths, fix_class, fix_kind, steps, link, partial, muted}`. They are sorted by severity, then title, then `fp`; the report also has `counts` (unmuted Problems, Warnings, Infos), `muted` and the disk scans `{target, at, partial, entries}`. Only **enabled** instances are judged.
+- **Fingerprint** `fp` = the first 16 hex digits of sha256(`<kind>\x00<subjects, sorted, joined by \x00>`): stable across runs and order.
+- **Mutes:** an admin mutes a finding with a reason (non-empty, ≤ 200 characters). The mute stores the finding's inputs digest; the finding comes back as soon as its inputs change. Muted findings stay in the answer with `muted`, outside `counts`. Mutes and unmutes are audited. Unknown `fp` → `404`.
+- **Config checks** (state, manifests, overrides, ports, settings values, the directory's group membership) are cheap: they run on every `GET /api/doctor` and after every relevant save or restore. **Disk checks** (fixer `scan`) run on demand (`POST /api/doctor/scan`), after every folder apply, and daily; results are cached with their time in `<data>/doctor/scans.json` (`0600`) and survive a Hub restart. One scan at a time (`409` busy). Scheduled scans skip a folder whose lock is held and keep its previous result.
+- **Scan targets:** every shared folder, and every distinct hand-typed host path used by two or more uses or by a writer, under the bind roots, nested ones collapsed to the outermost. A hand-typed target passes the folder path rules and a probe before it is bound (otherwise a `scan_failed` Warning naming why). **Caps:** 2,000,000 entries or 10 minutes per scan (30 s in previews and Check path). A scan that hits a cap is **partial**: its findings carry `partial` and the text "(partial scan: stopped after <N> entries)". A failed target is a `scan_failed` Warning; the others continue.
+- **Kinds** (severity, fix class §14.6):
+    - `shared_path`: two or more uses of the same or nested hand-typed host paths (settings and custom-override mounts). The same exact path, all under the bind roots, no custom-override mount → Warning, `manage_as_folder`; nested or overlapping → Warning, explain-only; with a disk scan, a writer that can't write or a reader that can't read → Problem with the counts ("Jellyfin and Samba both use `/srv/media`. Samba writes as uid 10001 (group 10001); Jellyfin reads as uid 1000 and can't read 412 new files.").
+    - `folder_owner`: a folder's disk differs from consistent ownership → Warning "drifted since the last apply", `reapply_folder` (and the undo); a writer that can't write or a reader that can't read → Problem.
+    - `path_outside_roots`: a `path` value outside the bind roots → Warning, explain-only.
+    - `undeclared_template`: a folder use without a `folder` block → Info "this template doesn't say how it writes".
+    - `primary_gid_conflict`: hand-typed paths on one service whose `gid_env` would need different gids → Problem, explain-only.
+    - `custom_override_mount`: a custom-override bind mount that shares or nests with another use → Warning, explain-only with the steps.
+    - `must_own_conflict`: two `must_own` uses of one path or folder → Problem, explain-only.
+    - `gid_collision`: an instance whose resolved primary or supplementary gid (compose `user:` included) is a folder gid it isn't assigned → Problem, explain-only.
+    - `restored_into_folder`: an instance restored into a new id that uses a shared folder (§11.6) → Info.
+    - `exclusive`, `filesystem`, `free_space` (template checks, §13.15).
+    - `person_option`: a per-person option with no group rows → Info (Warning with `requires_group_value`, showing its reason; "No rows" counts only rows bound to an existing group id); a row whose group has nobody in the instance's population → Warning naming the group; a row whose group id no longer exists → Warning. All link to the option in the settings panel.
+    - `no_acl`: a folder or scanned path without ACL support → Warning. `skipped_entries`: hard links, nested mount points, specials, setid files → Warning, explain-only, with counts and samples.
+    - `lan_only_exposed`, `host_network` (§14.7). `scan_failed`.
+- Project 3 registers more kinds (file-share passwords) through the same check interface.
+
+### 14.6 Fix classes
+
+- **One-click** (preview → plan hash → Apply, `202`; `409` "the setup changed since the preview" on a mismatch; audited `doctor.fix` besides what the steps audit):
+    - `manage_as_folder` (params `name`, `id`; default the path's base name, slugged): the folder definition lines plus the assignment plan for the finding's uses. The apply predicts the gid, holds the new id's folder lock across creating the definition and validating the assignment, and on a refusal or hash mismatch deletes the just-created definition (its gid stays used) and answers `409`.
+    - `reapply_folder`: the assignment of the folder's current uses (§14.3).
+    - `rebind_port` (param `address`): bind a LAN-only port to an address the admin types — a valid IP, not `0.0.0.0` / `::`, inside the local networks, not a main-domain address (`400` otherwise). Preview: "SAMBA_SMB bind 0.0.0.0 → 192.168.1.10, Samba restarts". Apply under the instance's lock (op `rebind`, the instance's op record): checked like a port save, `<KEY>_BIND` written to state, override and env, restarted at once if enabled; if the restart fails the old bind is put back and the instance started again (`rolled_back`, with the reason). Audited `settings.change` (`ports`) and `doctor.fix`.
+    - **Undo the last fix** (§14.4).
+    - Every fix that touches data goes through the assignment or undo operation (snapshot + verify), never another path. There is no "mount read-only" fix: `access: read` always mounts read-only.
+- **Explain-only** (the finding lists the steps; preview `409` "explain-only"): moving or merging data, nested or overlapping paths, custom-override mounts (remove the mount in Expert and use the template's folder setting with a shared folder, where it has one), hard links, nested mount points and setid files, `must_own` without ACLs when previous owners would lose access, two `must_own` uses, paths outside the bind roots or on unsupported filesystems, a userns-remapped or rootless Docker (§6), host networking (firewall steps).
+- **Link-out:** per-person option findings open the settings panel at the option; the doctor never edits settings values itself.
+
+### 14.7 Local networks and exposure
+
+- **Local networks** (Hub Settings, `GET` / `PUT /api/settings/local-networks`): a list of CIDRs, ≤ 64 entries, no host bits, no `/0` prefix. `null` = the defaults `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `100.64.0.0/10` (RFC 1918, IPv6 ULA, the tailnet); `[]` = loopback only. Loopback (`127.0.0.0/8`, `::1`) always counts as local. Stored in `state.yaml` `local_networks`; audited `settings.local_networks` (`<N> networks`).
+- **Only `lan_only` ports are judged** (§13.15), template ports and custom-override ports alike (matched by service and container port). Addresses are unmapped (`::ffff:192.168.1.10` is `192.168.1.10`) before every comparison; no address means all interfaces.
+- `lan_only_exposed`: bound to `0.0.0.0`, `::` or no address → **Warning**; to an address outside the local networks, or to an address the main domain's A / AAAA records point at → **Problem**. Both offer `rebind_port`. The main domain is resolved with a 2 s timeout and cached for 5 minutes; a failed lookup escalates nothing and the finding says "couldn't resolve <domain>".
+- `host_network`: a `lan_only` port of a `network_mode_host` service → **Warning**, explain-only: "Docker publishes around host firewalls such as ufw; restrict the port in your router or host firewall". The Hub can't see host firewalls or NAT and doesn't probe reachability from outside.
+
+### 14.8 API and audit
+
+Hub listener only (the people listener gets no new route, §5.1), `adminOnly` (no `X-Forwarded-User` `401`, delegates `403`, no Users & Groups `503`), proxy-secret and CSRF guards. Bodies are strict JSON (`DisallowUnknownFields`, trailing data refused), at most 64 KiB.
+
+- `GET /api/folders` → `{"folders": [FolderView]}`;
+- `POST /api/folders` `{id, name, path, description, gid?, create?}` → 201 `{folder, warnings}`;
+- `PUT /api/folders/{id}` `{name, path, description}`;
+- `DELETE /api/folders/{id}` (409 while used);
+- `POST /api/folders/check` `{path, create}` → `PathCheck`;
+- `POST /api/folders/{id}/assign/preview` `AssignRequest` → `AssignPlan`;
+- `POST /api/folders/{id}/assign/apply` `{plan_hash, uses}` → 202 `{op_id, op, folder, poll: "/api/folders/{id}/op"}`;
+- `POST /api/folders/{id}/undo/preview`, `POST /api/folders/{id}/undo/apply {plan_hash}`;
+- `GET /api/folders/{id}/op` → `OpRecord`;
+- `GET /api/doctor` → `doctor.Report`;
+- `POST /api/doctor/scan` → 202 (`poll: "/api/doctor/op"`); `GET /api/doctor/op`;
+- `POST /api/doctor/findings/{fp}/preview` `{params}` → `FixPlan`;
+- `POST /api/doctor/findings/{fp}/apply` `{plan_hash, params}` → 202;
+- `POST /api/doctor/findings/{fp}/mute` `{reason}`;
+  `DELETE /api/doctor/findings/{fp}/mute`;
+- `GET|PUT /api/settings/local-networks` `{networks: [..] | null}` →
+  `{networks, default}`.
+
+Every field of these answers is snake_case. `FolderView`: `id`, `name`, `path`, `description`, `gid`, `adopted`, `uses` (`instance`, `key`, `label`, `subpath`, `access`, `declared`, `read_only`), `last_op`, `last_check`. The `202` answers and op records follow §11.7 (`op_id`, `op`, `poll`; records `running`, then `ok`, `error`, `status`, `output`, `hint`, `rolled_back`, `result`, `warnings`); doctor scans use the op key `_doctor`, a rebind the instance's own record. Status meanings: `400` bad input, `404` unknown folder, finding or snapshot, `409` refused, busy or "the setup changed since the preview", `503` no Users & Groups, the Hub's own image not found, or a userns-remapped / rootless Docker, `507` too little free space.
+
+**Audit actions** (`audit.jsonl`, §9.5; result `ok`, `refused` or `error`; written after the Hub's lock is released): `folder.create`, `folder.update`, `folder.delete`, `folder.assign`, `folder.apply`, `doctor.fix`, `doctor.mute`, `doctor.unmute`, `settings.local_networks`, plus `settings.change` for every setting value an apply or rebind changes. The detail holds counts and ids, never file lists: `folder.create` target `<id>`, detail `gid=<N> path=<path>`; `folder.assign` `add=<n> remove=<n> entries=<n> snapshot=<ts>`; `folder.apply` the disk change (`undo snapshot=<ts>` for an undo); `doctor.fix` target `<fp>`, detail `fix=<kind> <ids>`; `doctor.mute` the reason; `settings.local_networks` `<N> networks`.
