@@ -3,7 +3,9 @@
 > Self-hosted personal finance manager with double-entry bookkeeping
 
 **Category:** finance  
-**Tags:** `finance`, `accounting`, `budget`, `bookkeeping`
+**Tags:** `finance`, `accounting`, `budget`, `bookkeeping`  
+**Website:** <https://www.firefly-iii.org/>  
+**Source:** <https://github.com/firefly-iii/firefly-iii>
 
 ## Authentication
 

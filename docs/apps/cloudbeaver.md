@@ -3,7 +3,9 @@
 > Web-based database manager — PostgreSQL, MySQL, SQLite and more
 
 **Category:** devops  
-**Tags:** `database`, `sql`, `admin`, `postgresql`, `mysql`
+**Tags:** `database`, `sql`, `admin`, `postgresql`, `mysql`  
+**Website:** <https://dbeaver.com/docs/cloudbeaver/>  
+**Source:** <https://github.com/dbeaver/cloudbeaver>
 
 ## Authentication
 

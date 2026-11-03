@@ -3,7 +3,9 @@
 > Modern wiki with Portcullis sign-in (OpenID Connect) and group-based rights
 
 **Category:** productivity  
-**Tags:** `wiki`, `docs`, `knowledge-base`
+**Tags:** `wiki`, `docs`, `knowledge-base`  
+**Website:** <https://js.wiki/>  
+**Source:** <https://github.com/requarks/wiki>
 
 ## Authentication
 

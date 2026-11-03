@@ -3,7 +3,9 @@
 > Self-hosted recipe manager, meal planner and shopping lists
 
 **Category:** productivity  
-**Tags:** `recipes`, `cooking`, `meal-planning`, `shopping-list`, `food`
+**Tags:** `recipes`, `cooking`, `meal-planning`, `shopping-list`, `food`  
+**Website:** <https://mealie.io/>  
+**Source:** <https://github.com/mealie-recipes/mealie>
 
 ## Authentication
 

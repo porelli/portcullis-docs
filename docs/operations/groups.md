@@ -80,8 +80,9 @@ Rules of **protected groups** may only reference **admin-only fields**:
 - **Administrator groups**: `lldap_admin`, `lldap_password_manager`, core-subdomain groups (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`), `INVITE_PROTECTED_GROUPS`
 - **Permission groups**: the groups holding a delegated permission (`edit_details`, `invite`, `remove`)
 - **App admin groups**: any group used as an app's `admin_group` or in `path_groups`
+- **Privileged setting groups**: any group with a row in an app's [privileged option](hub.md#per-group-values) (a role or admin flag, e.g. Grafana's or Immich's role). The Hub works these out from the apps' current settings; the reason shown is "a privileged value of app <id>"
 
-This prevents delegates (who can edit non-admin-only fields) from granting themselves admin rights or delegated permissions by editing data. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).
+This prevents delegates (who can edit non-admin-only fields) from granting themselves admin rights, delegated permissions or a privileged app value by editing data. The settings panel enforces the same rule from the other side: a privileged option takes rows only from manual groups and rule-based groups over admin-only fields, and a row whose group later stops qualifying grants only the option's lowest value and is removed at the next check. A field used by such a rule cannot lose its admin-only flag (409 until the rule is changed or the group stops being protected).
 
 **Built-in groups** (`lldap_admin`, `lldap_password_manager`, core-subdomain groups) and permission groups cannot be rule-based (409). `INVITE_PROTECTED_GROUPS` can be rule-based, but only over admin-only fields.
 
@@ -347,6 +348,16 @@ curl -s -X POST \
   "http://localhost:8080/admin/realms/portcullis/user-storage/$LDAP_ID/sync?action=triggerFullSync" \
   -H "Authorization: Bearer $KC_TOKEN"
 ```
+
+### Groups deleted outside the Hub
+
+[App settings](hub.md#per-group-values) can give values per group (a quota for `office_milan`, an admin role for `admin_immich`). Each such row stores the group's LLDAP id, not only its name, so a group's settings never pass to a different group:
+
+- **Deleted through the Hub** (Users & Groups → Delete): the group's rows are removed from every app at once, audited as `settings.purge` with you as the actor, and the affected apps get a new delivery.
+- **Deleted in LLDAP's own UI** (`portcullis lldap-ui`) or by anything else: the rows stop granting anything immediately, because the group is missing. The Hub's next check removes them (audited `settings.purge`, actor `hub`). It removes them only while LLDAP looks healthy: the bootstrap `admin` and the Hub's account exist, and the user count hasn't dropped by more than 20 % and more than 2 accounts (the same check as the [stale-record cleanup](hub.md#stale-keycloak-records-admins-only)). Otherwise it only logs a warning and keeps filtering.
+- **Re-created with the same name**: it is a new group with a new id and inherits nothing: no rows, no records. Add its rows again in the app's settings. The only exception is a template's own preset row for the instance's access or admin group (`admin_<id>`): it comes back when the Hub re-creates that group itself, on enable or with **Create missing groups**.
+
+Values people enter for themselves work the same way with accounts: each remembers the LLDAP account it was entered for, so an account deleted and re-created outside the Hub doesn't get the old value (see [Values people enter](hub.md#values-people-enter)).
 
 ## Example: Giving a User Access to an App
 

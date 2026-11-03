@@ -3,7 +3,9 @@
 > Lightweight Bitwarden-compatible password manager
 
 **Category:** security  
-**Tags:** `passwords`, `bitwarden`, `vault`, `secrets`
+**Tags:** `passwords`, `bitwarden`, `vault`, `secrets`  
+**Website:** <https://github.com/dani-garcia/vaultwarden>  
+**Source:** <https://github.com/dani-garcia/vaultwarden>
 
 ## Authentication
 

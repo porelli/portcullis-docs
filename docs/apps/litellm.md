@@ -3,7 +3,9 @@
 > Unified LLM proxy — OpenAI-compatible API for 100+ models with auth and rate limits
 
 **Category:** ai  
-**Tags:** `llm`, `ai`, `openai`, `proxy`, `api`
+**Tags:** `llm`, `ai`, `openai`, `proxy`, `api`  
+**Website:** <https://www.litellm.ai/>  
+**Source:** <https://github.com/BerriAI/litellm>
 
 ## Authentication
 

@@ -3,7 +3,9 @@
 > Public documentation — no authentication
 
 **Category:** public  
-**Tags:** `docs`, `static`, `nginx`
+**Tags:** `docs`, `static`, `nginx`  
+**Website:** <https://squidfunk.github.io/mkdocs-material/>  
+**Source:** <https://github.com/squidfunk/mkdocs-material>
 
 ## Authentication
 

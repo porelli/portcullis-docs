@@ -3,7 +3,9 @@
 > Free and open-source media server — movies, TV, music, live TV
 
 **Category:** media  
-**Tags:** `media`, `movies`, `tv`, `music`, `streaming`, `opensource`
+**Tags:** `media`, `movies`, `tv`, `music`, `streaming`, `opensource`  
+**Website:** <https://jellyfin.org/>  
+**Source:** <https://github.com/jellyfin/jellyfin>
 
 ## Authentication
 
@@ -40,13 +42,13 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Settings
 
-User-configurable options available in the Hub UI:
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **Movies folder** | `path` | Host path to your movies library → `/data/movies` |
-| **TV Shows folder** | `path` | Host path to your TV shows library → `/data/tv` |
-| **Music folder** | `path` | Host path to your music library → `/data/music` |
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **Movies folder** | `path` | instance | `restart` | Host path to your movies library. Mounted at `/data/movies` (ro). |
+| **TV Shows folder** | `path` | instance | `restart` | Host path to your TV shows library. Mounted at `/data/tv` (ro). |
+| **Music folder** | `path` | instance | `restart` | Host path to your music library. Mounted at `/data/music` (ro). |
 
 ## Environment Variables
 

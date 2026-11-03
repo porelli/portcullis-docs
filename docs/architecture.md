@@ -86,7 +86,7 @@ graph TB
 | **PostgreSQL** | Database backend for Keycloak. |
 | **Vault PKI** | Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL. |
 | **Enrollment UI** | `enroll.<domain>`: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at `/self`. Signs CSRs through a least-privilege Vault AppRole. |
-| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled app instance as its own compose project, registers Keycloak clients, writes the policy file v5 (keyed by full hostname) and `user-attributes.json`, reports drift, manages enrolled domains. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import), with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` permissions). |
+| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled app instance as its own compose project, registers Keycloak clients, writes the policy file v5 (keyed by full hostname) and `user-attributes.json`, delivers app settings ([Settings Delivery](#settings-delivery)), reports drift, manages enrolled domains. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import) with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` permissions), and My apps (each person's own app settings). |
 | **Domains service** | Manages enrolled extra domains: creates DNS records, obtains wildcard certificates via ACME DNS-01, serves them to Traefik over its HTTP provider. Credentials stored encrypted at rest (age). See [Security & Hardening](operations/hardening.md#domains-service). |
 | **forward-auth-ext** | Second oauth2-proxy for extra-domain hosts. Relative callback `/oauth2/callback`, host-only cookie `__Host-portcullis_ext`. Shares the Keycloak client with `forward-auth`. See [Hub Management](operations/hub.md#cross-domain-sign-in). |
 | **Monitoring** (optional) | Compose profile `monitoring`: Prometheus, Alertmanager, Grafana at `metrics.<domain>` (`lldap_admin`), blackbox and textfile exporters. See [Monitoring](operations/monitoring.md). |
@@ -347,6 +347,72 @@ flowchart LR
 4. **App**: receives `attr_<field>` claims in the ID token (no percent-encoding; multi-valued fields are JSON arrays).
 
 The Hub attaches the `portcullis-attributes` client scope as a default scope to every client it creates. On reconcile, it re-attaches missing mappers.
+
+## Settings Delivery
+
+App settings ([Hub → App settings](operations/hub.md#app-settings),
+[contracts §13](guides/integration-contracts.md#13-settings)) are declared by
+the template and delivered by the Hub. The Hub stores canonical values
+(bytes, seconds, typed JSON) in `state.yaml` and secrets in a separate
+0600 store, then works out what each app should see and hands it over in
+the form the template asked for.
+
+```mermaid
+flowchart LR
+    Admin[Admin<br/>settings panel]
+    Person[Person<br/>My apps]
+    Dir[(LLDAP<br/>groups, members)]
+    Hub[Hub delivery engine<br/>one run per instance]
+    Env[.env<br/>read at start]
+    File[data files<br/>appfiles/id/name]
+    Hook[hooks<br/>docker exec, JSON on stdin]
+    Attr[(LLDAP setting attributes<br/>ps-hash)]
+    KC[Keycloak mappers]
+    UA[user-attributes.json<br/>hosts]
+    GG[group-gate]
+    App[App]
+
+    Admin -->|save| Hub
+    Person -->|own value| Hub
+    Dir -->|membership snapshot| Hub
+    Hub --> Env --> App
+    Hub --> File -->|read-only mount| App
+    Hub --> Hook --> App
+    Hub --> Attr --> KC -->|claims at sign-in| App
+    Hub --> UA --> GG -->|X-Forwarded-Attr-* per host| App
+```
+
+One delivery run, per instance and never two at once:
+
+1. **Snapshot.** The Hub reads the directory once (members, group ids,
+   account ids) and works out the population: who has access to the
+   instance. Group rows and records count only when their group still has
+   the LLDAP id they were saved with.
+2. **Resolve.** Per-person options get one value per person (`max`, `min`,
+   `priority`, …); values people entered are kept for people still in the
+   population whose account still matches.
+3. **Compare.** Each unit's desired output (the env, each data file, each
+   claim attribute, the headers, each hook's input) is compared with what
+   was last delivered (`delivered.json`: hashes only, never values).
+   Unchanged units are skipped.
+4. **Deliver**, in order: data files, then claims (an LLDAP attribute per
+   option, written per person, and a mapper on the instance's Keycloak
+   client), then headers (published with the policy file), then hooks, then
+   the strongest effect: nothing, one reload or one restart (in the
+   background).
+5. **Record** the outcome per unit; the panel's Deliveries strip shows it.
+
+If the settings change during a run, the stale run stops at its next write
+(`superseded`) and a new run starts with the newest state. If the directory
+is unavailable, units that need people keep their last delivery. A disabled
+instance gets nothing; a busy one (another operation running) is retried
+shortly. Membership changes are debounced 60 seconds per instance, so a
+batch of joins gives one restart. On start, data files are written before
+the containers are created, and start hooks run after a successful start.
+
+Each delivery fails closed: a value that can't be rendered for a claim or
+header is left out (the person gets none, never someone else's or a
+default), and a stale claim value is never kept in a token mapper.
 
 ## Expiry Flow
 

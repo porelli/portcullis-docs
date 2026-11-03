@@ -26,6 +26,10 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 🍵 [Gitea](gitea.md) | `gitea` | devops | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 💰 [Actual Budget](actual-budget.md) | `budget` | finance | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 💸 [Firefly III](firefly-iii.md) | `finance` | finance | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
+| 📟 [ESPHome](esphome.md) | `esphome` | home-automation | `forward-auth` | :x: No | :white_check_mark: | :x: |
+| 🏠 [Home Assistant](homeassistant.md) | `home` | home-automation | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
+| 🐝 [Zigbee2MQTT](zigbee2mqtt.md) | `zigbee` | home-automation | `forward-auth` | :x: No | :white_check_mark: | :x: |
+| 📹 [motionEye](motioneye.md) | `cameras` | home-automation | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📷 [Immich](immich.md) | `photos` | media | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 📺 [Jellyfin](jellyfin.md) | `media` | media | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 🎬 [Plex](plex.md) | `plex` | media | `custom` | :x: No | :white_check_mark: | :x: |
@@ -36,12 +40,16 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 🔍 [Craft Anything](craft-anything.md) | `craft-anything` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📽 [DeckCraft](deckcraft.md) | `deckcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📝 [DokuWiki](dokuwiki.md) | `dokuwiki` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
+| 🦊 [Firefox Sync](firefox-sync.md) | `firefox-sync` | productivity | `custom` | :x: No | :x: | :x: |
 | 🧮 [GridCraft](gridcraft.md) | `gridcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📋 [Kanboard](kanboard.md) | `kanboard` | productivity | `header-auth` | :warning: Partial | :white_check_mark: | :x: |
+| 💬 [Mattermost](mattermost.md) | `chat` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 🍽 [Mealie](mealie.md) | `recipes` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | ☁️ [Nextcloud](nextcloud.md) | `cloud` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
+| 🗂 [OxiCloud](oxicloud.md) | `drive` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📄 [Paperless-ngx](paperless.md) | `paperless` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📄 [PdfCraft](pdfcraft.md) | `pdfcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
+| ✅ [Vikunja](vikunja.md) | `tasks` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 📖 [Wiki.js](wiki.md) | `wiki` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: |
 | 📝 [WordCraft](wordcraft.md) | `wordcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: |
 | 📄 [Docs Site](docs.md) | `docs` | public | `public` | :x: No | :x: | :x: |

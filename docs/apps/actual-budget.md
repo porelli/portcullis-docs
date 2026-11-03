@@ -3,7 +3,9 @@
 > Privacy-first local budgeting app with bank sync
 
 **Category:** finance  
-**Tags:** `budget`, `finance`, `money`, `tracking`
+**Tags:** `budget`, `finance`, `money`, `tracking`  
+**Website:** <https://actualbudget.org/>  
+**Source:** <https://github.com/actualbudget/actual>
 
 ## Authentication
 

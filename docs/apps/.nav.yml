@@ -17,6 +17,10 @@ nav:
   - 🍵 Gitea: gitea.md
   - 💰 Actual Budget: actual-budget.md
   - 💸 Firefly III: firefly-iii.md
+  - 📟 ESPHome: esphome.md
+  - 🏠 Home Assistant: homeassistant.md
+  - 🐝 Zigbee2MQTT: zigbee2mqtt.md
+  - 📹 motionEye: motioneye.md
   - 📷 Immich: immich.md
   - 📺 Jellyfin: jellyfin.md
   - 🎬 Plex: plex.md
@@ -27,12 +31,16 @@ nav:
   - 🔍 Craft Anything: craft-anything.md
   - 📽 DeckCraft: deckcraft.md
   - 📝 DokuWiki: dokuwiki.md
+  - 🦊 Firefox Sync: firefox-sync.md
   - 🧮 GridCraft: gridcraft.md
   - 📋 Kanboard: kanboard.md
+  - 💬 Mattermost: mattermost.md
   - 🍽 Mealie: mealie.md
   - ☁️ Nextcloud: nextcloud.md
+  - 🗂 OxiCloud: oxicloud.md
   - 📄 Paperless-ngx: paperless.md
   - 📄 PdfCraft: pdfcraft.md
+  - ✅ Vikunja: vikunja.md
   - 📖 Wiki.js: wiki.md
   - 📝 WordCraft: wordcraft.md
   - 📄 Docs Site: docs.md

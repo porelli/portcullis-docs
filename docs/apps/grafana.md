@@ -3,7 +3,9 @@
 > Monitoring dashboards — protected by WebAuthn
 
 **Category:** monitoring  
-**Tags:** `monitoring`, `dashboards`, `metrics`
+**Tags:** `monitoring`, `dashboards`, `metrics`  
+**Website:** <https://grafana.com/oss/grafana/>  
+**Source:** <https://github.com/grafana/grafana>
 
 ## Authentication
 
@@ -18,7 +20,7 @@
 | **Subdomain** | `grafana` |
 
 !!! info "Auth Notes"
-    Proxy auth with X-Forwarded-User header, accepted only from Traefik (GF_AUTH_PROXY_WHITELIST = PORTCULLIS_TRAEFIK_IP). Auto-creates users as Viewer role. Admin role requires manual promotion in Grafana. Access gated by group-gate.
+    Proxy auth with X-Forwarded-User header, accepted only from Traefik (GF_AUTH_PROXY_WHITELIST = PORTCULLIS_TRAEFIK_IP). Auto-creates users. Each person's organization role (Viewer, Editor or Admin) comes from the instance's Role setting: group-gate sends it as X-Forwarded-Attr-Grafana-Role on every request and Grafana syncs it on every request (GF_AUTH_PROXY_SYNC_TTL 0). Members of the admin group are Admin by default, everyone else Viewer; other groups are set per group (privileged: only groups delegates can't steer). A role changed in the Grafana UI is overwritten by the next request. Access gated by group-gate.
 
 ## Public Exceptions
 
@@ -54,6 +56,14 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `dashboards` | `grafana/grafana:13.3.0` | `sha256:488984b716c0…` |
+
+## Settings
+
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
+
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **Role** | `enum` | per person | `next_request` | Grafana organization role. A person in several groups gets the highest; applied on their next request. Choices: `Viewer`, `Editor`, `Admin`. Default: `Viewer`. Preset for the admin group: `Admin`. Privileged: per-group values only from [groups delegates can't steer](../operations/groups.md#guarding-groups). |
 
 ## Environment Variables
 

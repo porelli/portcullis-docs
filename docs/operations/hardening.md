@@ -258,6 +258,7 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
 | `certs/server.key` (dev/CI only) | 0 | 0640 | Traefik |
 | `templates/` | owner 10001 | 0755 | Hub (writes) |
+| `appfiles/` | owner 10001 | 0750 | Hub (writes settings data files, see [below](#settings-data-files-and-secrets)) |
 
 Without root, the CLI changes owner/group through a throwaway container
 (pinned `alpine`, `--network none`, `--cap-drop ALL --cap-add CHOWN`). Anyone
@@ -270,6 +271,51 @@ holds only what templates may reference: `PORTCULLIS_DOMAIN`,
 `HUB_SHARED_ENV`. Core secrets are refused. `./portcullis up` rewrites the file
 in place. `secrets/` and `backups/` are masked from the Hub with empty tmpfs
 mounts.
+
+## Settings data files and secrets
+
+App settings ([Hub → App settings](hub.md#app-settings)) reach apps through
+the app's `.env`, data files, hooks, token claims and request headers. What
+protects each:
+
+- **Secrets at rest.** Secret options are stored only in
+  `${HUB_DATA_DIR}/settings/<id>/secrets.json` (mode 0600, directory 0700,
+  written atomically); `state.yaml` holds only whether each is set and
+  when. The Hub never returns a secret: not in the panel, the save's
+  answer, Expert (`[set]`), logs, op records or the audit (`replaced`,
+  `generated`, `cleared`).
+- **Secrets in transit to the app.** Only three ways: the app's `.env`
+  (mode 0600, single-quoted), a data file's secrets file (mode 0600), or a
+  hook's standard input. Never in process arguments, a hook's
+  environment, labels or the compose override. Hook output and every delivery error are
+  redacted (the instance's stored secrets in every encoding, plus
+  secret-looking env values) before they are clipped and stored.
+- **Backups** carry the secrets store as one member of the archive; the
+  archived env has the secret variables blanked and the restore writes them
+  again from the store. Protect backups like the `.env` itself.
+
+**Data files.** The Hub writes them under `<core>/appfiles` (mounted in the
+Hub at `/project/appfiles`):
+
+| Path | Owner | Mode | Read by |
+|------|-------|------|---------|
+| `appfiles/` | 10001 | 0750 (`./portcullis up` creates and repairs it) | the Hub |
+| `appfiles/<id>/<name>/` | 10001 | 0750 | the app's service, through a read-only bind mount of this directory |
+| `appfiles/<id>/<name>/<name>.json` | 10001 | 0640 | the service as root, or with `group_add: ["10001"]` |
+| `appfiles/<id>/<name>/<name>.secrets.json` | 10001 | 0600 | the service as root or `user: "10001"`; only written when the file carries a secret option |
+
+Files are written atomically (a new inode each time, which is why the
+directory is mounted, not the file). They hold only what the template
+declared for that file: instance values, the population's per-person
+values, group records whose group still exists with the same LLDAP id, and
+values people entered (only for people with access whose account still
+matches). They are generated from the Hub's state, so they are not backed
+up; deleting an instance removes its directory.
+
+**Fail closed.** If Users & Groups is unavailable, per-person files keep
+their last delivery, and a per-person file that was never delivered stops
+the start (`503`) instead of starting the app without it. Apps must treat a
+missing record or entry as "nothing granted".
 
 ## Header spoofing protections
 
@@ -346,6 +392,26 @@ forwardAuth middleware (`portcullis-auth`, `-auth-console`, `-groups`, `-self`,
 copying the auth server's. Public routers therefore get none, and `_` aliases
 are dropped by the entrypoints (`aliasHeadersStrategy`). CI sends forged ones
 through the gated and public test routers.
+
+**Per-person setting headers.** An app's per-person options can be
+delivered as headers too (`X-Forwarded-Attr-<Name>`, e.g. Grafana's
+`X-Forwarded-Attr-Grafana-Role`). The Hub publishes them per host in the
+same file (`hosts`: host → header suffix → user → value), and group-gate
+returns them only on allow and only for that host, so one app's role never
+reaches another app. Because an app may grant privileges from such a
+header, the Hub refuses a header delivery unless no client can send it
+itself:
+
+- the header name is exactly `^X-Forwarded-Attr-[A-Za-z0-9]+(-[A-Za-z0-9]+){0,30}$`;
+- every router that reaches the delivering backend (its network namespace,
+  `network_mode: service:` followed) runs Portcullis forward-auth and
+  group-gate, which strip client copies;
+- the app is not `public`, not `custom` without Portcullis sign-in, and
+  can't be switched to its own login only; no Traefik-labelled service runs
+  on `network_mode: host`;
+- the Hub's public-exception router, which has no forward-auth, deletes
+  every declared header name and its `_` spelling with its strip
+  middleware.
 
 Routers with **no** forwardAuth middleware (`keycloak`, `keycloak-resources`,
 `lldap` (redirect only), `enroll-invite`, and in the app overlays `headscale`,

@@ -3,7 +3,9 @@
 > Document management with OCR, full-text search and automatic tagging
 
 **Category:** productivity  
-**Tags:** `documents`, `ocr`, `scanning`, `archive`, `pdf`
+**Tags:** `documents`, `ocr`, `scanning`, `archive`, `pdf`  
+**Website:** <https://docs.paperless-ngx.com/>  
+**Source:** <https://github.com/paperless-ngx/paperless-ngx>
 
 ## Authentication
 
@@ -45,12 +47,12 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Settings
 
-User-configurable options available in the Hub UI:
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **OCR language** | `text` | Tesseract language(s) of your documents, e.g. eng, deu or deu+eng (installed: eng, deu, fra, ita, spa) (default `eng`) |
-| **Time zone** | `text` | IANA time zone for dates, e.g. Europe/Berlin (default `UTC`) |
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **OCR languages** | `multi_enum` | instance | `restart` | Tesseract language(s) of your documents (installed: English, German, French, Italian, Spanish). Several are passed joined with "+". Choices: `eng`, `deu`, `fra`, `ita`, `spa`. Default: `eng`. |
+| **Time zone** | `string` | instance | `restart` | IANA time zone for dates, e.g. Europe/Berlin. Default: `UTC`. |
 
 ## Environment Variables
 

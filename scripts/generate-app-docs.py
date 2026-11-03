@@ -124,6 +124,60 @@ def md_cell(text: str) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
+
+# ── settings (template contract v3) ─────────────────────────────────────
+
+SCOPE_LABEL = {
+    "instance": "instance",
+    "person": "per person",
+    "group": "per group",
+    "person_entered": "entered by each person",
+}
+
+
+def effective_applies(o: dict) -> str:
+    """The option's applies, or the Hub's default (contracts §13.9)."""
+    if o.get("applies"):
+        return o["applies"]
+    for d in o.get("delivery") or []:
+        if isinstance(d, dict) and "claim" in d:
+            return "next_sign_in"
+        if isinstance(d, dict) and "header" in d:
+            return "next_request"
+    return "restart"
+
+
+def setting_value(v) -> str:
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, list):
+        return ", ".join(setting_value(x) for x in v)
+    return md_cell(str(v))
+
+
+def setting_type(o: dict) -> str:
+    typ = o.get("type", "")
+    if typ == "list":
+        item = (o.get("items") or {}).get("type", "")
+        return f"`list` of `{item}`" if item else "`list`"
+    if typ == "int" and o.get("unit"):
+        return f"`int` ({md_cell(o['unit'])})"
+    return f"`{md_cell(typ)}`"
+
+
+def links_line(app: dict) -> str:
+    """Website / source links (manifest links:), one line."""
+    links = app.get("links") or {}
+    parts = []
+    if links.get("website"):
+        parts.append(f"**Website:** <{links['website']}>")
+    if links.get("source"):
+        parts.append(f"**Source:** <{links['source']}>")
+    elif links.get("source_note"):
+        parts.append(f"**Source:** none ({md_cell(links['source_note'])})")
+    return "  \n".join(parts)
+
+
 def sso_badge(sso_val) -> str:
     if sso_val is True:
         return ":white_check_mark: Yes"
@@ -182,7 +236,7 @@ def generate_app_page(app: dict, output_dir: Path):
     category = app.get("category", "")
     tags = app.get("tags", [])
     auth = app.get("auth", {})
-    settings = app.get("settings", [])
+    settings = app.get("settings") or {}
     ports = app.get("ports", [])
     env_vars = app.get("env", [])
     clients = app.get("keycloak_clients", [])
@@ -197,6 +251,11 @@ def generate_app_page(app: dict, output_dir: Path):
         f"**Tags:** {', '.join(f'`{t}`' for t in tags)}",
         "",
     ]
+    links = links_line(app)
+    if links:
+        # Below the tags, as part of the same block (Markdown line breaks).
+        lines[-2] += "  "
+        lines.insert(len(lines) - 1, links)
 
     # Auth section
     lines.append("## Authentication")
@@ -338,27 +397,48 @@ def generate_app_page(app: dict, output_dir: Path):
             lines.append(f"| `{svc}` | `{ref}` | {short} |")
         lines.append("")
 
-    # Settings section
-    if settings:
+    # Settings section (template contract v3: settings.options)
+    options = settings.get("options") or [] if isinstance(settings, dict) else []
+    if options:
         lines.append("## Settings")
         lines.append("")
-        lines.append("User-configurable options available in the Hub UI:")
+        lines.append("Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) "
+                     "(person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). "
+                     "**Scope** and **Applies** are explained in the "
+                     "[Manifest Reference](../guides/manifest-reference.md#settings).")
         lines.append("")
-        lines.append("| Setting | Type | Description |")
-        lines.append("|---------|------|-------------|")
-        for s in settings:
-            label = s.get("label", s.get("key", ""))
-            stype = s.get("type", "text")
-            sdesc = s.get("description", "")
-            target = s.get("target", {})
-            mount = target.get("mount", "") if target else ""
-            extra = f" → `{mount}`" if mount else ""
-            opts = s.get("options") or []
-            if opts:
-                extra += " Options: " + ", ".join(f"`{o}`" for o in opts)
-            if s.get("default") not in (None, ""):
-                extra += f" (default `{s['default']}`)"
-            lines.append(f"| **{label}** | `{stype}` | {md_cell(sdesc)}{extra} |")
+        lines.append("| Setting | Type | Scope | Applies | Description |")
+        lines.append("|---------|------|-------|---------|-------------|")
+        for o in options:
+            label = o.get("label") or o.get("key", "")
+            desc = " ".join(str(o.get("description") or "").split())
+            extra = []
+            choices = o.get("options") or []
+            if choices:
+                extra.append("Choices: " + ", ".join(f"`{c.get('value')}`" for c in choices))
+            if o.get("default") not in (None, "", []):
+                extra.append(f"Default: `{setting_value(o['default'])}`")
+            gv = o.get("group_values") or {}
+            for g, v in gv.items():
+                who = {"{{ADMIN_GROUP}}": "the admin group", "{{ACCESS_GROUP}}": "the access group"}.get(g, g)
+                extra.append(f"Preset for {who}: `{setting_value(v)}`")
+            if o.get("privileged"):
+                extra.append("Privileged: per-group values only from [groups delegates can't steer](../operations/groups.md#guarding-groups)")
+            if (o.get("scope") or "instance") == "person_entered":
+                if o.get("unique"):
+                    extra.append("No two people may enter the same value")
+                if o.get("admin_override"):
+                    extra.append("Admins may set it for someone")
+            target = o.get("target") or {}
+            if target.get("mount"):
+                extra.append(f"Mounted at `{target['mount']}` ({o.get('mode', 'rw')})")
+            if desc and desc[-1] not in ".!?)":
+                desc += "."
+            elif desc.endswith(")") and not desc.endswith(".)"):
+                desc += "."
+            text = " ".join(x for x in [md_cell(html.escape(desc, quote=False))] + [md_cell(e) + "." for e in extra] if x)
+            lines.append(f"| **{md_cell(label)}** | {setting_type(o)} | {SCOPE_LABEL.get(o.get('scope') or 'instance', md_cell(o.get('scope')))} "
+                         f"| `{effective_applies(o)}` | {text} |")
         lines.append("")
 
     # Ports

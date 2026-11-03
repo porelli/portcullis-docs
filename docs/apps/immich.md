@@ -3,7 +3,9 @@
 > Self-hosted photo and video backup with AI-powered search
 
 **Category:** media  
-**Tags:** `photos`, `videos`, `backup`, `ai`, `gallery`
+**Tags:** `photos`, `videos`, `backup`, `ai`, `gallery`  
+**Website:** <https://immich.app/>  
+**Source:** <https://github.com/immich-app/immich>
 
 ## Authentication
 
@@ -18,7 +20,7 @@
 | **Subdomain** | `photos` |
 
 !!! info "Auth Notes"
-    Full OIDC with auto-register and auto-launch; password login is disabled while OIDC is configured. Promote an SSO user to admin with `docker exec <immich-server container> immich-admin grant-admin`. roleClaim available but not yet mapped to groups. Identity: OAuth users are keyed on the OIDC sub. Immich also links a login to an existing user with the same email and cannot be told not to, while LLDAP emails are user-editable; so on every start a one-shot job (immich-lock-local-users) gives local, unlinked users (such as the initial admin@portcullis.local) a placeholder OAuth id, and Immich then refuses the email link. Do not create local users in the Immich UI (they are only locked at the next restart); let users sign in with SSO instead. A user who unlinks OAuth in their settings is locked out of SSO until an admin clears the placeholder. Public exceptions (Hub, off by default): shared links still work for signed-in users; turning them on only matters when the policy requires a client certificate at the TLS handshake, which it then no longer does for any path of photos.<domain> (mTLS stays enforced at login via the Keycloak acr). Upgrades: immich-server and immich-machine-learning are pinned to the same release and must always move together; read the upstream release notes for breaking changes and keep immich-db on the image upstream specifies.
+    Full OIDC with auto-register and auto-launch; password login is disabled while OIDC is configured. Storage quota and role come from the instance settings as the token claims immich_quota (GiB, -1 = unlimited) and immich_role: members of the admin group are Immich administrators (privileged setting), and Immich re-reads both at every sign-in. Trash days and machine learning are rendered into config.json at every start. Identity: OAuth users are keyed on the OIDC sub. Immich also links a login to an existing user with the same email and cannot be told not to, while LLDAP emails are user-editable; so on every start a one-shot job (immich-lock-local-users) gives local, unlinked users (such as the initial admin@portcullis.local) a placeholder OAuth id, and Immich then refuses the email link. Do not create local users in the Immich UI (they are only locked at the next restart); let users sign in with SSO instead. A user who unlinks OAuth in their settings is locked out of SSO until an admin clears the placeholder. Public exceptions (Hub, off by default): shared links still work for signed-in users; turning them on only matters when the policy requires a client certificate at the TLS handshake, which it then no longer does for any path of photos.<domain> (mTLS stays enforced at login via the Keycloak acr). Upgrades: immich-server and immich-machine-learning are pinned to the same release and must always move together; read the upstream release notes for breaking changes and keep immich-db on the image upstream specifies.
 
 ## Public Exceptions
 
@@ -71,11 +73,15 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Settings
 
-User-configurable options available in the Hub UI:
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **External photo library** | `path` | Host path to existing photos to import (mounted read-only) → `/usr/src/app/external` |
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **Storage quota** | `size` | per person | `next_sign_in` | How much each person may upload. Set per group; a person in several groups gets the largest. Immich applies it at the person's next sign-in. Default: `100GiB`. |
+| **Role** | `enum` | per person | `next_sign_in` | Immich administrators. The instance's admin group is an administrator by default; Immich applies the role at the person's next sign-in. Choices: `user`, `admin`. Default: `user`. Preset for the admin group: `admin`. Privileged: per-group values only from [groups delegates can't steer](../operations/groups.md#guarding-groups). |
+| **Keep deleted items for** | `int` (days) | instance | `restart` | Days a deleted photo or video stays in the trash before Immich removes it. Default: `30`. |
+| **Machine learning** | `bool` | instance | `restart` | Smart search, face recognition and duplicate detection (the immich-machine-learning service). Off = Immich never calls it. Default: `true`. |
+| **External photo library** | `path` | instance | `restart` | Host path to existing photos to import (mounted read-only). Mounted at `/usr/src/app/external` (ro). |
 
 ## Environment Variables
 

@@ -165,28 +165,31 @@ its last operation failed.
       sign-in".
     - There is no password factor. A stored policy that names `password` is
       normalised (never weaker) and the block says so until it is saved.
-- **Settings** declared in the manifest:
-    - `path` / `paths`: host directories bind-mounted into a container, e.g. media libraries
-    - `text`: free-form values
-    - `boolean`: toggles
-    - `select`: a dropdown of the manifest's options
+- The app's **options**, declared by the template under `settings:`: one
+  value for the instance, values per group that the Hub resolves per person,
+  secrets, per-group records and values each person enters. See
+  [App settings](#app-settings).
 - **Host ports** declared in the manifest: rebind them, or clear optional ones
   to disable the binding.
 - The **public exceptions** block, only for apps whose manifest declares
   [`auth.public_access`](../guides/manifest-reference.md#authpublic_access).
   See [Public exceptions](#public-exceptions).
 
-Saving restarts the app in the background. Clearing a text field clears the
-value in the app's `.env`.
+One **Save** sends everything you changed in the tab. The save bar says what
+saving does (for example "Saving restarts Immich" or "Takes effect at each
+person's next sign-in; no restart"). A sign-in, access-policy or
+public-exception change restarts the app.
 
 Input validation:
 
-- Path settings may not contain `:` (Compose would read it as `host:container`)
-  or newlines. Spaces, quotes and `#` are fine, because paths are quoted in the
-  generated override.
+- Path settings must be absolute host directories (not `/`), without `:`
+  (Compose would read it as `host:container`) or newlines. Spaces, quotes and
+  `#` are fine, because paths are quoted in the generated override.
 - Port bind addresses must be IP addresses (e.g. `0.0.0.0`, `127.0.0.1`, `::1`).
   IPv6 is bracketed automatically.
-- No setting value may contain newlines or other control characters.
+- No setting value may contain newlines or other control characters. Values
+  written to the app's `.env` may not contain `'` or `\` either: they are
+  single-quoted there.
 
 ### Status
 
@@ -384,6 +387,246 @@ template change can't widen it. Fail closed:
 The router is generated from the manifest, not shipped in `compose.yml`: only
 the Hub knows whether the exception is on, which shares are listed and which
 TLS tier the host gets, and a template can't open paths by itself.
+
+## App settings
+
+Templates declare their options under `settings:` in the manifest
+([Manifest Reference](../guides/manifest-reference.md#settings),
+[contracts §13](../guides/integration-contracts.md#13-settings)). The Hub
+validates every value, stores it, works out who gets what and delivers it to
+the app. The template only says what the option is and how the app reads it.
+
+The panel is the app's (or instance's) **Settings** tab on `hub.<domain>`,
+for admins only. It needs Users & Groups: per-person values are worked out
+from group memberships, so without the Hub's LLDAP account the settings API
+answers `503` and the tab can't load. A request without a signed-in user is
+`401`, and delegates get `403`.
+
+### What the panel shows
+
+From top to bottom:
+
+1. The **Deliveries** strip: how each part of the last delivery went, with
+   **Retry** (see [Deliveries and Retry](#deliveries-and-retry)).
+2. The template's options, grouped by the template's sections. Each option
+   shows its label, when a change takes effect ("applies: at the next
+   sign-in", "applies: after a restart", …), its description and any
+   warnings.
+3. Host ports, the sign-in block, the access policy and public exceptions
+   (see [Settings](#settings)).
+4. The **save bar**.
+
+Each option is one of four kinds, depending on its scope:
+
+| Scope | What you set | Example |
+|-------|--------------|---------|
+| instance | One value for the whole instance | Immich's trash days, Jellyfin's library folders, Nextcloud's default quota |
+| per person | A value for "everyone else with access" plus rows for groups; the Hub resolves one value per person | Immich's storage quota and role, Grafana's role |
+| per group | One record per group you add; the app gets the records, the Hub doesn't resolve them per person | A library or room per group |
+| entered by each person | Nothing: each person enters their own value on [My apps](#my-apps) | Firefox Sync's Mozilla account ID |
+
+The editor fits the option's type: a text box (with the template's pattern
+or format), a number with its unit, a size (a number plus MiB / GiB / TiB,
+with an **unlimited** box where the template allows it), a duration, a
+checkbox, a dropdown, a multi-select, a list, a table, a group or user
+picker, or a host path (with "the app writes here as uid:gid" when the
+template says which identity the app writes as). Options the template pairs
+with `requires` (a Craft app's version and its SHA-256) sit side by side:
+setting one without the other is refused. Leaving an instance option empty
+(or resetting it) goes back to the template's default.
+
+### Per-group values
+
+A per-person option has a row **Everyone else with access** (the default)
+and one row per group. **+ Add group** adds a row; ✕ removes it. The
+**When someone is in several groups** choice says how the Hub picks one
+value for a person who is in several of the listed groups:
+
+| Choice | Rule |
+|--------|------|
+| largest wins / smallest wins | Numbers, sizes, durations and choices (by the template's order); unlimited beats any number under "largest" and loses under "smallest" |
+| first matching group wins (in this order) | Any type. The rows get drag handles and ▲ / ▼ buttons to order them |
+| everything any of their groups gives / only what all of their groups give | Lists and sets |
+| on if any of their groups says on / on only if all of their groups say on | Checkboxes |
+
+The template sets the rule; it may let you switch between a few (its
+`resolve_choices`). The default row is only a fallback: it applies to people
+in none of the listed groups and never takes part in "largest wins". If
+nothing applies to someone (no matching row, no default), they get nothing
+for that option and the app uses its own default ("unresolved: the app's own
+default applies").
+
+A template can preset rows for the instance's own groups: Immich and Grafana
+give their admin group (`admin_<id>`) the administrator role. These rows are
+added when the instance is created or enabled, and bound to the group the
+Hub creates for it.
+
+**Rows follow the group, not its name.** Each row stores the group's LLDAP
+id. When a group is deleted, through the Hub or in LLDAP's own UI, its rows
+stop granting anything at once and are removed (see
+[Groups deleted outside the Hub](groups.md#groups-deleted-outside-the-hub)).
+A group re-created with the same name starts with no rows. If you saved
+from a panel that was loaded before such a change, the save is refused with
+`409` ("re-created since its row was saved"): reload the tab.
+
+**Privileged options.** Options the template marks `privileged` (a role or
+an admin flag) take rows only from groups that delegates can't steer:
+manual groups, and rule-based groups whose rules use admin-only fields. The
+group picker greys out the other groups with the reason ("can't grant a
+privileged value: its rule uses fields delegates can edit: office_location").
+Their default is always the lowest value (Viewer, User). A group used in a
+privileged row becomes a [guarding group](groups.md#guarding-groups).
+
+### Who gets what
+
+Under each per-person option, **Who gets what** lists everyone with access
+and the value they would get with the panel as it is now, before you save:
+"10 GiB from office_milan", "2 TiB largest of office_milan (10 GiB),
+it_staff (2 TiB)", "500 GiB everyone else with access". It updates a moment
+after each edit, has a search box and shows 50 people per page. The save bar
+adds "Changes: N people get a new value".
+
+"With access" means:
+
+- with group access on (or the app's Keycloak access role enforced): the
+  members of the instance's access group, minus anyone whose temporary
+  membership has expired;
+- otherwise every LLDAP user except the Hub's service account.
+
+The admin group never adds anyone: a member of `admin_<id>` who isn't in
+the access group can't reach the app and gets nothing. Warnings below the
+list say when some members of a listed group have no access ("1 member of
+office_milan has no access to Immich and gets nothing") and when people
+joining or leaving restarts the app. For an app signed in with its own
+login only (no Portcullis), nobody gets a per-person value: "per-person
+values need Portcullis sign-in".
+
+### Saving and when changes take effect
+
+The save bar says what saving does before you click **Save**. Each option
+declares when a change takes effect:
+
+| Applies | What happens |
+|---------|--------------|
+| at once (`live`) | A hook in the running app applies it; no restart |
+| after a reload (`reload`) | The Hub sends the app's reload signal (or runs its reload hook) |
+| at the next request (`next_request`) | Request headers: each person's next request carries the new value |
+| at the next sign-in (`next_sign_in`) | Token claims: each person gets the new value when they next sign in to the app |
+| after a restart (`restart`) | The Hub restarts the app in the background |
+| when an account is created (`account_creation`) | Only accounts the app creates from now on get it. The panel warns "existing accounts keep their value" |
+
+One save does the strongest thing any changed option needs, once: a
+restart covers a reload, and several reloads are one. Changing a port, a
+path or an option the app reads from its `.env` restarts an enabled app. On
+a disabled app the values are stored and used at the next start.
+
+Membership changes deliver too. When people join or leave a group, the Hub
+waits 60 seconds per instance before delivering, so many changes in a row
+cause one restart, not one each. It also re-checks every 10 minutes.
+
+Every changed option is audited as `settings.change` (`scope=…: before ->
+after`; secrets show as replaced), refused saves as `refused`.
+
+### Secrets
+
+Options of type `secret` (an API key, a password the app needs) are
+write-only. The panel shows **Set ✓ (updated …)** or "not set", with
+**Replace**, **Generate** (when the template declares how) and **Clear**
+(asks first). The input is a password field. After a save the panel is
+rebuilt from the Hub, which never sends a secret back: not in the panel, not
+in the save's answer, not in logs, op records or the audit (which says
+`replaced`, `generated` or `cleared`). Generated values use the template's
+length and character set (hex, letters and digits, or printable ASCII
+without space, `'` and `\`). A secret can't contain `'` or control
+characters. Clearing a secret another option `requires` is refused.
+
+The Hub keeps secrets in `${HUB_DATA_DIR}/settings/<id>/secrets.json`
+(mode 0600). They reach the app only through its `.env` (mode 0600), a
+secrets file (mode 0600, see
+[Security & Hardening](hardening.md#settings-data-files-and-secrets)) or a hook's
+standard input. **Expert → Environment variables** shows them as `[set]`
+and refuses to change a variable an option owns ("set it under Settings").
+Backups carry them; a restore into a new id generates new values for the
+generated ones.
+
+### Deliveries and Retry
+
+The **Deliveries** strip lists each part of the last delivery:
+
+| Unit | What it is |
+|------|------------|
+| Environment | The option values in the app's `.env`, read when the app starts |
+| Data file `<name>` | A JSON file the Hub writes for the app (mounted read-only) |
+| Hook `<name>` | A command the Hub ran in the app's container, with the settings on its standard input |
+| Sign-in claim `<attribute>` | Per-person values in Keycloak tokens |
+| Request headers | Per-person `X-Forwarded-Attr-*` headers group-gate adds |
+| Reload / Restart | The effect of the save |
+| Delivery | The run as a whole (shown when it didn't run) |
+
+Each one reads **last applied**, **failed:** with the error (secrets
+blanked), or a skip reason:
+
+| Skip reason | Meaning |
+|-------------|---------|
+| unchanged | Nothing new to deliver |
+| not running | The app isn't running; it gets the values when it starts |
+| directory unavailable | Users & Groups didn't answer; the last delivery stays in place |
+| busy | Another operation on the app was running; the delivery runs again shortly |
+| superseded | A newer save replaced this run, which runs again |
+| not supported | The app has no reload action |
+| previous run still running | A hook from an earlier run is still running (it timed out but the container hasn't finished it); the Hub tries again |
+
+**Retry** runs the delivery again, every hook included, and is audited as
+`settings.retry`. A failed hook or reload is also the app's
+[last operation](#when-an-operation-fails), and every failed unit is logged
+by the Hub (`settings: <id>: delivery unit <unit> failed: …`). A hook runs
+again on its next trigger anyway, so fix the cause, then **Retry**.
+
+Hooks run one at a time per instance, each for at most its template's
+timeout (at most 10 minutes). Nextcloud's start hook waits for Nextcloud to
+finish installing, which can take up to 10 minutes on the first start; a
+save made meanwhile is delivered after it.
+
+### Values people enter
+
+An option entered by each person shows, instead of an editor:
+
+- "N of M people with access have entered one", with a search box;
+- each value with the person, when and by whom it was set, and
+  **delivered**;
+- **Stored, not delivered**: values the app doesn't get, with the reason:
+  *no access* (the person left the access group), *account changed* (the
+  account was deleted or re-created outside the Hub) or *directory
+  unavailable*;
+- **Not set**: people with access who haven't entered one.
+
+**Clear** works on every value. **Set** / **Edit** appear only when the
+template allows admins to enter a value for someone (`admin_override`), and
+never on a "no access" or "directory unavailable" row. These buttons act at
+once (they don't go through the save bar, and your unsaved edits are kept).
+Uniqueness applies to admins too. If the app restarts to pick values up, the
+option warns "people entering or changing a value restarts <app>".
+
+What happens to a value:
+
+- **Leaving the access group:** the value is kept but no longer delivered.
+  Rejoining delivers it again.
+- **Account deleted through the Hub:** the person's values are deleted in
+  every app (audited, the admin as actor).
+- **Account deleted or re-created outside the Hub:** each value remembers
+  the LLDAP account it was entered for. A re-created account with the same
+  name doesn't get it; the value stops being delivered at once and is
+  removed at the next check (audited, actor `hub`), only while LLDAP looks
+  healthy (the same check as the
+  [stale-record cleanup](#stale-keycloak-records-admins-only)).
+- **Disabled app:** values are kept, nothing is delivered.
+- **Template update** that removes the option, changes its type or tightens
+  its rules: values that no longer fit are dropped (audited `invalidated`).
+  When an option becomes unique, the earliest of two equal values stays.
+- **Backups** carry the values; a restore keeps the account check.
+
+Every change, refusal, deletion and purge is audited as
+`settings.person_value` with target `<instance>/<option>/<person>`.
 
 ## App instances
 
@@ -790,7 +1033,7 @@ for recovery ([`portcullis lldap-ui`](cli.md#lldap-ui)). The Hub uses its own LL
 If core doesn't provide it, the tab says user management is disabled and
 everything else keeps working.
 
-The tab has four sections: **People**, **Groups**, **Org chart** and **Setup** (admins only).
+The tab has four sections: **People**, **Groups**, **Org chart** and **Setup** (admins only). On `people.<domain>` a fifth, **My apps**, shows each person their own app settings (see [My apps](#my-apps)).
 
 ### Access levels
 
@@ -903,6 +1146,39 @@ Built-in groups (`lldap_admin`, `lldap_password_manager`, core-subdomain groups)
 A tree of everyone's manager (the person field named `manager`, or the first person field if there is none). Shows cycles as a banner. If there is no person field, a message says so (admins: add one under Setup).
 
 Everyone can see everyone's details and the org chart.
+
+### My apps
+
+On `people.<domain>`, every signed-in person also has a **My apps** tab
+(after Org chart). It lists the enabled apps they can reach that have
+something personal for them, sorted by id, each with its link:
+
+- their **per-person values** with where each comes from: "from
+  office_milan" (only the person's own groups, never anyone else's rows),
+  "everyone with access", or a fail-closed note, and when a change applies
+  ("a change applies at your next sign-in"). Options the template hides
+  (`self_visible: false`) and secrets never appear, and neither does any
+  other person or any instance-wide value;
+- the **values they enter themselves** (for example Firefox Sync's Mozilla
+  account ID): an input with the template's rules (pattern, length, range,
+  choices), **Save** and **Clear**, and a status line:
+    - "Not set";
+    - "Saved 2 Nov 2026 · the app picks it up within about a minute (the app
+      restarts)", or "applies at your next sign-in to the app";
+    - "Set by an administrator on 2 Nov 2026" (the admin isn't named); the
+      person can still change or clear it, and saving it makes it theirs;
+    - the Hub's refusal, e.g. "this value is already registered for Firefox
+      Sync by another person". It never says who.
+
+A person enters a value only for apps they have access to; for anything
+else the answer is the same "not found". Clearing your own value always
+works, also after you lost access or while the app is disabled. After 10
+refused saves in a minute, every save is refused ("too many refused
+attempts: try again in a minute", `429`) until the minute is over.
+
+With nothing to show, the tab says "No apps with personal settings." The
+tab only reads the person's own data: the people listener has no other app
+routes ([contracts §5.1](../guides/integration-contracts.md#51-people-subdomain-new)).
 
 ### Setup (admins only)
 
@@ -1060,7 +1336,10 @@ Templates must load cleanly, or the Hub skips them and logs why:
 - The manifest must satisfy the templates repo's
   [schema](../guides/manifest-reference.md).
 - The directory name must match `^[a-z0-9][a-z0-9_-]{0,63}$`.
-- Setting, port and env keys must be valid `.env` keys.
+- Port and env keys must be valid `.env` keys.
+- `settings`, `files`, `hooks` and `reload` must pass the settings rules of
+  [Manifest Reference → Validation](../guides/manifest-reference.md#settings-files-hooks-and-reload);
+  the message names the option, e.g. `setting trash_days: …`.
 - Port `bind` values must be IP addresses.
 - `auth.method` must be one of the schema's methods; `auth.native_login`
   only with `method: custom`, `sso: false` and `supported: true`.
@@ -1146,7 +1425,7 @@ Core and built-in clients are reserved and never touched:
   paths against the core checkout on the host
   (`--project-directory = PROJECT_HOST_DIR`), which is what makes bind mounts
   like `./templates/immich/setup.sh` work.
-- **Separate `.env`.** The Hub writes a per-app `.env` with the app's settings,
+- **Separate `.env`.** The Hub writes a per-app `.env` with the app's option values (single-quoted),
   generated secrets (`generate: random` → 32 hex characters), and the core
   variables its compose file references. It takes those core variables from
   `/project/.env`, which is **not** the core `.env`: it is the generated subset
@@ -1223,7 +1502,9 @@ sources you trust.
   treat it as host-root-equivalent.
 - **Runtime user.** The image runs as **uid/gid 10001** with a read-only root
   filesystem. It writes only `/data` (the `hub_data` volume), `/project/templates`
-  (chowned to 10001 by `./portcullis up`) and tmpfs. `secrets/` and `backups/`
+  and `/project/appfiles` (both chowned to 10001 by `./portcullis up`; the
+  latter holds the [settings data files](hardening.md#settings-data-files-and-secrets))
+  and tmpfs. `secrets/` and `backups/`
   of the core checkout are masked with empty tmpfs mounts.
 - **Outbound calls.** The Hub calls the Keycloak admin API, LLDAP (GraphQL,
   plus LDAP only to set passwords) and core's invite API, with Go's HTTP

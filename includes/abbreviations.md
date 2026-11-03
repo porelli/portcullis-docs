@@ -68,3 +68,9 @@
 *[immutable host]: Host router whose hostname cannot be changed after instance creation
 *[host router]: Traefik router with a Host() rule alone, defining an instance hostname
 *[access role]: Keycloak client role enforcing access group membership for native-OIDC apps
+*[My apps]: Tab on people.<domain> where each person sees their own app settings and enters their own values
+*[person-entered]: A setting each person enters for themselves on My apps (scope person_entered)
+*[data file]: JSON file the Hub writes for an app's settings and bind-mounts read-only into the app
+*[data files]: JSON files the Hub writes for an app's settings and bind-mounts read-only into the app
+*[privileged option]: A per-person setting that grants a privilege; per-group values only from groups delegates can't steer
+*[privileged options]: Per-person settings that grant a privilege; per-group values only from groups delegates can't steer

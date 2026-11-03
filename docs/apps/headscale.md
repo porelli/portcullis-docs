@@ -3,7 +3,9 @@
 > Self-hosted Tailscale control server with Headplane admin UI
 
 **Category:** vpn  
-**Tags:** `vpn`, `wireguard`, `mesh`, `tailscale`
+**Tags:** `vpn`, `wireguard`, `mesh`, `tailscale`  
+**Website:** <https://headscale.net/>  
+**Source:** <https://github.com/juanfont/headscale>
 
 ## Authentication
 
@@ -41,11 +43,11 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Settings
 
-User-configurable options available in the Hub UI:
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **Headscale API key** | `text` | API key Headplane uses to talk to Headscale. Create it after the first start with `headscale apikeys create` inside the headscale container.  |
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **Headscale API key** | `secret` | instance | `restart` | API key Headplane uses to talk to Headscale. Create it after the first start with `headscale apikeys create` inside the headscale container. |
 
 ## Environment Variables
 

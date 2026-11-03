@@ -30,11 +30,12 @@ number of others an admin creates in the Hub, each with its own id, hostnames,
 data volumes, Keycloak clients and groups. When an admin enables an instance,
 the Hub:
 
-1. generates the instance's `.env` from the manifest (settings, `generate: random` secrets, referenced core variables) plus the instance variables: `PORTCULLIS_INSTANCE`, one `PORTCULLIS_HOST_<ROUTER>` per host router (the full hostname), `PORTCULLIS_OIDC_CLIENT_ID(_<KEY>)`, `PORTCULLIS_ACCESS_GROUP`, `PORTCULLIS_ADMIN_GROUP`
+1. generates the instance's `.env` from the manifest (option values, `generate: random` secrets, referenced core variables) plus the instance variables: `PORTCULLIS_INSTANCE`, one `PORTCULLIS_HOST_<ROUTER>` per host router (the full hostname), `PORTCULLIS_OIDC_CLIENT_ID(_<KEY>)`, `PORTCULLIS_ACCESS_GROUP`, `PORTCULLIS_ADMIN_GROUP`
 2. copies the directory to `<core>/templates/<app-id>/` (every instance shares it)
 3. registers the instance's Keycloak clients (client id = the instance id)
 4. starts the compose file with the Hub's override as its own project, `portcullis-<instance-id>`
 5. publishes the instance's hostnames, group, admin paths and policy to group-gate (policy file keyed by full hostname)
+6. delivers the rest of its settings: data files (written before the start), hooks, token claims and request headers (see [Declaring settings](#declaring-settings))
 
 ## Step 1: Pick an app ID and a default subdomain
 
@@ -101,6 +102,9 @@ description: A brief description of what the app does
 icon: "\U0001F4E6"
 category: productivity
 tags: [example, demo]
+links:
+  website: https://myapp.example.org/
+  source: https://github.com/example/myapp
 instances: multi   # contract v2: one or many instances
 
 auth:
@@ -124,6 +128,179 @@ urls:
   - label: My App
     url: "https://{{HOST_MYAPP}}"   # the instance's hostname of router myapp
 ```
+
+### Declaring settings
+
+Anything an admin should be able to change (a library folder, a quota, a
+role, an API key) is an option under `settings:`. The template declares what
+the option is and how the app reads it; the Hub validates the value, works
+out who gets what and delivers it. Copy the closest pilot: `immich/`
+(per-person claims), `grafana/` (per-person header), `nextcloud/` (a live
+hook), `firefox-sync/` (values each person enters, in a data file).
+
+```yaml
+settings:
+  sections: [Library]
+  options:
+    - key: trash_days              # an identifier, not an env name
+      label: Keep deleted items for
+      type: int
+      unit: days
+      min: 0
+      max: 3650
+      default: 30
+      section: Library
+      applies: restart             # the app reads it at start
+      delivery: [{env: IMMICH_TRASH_DAYS}]
+```
+
+Decide three things for each option:
+
+1. **Its type**: `string`, `int`, `size`, `duration`, `bool`, `enum`,
+   `multi_enum`, `list`, `table`, `path`, `secret`, `group(s)` or
+   `user(s)`, with the type's constraints (`pattern`, `min` / `max`,
+   `options`, …). Sizes are bytes and durations seconds; write them with
+   units (`10GiB`, `30d`). Credentials the admin enters are `type: secret`,
+   never an `env` entry.
+2. **Its scope**: `instance` (the default: one value), `person` (a default
+   plus values per group, resolved per person with `resolve`), `group`
+   (records per group, delivered as a whole) or `person_entered` (each
+   person enters their own, see below).
+3. **How the app reads it** (`delivery`) and **when a change takes effect**
+   (`applies`):
+
+| The app reads it… | Delivery | `applies` |
+|-------------------|----------|-----------|
+| from an environment variable at start | `{env: NAME}`; compose uses `${NAME…}` | `restart` |
+| as a bind-mounted host folder | `type: path` with `target: {service, mount}` (no `delivery`) | `restart` |
+| from a token claim at sign-in (native OIDC) | `{claim: {client, name, json_type, render}}` | `next_sign_in` |
+| from a request header (forward-auth / header-auth) | `{header: {name: X-Forwarded-Attr-<Name>}}` | `next_request` |
+| from a JSON file at start | `{file: {name}}` + a `files:` entry | `restart` (or `reload`) |
+| through its own API or CLI, while running | `{hook: <name>}` + a `hooks:` entry | `live` |
+
+A `person` option needs a per-person delivery (claim, header, file or hook);
+one environment variable can't carry a value per person. Values are rendered
+per delivery with `render` (`unit: GiB`, `unlimited: "-1"`, `join: ","`,
+`format: json`), so the Hub stores one canonical value and each app gets the
+form it understands.
+
+Per-person roles and admin flags are `privileged: true`: their default is
+the lowest value, and `group_values` may preset only the instance's admin
+group (`"{{ADMIN_GROUP}}": Admin`). The Hub then accepts rows only from
+groups delegates can't steer.
+
+The complete list of fields and rules is in the
+[Manifest Reference](manifest-reference.md#settings); `tests/validate.py`
+refuses exactly what the Hub refuses, with the same messages.
+
+### Data files, hooks and reload
+
+When the app reads a configuration file, or needs per-person values without
+a claim or header, declare a **data file**. The Hub writes
+`<mount>/<name>.json` (and `<name>.secrets.json` for secret options) and
+bind-mounts the directory read-only into the service. An init one-shot
+usually renders the app's own config from it:
+
+```yaml
+files:
+  - name: allowlist
+    service: firefox-sync-init
+    mount: /portcullis
+    on_membership_change: restart   # people joining or leaving: restart
+```
+
+The service must be able to read it: run it as root, or give it
+`group_add: ["10001"]` for the data file (mode 0640). A secrets file (mode
+0600) needs root or `user: "10001"`.
+
+When the app can apply a change while it runs (an admin CLI, an API),
+declare a **hook**. The Hub runs the command in the running container with
+Docker exec and writes the full desired state as JSON on its standard input:
+
+```yaml
+hooks:
+  - name: apply-settings
+    service: nextcloud
+    user: www-data
+    command: [php, /portcullis/apply-settings.php]   # argv, no shell
+    when: [start, settings_change]
+    timeout: 10m                                      # default 30s, at most 10m
+```
+
+A hook must be idempotent (it gets the whole state every time, never a
+diff), exit 0 only when everything was applied, and never print secrets
+(the Hub blanks the ones it sent, but don't rely on it). Secrets reach a
+hook only on standard input, never in its arguments or environment.
+
+When the app re-reads its configuration on a signal, declare `reload`
+(`{service, signal: HUP}`, or `{hook: <name>}`) and use `applies: reload`.
+
+### Values each person enters
+
+Some apps need something only the person knows. Firefox Sync accepts only
+the Mozilla accounts on its allowlist, and Portcullis can't know which
+Mozilla account belongs to whom. So each member of the access group enters
+their own account ID on **My apps** (`people.<domain>`), and the Hub writes
+the list into the data file above:
+
+```yaml
+auth:
+  method: custom
+  access_group: users_firefox-sync   # who may enter a value
+
+settings:
+  sections: [Accounts]
+  options:
+    - key: mozilla_uid
+      label: Mozilla account ID
+      description: >
+        The uid of the Mozilla account you sign in to Firefox with
+        (32 lowercase hexadecimal characters).
+      section: Accounts
+      type: string
+      pattern: ^[0-9a-f]{32}$
+      min_len: 32
+      max_len: 32
+      scope: person_entered
+      unique: true            # no two people may register the same uid
+      admin_override: true    # admins may enter one for someone
+      applies: restart        # = the file's on_membership_change
+      delivery:
+        - file: {name: allowlist}
+```
+
+The data file then has an `entries` section with only the values of people
+who currently have access, sorted by user (`values` holds the instance
+options delivered to the same file):
+
+```json
+{
+  "version": 1,
+  "instance": "firefox-sync",
+  "values": {"extra_accounts": ["fedcba9876543210fedcba9876543210"]},
+  "people": {},
+  "groups": {},
+  "entries": {"mozilla_uid": [{"user": "alice", "value": "0123456789abcdef0123456789abcdef"}]}
+}
+```
+
+Rules for person-entered options:
+
+- types `string`, `int`, `bool` or `enum`; a `string` needs `max_len` (at
+  most 256), a `pattern` or a `format`;
+- no `default`, `required`, `resolve`, `group_values`, `privileged` or
+  `requires`, and no `applies: account_creation`;
+- `applies` must match the delivery: a file's `on_membership_change`, a hook
+  with `membership_change` in `when` (`live`), a claim (`next_sign_in`) or a
+  header (`next_request`). An env delivery carries the whole list as one
+  variable (`render.join` or `render.format: json`, `applies: restart`);
+- a template whose routes carry no Portcullis identity (method `public` or
+  `custom`, or the app's own login only) must name `auth.access_group`: its
+  members are the people who may enter a value.
+
+The app must fail closed on this input: Firefox Sync's init refuses to start
+the server on a missing, unreadable or foreign allowlist, and an empty list
+lets nobody sync.
 
 ## Step 4: Write `compose.yml`
 
@@ -422,7 +599,8 @@ docker compose logs group-gate | grep myapp   # DENIED / ALLOW-UNMAPPED / STEPUP
 - [ ] App ID and default subdomain are unique; no core subdomain; `instances: multi`
 - [ ] `manifest.yaml` passes the schema; auth method fits the app
 - [ ] `compose.yml`: networks, `` Host(`${PORTCULLIS_HOST_<ROUTER>:-…}`) `` form, own hostname / client id / groups via the instance variables, middleware order, `security-headers@file`, volumes without `name:`, no `ports:`
-- [ ] Secrets are `generate: random`; no default passwords
+- [ ] Secrets are `generate: random`; no default passwords; secrets an admin enters are `type: secret` options
+- [ ] Every option has an explicit `applies` that matches how the app reads it; per-person roles are `privileged`; hooks are idempotent and fail on any error
 - [ ] Header-auth: identity header trusted only from `PORTCULLIS_TRAEFIK_IP`
 - [ ] Images pinned `tag@sha256:…`; directory added to `.github/dependabot.yml`
 - [ ] `tests/apps/<app-id>.sh` added

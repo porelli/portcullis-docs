@@ -3,7 +3,9 @@
 > Lightweight self-hosted Git forge — repositories, issues, pull requests, packages
 
 **Category:** devops  
-**Tags:** `git`, `forge`, `code-review`, `issues`, `packages`
+**Tags:** `git`, `forge`, `code-review`, `issues`, `packages`  
+**Website:** <https://about.gitea.com/>  
+**Source:** <https://github.com/go-gitea/gitea>
 
 ## Authentication
 
@@ -41,11 +43,11 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 ## Settings
 
-User-configurable options available in the Hub UI:
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **Git over SSH** | `boolean` | Start Gitea's built-in SSH server (container port 2222) and show SSH clone URLs. Off by default: git over HTTPS with a personal access token works without it. (default `false`) |
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **Git over SSH** | `bool` | instance | `restart` | Start Gitea's built-in SSH server (container port 2222) and show SSH clone URLs. Off by default: git over HTTPS with a personal access token works without it. Default: `false`. |
 
 ## Host Ports
 

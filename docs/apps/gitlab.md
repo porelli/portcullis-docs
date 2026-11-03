@@ -3,7 +3,9 @@
 > Complete DevOps platform — Git, CI/CD, container registry, issue tracking
 
 **Category:** devops  
-**Tags:** `git`, `ci-cd`, `devops`, `registry`, `issues`
+**Tags:** `git`, `ci-cd`, `devops`, `registry`, `issues`  
+**Website:** <https://about.gitlab.com/>  
+**Source:** <https://gitlab.com/gitlab-org/gitlab>
 
 ## Authentication
 

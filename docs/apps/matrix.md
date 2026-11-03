@@ -3,7 +3,9 @@
 > Self-hosted Matrix chat server (Synapse) with the Element web client
 
 **Category:** communication  
-**Tags:** `chat`, `matrix`, `synapse`, `element`, `messaging`, `e2ee`
+**Tags:** `chat`, `matrix`, `synapse`, `element`, `messaging`, `e2ee`  
+**Website:** <https://element-hq.github.io/synapse/>  
+**Source:** <https://github.com/element-hq/synapse>
 
 ## Authentication
 
@@ -39,16 +41,16 @@ Pinned by version tag and digest; Dependabot proposes updates.
 |---------|-------|--------|
 | `element` | `vectorim/element-web:v1.12.33` | `sha256:b0aa4b5a4fc1…` |
 | `matrix-db` | `postgres:16.15-alpine` | `sha256:0cefaabd882e…` |
-| `synapse` | `ghcr.io/element-hq/synapse:v1.164.1` | `sha256:fa4aa980f279…` |
-| `synapse-init` | `ghcr.io/element-hq/synapse:v1.164.1` | `sha256:fa4aa980f279…` |
+| `synapse` | `ghcr.io/element-hq/synapse:v1.164.2` | `sha256:f0df87cff259…` |
+| `synapse-init` | `ghcr.io/element-hq/synapse:v1.164.2` | `sha256:f0df87cff259…` |
 
 ## Settings
 
-User-configurable options available in the Hub UI:
+Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-settings) (person-entered ones: each person, on [My apps](../operations/hub.md#my-apps)). **Scope** and **Applies** are explained in the [Manifest Reference](../guides/manifest-reference.md#settings).
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **Federation peers** | `text` | Comma-separated Matrix server names this homeserver may federate with (e.g. matrix.example.org). Empty = federation off (default).  |
+| Setting | Type | Scope | Applies | Description |
+|---------|------|-------|---------|-------------|
+| **Federation peers** | `list` of `string` | instance | `restart` | Matrix server names this homeserver may federate with (e.g. matrix.example.org). Empty = federation off (default). |
 
 ## Environment Variables
 

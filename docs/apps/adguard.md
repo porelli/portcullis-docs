@@ -3,7 +3,9 @@
 > Network-wide ad and tracker blocking with DNS-over-HTTPS
 
 **Category:** networking  
-**Tags:** `dns`, `adblock`, `privacy`, `filtering`
+**Tags:** `dns`, `adblock`, `privacy`, `filtering`  
+**Website:** <https://adguard.com/en/adguard-home/overview.html>  
+**Source:** <https://github.com/AdguardTeam/AdGuardHome>
 
 ## Authentication
 

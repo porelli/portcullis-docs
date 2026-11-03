@@ -42,8 +42,12 @@ field.
 | `icon` | single line, 1–16 chars | Yes | Unicode emoji for the app card, e.g. `"\U0001F4CA"` |
 | `category` | `^[a-z][a-z0-9-]{0,31}$` | Yes | Catalog category |
 | `tags` | list of unique strings `^[a-z0-9][a-z0-9.+-]{0,31}$` | Yes | Searchable tags (lowercase) |
+| `links` | object | Yes | The app's own website and source repository. See [links](#links) |
 | `auth` | object | Yes | See [auth](#auth) |
-| `settings` | list | No | See [settings](#settings) |
+| `settings` | object `{sections, options}` | No | Options set in the Hub (template contract v3). See [settings](#settings) |
+| `files` | list | No | Data files for file deliveries. See [files](#files) |
+| `hooks` | list | No | Commands the Hub runs with the settings on stdin. See [hooks](#hooks) |
+| `reload` | object | No | The app's reload action. See [reload](#reload) |
 | `ports` | list | No | See [ports](#ports) |
 | `env` | list | No | See [env](#env) |
 | `keycloak_clients` | list | No; required (at least one) for `native-oidc` | See [keycloak_clients](#keycloak_clients) |
@@ -55,6 +59,25 @@ field.
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
 `networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
+
+## links
+
+Where the app itself comes from. The docs site shows both on the app's page.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `website` | `https://` URL (≤ 512 chars, no credentials or placeholders) | Yes | The project's own homepage (not a mirror, store page or Docker Hub). If it has none, its repository or documentation site |
+| `source` | `https://` URL or `null` | Yes | The canonical upstream code repository (GitHub, GitLab, Codeberg, Gitea, SourceHut, …), or the repository the template's image is built from when that differs (name the upstream in `auth.notes`). `null` only for closed-source apps |
+| `source_note` | single line, 10–200 chars | Only with `source: null` | Why there is no source repository, e.g. "Plex Media Server is proprietary" |
+
+`tests/validate.py` refuses registry and package pages, this templates
+repository, and non-repository URLs on known code hosts.
+
+```yaml
+links:
+  website: https://jellyfin.org/
+  source: https://github.com/jellyfin/jellyfin
+```
 
 ## auth
 
@@ -329,7 +352,25 @@ auth:
 
 ## settings
 
-Template contract v3 settings (§13 in [Integration Contracts](integration-contracts.md#13-settings)). Each option has a type, scope, constraints and deliveries. The Hub validates, resolves and delivers values; templates stay declarative.
+Options an admin (or each person) sets in the Hub: template contract v3,
+[Integration Contracts §13](integration-contracts.md#13-settings). Each option
+has a type, a scope, constraints and one or more deliveries (how the value
+reaches the app). The Hub validates, stores, resolves and delivers the values;
+the template only declares them. Decoding is strict: an unknown key anywhere
+under `settings`, `files`, `hooks` or `reload` is refused.
+
+```yaml
+settings:
+  sections: [Storage, Accounts, Library]   # panel sections, in order
+  options: [...]                           # the options below
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sections` | list of `^[A-Za-z0-9][A-Za-z0-9 ]{0,31}$`, unique | Panel sections, in display order |
+| `options` | list of options | The options, in display order |
+
+A list directly under `settings:` (contract v2) is refused.
 
 **Immich example (abridged):**
 
@@ -344,7 +385,6 @@ settings:
       min: 0
       max: 3650
       default: 30
-      scope: instance
       section: Library
       applies: restart
       delivery: [{env: IMMICH_TRASH_DAYS}]
@@ -381,75 +421,219 @@ settings:
       needs: read
       writes_as: {uid: 0, gid: 0}
       target: {service: immich-server, mount: /usr/src/app/external}
-      scope: instance
       applies: restart
 ```
 
-### Type table
+### Option fields
 
-| Type | What it holds | Constraints |
-|------|---------------|-------------|
-| `string` | Text | `pattern`, `min_len`, `max_len`, `format` (hostname, ip, cidr, url, email, iana_tz, locale, cron, semver, hex) |
-| `int` | Integer | `min`, `max`, `step`, `unit` (label) |
-| `size` | Bytes (int64, ≥ 0) | `step`, `allow_unlimited`. UI uses binary units (MiB, GiB, TiB) |
-| `duration` | Seconds (int64, ≥ 0) | `min`, `max` |
-| `bool` | True or false | — |
-| `enum` | One option | `options: [{value, label}]`. Order = rank |
-| `multi_enum` | Set of options | `options: [{value, label}]` |
-| `list` | Array of scalar items | `items` (type + constraints), `min_items`, `max_items`, `unique` |
-| `table` | Records with typed columns | `columns: [{name, label, type, …}]`, `key_column` |
-| `path` | Host directory | `target: {service, mount}`, `mode` (ro/rw), `needs` (read/write), `writes_as: {uid, gid}` |
-| `secret` | Write-only value | `generate: {length, charset}` (optional). GET returns `{set, updated_at}` only |
-| `group` / `groups` | LLDAP group name(s) | — |
-| `user` / `users` | LLDAP username(s) | — |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `key` | `^[a-z][a-z0-9_]{0,39}$`, unique | Yes | Identifier (not an env name) |
+| `label` | single line, 1–64 chars | Yes | Panel label |
+| `description` | text, ≤ 500 chars, no control characters | No | Help text in the panel and on My apps |
+| `section` | one of `settings.sections` | No | Panel section |
+| `type` | see [Types](#types) | Yes | |
+| `scope` | `instance`, `person`, `group`, `person_entered` | No (default `instance`) | See [Scopes](#scopes) |
+| `required` | boolean | No | The value must be non-empty. A set secret counts as non-empty |
+| `default` | a value of the option's type | `person`: yes; refused for `group`, `person_entered` and secrets | The template's default (for `person`: everyone else with access) |
+| `applies` | `live`, `reload`, `next_request`, `next_sign_in`, `restart`, `account_creation` | No | When a change takes effect. Default: `next_sign_in` with a claim delivery, `next_request` with a header delivery, otherwise `restart`. See [Applies](#applies) |
+| `requires` | list of option keys | No | Instance options only: other instance options that must be non-empty when this one is (not itself) |
+| `delivery` | list of [deliveries](#deliveries) | See [Deliveries](#deliveries) | How the value reaches the app |
+| `resolve` | `max`, `min`, `priority`, `union`, `intersection`, `any`, `all` | `person` only | How one value is picked for a person in several groups. See [Scopes](#scopes) |
+| `resolve_choices` | list of the above | `person` only | Other rules the admin may switch to; each must fit the type |
+| `group_values` | map `{{ACCESS_GROUP}}` / `{{ADMIN_GROUP}}` → value | `person` only | Preset rows for the instance's own groups (the manifest needs `access_group` / `admin_group`). Other group names are refused: the admin picks them |
+| `privileged` | boolean | `person` only | The option grants a privilege. Only `enum` and `bool`; the default must be the lowest value (the first `options` entry, or `false`); no `{{ACCESS_GROUP}}` preset |
+| `self_visible` | boolean (default `true`) | `person` only | `false` hides the person's value from My apps |
+| `unique` | boolean | `list`, or `person_entered` `string` / `int` | No two items (list) or no two people (person-entered) hold the same value |
+| `admin_override` | boolean | `person_entered` only | Admins may enter a value for someone (they can always clear one) |
 
-**Reserved for later features:** `folder`, `person_secret`, `person_id` (types); `folder`, `checks`, `hash`, `length`, `revoke_on_leave`, `on_restore`, `pool`, `username`, `mount` (option keys). A Hub that doesn't implement them refuses the template.
+Type constraints (`pattern`, `min`, `options`, …) are in [Types](#types). A
+constraint the type doesn't take (`min` on an `enum`) is refused.
+
+### Types
+
+Values are stored canonically: sizes in bytes, durations in seconds. Write
+sizes with binary units only (`10GiB`, `512MiB`; `10GB` and `10G` are
+refused) and durations with a unit (`30d`, `90m`, `60s`). `default`, `min` /
+`max` / `step` and `group_values` must be valid values of the option.
+
+| Type | Holds | Constraints |
+|------|-------|-------------|
+| `string` | Text (one line) | `pattern` (anchored `^…$`, Go RE2 syntax: no lookarounds or backreferences, matches the whole value), `min_len` / `max_len` (0–65535), `format`: `hostname`, `ip`, `cidr` (no host bits), `url` (http/https), `email`, `iana_tz`, `locale`, `cron`, `semver`, `hex` |
+| `int` | 64-bit integer | `min`, `max`, `step` (values are `min + k × step`), `unit` (a label, e.g. `days`) |
+| `size` | Bytes | `min`, `max`, `step` (values are `k × step`), `allow_unlimited` (the value `unlimited`; every delivery must then set `render.unlimited`) |
+| `duration` | Seconds | `min`, `max` |
+| `bool` | `true` / `false` | — |
+| `enum` | One choice | `options: [{value, label}]` (at least one; value ≤ 128 chars, label one line ≤ 64). The order is the rank for `max` / `min` |
+| `multi_enum` | A set of choices | `options` as for `enum`, `min_items` / `max_items`; stored in option order |
+| `list` | Ordered items | `items: {type, …}` (`string`, `int`, `bool` or `enum`, with that type's constraints), `min_items` / `max_items` (0–1000), `unique` |
+| `table` | Records | `min_items` / `max_items`, `columns: [{name, label, type, required, …}]` (name `^[a-z][a-z0-9_]{0,31}$`, unique; type `string`, `int`, `bool` or `enum` with its constraints), `key_column` (that column's values are unique; records are delivered keyed by it) |
+| `path` | A host directory, bind-mounted | `target: {service, mount}` (an absolute, clean container path), `mode` (`ro` / `rw`), `needs` (`read` / `write`; `write` with `ro` is refused), `writes_as: {uid, gid}` (numbers, or keys of instance `int` / `string` options; shown in the panel). Instance scope only, no `delivery`: the target is the delivery |
+| `secret` | A write-only value | `min_len` / `max_len`, `generate: {length, charset}` (length 8–128; charset `hex`, `alphanumeric` or `ascii_printable`: printable ASCII without space, `'` and `\`). No `default`. Values can't contain `'` or control characters |
+| `group` / `groups` | One / a set of LLDAP groups | `groups`: `min_items` / `max_items` |
+| `user` / `users` | One / a set of LLDAP usernames (lowercased; never an email) | `users`: `min_items` / `max_items` |
+
+**Refused:** the contract v2 types `text`, `boolean`, `select` and `paths`
+(use `string`, `bool`, `enum` with `options: [{value, label}]`, and one `path`
+per directory), and the reserved types `folder`, `person_secret`,
+`person_id` and option fields `folder`, `checks`, `hash`, `length`,
+`revoke_on_leave`, `on_restore`, `pool`, `username`, `mount` (later
+features). `env[].generate: none` is gone: a value the admin enters is a
+setting.
 
 ### Scopes
 
-| Scope | Who | Values from |
-|-------|-----|-------------|
-| `instance` | The whole instance | One value |
-| `person` | Resolved per person | Default + per-group rows. Requires `default` and at least one per-person delivery (claim, header, file, hook) |
-| `group` | Per group, not resolved | Records the admin adds. No `default`. Delivered as a map |
-| `person_entered` | Each person enters their own | No default, no group rows. See §13.13 |
+| Scope | Values | Rules |
+|-------|--------|-------|
+| `instance` | One value for the instance | Without `delivery`: `env: <UPPER(key)>` |
+| `person` | A `default` plus per-group rows the admin adds; resolved to one value per person with access | Needs `default` and a per-person delivery (claim, header, file or hook); env is refused |
+| `group` | One record per group the admin adds; not resolved per person | No `default`. Env needs `render.format: json`. Records are delivered only for groups that still exist with the same LLDAP id |
+| `person_entered` | Each person enters their own value on My apps | See [Person-entered options](#person-entered-options) |
+
+**`resolve`** picks one value for a person in several groups with a row:
+
+| Rule | Types |
+|------|-------|
+| `max`, `min` | `int`, `size`, `duration`, `enum` (by option order); `unlimited` beats any number under `max` and loses under `min` |
+| `priority` | Any: the first row (in the admin's order) the person is in |
+| `union`, `intersection` | `list`, `multi_enum`, `groups` |
+| `any`, `all` | `bool` |
+
+The default is a fallback for people in none of the rows' groups and never
+takes part in `max` / `union`. Nobody outside the population (the access
+group's members, minus expired memberships) gets a value.
+
+**Group values must only grant.** A group-scope record, and a group row, is
+left out when its group was deleted or re-created, and records aren't
+delivered at all while Users & Groups is unavailable. The app must treat a
+missing record as "nothing granted", never as "no restriction".
+
+### Person-entered options
+
+`scope: person_entered`: each person with access enters their own value
+(Firefox Sync's Mozilla account ID). See
+[Adding an App](adding-an-app.md#values-each-person-enters) for the full
+example.
+
+- Types `string`, `int`, `bool` or `enum` only (not `secret`). A `string`
+  needs `max_len` (at most 256), a `pattern` or a `format`.
+- `unique: true` (string / int): no two people of one instance hold the same
+  value. `admin_override: true`: admins may enter one for someone.
+- Refused: `default`, `required`, `resolve`, `resolve_choices`,
+  `group_values`, `privileged`, `requires` (in either direction),
+  `self_visible: false`, `applies: account_creation`.
+- `applies` must match the delivery:
+    - `file`: the file's `on_membership_change` (`restart` → `restart`,
+      `reload` → `reload`, `hook` → `live`; a file without one is refused);
+    - `hook`: `live`, and the hook's `when` lists `membership_change`;
+    - `claim`: `next_sign_in`; `header`: `next_request`;
+    - `env`: `restart`, and `render.join` or `render.format: json` (the
+      variable is the list of everyone's values).
+- A template whose routes can run without Portcullis identity (method
+  `public` or `custom`, or `native_login.allow_without_gateway`) needs
+  `auth.access_group`: its members may enter a value.
 
 ### Deliveries
 
+Each entry of `delivery` is exactly one of:
+
 | Delivery | Form | For |
 |----------|------|-----|
-| `env` | `{env: <NAME>}` or `{env: <NAME_{n}>}` (indexed for lists) | Instance, group options. Person-entered as a collection (with `join` or `format: json`). Indexed form for `type: list`, `scope: instance` writes `NAME_1..NAME_<max_items>` |
-| `path` | (same as today's `path` settings) | `type: path`, `scope: instance` |
-| `claim` | `{claim: {client, name, json_type, render}}` | `person`, `person_entered`. Requires `method: native-oidc` |
-| `header` | `{header: {name, render}}` | `person`, `person_entered`. Name must be `X-Forwarded-Attr-<Name>` |
-| `file` | `{file: {name, field?, render}}` | Any scope. Requires a declared `files[]` entry |
-| `hook` | `{hook: <name>, render}` | Any scope. Requires a declared `hooks[]` entry |
+| env | `{env: NAME}` | `instance`, `group` (`render.format: json`), `person_entered` (the list). The name must match the env-key rule, not be `PORTCULLIS_*`, not be used by another option, `env:`, `ports:` or a client's `secret_env`, and be interpolated in `compose.yml` as `${NAME…}` (not hard-coded in a service's `environment`) |
+| indexed env | `{env: NAME_{n}}` | An `instance` `list` with `max_items` (at most 64): writes `NAME_1` … `NAME_<max_items>`, one item each, unused ones empty. Every `NAME_<n>` compose references must be within `max_items` |
+| claim | `{claim: {client, name, json_type, render}}` | `person`, `person_entered` on `native-oidc` templates. `client` is a `keycloak_clients[]` `client_id`; `name` matches `^[a-z][a-z0-9_]{0,63}$` and isn't a standard OIDC / JWT, Keycloak, `attr_*` or `portcullis_*` claim; one option per claim and client |
+| header | `{header: {name, render}}` | `person`, `person_entered`. `name` matches `^X-Forwarded-Attr-[A-Za-z0-9]+(-[A-Za-z0-9]+){0,30}$`; one option per header. See the header rules below |
+| file | `{file: {name, field, render}}` | Any scope. `name` is a `files[]` entry. `field` (`person`, `person_entered` only; default the option key, `^[a-z][a-z0-9_]{0,39}$`) names the value in the file's `people` / `entries`; one option per field |
+| hook | `{hook: <name>, render}` | Any scope. `name` is a `hooks[]` entry |
 
-**Top-level manifest fields for settings:**
+`render` goes inside the claim, header or file; on an env or hook delivery
+it is the entry's own `render` key.
 
-```yaml
-settings:
-  sections: [<section names>]    # optional
-  options: [...]                 # list of options
-files:                            # optional, for file delivery
-  - name: <key>
-    service: <service>
-    mount: <container directory>
-    on_membership_change: restart|reload|hook|none
-hooks:                            # optional, for hook delivery
-  - name: <key>
-    service: <service>
-    command: [<argv>]
-    user: <user>                  # optional
-    when: [start, settings_change, membership_change]
-    timeout: <duration>           # optional, default 30s
-reload:                           # optional, at most one
-  service: <service>
-  signal: HUP|USR1|USR2
-  # or: hook: <hook name>
-```
+**`json_type`** (claims): `string`, `int`, `bool` or `json`. `int` is a
+32-bit integer (Keycloak's conversion): a size must be rendered in a unit
+(`render.unit: GiB`) and `render.unlimited` must be a 32-bit integer
+(`"-1"`). `bool` needs a `bool` option whose `render.true` / `render.false`
+are exactly `true` / `false`. `json` takes `render.format: json`, a table, or
+numbers. Statically visible mismatches are refused; a value that doesn't fit
+at delivery time is not delivered (the person's claim is cleared).
 
-See [Integration Contracts §13](integration-contracts.md#13-settings) for the full specification, resolution rules, applies levels, person-entered values, and the data-file and hook-input formats.
+**Headers** are per-person values group-gate adds on the instance's hosts.
+They need routers with `portcullis-groups@docker`, and every router that
+reaches the delivering backend (its network namespace, `network_mode:
+service:` followed) must run Portcullis forward-auth, so no client can send
+the header itself. Refused: method `public` or `custom` without Portcullis
+sign-in, `native_login.allow_without_gateway`, and Traefik-labelled services
+on `network_mode: host`. The Hub's public-exception router strips every
+declared header name (and its `_` spelling).
+
+### Render
+
+| Field | For | Meaning |
+|-------|-----|---------|
+| `unit` | `size`: `B`, `KiB`, `MiB`, `GiB`, `TiB` (binary) or `KB`, `MB`, `GB`, `TB` (decimal, strictly 10ⁿ); `duration`: `s`, `m`, `h`, `d`; `int`: its own `unit` | The value divided by the unit |
+| `integer` | `size`, `duration` | Refuse values that aren't whole in the unit (the save names the app and the unit) |
+| `unlimited` | `size` with `allow_unlimited` (required there) | What `unlimited` renders as for this app, e.g. `"-1"`, `"0"`, `"none"`. Stored values are never numbers for unlimited |
+| `true` / `false` | `bool` | The strings for true and false (default `true` / `false`) |
+| `join` | lists, sets, person-entered env lists | Separator (default `,`) |
+| `format` | structured values | `json`, `yaml` or `csv` |
+
+Env, header and claim values are one line; headers are at most 1 KiB and
+claims 4 KiB. Env values are single-quoted, so a value with `'`, `\` or a
+newline is refused at save.
+
+### Applies
+
+| `applies` | Effect of a change |
+|-----------|--------------------|
+| `live` | A hook applied it; no restart. Needs a hook delivery (or a file with `on_membership_change: hook`) |
+| `reload` | The template's `reload` action. Needs `reload` |
+| `next_request` | Headers: each request reads the attributes file |
+| `next_sign_in` | Claims: Keycloak reads them at sign-in |
+| `restart` | The Hub restarts the instance |
+| `account_creation` | Only new accounts get it; the panel warns "existing accounts keep their value" |
+
+A save does the strongest effect of the changed options once (restart over
+reload over nothing).
+
+## files
+
+Data files the Hub writes for file deliveries
+([contracts §13.7](integration-contracts.md#137-data-files)).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `^[a-z][a-z0-9_-]{0,31}$`, unique | Yes | The file is `<mount>/<name>.json` (and `<name>.secrets.json` when it holds a secret option) |
+| `service` | service | Yes | The compose service that reads it |
+| `mount` | absolute, clean container directory (no `:`) | Yes | The Hub bind-mounts the file's directory here read-only (a directory, not a file: atomic renames give a new inode). It may not collide with another file's or a path option's target on the same service |
+| `on_membership_change` | `restart`, `reload`, `hook`, `none` (default) | No | What happens when people joining or leaving change the file. `reload` needs `reload`; `hook` a hook with `membership_change` |
+
+The data file is mode 0640 and the secrets file 0600, both owned by the
+Hub's uid 10001: the reading service runs as root, or with
+`group_add: ["10001"]` for the data file and `user: "10001"` for a secrets
+file.
+
+## hooks
+
+Commands the Hub runs in the app's running containers with the desired
+settings on standard input
+([contracts §13.8](integration-contracts.md#138-hooks-and-reload)).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `^[a-z][a-z0-9_-]{0,31}$`, unique | Yes | Referenced by `{hook: <name>}` |
+| `service` | service | Yes | Where it runs (a running container of this instance) |
+| `command` | non-empty list of non-empty strings, no control characters | Yes | argv, run directly (never through `sh -c`) |
+| `user` | string | No | User to run as (default: the container's) |
+| `when` | list of `start`, `settings_change`, `membership_change` (at least one) | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input. A hook whose last run failed runs again at its next trigger |
+| `timeout` | Go duration, e.g. `60s` | No (default `30s`) | At most `10m` |
+
+## reload
+
+The template's reload action, at most one: `{service, signal}` (signal `HUP`,
+`USR1` or `USR2`, sent to the service's running containers; applied when the
+container still runs, and isn't unhealthy, 10 s later) or `{hook: <name>}` (a
+declared hook). Not both. `applies: reload` and
+`on_membership_change: reload` need it.
 
 ## ports
 
@@ -784,7 +968,8 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 
 **Manifest**
 
-- no key is declared twice across `env`, `settings` and `ports`, and none shadows a core variable
+- no variable is written twice across `env`, `ports` and the settings' env deliveries, and none shadows a core variable
+- `links` (see [links](#links))
 - every `secret_env` is an `env` entry with `generate: random`
 - port `bind` values are IPs and `range` values are valid
 - `config_files` sources exist
@@ -850,6 +1035,55 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 
 - no default subdomain or volume name is used by two templates
 
+### Settings, files, hooks and reload
+
+`check_settings` in `tests/validate.py` refuses what the Hub refuses when it
+discovers the template, with the same messages (`setting <key>: …`). A
+green Lint means the Hub lists the template. Besides the field rules above:
+
+- **Options:** keys unique; `section` listed in `sections`; `label`,
+  `description`, `scope` and `applies` valid; the type known (contract v2 and
+  reserved types and fields refused); only the constraints the type takes;
+  `default`, bounds, `step` and `group_values` valid values of the option.
+- **Scope fields:** `privileged`, `self_visible`, `resolve`,
+  `resolve_choices` and `group_values` only with `scope: person`, which needs
+  a `default`; `admin_override` only with `person_entered`; no `default` for
+  `group`; `unique` only for lists and person-entered `string` / `int`;
+  `generate` only for secrets; `writes_as` only for paths; paths instance
+  only.
+- **Privileged:** `enum` or `bool` only, the default its lowest value, no
+  `{{ACCESS_GROUP}}` preset.
+- **`resolve`** fits the type; `group_values` keys are only
+  `{{ACCESS_GROUP}}` / `{{ADMIN_GROUP}}` and the manifest declares that group.
+- **`requires`:** instance options only, naming existing instance options,
+  not itself.
+- **Deliveries:** each one exactly one kind; at least one for every scope
+  but instance; a per-person delivery for `person`; no per-person env;
+  group env with `render.format: json`; `applies: live` with a hook (or a
+  file with `on_membership_change: hook`); `applies: reload` and
+  `on_membership_change: reload` with `reload`.
+- **Env:** the name rules of [Deliveries](#deliveries); compose interpolates
+  it and doesn't hard-code it; indexed env only for instance lists with
+  `max_items` (≤ 64), covering every index compose references.
+- **Claims:** `native-oidc`, a declared client, a name that isn't reserved,
+  a `json_type` that fits the render, one option per claim and client.
+- **Headers:** the name form, gated routers, every router to the backend's
+  network namespace behind forward-auth, no identity-less method, no
+  Traefik-labelled `network_mode: host` service, one option per header.
+- **Files:** declared, `field` only for per-person scopes, one option per
+  field; names unique, services in `compose.yml`, mounts absolute and clean,
+  not colliding with another file or a path target on the same service.
+- **Hooks:** names unique, services in `compose.yml`, a non-empty argv
+  without control characters, valid `when`, `timeout` ≤ 10m.
+- **Reload:** `{service, signal}` or `{hook}`, not both; the service or hook
+  declared; signal `HUP`, `USR1` or `USR2`.
+- **Person-entered:** the rules of [Person-entered options](#person-entered-options).
+- **Render:** units, `integer`, `unlimited` (required with
+  `allow_unlimited`), `true` / `false`, `join` and `format` fit the type.
+
+The validator also warns when a service reads a secrets file but runs
+neither as root nor as `user: "10001"`.
+
 ---
 
 ## Complete example
@@ -863,6 +1097,9 @@ description: Free and open-source media server -- movies, TV, music, live TV
 icon: "\U0001F4FA"
 category: media
 tags: [media, movies, tv, music, streaming, opensource]
+links:
+  website: https://jellyfin.org/
+  source: https://github.com/jellyfin/jellyfin
 
 auth:
   method: native-oidc
@@ -876,13 +1113,20 @@ auth:
     to log in. Members of admin_group get Jellyfin admin.
 
 settings:
-  - key: JELLYFIN_MOVIES_PATH
-    label: Movies folder
-    description: Host path to your movies library
-    type: path
-    target:
-      service: jellyfin
-      mount: /data/movies
+  sections: [Libraries]
+  options:
+    - key: movies_path
+      label: Movies folder
+      description: Host path to your movies library
+      section: Libraries
+      type: path
+      mode: ro
+      needs: read
+      writes_as: {uid: 0, gid: 0}
+      target:
+        service: jellyfin
+        mount: /data/movies
+      applies: restart
 
 env:
   - key: JELLYFIN_ADMIN_PASSWORD
@@ -914,6 +1158,9 @@ description: Network-wide ad blocking via DNS sinkhole
 icon: "\U0001F6AB"
 category: networking
 tags: [dns, adblock, privacy, filtering]
+links:
+  website: https://pi-hole.net/
+  source: https://github.com/pi-hole/pi-hole
 
 auth:
   method: forward-auth

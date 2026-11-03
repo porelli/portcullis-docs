@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
@@ -225,6 +225,73 @@ volume and routing gone, the backup listed), restore into a new id (file and
 volume-root owners and modes kept, the new volume labelled for its project,
 the instance enables).
 
+### `e2e-settings` (app settings panel)
+
+The whole stack plus the Hub (built from the same-named Hub branch, like
+`e2e-instances`) with one local template source: the templates repo's
+`immich`, `grafana`, `nextcloud` and `firefox-sync` (from the same-named
+templates branch, else `main`) and two CI fixtures, `tests/e2e/apps/settings-echo`
+(`traefik/whoami` with a per-person option delivered as the header
+`X-Forwarded-Attr-Tier`) and `settings-file` (per-person options in a data
+file `people.json`, restart on membership changes, and a hook that stores
+every input it gets). A Traefik alias override puts `auth.<domain>` and the
+app hosts on `portcullis-proxy`, so Immich and Nextcloud reach Keycloak as
+they would through public DNS. Users are created in LLDAP; groups,
+memberships, enables and settings go through the Hub's API, the way an admin
+makes them. Then `tests/e2e/e2e_settings.py` runs 19 checks in a real
+browser with virtual passkeys:
+
+- **Sign-in:** alice, bob and carol follow their setup links, register a
+  passkey and reach the portal.
+- **Claims (Immich):** alice (in `office_milan`, row 10 GiB) has
+  `quotaSizeInBytes` 10 GiB in `/api/users/me` and in Immich's UI; bob (in
+  `admin_immich`, the template's preset row) is an Immich admin with the
+  100 GiB default.
+- **Headers:** bob is a Grafana org Admin on his first and later requests,
+  alice a Viewer; settings-echo receives alice's `gold` and bob's `bronze`
+  tier, and never another host's header.
+- **Data file:** `people.json` inside the settings-file container lists only
+  the people with access.
+- **Person-entered values (Firefox Sync):** alice enters her Mozilla account
+  uid on `people.<domain>` (200); bob's identical uid is refused with 409
+  and the answer doesn't name alice; carol, outside the access group, gets
+  404. After the debounce, `allowlist.json` in `firefox-sync-init` lists only
+  alice's uid, the init ran once, and on the real Postgres her uid gets a
+  tokenserver row while an unlisted one is refused.
+- **Membership changes:** one batch through the Hub (alice leaves
+  `office_milan` and joins `admin_immich`, bob leaves `admin_grafana`,
+  three people join `users_settings-file`). Both removals end the person's
+  Keycloak session (the Hub signs removed members out), so alice and bob
+  must sign in again, and any other sign-in prompt fails the test. Then:
+  alice's next Immich sign-in has the 100 GiB default and admin rights (a
+  role changed on an existing account), her tier is `bronze`, bob is a
+  Grafana Viewer, `people.json` lists four people, settings-file restarted
+  exactly once for the three joins (counted from a live `docker events`
+  stream), and the hook got the full state with trigger
+  `membership_change`.
+- **My apps:** carol's `/api/me/apps` lists only settings-file with her
+  values and no other username; `/api/instances/immich/settings` on
+  `people.<domain>` is 404.
+- **Leave and rejoin:** alice leaves `users_firefox-sync`: the file no
+  longer lists her, her tokenserver rows are deleted and nobody can sync
+  (an empty allowlist lets nobody in); she rejoins and syncs again.
+- **Custom fields with `_`:** a field `cost_center` (LLDAP attribute
+  `cost-center`) set on alice shows in the overview, fills a rule group
+  `cost_center = "CC-42"`, reaches settings-echo as
+  `X-Forwarded-Attr-Cost-Center` and Keycloak's example access token for
+  Immich's client as `attr_cost_center`.
+- **Hooks (Nextcloud):** the first install applied the default quota through
+  the start hook (`occ config:app:get files default_quota` is `10 GB`).
+
+Timing bounds come from the Hub: a membership delivery arrives within one
+60 s debounce window plus the evaluator's minute and slack. Secrets reach
+the test only through the environment or `curl -H @<(…)`, never on argv.
+Failure artifacts hold the settings panels (secrets are write-only), the
+policy and attributes files, the data files (never `*.secrets.json`),
+container logs, screenshots and traces. The traces start after the
+setup-link sign-in; the setup pages' screenshots still show the (consumed)
+setup links, and traces carry session cookies of the throwaway stack.
+
 **Cross-repo branches.** `ci.yml` also runs on `workflow_dispatch`. On a
 branch whose name exists in porelli/portcullis-hub (not `main`, not a tag),
 `.github/actions/hub-image` builds the Hub from that branch instead of pulling
@@ -409,6 +476,7 @@ base commit, not the PR: the script links the run in the PR body.
 | Compose | `compose_up APP`, `compose_down APP`, `app_container_ip APP`, `app_logs APP` |
 | Assertions | `assert_http_code URL CODE`, `assert_redirect_to_keycloak URL`, `assert_redirect_contains URL STRING`, `assert_body_contains URL STRING`, `assert_container_can_reach CONTAINER URL` |
 | Public exceptions | `public_routed_prefixes <manifest> <all\|listed> [token…]` prints what the Hub's public router opens; `write_public_override <app> <service> <host-arg> <tier> <out> <entry…>` writes the override labels the Hub would generate (tier for every router, public router behind `portcullis-public-guard@docker` with static-only supporting paths, exact paths, strip middleware); pass it to `compose_up` with `COMPOSE_OVERRIDE=<file>`. `write_public_policy <sub> <manifest> <mode>` writes the version-3 policy entry the Hub would publish into core's `hub_data` volume, so core's real public guard runs (`clear_public_policy` empties it). `assert_public_path <host> <path> [curl args]` / `assert_gated_path …` / `assert_public_refused …` send HTTPS requests through Traefik on the runner (no client certificate) and check the app answers / the request is redirected to `auth.<domain>` / the guard answers 403. `grafana.sh` uses them: a listed dashboard token is public; an unlisted token, `/`, `/api/user` and `/public/build/` stay gated; Grafana login cookies (also PHP-mangled spellings), `Authorization`, `X-Access-Token` and `auth_token` query variants are refused by the guard. It needs a core with `/public-guard` (`.core-ref`). `nextcloud.sh` and `immich.sh` check their path lists statically |
+| Settings data files | `write_appfiles_override <app> <name> <json> <out>` writes `<name>.json` the way the Hub does (a directory per file, mode 0640 group 10001 where the runner can set it) and an override that bind-mounts that directory read-only at the `files[]` entry's mount; pass it with `COMPOSE_OVERRIDE=<file>`. `write_appfile <app> <name> <json>` rewrites the file atomically (restart the service after). `firefox-sync.sh` uses them to check that only the file's uids can sync and that a bad or missing file stops the instance. The public-exception override also strips the template's header deliveries, as the Hub's public router does |
 | Header trust | `assert_traefik_only_trust <compose> <SETTING>` checks statically that the trust setting uses `${PORTCULLIS_TRAEFIK_IP:-…}` and nothing trusts every peer. `assert_spoofed_identity_rejected <url> [expected]` sends a forged `X-Forwarded-User` from the CI host (never Traefik) and expects a rejection. **Required for header-auth templates** |
 
 `compose_up` mirrors the Hub: before each compose call it exports a random
@@ -444,7 +512,9 @@ pinned by commit SHA.
     writer (collisions, deny group, snapshots, `expiring` array, `user-attributes.json`), middleware (proxy secret, CSRF), per-app locking, reconcile/drift, the Engine API client, the LLDAP client (GraphQL + LDAP Password Modify), the Keycloak client (attribute mappers), the rule parser, and the directory service (users, groups, fields, rule evaluator, exceptions, expiries, CSV import, delegated permissions, protected accounts parity).
     New packages: `internal/rules` (rule parser and evaluator), `internal/directory` (users, groups, fields, permissions, import, audit).
     `TestRealTemplates` loads a sibling `portcullis-templates` checkout if present.
-    `TestPeopleListenerHasNoAppRoutes` checks that the people listener registers no app/policy/drift/compose/Docker routes.
+    `TestPeopleListenerHasNoAppRoutes` checks that the people listener registers exactly the directory routes plus the three caller-only My apps routes, and no app/policy/drift/compose/settings/Docker routes.
+    The settings code is tested per package: the template settings validator, the setting types (parsing, rendering, resolution), the delivery engine (data files, claims, headers, hooks, reload, debounce, stale runs), person-entered values (uniqueness, population, purges, the refused-save limit) and the settings API (admins only, secrets never returned).
+    A build-tagged harness (`go test -tags harness -run TestHarness -timeout 0 ./internal/httpapi`) serves the UI on `127.0.0.1:18888` (and the people page on `:18889`) against in-memory fakes, for checking the panels in a browser.
     `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
 - **`build`** (after `test`):
     - Multi-arch image (`linux/amd64`, `linux/arm64`) with SBOM and provenance (`mode=max`) attestations.

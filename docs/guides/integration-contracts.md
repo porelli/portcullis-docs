@@ -250,7 +250,7 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
 - **`version`**: always 2. The Hub writes only version 2. Version 1 is refused (no attribute headers): the Hub and core must be upgraded together.
 - **`fields`**: maps each custom field name to its header name. The header name has each underscore-separated word capitalized (e.g., `cost_center` → `Cost-Center`). Only fields with the **ShareWithApps** flag are included. Field names match `^[a-z][a-z0-9]*(_[a-z0-9]+)*$` and are at most 31 characters (no leading, trailing or doubled `_`), so the underscore-to-hyphen-plus-capitalize mapping is **injective** (no collisions possible) and always gives a valid header name. group-gate **skips** (and logs) a field whose name or header name is invalid; the other fields still produce headers. Only an unreadable or malformed file (or two fields on one header) means no attribute headers at all.
 - **`users`**: maps each lowercase username to their field values. Each field is an array of strings (even for single-valued fields). Users with no shared field values are omitted.
-- **`hosts`** (**NEW**, version 2): per-host header-delivery headers. Each full hostname maps to header name → username → rendered value. group-gate sends these headers only for that host, on allow. The value is sent as is after control characters are stripped. Over 1 KB it is dropped (not delivered). There is no `,` encoding: it is one value. A host header replaces a same-named field header on that host.
+- **`hosts`** (**NEW**, version 2): per-host header deliveries (§13.6). Each full hostname (lowercase) maps to header **suffix** → lowercase username → rendered value. The suffix is the part after `X-Forwarded-Attr-` (`Grafana-Role` for `X-Forwarded-Attr-Grafana-Role`); group-gate adds the prefix. Each suffix matches `^[A-Za-z0-9]+(-[A-Za-z0-9]+){0,30}$` and is unique on its host, compared case-insensitively (the Hub drops one that isn't: group-gate would refuse the file). `hosts` is always an object. group-gate sends these headers only for that host, on allow. The value is sent as is after control characters are stripped. Over 1 KB it is dropped (not delivered). There is no `,` encoding: it is one value. A host header replaces a same-named field header on that host.
 - **Written atomically** with mode `0644`, using temp file + rename, at the same time as the policy file.
 - **Encoding (field headers):** Each attribute value is percent-encoded before being joined: `%` becomes `%25` and `,` becomes `%2C`. After encoding, values are joined with `, ` (comma-space). Apps must percent-decode each value after splitting on `, `. The **1 KB limit** per value is measured **before** percent-encoding; a value over 1 KB (before encoding) is dropped and logged.
 - **Security:** group-gate returns these headers only on **allow** (after auth factors are satisfied). Client copies of `X-Forwarded-Attr-*` headers are stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on **every** forwardAuth middleware in Traefik (Traefik cannot delete headers by prefix in a headers middleware, so each middleware's regex is the mechanism). Routers **without** a forwardAuth middleware in their chain (such as `keycloak`, `enroll-invite`, `headscale`, `netbird`, and `docs`) do not strip these headers, so backends on those routes **must not trust** `X-Forwarded-Attr-*` headers.
@@ -317,11 +317,12 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
 - **group-gate-map.conf.** The map file uses the special value **`*`** (asterisk) for the `people` subdomain, meaning "any signed-in user". This value is valid **only** in `group-gate-map.conf`, never in the policy file.
 - **Redirect.** The existing `directory.<domain>` subdomain redirects to `https://people.<domain>/` (previously it redirected to `https://hub.<domain>/#users`).
 - **My apps route.** The people listener registers exactly **three** app routes (all caller-only, read or write the caller's own data):
-  - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with enabled instances whose population includes them. Each entry has: instance id, name, link, and the caller's per-person values (label, displayed value, reason, when it applies — see §13). Options marked `self_visible: false` are left out. Instance options, secrets and other people are never included
+  - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with enabled instances whose population includes them. Each entry has: instance id, name, link, the caller's per-person values (label, displayed value, reason — only the caller's own groups —, when it applies; see §13) and the caller's own person-entered `entries` (key, label, description, applies, input constraints, `unique`, the value only when stored under the caller's current LLDAP account, `set_by_admin` — never the admin's name —, `updated_at`). Apps with neither are left out. Options marked `self_visible: false` are left out. Instance options, secrets and other people are never included
   - `PUT /api/me/apps/{instance}/values/{key}` with `{"value": <json>}`: writes the caller's own person-entered value (§13.13). Returns 200 with the caller's entry. Refusals: 404 (instance not enabled, key not `person_entered`, or caller not in population — same answer for all three, no leak); 400 (constraint); 409 (uniqueness); 503 (LLDAP unavailable)
-  - `DELETE /api/me/apps/{instance}/values/{key}`: clears the caller's value. Returns 204. Refusals as above
+  - `DELETE /api/me/apps/{instance}/values/{key}`: clears the caller's value. Returns 204, also when nothing was set. Clearing a value stored under the caller's current LLDAP account always works (also outside the population or on a disabled instance); anything else gets the 404 above
+  - Common rules: no `X-Forwarded-User` is 401; a body over 4 KiB is 413; unknown fields or trailing data are 400 with a fixed usage text; 4xx answers carry the Hub's text (never another person's name or value), 5xx a generic message. After **10 refused saves in a minute** (any 4xx, 404 included; 5xx never count) every save of that caller is `429` until the minute ends (in memory, per caller; refusals past the limit are not audited one by one). Admins on the Hub listener are never limited
   
-  These are the **only** app-related routes on the people listener. They are read-only or self-service only (the caller's own data), CSRF-guarded, body ≤ 4 KiB.
+  These are the **only** app-related routes on the people listener. They are read-only or self-service only (the caller's own data) and CSRF-guarded.
 
 ## 6. Docker access
 
@@ -846,7 +847,7 @@ The fields come from the archive's `MANIFEST.json`; `size` is in bytes; `instanc
 
     `trigger` is `startup`, `signal` or `api`; a source's `error` is fixed text (never git output); `rolled_back` / `rolled_back_for` mark a reset version; `missing_templates` lists enabled instances still without a valid template.
 - **Core.** `./portcullis upgrade` reads the file (`docker compose exec hub cat /data/source-sync.json`). Only when it was written since the running Hub container started (an older Hub never writes it, and would exit on `SIGHUP`) it sends `SIGHUP` (`docker compose kill -s HUP hub`), waits for a status with `started_unix` ≥ the time it signalled and `running: false`, and prints each source's result. It never fails the run.
-- **Settings and template updates (§13.14).** Discover never changes stored settings. After the final Discover of a sync, the Hub prunes values for options that no longer exist or whose type changed, and person-entered values that no longer pass constraints or are duplicates under newly-declared `unique` (audited `settings.purge` / `settings.invalidated`). Until then, resolution ignores values that don't match the current option.
+- **Settings and template updates (§13.14).** Discover never changes stored settings. After the final Discover of a sync, the Hub prunes values for options that no longer exist or whose type changed, and person-entered values that no longer pass constraints or are duplicates under newly-declared `unique` (audited `settings.purge` / `settings.person_value` `invalidated`). Until then, resolution ignores values that don't match the current option.
 
 ## 12. Domains service (core ⇄ Hub ⇄ Traefik) — NEW (domains API)
 
@@ -979,11 +980,11 @@ Every option has these fields:
 | `scope` | `instance`, `person`, `group` or `person_entered` | No (default `instance`) | Who the option applies to. See §13.3 |
 | `required` | boolean | No (default `false`) | The value must be non-empty. For `person` scope, every person in the population must get a non-empty resolved value (the default is non-empty or at least one group row exists) |
 | `default` | typed value | Contextual | Fallback value. Required for `person` scope; refused for `person_entered` and `group` scopes. For other scopes it is optional |
-| `privileged` | boolean | No (default `false`) | The option grants a privilege (role, admin flag). Per-group values may come only from groups delegates can't steer (§13.3). Requires `scope: person` |
+| `privileged` | boolean | No (default `false`) | The option grants a privilege (role, admin flag). Per-group values may come only from groups delegates can't steer (§13.3). Requires `scope: person` and type `enum` or `bool`; the default must be the lowest-ranked value (the first option, or `false`) and `group_values` may not use `{{ACCESS_GROUP}}` |
 | `self_visible` | boolean | No (default `true`) | Whether the option is shown on My apps (`GET /api/me/apps`, §5.1). `false` hides sensitive resolved values from people. Requires `scope: person`. Refused for `person_entered` |
 | `applies` | enum | No | When a change takes effect: `live`, `reload`, `next_request`, `next_sign_in`, `restart`, `account_creation`. See §13.9. The default is `restart` for `scope: instance`, `next_sign_in` for claims and `next_request` for headers |
 | `requires` | list of option keys | No | Other instance options that must be non-empty when this one is. See §13.9 |
-| `delivery` | list | Yes | How the value reaches the app. At least one delivery is required. See §13.6 |
+| `delivery` | list | Yes, except an instance option (default `env: <UPPER(key)>`) and `path` (delivered as its `target`) | How the value reaches the app. See §13.6 |
 
 Type-specific constraints are in §13.2. A `person` option needs at least one per-person delivery (claim, header, file or hook). Per-group options (`scope: group`) are delivered as maps through env (JSON), files or hooks. Person-entered options (`scope: person_entered`) follow the rules of §13.13.
 
@@ -1008,7 +1009,9 @@ Each type has validation constraints:
 - Stored in bytes (int64, non-negative)
 - UI uses binary units (MiB, GiB, TiB) and labels them as such
 - `step`: granularity in bytes (positive int64). Values must be `k × step`
-- `allow_unlimited`: boolean. When true, a special "unlimited" value is allowed (stored as -1)
+- `min` / `max`: bounds (sizes)
+- Input takes binary units only (`10GiB`, `512MiB`; `10GB` and `10G` are refused)
+- `allow_unlimited`: boolean. When true, the value `unlimited` is allowed. It is stored as the **string `"unlimited"`**, never as a number: `-1`, `0` or `none` are only what one delivery renders for it (`render.unlimited`, §13.5), which every delivery of such an option must set
 
 **duration**
 
@@ -1052,7 +1055,8 @@ Each type has validation constraints:
 **secret**
 
 - Write-only value
-- `generate`: `{length, charset}` or absent. When present, the Hub can generate a value. `length` is 8–128; `charset` is one of `hex` (0-9a-f), `alphanumeric` (A-Za-z0-9), `ascii_printable` (ASCII 0x21–0x7E)
+- `generate`: `{length, charset}` or absent. When present, the Hub can generate a value (`crypto/rand`). `length` is 8–128; `charset` is one of `hex` (0-9a-f), `alphanumeric` (A-Za-z0-9), `ascii_printable` (printable ASCII without space, `'` and `\`: 0x21–0x7E minus `'` and `\`)
+- `min_len` / `max_len`; no `default`. A value may not contain `'` or control characters
 - GET returns `{set: true|false, updated_at}` only, never the value
 - Delivered through env (in the 0600 `.env`), file (a secrets file, mode 0600) or hook stdin. Never in argv, logs or the audit
 
@@ -1095,7 +1099,7 @@ Each type has validation constraints:
 - Without one (group access off, no access role): every LLDAP user except the service account
 - Admin, extra and core groups never widen the population. A member of `admin_<id>` who isn't in the access group can't reach the app
 - Public routes add nobody (anonymous visitors aren't people)
-- `sign_in: native`: the population is empty (Portcullis passes no identity). The panel says "per-person values need Portcullis sign-in"
+- `sign_in: native`, method `public`, and `custom` without `native_login`: the population is empty (Portcullis passes no identity). The panel says why (`population.why`); a draft that switches to `sign_in: native` previews nobody
 - A disabled instance keeps its population for the preview, but delivers nothing
 
 **Privileged options.** An option marked `privileged: true` may take per-group values only from groups delegates can't steer:
@@ -1111,13 +1115,14 @@ Adding such a group to a privileged option makes it an "app admin group" (§9.6 
 - Used for app-resolved maps: library or ACL per group, rooms per group
 - Delivered as a map through env (JSON), files or hooks
 - No `default`; the records are the values
+- **Records may only grant.** A record is delivered only when its group exists in the directory snapshot with the LLDAP id it was saved with; with the directory unavailable a run delivers no records at all (env: `[]`; files and hooks keep their last delivery). An app must therefore read a missing record as "nothing granted" and never as "no restriction" (a per-group deny list would fail open)
 
 **person_entered**
 
 - One value per person, entered by that person on My apps
 - Not resolved, no default, no group rows
 - The person must be in the option's population both to enter a value and to have it delivered
-- For identity-less routes (method `public`, `custom` without Portcullis sign-in, or `sign_in: native`), the population is the members of the template's `access_group` minus expired `expiring` entries. The validator requires `auth.access_group` on such templates
+- For identity-less routes (method `public` or `custom`, or a template whose `native_login` allows the app's own login only), the population is the members of the template's `access_group` minus expired `expiring` entries. The validator requires `auth.access_group` on such templates
 - Admin, extra and core groups never widen it
 - See §13.13 for the full rules
 
@@ -1140,15 +1145,15 @@ The template may list `resolve_choices` the admin can switch to (validated: same
 
 Values are stored in canonical form (bytes, seconds, typed JSON). Each delivery has its own `render`:
 
-- `unit`: for `size`, `duration` or `int` with a `unit`. One of `B`/`KiB`/`MiB`/`GiB`/`TiB` (sizes, binary 1024), `GB`/`GiB` (1000000000 vs 1073741824, strictly), `s`/`m`/`h`/`d` (duration), or the `int`'s label (e.g. `days`). Output is the canonical value divided by the unit. For sizes and durations, `integer: true` refuses fractional results
-- `unlimited`: for `size` with `allow_unlimited`. The sentinel string rendered when the value is -1 (e.g. `"0"`, `"-1"`, `"none"`)
+- `unit`: for `size`, `duration` or `int` with a `unit`. Sizes: `B`/`KiB`/`MiB`/`GiB`/`TiB` (binary, 1024) or `KB`/`MB`/`GB`/`TB` (decimal, 1000), strictly (`GB` = 10⁹, `GiB` = 2³⁰); durations: `s`/`m`/`h`/`d`; an `int`: its own `unit` label (e.g. `days`, not converted). Output is the canonical value divided by the unit. For sizes and durations, `integer: true` refuses fractional results
+- `unlimited`: for `size` with `allow_unlimited`, and required there. What this delivery renders when the stored value is the string `"unlimited"` (e.g. `"0"`, `"-1"`, `"none"`): an app's own sentinel, never a stored value
 - `true` / `false`: for `bool`. The strings rendered for true and false (default `"true"` / `"false"`)
 - `join`: for `list`, `multi_enum`, `groups`, `users`. The separator (default `","`). Items are rendered in their stored order (list) or sorted (sets)
 - `format`: for structured values that don't fit a single env value. One of `json`, `yaml`, `csv`
 
 A value that doesn't fit a delivery's granularity (e.g. 1.5 GiB rendered as an integer-GiB claim) is refused at save, naming the app and its unit.
 
-**Env values** are single-quoted. Values containing `'` or newlines are refused (structured values use `format: json`).
+**Env values** are single-quoted. Values containing `'`, `\` or newlines are refused at save, naming the option and the variable (structured values use `format: json`). Env, header and claim values are one line; a header value is at most 1024 bytes and a claim value 4096 bytes.
 
 ### 13.6 Deliveries
 
@@ -1160,7 +1165,8 @@ Each option has at least one delivery. The value is rendered per delivery.
 - The variable name (env key). An instance option with no `delivery` defaults to `env: <UPPER(key)>`
 - Reserved names (§2) and names hard-coded in `compose.yml` are refused. Duplicate env names across the template's settings are refused
 - `person` options may not use env delivery (per-person env is refused). A `person_entered` option may deliver as env with `render.join` or `render.format: json` (the collection, not per-person values)
-- Instance and group options write directly to the `.env`. Person-entered env lists are written by the delivery engine outside the flat-map flow
+- Instance and group options are written to the `.env` on save and before every start (empty when unset; secrets from the secrets store). A group env value is one JSON list `[{"group", "value"}]` of the records whose group id matches the run's directory snapshot
+- **Person-entered env lists** are written by the delivery engine: the values of the delivered entries (§13.13) in user order, no usernames. With `render.format: json` the variable is a JSON list `[<item>, …]` (each item JSON-encoded, without HTML escaping); otherwise the items' text joined with `render.join` (default `,`). An item the list can't carry (it holds the separator, or can't be single-quoted) is refused at save; one that slipped through (stored before a template change) is left out and logged with its user, and the other items are still delivered — one bad item never drops the whole list. If the list as a whole can't be written, the variable is left as it was (never emptied)
 - **Indexed env delivery** (for `type: list`, `scope: instance`): the form `{env: NAME_{n}}` writes `NAME_1`, `NAME_2`, ..., `NAME_<max_items>` as separate variables (1-indexed). Unused indices are written as empty strings. The validator requires `max_items` and that every index `{n}` the template references in `compose.yml` is declared (through `max_items`). Used for device lists (scrutiny `SCRUTINY_DISK_1..8`, motioneye `MOTIONEYE_VIDEO_1..4`) where compose needs separate variables for `devices:` entries
 
 **path (mounts)**
@@ -1172,9 +1178,14 @@ Each option has at least one delivery. The value is rendered per delivery.
 
 - Form: `{claim: {client: <key>, name: <claim name>, json_type: int|string|bool|json, render: {…}}}`
 - `client`: the `client_id` of a `keycloak_clients[]` entry. The mapper goes on that client only
-- `name`: the claim name in tokens (e.g. `immich_quota`). Must not collide with standard, Portcullis or `attr_*` claims (validator list)
-- `json_type`: the claim's JSON type in the token. `json` for arrays/objects
-- The Hub creates a Hub-owned LLDAP user attribute (`ps-<hash>`), writes each person's rendered value into it, and adds an LDAP attribute mapper plus a protocol mapper on the instance's client. STRING type, not visible, not editable. The attribute is cleared for people outside the population
+- `name`: the claim name in tokens (e.g. `immich_quota`), `^[a-z][a-z0-9_]{0,63}$`. Must not be a standard OIDC / JWT claim, a Keycloak claim, `attr_*` or `portcullis_*`; one option per claim and client
+- `json_type`: the claim's JSON type in the token: `string` (default), `int`, `bool` or `json`. Keycloak converts the attribute, so:
+    - `int` is a **32-bit** integer: a size must be rendered in a unit (`render.unit: GiB`), and `render.unlimited` must be a 32-bit integer;
+    - `bool` needs a `bool` option rendering exactly `true` / `false`;
+    - `json` must be valid JSON: `render.format: json`, a table, or numbers (a `render.unlimited` such as `-1` or `null`).
+
+    The validator refuses every mismatch it can see in the manifest. At delivery each value is checked again; a value that doesn't fit is not delivered (that person's attribute is cleared)
+- The Hub creates a Hub-owned LLDAP user attribute (`ps-<12 hex>`: `ps-` plus the first 12 hex digits of sha256(`<instance>\x00<key>`); LLDAP attribute names allow only letters, digits and `-`), writes each person's rendered value into it, and adds an LDAP attribute mapper plus a protocol mapper on the instance's client. STRING type, not visible, not editable. The attribute is cleared for people outside the population
 - Removing the instance removes its attributes and mappers
 - Allowed only on `native-oidc` templates with a declared client
 - Only for `person` and `person_entered` scopes
@@ -1183,9 +1194,10 @@ Each option has at least one delivery. The value is rendered per delivery.
 **header**
 
 - Form: `{header: {name: <Header-Name>, render: {…}}}`
-- `name`: the header name, must be `X-Forwarded-Attr-<Name>`
-- Per-host headers in `user-attributes.json` v2 (§4.1). group-gate returns them on allow for that host only
-- Allowed only on forward-auth and header-auth routers. The Hub refuses header delivery for templates whose delivering service also has a router the template labels public, and for `sign_in: native`. The Hub's public router strips every declared header-delivery name plus its underscore alias
+- `name`: the header name, exactly `^X-Forwarded-Attr-[A-Za-z0-9]+(-[A-Za-z0-9]+){0,30}$` (group-gate's own pattern); one option per header
+- Per-host headers in `user-attributes.json` v2 (§4.1), keyed by the header **suffix** (the part after `X-Forwarded-Attr-`) on every host of every router whose chain has `portcullis-groups@docker`. group-gate returns them on allow for that host only
+- The validator refuses a header delivery unless clients can't send the header themselves: the template needs routers with `portcullis-groups@docker`; every router that reaches the delivering backend's network namespace (`network_mode: service:` followed, cycles refused) must run Portcullis forward-auth; no Traefik-labelled service may run in the host's network namespace (`network_mode: host`); method `public`, `custom` without `native_login`, and `native_login.allow_without_gateway` are refused. The Hub refuses `sign_in: native` (400) while the template delivers headers
+- **Public routers** (§5, public exceptions) have no forward-auth: their strip middleware deletes every declared header-delivery name, and the same name with `_` for `-`
 - Only for `person` and `person_entered` scopes
 
 **file**
@@ -1193,9 +1205,9 @@ Each option has at least one delivery. The value is rendered per delivery.
 - Form: `{file: {name: <file key>, field: <field name>, render: {…}}}`  (person/person_entered)  
   or `{file: {name: <file key>}}`  (instance/group: the whole file for the option)
 - `name`: the key of a declared `files[]` entry (§13.7)
-- `field`: for `person` and `person_entered` scopes, the field name in the data file's `people` or `entries` section
-- The Hub writes `<instance>/<name>.json` (data file) and optionally `<instance>/<name>.secrets.json` (secrets file, when the file holds a secret option). Modes: data file 0640 (readable by gid 10001), secrets file 0600 (readable only by root or uid 10001). The validator warns when a non-root service reads a secrets file without `user: 10001`
-- Bind-mounted read-only into the declared service. The Hub mounts the directory, not a single file, because an atomic rename gives a new inode
+- `field`: for `person` and `person_entered` scopes, the field name in the data file's `people` or `entries` section (`^[a-z][a-z0-9_]{0,39}$`, default the option key; one option per field)
+- The Hub writes the data file and, when the file holds a secret option, its secrets file (layout and modes in §13.7)
+- Bind-mounted read-only into the declared service. The Hub mounts the file's directory, not the file, because an atomic rename gives a new inode
 - The template's init one-shot renders the app's config from it
 
 **hook**
@@ -1226,15 +1238,19 @@ files:
 
 - `name`: matches `^[a-z][a-z0-9_-]{0,31}$`, unique across the template's files
 - `service`: the compose service
-- `mount`: container directory (absolute, not a single file). The file is `<mount>/<name>.json`
-- `on_membership_change`: what happens when the membership-driven delivery changes (§13.8)
+- `mount`: container directory (absolute, clean, no `:`; not a single file). The file is `<mount>/<name>.json`. It may not collide with another file's mount or a path option's target on the same service
+- `on_membership_change`: `restart`, `reload` (needs `reload`), `hook` (needs a hook with `membership_change`) or `none` (default): what happens when a membership-driven delivery changes the file (§13.8)
 
-**Host layout.** The Hub writes files under its data directory:
+**Host layout.** The Hub writes the files under `<ProjectDir>/appfiles` (core's `./appfiles`, mounted in the Hub at `/project/appfiles`; created by `./portcullis up`, 0750, owned by uid 10001). The daemon-side path the override mounts is `<ProjectHostDir>/appfiles`. `HUB_APPFILES_DIR` (the Hub's path) and `HUB_APPFILES_HOST_DIR` (the daemon's path for the same directory) move it; they are set together or not at all (one alone: the Hub refuses to start).
 
-- Data file: `<data>/appfiles/<instance>/<name>.json`, mode 0640 or 0600 (when it holds a secret option)
-- Secrets file: `<data>/appfiles/<instance>/<name>.secrets.json`, mode 0600 (only when the file holds secret options)
+```text
+<appfiles>/<instance>/                     0750
+<appfiles>/<instance>/<name>/              0750, bind-mounted read-only at the file's mount
+<appfiles>/<instance>/<name>/<name>.json           0640  data file
+<appfiles>/<instance>/<name>/<name>.secrets.json   0600  only when the file holds a secret option
+```
 
-The Hub mounts `<data>/appfiles` at `/project/appfiles` in core. Templates bind-mount `./appfiles/<instance>` (relative to `PROJECT_DIR`).
+Every file is owned by the Hub (uid 10001) and written atomically. Secret values are only in the secrets file, never in the data file. The override bind-mounts `<ProjectHostDir>/appfiles/<instance>/<name>` at `mount`, read-only (`$` written as `$$`). The files are generated from the Hub's state (not backed up); deleting the instance removes `<appfiles>/<instance>/`.
 
 **Data file format (DataFileDoc):**
 
@@ -1252,7 +1268,8 @@ The Hub mounts `<data>/appfiles` at `/project/appfiles` in core. Templates bind-
 - `values`: instance-scoped option values (key → rendered value)
 - `people`: per-person resolved values, keyed by lowercase username. Each user maps to their fields
 - `groups`: per-group records for `scope: group` options. Each option key maps to an array of `{group, value}` records
-- `entries`: person-entered values for `scope: person_entered` options. Each option key maps to an array of `{user, value}` entries, sorted by user. Only population members with a matching uuid
+- `entries`: person-entered values for `scope: person_entered` options. Each field (the delivery's `field`, default the option key) maps to an array of `{user, value}` entries, sorted by user. Only population members whose stored LLDAP uuid matches their current account; under `unique`, only the earliest of equal values (§13.13). Person-entered values never appear under `people`
+- Every section is always an object (never `null`); `version` is 1
 
 **Secrets file format (SecretsFileDoc):**
 
@@ -1266,7 +1283,9 @@ The Hub mounts `<data>/appfiles` at `/project/appfiles` in core. Templates bind-
 
 Only secret option values, keyed by option key.
 
-**Reading.** The service runs as root or, when not root, with `group_add: ["10001"]` to read the 0640 data file. The 0600 secrets file is readable only by root or `user: 10001`. The validator warns when a non-root service reads a secrets file without `user: 10001`.
+**Reading.** The service runs as root or, when not root, with `group_add: ["10001"]` to read the 0640 data file. The 0600 secrets file is readable only by root or `user: "10001"`. The validator warns when a service that is neither reads a secrets file.
+
+**Starting.** The data files are written before the containers are created, so an init one-shot always reads the current state. A file with per-person, group or entry values that was never delivered while Users & Groups is unavailable makes the start fail (503) rather than start the app without it.
 
 ### 13.8 Hooks and reload
 
@@ -1286,10 +1305,11 @@ hooks:
 - `service`: the compose service
 - `command`: argv list, run directly (not through `sh -c`)
 - `user`: optional user to run as (default: container's user)
-- `when`: list of triggers (at least one). `start` runs after a successful up; `settings_change` after SaveSettings; `membership_change` after directory reconcile changes the delivered population
-- `timeout`: duration (e.g. `60s`). Default 30s
+- `command`: a non-empty argv list of non-empty strings without control characters
+- `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input
+- `timeout`: Go duration (e.g. `60s`). Default 30s, **at most 10m**
 
-The Hub runs the command in the running container with Docker exec and sends the full desired state as JSON on stdin:
+The Hub runs the command verbatim (never through a shell) with Docker exec in a running container of the hook's service in this instance (replica 1 preferred) and sends the full desired state as JSON on stdin, the **HookInput**: the data-file document (§13.7) of the options delivered to that hook, plus `trigger` and `secrets`. It is never a diff.
 
 **HookInput:**
 
@@ -1306,9 +1326,12 @@ The Hub runs the command in the running container with Docker exec and sends the
 }
 ```
 
-Hooks must be idempotent. Exit 0 means applied. Any other exit code is "failed", recorded in the instance's op record. Known secret values are redacted from the output, then it is clipped.
+- `trigger`: the run's trigger when the hook declares it, else `settings_change` if declared, else its first `when`
+- `secrets`: the secret options delivered to the hook. **Secrets reach a hook only on stdin**: never in argv, its environment, logs, op records or errors
 
-Runs per instance are serialised. A failed run is retried on the next trigger. The admin can retry it from the panel.
+Hooks must be idempotent. Exit 0 means applied. Any other exit code (or the timeout) is "failed", recorded in the instance's op record (`hook`; a later success clears it). The output is redacted (the secrets sent, and the instance's stored secrets in their JSON and HTML encodings), then clipped.
+
+A hook runs when its `when` has the trigger and its input changed (a hash of the document and the secrets' `updated_at`, never their values) or its last run failed; every `start` hook runs on every start, and every hook on a retry. Runs per instance are serialised. A hook that timed out (Docker can't kill an exec) blocks the next run until it ends: meanwhile the hooks are skipped `previous run still running` and re-queued with backoff. With no running container the hook is skipped `not running` and the next start delivers it. The admin can retry from the panel.
 
 **Reload:**
 
@@ -1327,8 +1350,9 @@ reload:
   hook: <hook name>
 ```
 
-- Signal form: the Hub sends the signal via `POST /containers/{id}/kill?signal=…`. No change to `socket-proxy-hub` (it already allows `CONTAINERS` + `POST`). Counts as applied when the call returns 2xx and the container is still running after a 10s grace period (and, if it has a healthcheck, not unhealthy). Otherwise "failed" in the op record
-- Hook form: the declared hook with the same stdin and exit-code rules
+- Signal form (`HUP`, `USR1` or `USR2`): the Hub sends the signal to the service's running containers via `POST /containers/{id}/kill?signal=…` (`socket-proxy-hub` already allows `CONTAINERS` + `POST`). Counts as applied when the call returns 2xx and the container is still running after a 10 s grace period (and, if it has a healthcheck, not unhealthy). Otherwise "failed" in the op record (`reload`)
+- Hook form: the declared hook with the same stdin and exit-code rules; it runs once per delivery run
+- Not both forms. A template without `reload` reports the reload unit as `not supported`
 
 `applies: reload` and `on_membership_change: reload` are refused by the validator unless the template has a `reload`.
 
@@ -1353,41 +1377,59 @@ Defaults:
 - `next_sign_in` for claim delivery
 - `next_request` for header delivery
 
-The delivery engine picks the strongest effect among changed options: `live`, `next_request` and `next_sign_in` need no action; then `reload`; then `restart`. Several reloads in one save become one reload. Restarts are always asynchronous (`goBackground(Restart)`).
+The delivery engine picks the strongest effect among changed options: `live`, `next_request`, `next_sign_in` and `account_creation` need no action; then `reload`; then `restart`. Several reloads in one save become one reload, and a restart covers them. Restarts always run in the background. On an enabled instance a changed port, path, env-delivered option or override always restarts. A disabled instance stores the values and delivers nothing.
+
+**Membership deliveries** (people joining or leaving, person-entered values) are debounced **60 s per instance**, so a batch of changes gives one effect; the Hub also runs them after every directory sync and every 10 minutes. A changed data file then applies its `on_membership_change`, and hooks with `membership_change` run.
 
 **Requires.** An instance option with `requires: [<key>, …]` is refused at save when it is non-empty and any listed key is empty. The listed keys must exist, be instance-scoped, and not self-reference. The panel shows the pair together. Used for Craft version + sha256 pairs.
 
-**Ordering (call 25).** `live`, `next_request` and `next_sign_in` need no Hub action, then `reload`, then `restart`.
+**Order of a run.** Data files, then claims, then headers, then hooks, then the effect (one reload or one background restart). A run whose settings change under it stops at its next write (`superseded`) and is re-queued with the strongest effect it still owed.
 
 ### 13.10 Secrets
 
 `secret` options:
 
 - GET returns `{set: true|false, updated_at}` only, never the value
-- PUT accepts a new value or `{generate: true}` when the template declares `generate`
-- Clearing needs an explicit action
+- PUT accepts exactly one of `{value}`, `{generate: true}` (when the template declares `generate`) or `{clear: true}`; an empty value without `clear` is refused (400). Clearing a secret a `required` or `requires` rule needs is refused
+- Stored in `<data>/settings/<id>/secrets.json` (0600, directory 0700, atomic); `state.yaml` holds only `{set, updated_at, generated}`
+- Audited `replaced`, `generated` or `cleared`, never with the value
 
-Delivered through env (in the 0600 `.env`), file (secrets file, mode 0600) or hook stdin. Never in argv, logs, the audit or backups' plain metadata. Backups carry them like they carry the `.env` today.
+Delivered through env (in the 0600 `.env`, written from the store), file (secrets file, mode 0600) or hook stdin. Never in argv, logs, op records, errors (redacted, then clipped) or the audit. Expert's env editor shows `[set]` and refuses to change an option-owned variable. Backups carry the store as `config/settings-secrets.json` (the archived env has secret variables blanked); a same-instance restore puts it back, a restore into a new id copies it and regenerates `generate`-declared secrets.
 
 ### 13.11 Groups disappearing
 
 When an LLDAP group is deleted (through the Hub or outside it), the Hub purges:
 
 - Per-group values and `scope: group` records that reference it (every instance)
-- The purge is audited
+- The purge is audited `settings.purge`: by the deleting admin when the group is deleted through the Hub (immediately, then a delivery), by `hub` when the next reconcile finds a group gone or re-created outside the Hub
 
-Purges are irreversible and run only when the LDAP sanity check passes (the sweep baseline: `admin` and the service account present, and no drop of more than 20% and more than 2 users). Otherwise the delivery is filtered only.
+Purges are irreversible. The reconcile purges only when the LDAP sanity check passes (the sweep baseline: `admin` and the service account present, and no drop of more than 20% and more than 2 users); otherwise it logs a warning and delivery only filters. A privileged option's row from a group that can no longer hold privileged values grants its lowest value at once and is purged the same way. A template's `group_values` preset row purged with its group comes back only when the Hub itself re-creates that group (enable, create missing groups).
 
 Re-creating a group with the same name inherits nothing. Each per-group row and record stores the LLDAP group id; resolution matches by name and id; a missing group or a mismatched id grants nothing. The next reconcile purges it.
 
 ### 13.12 Admin API
 
-Settings are read and edited only on the Hub listener by admins. The routes:
+Settings are read and edited only on the Hub listener by admins. Settings need Users & Groups: without the directory every route answers `503`; no `X-Forwarded-User` is `401`; delegates and non-admins `403`. The routes:
 
-- `GET /api/instances/{id}/settings` → settings panel (values, group rows, preview)
-- `PUT /api/instances/{id}/settings` → save (validates, resolves, delivers, applies the effect)
-- `GET /api/instances/{id}/settings/preview` → preview on a draft
-- `POST /api/instances/{id}/settings/retry` → retry a failed delivery
+- `GET /api/instances/{id}/settings` → the settings panel: options with their defaults and warnings, stored values (never secrets), per-person and group rows with their `group_id`, secrets as `{set, updated_at, generated}`, ports, `population {count, why}`, `deliveries`, `entries`, `directory_groups`
+- `PUT /api/instances/{id}/settings` → save: `values`, `person` (`{default, resolve, rows: [{group, value, group_id}]}`), `groups`, `secrets` (`{value}` / `{generate}` / `{clear}`), `ports`, `auth_policy`, `auth_policy_inherit`, `public_access`, `public_mode`, `public_tokens`, `sign_in`; only what changed. Unknown fields, trailing data and bodies over 256 KiB are refused with a fixed message (never echoing a value). Answers `{effect, changed, warnings, deliveries}`. A row sent with a `group_id` no stored row of that group has (purged or re-created since the panel loaded) is `409`; a row without one is new
+- `POST /api/instances/{id}/settings/preview` → the same body, nothing stored: per person option every member's value and reason (including the losing rows, only here), `changes`, `no_access`, `population` and the effect
+- `POST /api/instances/{id}/settings/retry` → run the delivery again (every hook included), audited `settings.retry`; answers the `DeliveryReport`
+- `PUT /api/instances/{id}/settings/entries/{key}/{user}` `{"value": …}` and `DELETE …` → an admin sets (only with `admin_override`, else 403) or clears (always) a person-entered value (§13.13)
+
+**Delivery status** (`deliveries` in the panel, `DeliveryReport` from save and retry): one result per unit, `{unit, ok, skipped, message, error, at}`, plus `pending` (a run is queued) and the last `trigger`. Units: `env`, `file:<name>`, `claim:<attribute>`, `headers`, `hook:<name>`, `reload`, `restart`, and `delivery` (the run as a whole, when it couldn't run). `error` is redacted, then clipped. `skipped` is one of these stable strings:
+
+| `skipped` | Meaning |
+|-----------|---------|
+| `unchanged` | Nothing new to deliver |
+| `not running` | No running container; the next start delivers |
+| `directory unavailable` | No directory snapshot; the last delivery is kept |
+| `busy` | The instance was busy (lifecycle operation, restore, delete); re-queued shortly |
+| `superseded` | The settings changed during the run; a newer run follows |
+| `not supported` | `reload` on a template without a reload action |
+| `previous run still running` | A timed-out hook exec hasn't ended yet; re-queued with backoff |
+
+A failed unit is also logged: `settings: <id>: delivery unit <unit> failed: <redacted error>`.
 
 Every change is audited as `settings.change` with:
 
@@ -1402,7 +1444,7 @@ Every change is audited as `settings.change` with:
 
 **Declaration:**
 
-- Types: `string`, `int`, `bool`, `enum` only
+- Types: `string`, `int`, `bool`, `enum` only (not `secret`)
 - Constraints: the type's own (`pattern`, `min_len`/`max_len`, `format`, `min`/`max`, `options`). A `string` must declare `max_len` ≤ 256 or a `pattern`/`format` that bounds it
 - `unique: true` (string/int only): no two people of one instance hold the same value. Compared in canonical form (templates with case-insensitive ids use a lowercase `pattern`)
 - `admin_override: true`: admins may set a value on someone's behalf. Default false. Admins can always clear
@@ -1410,11 +1452,12 @@ Every change is audited as `settings.change` with:
 - Deliveries (§13.6 rendering):
   - `file`: the data file's `entries` section
   - `hook`: the same, on stdin
-  - `env`: the list of values as one variable. Needs `render.join` or `render.format: json` and `applies: restart`
+  - `env`: the list of values as one variable (shape in §13.6). Needs `render.join` or `render.format: json` and `applies: restart`
   - `claim`/`header`: each person's own value, per person. People with no value get none
-- `applies` must match the delivery: file `applies` = file `on_membership_change`, hook `applies: live` with `membership_change` in `when`, claim `next_sign_in`, header `next_request`
+- `applies` must match the delivery: file `applies` = the file's `on_membership_change` (`restart` → `restart`, `reload` → `reload`, `hook` → `live`; a file without one is refused), hook `applies: live` with `membership_change` in `when`, claim `next_sign_in`, header `next_request`
+- Templates whose routes can run without Portcullis identity (method `public` or `custom`, or `native_login.allow_without_gateway`) must declare `auth.access_group`
 
-**Population:** who may enter and whose values are delivered (§13.3). When routes carry Portcullis identity: call 27's population. When they don't (method `public`, `custom` without Portcullis sign-in, `sign_in: native`): the members of `auth.access_group` minus expired `expiring` entries. The validator requires `auth.access_group` on such templates.
+**Population:** who may enter and whose values are delivered (§13.3). When routes carry Portcullis identity: the person-option population of §13.3. When they don't: the members of `auth.access_group` minus expired `expiring` entries.
 
 **Leaving, rejoining, deleting:**
 
@@ -1425,9 +1468,15 @@ Every change is audited as `settings.change` with:
 - Backups carry them; restore into a new id copies them (the uuid check still applies)
 - A template update that removes/retypes the option or tightens constraints drops values. Duplicates when `unique: true` is newly declared: the earliest `updated_at` stays. Audited
 
-**Uniqueness:** checked at save against every stored value of that option in that instance, delivered or not (so a rejoin never collides). Conflict: `409` "already registered for <app> by another person" (never names the holder). The audit records refusals with the holder's name
+**Saving:** the value must parse under the option's constraints and fit every delivery (an env item holding the separator, a `'` or `\`, or a header/claim value that doesn't render, is a 400). An unchanged value (same value, account and setter) stores and audits nothing; a person re-saving an admin's value makes it theirs.
 
-**Delivery:** the `entries` section of data files and hook stdin (§13.7); env deliveries are rendered values in user order, joined (no usernames); per-person claims/headers for population members with a value. Changes go through the membership path: debounced 60s, the file's `on_membership_change`, hooks with `membership_change`
+**Uniqueness:** checked at save against every stored value of that option in that instance, delivered or not (so a rejoin never collides), for admins too. Conflict: `409` "<label>: this value is already registered for <app> by another person" (never names the holder). The audit records refusals with the holder's name.
+
+**Refused-save limit:** a person's refused self-service saves (any 4xx) are limited to 10 a minute, then every save is `429` until the minute ends (§5.1). 5xx answers don't count, and the limit is checked before the directory is asked.
+
+**Clearing:** a person can always clear their own value (stored under their current account), also outside the population or on a disabled instance. Admins can always clear any value
+
+**Delivery:** the `entries` section of data files and hook stdin (§13.7); env deliveries are the list of §13.6 (user order, no usernames, one bad item left out, never the whole list); per-person claims/headers for population members with a value. Delivered values: population members whose stored uuid equals their current LLDAP uuid (with the directory unavailable, nobody new), values that still parse, under `unique` the earliest of equal values. Changes go through the membership path: debounced 60 s, the file's `on_membership_change`, hooks with `membership_change`
 
 **Visibility:**
 
@@ -1436,22 +1485,24 @@ Every change is audited as `settings.change` with:
 
 **Routes:**
 
-- People listener, caller only (`X-Forwarded-User`, CSRF guard):
+- People listener, caller only (`X-Forwarded-User`, CSRF guard, body ≤ 4 KiB):
   - `PUT /api/me/apps/{instance}/values/{key}` `{"value": <json>}` → 200 with the caller's entry
-  - `DELETE /api/me/apps/{instance}/values/{key}` → 204
-  - Refusals: 404 (instance not enabled, key not `person_entered`, caller not in population — same answer for all); 400 (constraint); 409 (uniqueness); 503 (LLDAP unavailable)
-- Hub listener, admins only: `PUT`/`DELETE /api/instances/{id}/settings/entries/{key}/{user}`. PUT without `admin_override` is 403. Uniqueness applies
+  - `DELETE /api/me/apps/{instance}/values/{key}` → 204 (also when nothing was set)
+  - Refusals: 404 (instance not enabled, key not `person_entered`, caller not in population — same answer for all); 400 (constraint, unknown fields); 409 (uniqueness); 413 (body); 429 (refused-save limit); 503 (LLDAP unavailable)
+- Hub listener, admins only: `PUT /api/instances/{id}/settings/entries/{key}/{user}` `{"value"}` → 200 with the row; `DELETE` → 204, always. PUT without `admin_override` is 403, for someone outside the population 404. Uniqueness applies
 
-**Audit:** `settings.person_value`, target `<instance>/<key>/<user>`, actor = person / admin / `hub`. Detail: `set: <before|unset> -> <after>`, `cleared`, `deleted` (account deleted), `purged` (account changed), `invalidated` (template update). Refusals audited `refused`. Values shown (not secrets)
+**Audit:** `settings.person_value`, target `<instance>/<key>/<user>`, actor = person / admin / `hub`. Detail: `set: <before|unset> -> <after>`, `cleared`, `deleted` (account deleted), `purged` (account changed), `invalidated` (template update). Refusals audited `refused`, except saves past the refused-save limit. Values shown (not secrets)
 
 **State:** `state.yaml` per instance: key → lowercase user → `{value, uuid, updated_at, set_by}` (`set_by` empty for person, admin name otherwise). Not in `delivered.json` beyond per-unit hashes.
 
 ### 13.14 Source sync and template updates
 
-When a template source syncs (`./portcullis upgrade`, SIGHUP, Hub startup), Discover never changes stored settings. After the final Discover of a sync, `pruneSettingsLocked`:
+When a template source syncs (`./portcullis upgrade`, SIGHUP, Hub startup), discovering the templates never changes stored settings. After the final discovery of a sync (and at startup), the Hub prunes:
 
-- Drops values for options that no longer exist or whose type changed (audited `settings.purge`)
-- Drops person-entered values that no longer pass constraints or are duplicates under newly-declared `unique` (audited `settings.invalidated`)
+- values of options that no longer exist, or whose scope or type changed (audited `settings.purge`)
+- person-entered values that no longer pass the constraints, and later duplicates under a newly declared `unique` (audited `settings.person_value` … `invalidated`)
+
+The app-updates preview lists both before an update is applied.
 
 Until then, resolution ignores values that don't match the current option.
 

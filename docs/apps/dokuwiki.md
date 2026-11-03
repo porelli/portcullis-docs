@@ -3,7 +3,9 @@
 > Simple, file-based wiki — no database required, easy backups
 
 **Category:** productivity  
-**Tags:** `wiki`, `docs`, `knowledge-base`, `file-based`
+**Tags:** `wiki`, `docs`, `knowledge-base`, `file-based`  
+**Website:** <https://www.dokuwiki.org/>  
+**Source:** <https://github.com/dokuwiki/dokuwiki>
 
 ## Authentication
 
