@@ -1419,7 +1419,7 @@ Settings are read and edited only on the Hub listener by admins. Settings need U
 - `POST /api/instances/{id}/settings/retry` → run the delivery again (every hook included), audited `settings.retry`; answers the `DeliveryReport`
 - `PUT /api/instances/{id}/settings/entries/{key}/{user}` `{"value": …}` and `DELETE …` → an admin sets (only with `admin_override`, else 403) or clears (always) a person-entered value (§13.13)
 
-**Delivery status** (`deliveries` in the panel, `DeliveryReport` from save and retry): one result per unit, `{unit, ok, skipped, message, error, at}`, plus `pending` (a run is queued) and the last `trigger`. Units: `env`, `file:<name>`, `claim:<attribute>`, `headers`, `hook:<name>`, `reload`, `restart`, and `delivery` (the run as a whole, when it couldn't run). `error` is redacted, then clipped. `skipped` is one of these stable strings:
+**Delivery status** (`deliveries` in the panel, `DeliveryReport` from save and retry): one result per unit, `{unit, ok, skipped, message, error, at}`, plus `pending` (a run is queued) and the last `trigger`. Units: `env`, `env:values` (only while some option value can't go in the `.env`: those variables are written empty, the unit's error names them, never the value), `file:<name>`, `claim:<attribute>`, `headers`, `hook:<name>`, `reload`, `restart`, and `delivery` (the run as a whole, when it couldn't run). `error` is redacted, then clipped. `skipped` is one of these stable strings:
 
 | `skipped` | Meaning |
 |-----------|---------|

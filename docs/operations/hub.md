@@ -520,6 +520,25 @@ restart covers a reload, and several reloads are one. Changing a port, a
 path or an option the app reads from its `.env` restarts an enabled app. On
 a disabled app the values are stored and used at the next start.
 
+- **A save never waits for a running delivery.** If one is still running
+  (a slow hook, a restart), the save is stored and answers at once; its
+  delivery runs right after (the save's answer shows the `Delivery` unit
+  as `busy`: "a delivery is running: this one follows it").
+- **A restart owed survives a Hub restart.** The Hub records the reload or
+  restart a save still owes before it starts it, and runs it again at its
+  next start if it stopped first. A restart that can't start (another
+  operation holds the app too long) is the app's
+  [last operation](#when-an-operation-fails) `restart`, failed; it stays
+  owed.
+- **A restart checks before it stops the app.** The Hub writes the
+  override, `.env` and data files first; if one of them is refused, the
+  app keeps running and the restart fails.
+- **One bad value never blocks the `.env`.** A stored value that can't be
+  written into the `.env` (it holds a `'`, a `\` or a line break, e.g.
+  after a template update) is written empty for that variable only, logged,
+  and shown in the Deliveries strip as unit `env:values`; every other
+  variable is written.
+
 Membership changes deliver too. When people join or leave a group, the Hub
 waits 60 seconds per instance before delivering, so many changes in a row
 cause one restart, not one each. It also re-checks every 10 minutes.
@@ -549,6 +568,12 @@ and refuses to change a variable an option owns ("set it under Settings").
 Backups carry them; a restore into a new id generates new values for the
 generated ones.
 
+A template update that renames or removes a secret option doesn't leave
+the value behind: the next sync blanks every `.env` variable that still
+holds it before the Hub forgets it, and **Expert → Environment variables**
+shows any variable whose value equals a stored secret as `[set]`, whoever
+wrote it.
+
 ### Deliveries and Retry
 
 The **Deliveries** strip lists each part of the last delivery:
@@ -556,6 +581,7 @@ The **Deliveries** strip lists each part of the last delivery:
 | Unit | What it is |
 |------|------------|
 | Environment | The option values in the app's `.env`, read when the app starts |
+| Environment values (`env:values`) | Shown only while some stored value can't go in the `.env`: those variables are written empty (named, without the value) |
 | Data file `<name>` | A JSON file the Hub writes for the app (mounted read-only) |
 | Hook `<name>` | A command the Hub ran in the app's container, with the settings on its standard input |
 | Sign-in claim `<attribute>` | Per-person values in Keycloak tokens |
