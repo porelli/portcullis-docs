@@ -473,6 +473,7 @@ Portcullis now supports **custom user fields** (e.g., department, manager, cost 
 - **Storage.** Custom fields are LLDAP user attributes created by the Hub using LLDAP's schema API (`addUserAttribute`). Each field has:
     - **Type:** `STRING` (LLDAP 0.6.3 limitation)
     - **Flags:** `visible=true`, `editable=false` (users cannot edit their own fields through LLDAP's UI)
+    - **Name:** the field name with `_` → `-` (field `cost_center` is LLDAP attribute `cost-center`; LLDAP 0.6.3 refuses `_` in attribute names). Only the Hub's LLDAP calls and Keycloak's LDAP mapper (`ldap.attribute`) use this name; rules, `attr_<field>` claims, `X-Forwarded-Attr-<Field>` headers, CSV columns and `user-attributes.json` keep the field name. LLDAP attributes containing `_` are never a field.
 - **Field types** (Hub-managed):
     - **Free text:** arbitrary string values
     - **List:** predefined values the admin maintains
@@ -569,7 +570,7 @@ Three permissions can be granted to groups (manual or rule-based):
     - Delegates can **re-invite** (send a new invite link) only accounts they created (`created_by` matches) that still have **zero Keycloak credentials** (no passkeys, no password). An admin taking over an account (setting a password, resetting passkeys, or sending an invite) clears `created_by`, so delegates can no longer re-invite it.
 - **Manual groups, exceptions, expiries.** Delegates may not modify membership of manual groups, add exceptions, or set expiries. These are admin-only.
 - **Security rules:**
-    - **Reserved attribute prefix.** Custom field names may not start with `ps-`. That prefix is reserved for Hub-managed setting claim attributes (§8, §13.6).
+    - **Reserved attribute prefix.** Custom field names may not start with `ps_` (LLDAP attribute `ps-…`). That prefix is reserved for Hub-managed setting claim attributes (§8, §13.6).
     - **App admin groups** (§13): groups that carry per-group values of a privileged option become **guarding groups** (exactly like `admin_<id>` today). They get the same restrictions: rules on admin-only fields only, no rule matching an empty person, the evaluator never adds `created_by` accounts. An admin-only field they use can't be turned off. The Hub computes these groups on the fly from the current settings (no `directory.yaml` field); removing the per-group row ends the guarding at once.
     - Rules of **protected groups** (`lldap_admin`, `lldap_password_manager`, `INVITE_PROTECTED_GROUPS`, core-subdomain groups), **permission groups**, and **path-admin groups** (`admin_group`, `path_groups` admin access) may only reference **admin-only** fields. A field used by such a rule cannot lose its admin-only flag.
     - A rule of such a group must also **not match a person with no field values** (every new account): refused with 409.
