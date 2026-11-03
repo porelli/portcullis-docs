@@ -370,7 +370,7 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
         - Token exchange is off on the instance's clients only. Another client with standard token exchange on and an audience mapper adding this client could exchange a user's token for one this client accepts, without the role check. The Hub creates no audience mappers; don't add them for such clients.
         - A realm admin can still open the client (remove the browser flow override; Keycloak then uses the realm's browser flow) until the Hub's next sync rebinds it. Keycloak refuses to delete a flow a client override binds.
 - **Backchannel logout (NEW).** A `keycloak_clients[]` entry with `backchannel_logout_url` (`https://{{HOST_<ROUTER>}}/<path>`) gets it as the client's backchannel logout URL, with "backchannel logout session required" on; it moves with hostname changes (§11.3). Keycloak then POSTs a logout token there whenever a session ends, so the app ends its own session. The path must be reachable from Keycloak without forward-auth. Supported upstream by Nextcloud `user_oidc` (`/index.php/apps/user_oidc/backchannel-logout/<provider>`) and Synapse (`/_synapse/client/oidc/backchannel_logout`, `backchannel_logout_enabled: true`).
-- **Setting claims (§13).** For each (instance, option) with a claim delivery, the Hub creates a Hub-owned LLDAP user attribute named `ps_<hash>` (a short hash of instance and key), STRING type, not visible, not editable. It writes each person's rendered value into it and adds an LDAP attribute mapper plus a protocol mapper on the instance's client only (per-client, not shared). The attribute and mappers are removed when the instance is deleted.
+- **Setting claims (§13).** For each (instance, option) with a claim delivery, the Hub creates a Hub-owned LLDAP user attribute named `ps-<hash>` (LLDAP attribute names allow only letters, digits and `-`; a short hash of instance and key), STRING type, not visible, not editable. It writes each person's rendered value into it and adds an LDAP attribute mapper plus a protocol mapper on the instance's client only (per-client, not shared). The attribute and mappers are removed when the instance is deleted.
 
 ## 9. Hub ⇄ LLDAP (users & groups)
 
@@ -569,7 +569,7 @@ Three permissions can be granted to groups (manual or rule-based):
     - Delegates can **re-invite** (send a new invite link) only accounts they created (`created_by` matches) that still have **zero Keycloak credentials** (no passkeys, no password). An admin taking over an account (setting a password, resetting passkeys, or sending an invite) clears `created_by`, so delegates can no longer re-invite it.
 - **Manual groups, exceptions, expiries.** Delegates may not modify membership of manual groups, add exceptions, or set expiries. These are admin-only.
 - **Security rules:**
-    - **Reserved attribute prefix.** Custom field names may not start with `ps_`. That prefix is reserved for Hub-managed setting claim attributes (§8, §13.6).
+    - **Reserved attribute prefix.** Custom field names may not start with `ps-`. That prefix is reserved for Hub-managed setting claim attributes (§8, §13.6).
     - **App admin groups** (§13): groups that carry per-group values of a privileged option become **guarding groups** (exactly like `admin_<id>` today). They get the same restrictions: rules on admin-only fields only, no rule matching an empty person, the evaluator never adds `created_by` accounts. An admin-only field they use can't be turned off. The Hub computes these groups on the fly from the current settings (no `directory.yaml` field); removing the per-group row ends the guarding at once.
     - Rules of **protected groups** (`lldap_admin`, `lldap_password_manager`, `INVITE_PROTECTED_GROUPS`, core-subdomain groups), **permission groups**, and **path-admin groups** (`admin_group`, `path_groups` admin access) may only reference **admin-only** fields. A field used by such a rule cannot lose its admin-only flag.
     - A rule of such a group must also **not match a person with no field values** (every new account): refused with 409.
@@ -1173,7 +1173,7 @@ Each option has at least one delivery. The value is rendered per delivery.
 - `client`: the `client_id` of a `keycloak_clients[]` entry. The mapper goes on that client only
 - `name`: the claim name in tokens (e.g. `immich_quota`). Must not collide with standard, Portcullis or `attr_*` claims (validator list)
 - `json_type`: the claim's JSON type in the token. `json` for arrays/objects
-- The Hub creates a Hub-owned LLDAP user attribute (`ps_<hash>`), writes each person's rendered value into it, and adds an LDAP attribute mapper plus a protocol mapper on the instance's client. STRING type, not visible, not editable. The attribute is cleared for people outside the population
+- The Hub creates a Hub-owned LLDAP user attribute (`ps-<hash>`), writes each person's rendered value into it, and adds an LDAP attribute mapper plus a protocol mapper on the instance's client. STRING type, not visible, not editable. The attribute is cleared for people outside the population
 - Removing the instance removes its attributes and mappers
 - Allowed only on `native-oidc` templates with a declared client
 - Only for `person` and `person_entered` scopes
