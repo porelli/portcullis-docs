@@ -238,6 +238,28 @@ CI fails if any of these is missing.
   `--network none` for a local repository
 - for `backup verify`, a `postgres` without network
 
+**Helper containers the Hub starts** (contract §6; labelled
+`io.portcullis.hub.helper`, removed after each use and at every Hub start):
+
+- the volume helper (instance backups and restores): pinned `alpine`, uid
+  65534, `--network none`, no capabilities, never started (the daemon copies
+  through the archive endpoints)
+- the shared-folder fixer: the Hub's own image by image ID (found by
+  inspecting the Hub's container, never a tag), `hub folderfix <mode>` as
+  uid 0 with `no-new-privileges`, `CapDrop: ALL` plus only its mode's
+  capabilities (`DAC_READ_SEARCH` to read; `CHOWN`, `FOWNER`, `FSETID` to
+  apply or restore; `DAC_OVERRIDE` only to create missing subfolders),
+  `--network none`, read-only root filesystem, no host namespaces, pids 16,
+  256 MiB, no healthcheck, one bind mount of the folder (read-only except
+  for apply / restore). Refused under userns-remap or rootless Docker.
+  `HUB_FIXER_IMAGE` (pinned by `@sha256:`) replaces the image for
+  development and is honoured only with `HUB_DEV=1`: the Hub refuses to
+  start with it otherwise, because an environment-selected image run as
+  root with file capabilities would be a privilege pivot. Anyone who can
+  set the Hub's environment can also change `HUB_IMAGE`, so this narrows
+  rather than closes that path: protect `.env` like the rest of the core
+  configuration
+
 ## Secrets the containers read
 
 The CLI keeps these **operator-owned** with the container's group, so the
