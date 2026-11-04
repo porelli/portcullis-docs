@@ -382,7 +382,7 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
     ```
 
     So a container sees only its own instance's and option's hash files, never another instance's. Before every `up` the Hub checks the rendered project (template, Hub override and custom override merged): every top-level volume whose resolved name is `HUB_SECRETS_VOLUME`, under **any** key, is mounted only by `mount.service`, with exactly that subpath, read-only, and only through the key `portcullis-hub-secrets`; anything else refuses the `up` (`409`). Templates and custom overrides can't name the key, and can't declare a volume with that name (§3: templates may not name an external volume `portcullis*`; the custom override may not set `external` or `name` on any volume).
-- **Requirements:** Docker Engine API **≥ 1.45** (Docker Engine 26.0, the first with volume subpath mounts) and a `docker compose` that supports `volume.subpath`. The Hub's startup compose version check refuses an older compose; the exact minimum compose release is recorded here by the Hub task that raises the check (file sharing plan, Task 6).
+- **Requirements:** Docker Engine API **≥ 1.45** (Docker Engine 26.0, the first with volume subpath mounts) and `docker compose` **≥ 2.26.0** (the first release that passes `volume.subpath` to the Engine). The Hub refuses to start with an older compose (its startup version check), and before every `up` of an instance that mounts the secrets volume it checks the daemon's API version (an older daemon would ignore the subpath and mount the whole volume: refused).
 - **Proxy flags:** none change (volume mounts are part of the container create the Hub already does through compose).
 
 ## 7. Docs ⇄ templates
