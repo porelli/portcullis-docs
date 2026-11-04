@@ -163,6 +163,68 @@ def setting_value(v) -> str:
     return md_cell(str(v))
 
 
+def effective_mode(o: dict) -> str:
+    """How the Hub mounts a path option (contracts §13.15): a folder block's
+    access decides (read is always read-only), else mode, default rw."""
+    folder = o.get("folder")
+    if isinstance(folder, dict):
+        return "rw" if folder.get("access") == "write" else "ro"
+    return "ro" if o.get("mode") == "ro" else "rw"
+
+
+def _run_id(runs_as: dict, which: str) -> str:
+    if runs_as.get(which) is not None:
+        return str(runs_as[which])
+    if runs_as.get(f"{which}_env"):
+        return f"`{runs_as[f'{which}_env']}`"
+    if runs_as.get(f"{which}_from"):
+        return f"each person's (`{runs_as[f'{which}_from']}`)"
+    return "?"
+
+
+JOIN_TEXT = {
+    "group_add": "joins the folder's group as a supplementary group (`group_add`)",
+    "gid_env": "joins the folder's group as its primary group: the Hub writes the folder's gid to `{var}`",
+    "template": "joins the folder's group itself, from `PORTCULLIS_FOLDER_GID_{key}`",
+}
+
+
+def folder_text(folder: dict, key: str = "") -> str:
+    """One line for a folder block: what the app does on a shared folder."""
+    runs_as = folder.get("runs_as") or {}
+    access = "writes" if folder.get("access") == "write" else "reads (read-only)"
+    who = f"uid {_run_id(runs_as, 'uid')}, gid {_run_id(runs_as, 'gid')}"
+    join = folder.get("joins_group") or "group_add"
+    jt = JOIN_TEXT.get(join, f"joins through `{join}`").format(
+        var=runs_as.get("gid_env", ""), key=key.upper())
+    text = f"[Shared folder](../operations/hub.md#shared-folders) ready: {access} as {who}; {jt}"
+    if folder.get("must_own"):
+        text += "; owns what it writes (the Hub also sets the owner)"
+    return text
+
+
+def check_text(c: dict) -> str:
+    """One line for a doctor check (contracts §13.15 `checks`)."""
+    kind = c.get("kind", "")
+    if kind == "filesystem":
+        parts = []
+        if c.get("needs"):
+            parts.append("needs " + ", ".join(f"`{x}`" for x in c["needs"]))
+        if c.get("not"):
+            parts.append("not on " + ", ".join(f"`{x}`" for x in c["not"]))
+        what = "the filesystem " + " and ".join(parts)
+    elif kind == "exclusive":
+        what = "no other app may write the same folder"
+    elif kind == "free_space":
+        what = f"at least `{c.get('min', '')}` free"
+    elif kind == "requires_group_value":
+        what = "a group row should set it"
+    else:
+        what = f"`{kind}`"
+    reason = " ".join(str(c.get("reason") or "").split())
+    return f"[Doctor](../operations/hub.md#doctor) check: {what}" + (f" ({html.escape(reason, quote=False)})" if reason else "")
+
+
 def setting_type(o: dict) -> str:
     typ = o.get("type", "")
     if typ == "list":
@@ -439,7 +501,13 @@ def generate_app_page(app: dict, output_dir: Path):
                     extra.append("Admins may set it for someone")
             target = o.get("target") or {}
             if target.get("mount"):
-                extra.append(f"Mounted at `{target['mount']}` ({o.get('mode', 'rw')})")
+                extra.append(f"Mounted at `{target['mount']}` ({effective_mode(o)})")
+            folder = o.get("folder")
+            if isinstance(folder, dict):
+                extra.append(folder_text(folder, o.get("key", "")))
+            for c in o.get("checks") or []:
+                if isinstance(c, dict):
+                    extra.append(check_text(c))
             if desc and desc[-1] not in ".!?)":
                 desc += "."
             elif desc.endswith(")") and not desc.endswith(".)"):
@@ -468,6 +536,8 @@ def generate_app_page(app: dict, output_dir: Path):
                 notes.append("host network")
             if p.get("range"):
                 notes.append(f"range `{p['range']}`")
+            if p.get("lan_only"):
+                notes.append("[LAN only](../operations/hub.md#local-networks): the doctor warns when it is reachable from outside the local networks")
             lines.append(f"| **{label}** | `{proto}` | `{default}` | `{container}` | {required} | {', '.join(notes) or '—'} |")
         lines.append("")
 

@@ -19,7 +19,7 @@
 | **Subdomain** | `plex` |
 
 !!! info "Auth Notes"
-    Plex uses its own plex.tv account system; no SSO is possible. By default the Hub puts Portcullis sign-in (users_plex) in front of Plex's own login; the Hub's Sign-in setting can switch to Plex's own login only (no Portcullis, TLS tier public), which Plex's native apps need. Claim token required for initial setup.
+    Plex uses its own plex.tv account system; no SSO is possible. By default the Hub puts Portcullis sign-in (users_plex) in front of Plex's own login; the Hub's Sign-in setting can switch to Plex's own login only (no Portcullis, TLS tier public), which Plex's native apps need. Claim token required for initial setup. Shared folders: pms-docker's first-run script sets the plex user's uid / gid from PLEX_UID / PLEX_GID, and Plex starts through s6-setuidgid plex, which resets the supplementary groups to plex's own in /etc/group (a group_add gid wouldn't reach Plex). So the library settings join a shared folder's group through PLEX_GID (joins_group gid_env): the Hub writes the folder gid there. Keep all three library settings on the same shared folder (subfolders are fine), or all on host paths; a library left empty doesn't count.
 
 ## Sign-in
 
@@ -54,11 +54,11 @@ Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-set
 
 | Setting | Type | Scope | Applies | Description |
 |---------|------|-------|---------|-------------|
-| **Movies folder** | `path` | instance | `restart` | Host path to your movies library. Mounted at `/data/movies` (ro). |
-| **TV Shows folder** | `path` | instance | `restart` | Host path to your TV shows library. Mounted at `/data/tv` (ro). |
-| **Music folder** | `path` | instance | `restart` | Host path to your music library. Mounted at `/data/music` (ro). |
+| **Movies folder** | `path` | instance | `restart` | Host path to your movies library. Mounted at `/data/movies` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as uid `PLEX_UID`, gid `PLEX_GID`; joins the folder's group as its primary group: the Hub writes the folder's gid to `PLEX_GID`. |
+| **TV Shows folder** | `path` | instance | `restart` | Host path to your TV shows library. Mounted at `/data/tv` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as uid `PLEX_UID`, gid `PLEX_GID`; joins the folder's group as its primary group: the Hub writes the folder's gid to `PLEX_GID`. |
+| **Music folder** | `path` | instance | `restart` | Host path to your music library. Mounted at `/data/music` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as uid `PLEX_UID`, gid `PLEX_GID`; joins the folder's group as its primary group: the Hub writes the folder's gid to `PLEX_GID`. |
 | **Plex user id** | `int` | instance | `restart` | User id Plex Media Server runs as inside the container (PLEX_UID; default 1001, the image's own plex user); it needs read access to the library folders. Default: `1001`. |
-| **Plex group id** | `int` | instance | `restart` | Group id Plex Media Server runs as inside the container (PLEX_GID; default 1001). Default: `1001`. |
+| **Plex group id** | `int` | instance | `restart` | Group id Plex Media Server runs as inside the container (PLEX_GID; default 1001). While a library setting uses a shared folder, the Hub sets it to the folder's group. Default: `1001`. |
 | **Claim token** | `secret` | instance | `restart` | Plex claim token from https://plex.tv/claim, needed for the initial setup only (it expires a few minutes after it is issued). |
 
 ## Access URLs

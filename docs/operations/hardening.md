@@ -3,7 +3,8 @@
 This page covers what the core stack (`docker-compose.yml` in the core repo)
 does to limit the damage a compromised component can do, and where it can't:
 the threat model, network layout, Docker socket proxies, per-service container
-settings, the secrets containers read, and header trust.
+settings, the secrets containers read, the shared-folder fixer, LAN-only
+ports, and header trust.
 
 ## Threat model summary
 
@@ -244,23 +245,10 @@ CI fails if any of these is missing.
 - the volume helper (instance backups and restores): pinned `alpine`, uid
   65534, `--network none`, no capabilities, never started (the daemon copies
   through the archive endpoints)
-- the shared-folder fixer: the Hub's own image by image ID (found by
-  inspecting the Hub's container by the full ID in its own mountinfo, which
-  must answer that ID with core's `portcullis` / `hub` compose labels; never
-  a tag, a name or the hostname), `hub folderfix <mode>` as
-  uid 0 with `no-new-privileges`, `CapDrop: ALL` plus only its mode's
-  capabilities (`DAC_READ_SEARCH` to read; `CHOWN`, `FOWNER`, `FSETID` to
-  apply or restore; `DAC_OVERRIDE` only to create missing subfolders),
-  `--network none`, read-only root filesystem, no host namespaces, pids 16,
-  256 MiB, no healthcheck, one bind mount of the folder (read-only except
-  for apply / restore). Refused under userns-remap or rootless Docker.
-  `HUB_FIXER_IMAGE` (pinned by `@sha256:`) replaces the image for
-  development and is honoured only with `HUB_DEV=1`: the Hub refuses to
-  start with it otherwise, because an environment-selected image run as
-  root with file capabilities would be a privilege pivot. Anyone who can
-  set the Hub's environment can also change `HUB_IMAGE`, so this narrows
-  rather than closes that path: protect `.env` like the rest of the core
-  configuration
+- the shared-folder fixer: the Hub's own image by image ID, `hub folderfix
+  <mode>` as uid 0 with only its mode's capabilities, no network, read-only
+  root filesystem, one bind mount of the folder. See
+  [Shared folders and the fixer helper](#shared-folders-and-the-fixer-helper)
 
 ## Secrets the containers read
 
@@ -340,6 +328,123 @@ up; deleting an instance removes its directory.
 their last delivery, and a per-person file that was never delivered stops
 the start (`503`) instead of starting the app without it. Apps must treat a
 missing record or entry as "nothing granted".
+
+## Shared folders and the fixer helper
+
+[Shared folders](hub.md#shared-folders) need a process that changes group
+owners, modes and ACLs on the host's files: Docker's archive endpoints
+can't do that. The Hub never gets a host shell or SSH for it. It starts a
+short-lived **fixer helper** container instead, one per run, and removes it
+afterwards (and at every Hub start, should one be left over).
+
+**Which image.** The fixer is the Hub's own binary (`hub folderfix
+<mode>`), run from the Hub's own image by its **image ID**, never by a tag
+or a name. The Hub finds that image by reading its own full container ID
+from `/proc/self/mountinfo` and inspecting exactly that container, which
+must answer with the same ID and with core's compose labels (project
+`portcullis`, service `hub`). Nothing another container could shadow (a
+hostname, a container name, a short ID) is ever consulted. If the check
+fails, folder operations answer `503` "the Hub can't find its own image",
+with no fallback. Two setups make it fail on purpose:
+
+- a **non-standard Docker data root** whose path doesn't contain
+  `docker/containers/` (the default `/var/lib/docker` and Docker Desktop
+  work);
+- a **core project not named `portcullis`** (for example a
+  `COMPOSE_PROJECT_NAME` override).
+
+`HUB_FIXER_IMAGE` (pinned by `@sha256:`) replaces the image for
+development and is honoured **only with `HUB_DEV=1`**; otherwise the Hub
+refuses to start. An image chosen through the environment and run as root
+with file capabilities would be a privilege pivot. Anyone who can set the
+Hub's environment can also change `HUB_IMAGE`, so this narrows that path
+rather than closing it: protect `.env` like the rest of the core
+configuration.
+
+**How it runs.** uid 0 with `no-new-privileges`, all capabilities dropped
+and only its mode's added back, no network, read-only root filesystem, no
+host namespaces, at most 16 processes and 256 MiB, no healthcheck, and one
+bind mount: the folder (read-only except to apply or restore). The
+capabilities are the measured minimum for each mode (the Hub's CI drops
+each one in turn and checks the run fails):
+
+| Mode | Used for | Capabilities |
+|------|----------|--------------|
+| `probe`, `scan`, `snapshot`, `restore --dry-run` | Check path, the doctor's disk checks, the permissions snapshot, the undo's preview and verify | `DAC_READ_SEARCH` |
+| `apply`, `restore` | Applying a folder, undoing the last fix | `CHOWN`, `FOWNER`, `FSETID`, `DAC_READ_SEARCH` |
+| `apply --mkdir` | An apply that creates missing subfolders | the above plus `DAC_OVERRIDE` |
+
+`DAC_READ_SEARCH` reads directories uid 0 doesn't own; `CHOWN` sets the
+folder group; `FOWNER` sets modes and ACLs on others' files; `FSETID` keeps
+the setgid bit (uid 0 isn't in the folder's group). `SETFCAP` is never
+granted. The Hub refuses every run (`503`) under **userns-remap or rootless
+Docker**, where ids inside the helper are translated and owners and ACL
+entries would be wrong.
+
+**What it never does.** It never follows a symlink, never leaves the
+folder's filesystem or enters another mount, and never opens a device or
+FIFO. It skips (and reports) hard-linked files, setuid/setgid files and
+files with file capabilities, because changing them would widen access or
+drop the capabilities. It writes only on ext4, XFS, Btrfs and ZFS. Every
+run on a defined folder must find the folder root's stored device, inode
+and mount root, or it changes nothing. An apply changes exactly the entries
+the preview planned (by count and digest), and nothing is removed: groups
+and owners that had access keep it through ACL entries.
+
+**Folder groups are reserved.** Gids 60000–60999 belong to shared folders.
+A template may not use them (numeric ids, compose `user:` and `group_add`,
+or option defaults those name), a settings save may not set one, and a
+custom override may not set a `user:` with one, so an app can't get a
+folder's access without being assigned it. What the Hub can't see
+statically (a root container that changes its own groups, an image's own
+`USER`, a `PGID` passed some other way) the doctor checks at run time: it
+reads the groups of the processes in each app's containers and reports any
+folder gid an app holds without an assignment.
+
+**Residual risks:**
+
+- **Swapping a subfolder while an app starts.** A writer app could replace
+  a subfolder with a symlink, and Docker resolves bind sources on the host.
+  The Hub probes the subfolder right before the container starts and again
+  right after (on a mismatch it takes the app down at once, and the doctor
+  shows a Problem). This narrows the window, it doesn't close it: another
+  app that writes the folder keeps running and could swap the subfolder
+  between the first probe and the container start, then swap it back before
+  the second probe.
+- **Folders nested through a host bind mount.** If `/mnt/b` is a host bind
+  mount of `/srv/photos/sub`, a folder at `/mnt/b` has its own device,
+  inode and a path that doesn't overlap `/srv/photos`, so the Hub can't see
+  that it is nested: two gids would then apply to one subtree. Don't define
+  folders across bind mounts of each other.
+- **Moves during a fix.** The fixer checks that each entry is still inside
+  the folder right before it changes it, but a process with a wider view of
+  the same filesystem (a host process, another container with a broader
+  bind mount) can still move an entry out in the instant between that
+  check and the change.
+
+## LAN-only ports and host firewalls
+
+A template can mark a port **LAN only** (`lan_only: true`, Samba's SMB for
+example): it should be reachable only from your local networks. The flag
+changes nothing in how the port is bound; the
+[doctor](hub.md#local-networks) judges the binding against Settings →
+Local networks and offers to bind it to a LAN address.
+
+**Why the doctor doesn't trust your host firewall.** Docker publishes a
+container port by writing its own iptables NAT and forwarding rules. That
+traffic is forwarded to the container and never passes the host's `INPUT`
+chain, where ufw (and most host firewall front-ends) put their rules. A
+`ufw deny 445` therefore doesn't stop a published `0.0.0.0:445`. Binding the
+port to a LAN address (the doctor's **Rebind…**), filtering in your router,
+or rules in Docker's `DOCKER-USER` chain do. The Hub can't see host
+firewalls or NAT and doesn't probe reachability from outside, so it judges
+only the bind address.
+
+**Host-network apps.** Docker publishes nothing for a service on the host
+network: the app listens on the host directly, and its port's bind setting
+has no effect. A LAN-only port of such an app is therefore **always a
+Problem, explain-only**: restrict it through the app's own listen address
+and your router or host firewall.
 
 ## Header spoofing protections
 

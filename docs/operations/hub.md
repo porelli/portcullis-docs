@@ -136,6 +136,9 @@ Each enabled app has four tabs: **Settings**, **Status**, **Logs** and **Expert*
 An app that is not enabled has **Settings** and **Expert**, plus **Logs** when
 its last operation failed.
 
+When the [doctor](#doctor) has findings about the app, the panel shows a
+"Doctor: …" line that opens the Doctor tab.
+
 ### Settings
 
 - The **Sign-in** block, only for apps whose manifest declares
@@ -182,6 +185,10 @@ public-exception change restarts the app.
 
 Input validation:
 
+- A path setting is a **custom path** or a **shared folder** (picked in
+  the setting, applied through the folder's preview: see
+  [Shared folders](#shared-folders)). A shared-folder value can't be typed
+  or saved in the panel.
 - Path settings must be absolute host directories (not `/`), without `:`
   (Compose would read it as `host:container`) or newlines. Spaces, quotes and
   `#` are fine, because paths are quoted in the generated override.
@@ -1046,7 +1053,228 @@ disabling it did before instances existed.
   restarts only the apps whose Traefik TLS tier actually changed. Saving an
   unchanged default does nothing.
 
+The tab also has **Domains** ([Enrolling extra domains](#enrolling-extra-domains)),
+**Shared folders** ([below](#shared-folders)) and **Local networks**
+([below](#local-networks)).
+
 User administration moved to the [Users & Groups tab](#users-groups-tab).
+
+## Shared folders
+
+A **shared folder** is a host directory you define once in the Hub (a name
+and a path) and then give to the apps that use it: say `/srv/media` for
+Jellyfin, Plex and Immich, or one photo library that a writer app fills and
+a viewer app reads. The Hub keeps the folder's ownership consistent so
+every app can do what it needs, whatever uid it runs as and whatever umask
+it creates files with:
+
+- the folder gets its **own group** (a gid; the Hub never creates a host
+  group name, an LLDAP group or a group inside a container);
+- every directory is group-writable and **setgid**, so new files land in
+  the folder's group;
+- every directory gets a **default ACL**, so new files are group-writable
+  even when the app's umask is `022`, and open to nobody else;
+- apps that **write** get group read/write; apps that only **read** are
+  always mounted read-only.
+
+Nothing on disk changes except through a preview you applied, and every
+apply first saves a permissions snapshot that **Undo last fix** can put
+back. Find it under **Settings → Shared folders** (admins only; it needs
+Users & Groups). The rules behind it are in
+[Integration Contracts §14](../guides/integration-contracts.md#14-shared-folders-and-the-doctor).
+
+### Defining a folder
+
+**Add shared folder** asks for:
+
+- **Name** (shown everywhere) and an **id** (lowercase letters, digits and
+  dashes, at most 31 characters; filled in from the name, and never changes).
+- **Host path.** It must be strictly under one of the Hub's bind roots
+  (`HUB_OVERRIDE_BIND_ROOTS`, default `/srv:/mnt:/media`) and may not be:
+    - a system or sensitive path (`/etc`, `/proc`, Docker's own storage, …),
+      the core checkout, the settings data files' directory, or at, above or
+      under Docker's data root;
+    - at, above or under another shared folder. The comparison also ignores
+      case and Unicode normalisation, so `/srv/Photos` and `/srv/photos`
+      collide; a path that is the same directory as another folder's (one
+      tree reached through a host bind mount or another spelling) is refused
+      too;
+    - a path with a symlink in it (give the real path), `..`, `:`, `$`,
+      control characters, invisible characters or a component that starts or
+      ends with a space;
+    - on a network, virtual or in-memory filesystem (NFS, SMB/CIFS, FUSE
+      including virtiofs, overlay, tmpfs, 9p such as WSL's `/mnt/c`, Ceph,
+      ramfs, eCryptfs). The Hub can't keep ownership consistent where a
+      server or another layer decides it. Fixes are written only on ext4,
+      XFS, Btrfs and ZFS: a folder on another local filesystem (vfat, exFAT,
+      NTFS) can be checked, never applied.
+- **Check path** probes the path and scans it (at most 30 seconds) and
+  answers in one line, for example
+  `exists · ext4 · ACLs and xattrs supported · 12,410 files · owners 1000:1000 (all)`,
+  plus any problems in plain words. A missing path offers **Create it**: an
+  empty directory, nothing else.
+- **Description** (optional).
+- **Advanced → Adopt an existing host group.** Normally the Hub allocates
+  the folder a gid from **60000–60999**, the lowest free one; a gid is never
+  reused, even after the folder is deleted. To keep a group your host
+  already uses, type its number: at least 1000, not 65534, outside
+  60000–60999, and not 10001 or 10002 (the Hub's and enroll's). Anything
+  else mounted with that gid becomes reachable by the folder's apps, and the
+  Hub says so.
+- **Used by**: every app instance with a path setting. Tick the ones that
+  use this folder and optionally give a **subfolder** (`movies`, created by
+  the apply when missing). An app whose template doesn't declare how it
+  uses folders is mounted **read-only unless you tick "allow writing"**.
+
+Saving the definition changes nothing on disk or in any app. If the **Used
+by** ticks changed, Save opens the assignment preview below.
+
+The folder table shows each folder's path, gid, the apps using it
+(read-only or read/write), its last check and last operation, with
+**Edit**, **Undo last fix…** (when there is something to undo) and
+**Remove**. You can rename a folder or change its description at any time;
+its path only while no app uses it. **Remove** asks you to type the id, is
+refused while any app uses the folder, and never touches the files.
+
+### Assigning apps (preview and apply)
+
+Assigning, changing or removing apps is one operation with a preview. The
+preview changes nothing; it says, for example:
+
+> gid 60001 is allocated for this folder (shown as *Family photos*). 12,410
+> files and 312 folders change group 1000 → 60001; group 1000 keeps
+> read/write through an ACL. … Immich mounts it read-only. Samba and Immich
+> are stopped for about 1 minute, then started. A permissions snapshot is
+> saved first.
+
+and lists each app's setting with its subfolder, access and whether it is
+added, kept or removed, plus warnings (hard links, nested mount points and
+other entries the fix leaves alone). **Apply** then:
+
+1. stops the affected apps that are running (enabled-but-stopped ones are
+   only regenerated);
+2. saves the permissions snapshot, applies the ownership and verifies it
+   ("verified: 0 entries differ");
+3. points the apps' settings at the folder (`folder:<id>` or
+   `folder:<id>/<subfolder>`), starts the apps again and runs their
+   settings delivery.
+
+Nobody loses access they had: groups and owners that had rights keep them
+through ACL entries, and "others" bits are never changed. Some entries are
+never touched and are reported instead: hard-linked files, other mounts,
+devices, setuid/setgid files and files with file capabilities.
+
+If anything fails before the settings are saved, the apps start again with
+their old configuration and the error names the snapshot (Undo is offered
+if the disk changed). If the setup changed between the preview and Apply,
+Apply answers "the setup changed since the preview": preview again.
+
+While an apply runs, the affected apps are marked busy: their settings,
+Expert pages, hostnames and backups answer "shared folder <name> is being
+applied". The preview estimates the downtime from the number of entries
+(about 5,000 a second for each of its three passes).
+
+!!! note "Very large folders and queued restarts"
+    A restart queued for an app (by a settings save, for example) waits
+    for the app's operation for at most 20 minutes. An apply of a folder
+    with millions of entries can take longer; a restart that gives up stays
+    owed and runs at the next Hub start (the app's last operation shows
+    `restart`, failed). The apply's own start of the app already uses the
+    new configuration, so normally nothing is lost.
+
+**In an app's settings panel**, a path setting has a picker: **Custom
+path** or **Shared folder: <name>**. Choosing a folder, or going back to a
+custom path, opens the same preview: it never goes through the panel's
+**Save**. A setting on a shared folder shows the folder and its host path,
+with **Change subfolder…**.
+
+**Moving a setting to another folder takes two steps:** remove it from the
+first folder (pick **Custom path**, or untick it there), then assign it to
+the second. The Hub refuses a setting that is still on another folder
+("unassign it from <name> first").
+
+Other refusals you may see in the preview:
+
+- two settings of one app's service that would need different primary
+  groups: "point both settings at the same shared folder" (Plex: keep its
+  three libraries on one folder);
+- two apps that must own what they write on the same folder;
+- a change that would remove someone's access on a filesystem without ACLs
+  (explain-only).
+
+### Undo last fix
+
+**Undo last fix…** (in the folder table, and on the doctor's drift finding)
+puts back the permissions the last apply changed, from its snapshot. Its
+preview says how many entries go back and how many **changed since the
+fix** and are left alone, so an undo never takes away access granted
+since. It stops and starts the apps like an apply; the settings stay
+pointed at the folder. An undo **can't be undone**: it saves a safety copy
+of what it rewrote, but offers no undo of itself.
+
+## Doctor
+
+The **Doctor** tab checks the whole setup, including folders and paths you
+set up by hand, and lists findings as **Problems** (broken or unsafe now),
+**Warnings** (likely to break, or weaker than intended) and **Info**. The
+tab's badge counts Problems and Warnings, and each app's detail panel shows
+a "Doctor: 1 problem, 2 warnings" line linking to the tab.
+
+Each finding says what is wrong, why it matters, which apps, folders and
+paths it concerns, and what a fix would do. Its buttons:
+
+- a **one-click fix** with a preview and Apply: **Manage as shared
+  folder…** (two apps using one hand-typed path), **Apply again…** (a folder
+  that drifted), **Undo last fix…**, **Rebind…** (a LAN-only port, below);
+- **Explain**: the steps to do by hand, for anything risky (moving data,
+  nested paths, custom-override mounts, hard links, host networking);
+- **Open setting**: the app's settings panel at the option;
+- **Mute** with a reason. A muted finding moves to **Muted** and comes back
+  by itself as soon as what it judged changes.
+
+The doctor never changes anything by itself. The cheap checks (settings,
+templates, ports, groups) run every time you open the tab. The **disk
+checks** scan the folders and the shared hand-typed paths: daily, after
+every apply, and when you click **Run disk checks**. A scan stops after
+2,000,000 entries or 10 minutes; its findings then say "(partial scan …)".
+
+What it finds includes: two apps using the same hand-typed path, a folder
+that drifted since the last apply, an app that can't write or read where it
+must, a path outside the bind roots, a template that doesn't say how it
+uses folders, a folder that changed on disk under a running app, an app
+container that holds a shared folder's gid without being assigned it,
+missing ACL support, too little free space or the wrong filesystem for an
+app's declared checks, per-person settings with no group values, and
+LAN-only ports reachable from outside.
+
+## Local networks
+
+**Settings → Local networks** lists the networks that count as local: one
+CIDR per line, at most 64. The defaults are `10.0.0.0/8`,
+`172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7` and `100.64.0.0/10`
+(private ranges, IPv6 unique-local and the tailnet). Loopback always counts.
+An empty list means only loopback; **Reset to defaults** goes back to the
+defaults. The panel warns about a range broader than **/8** (IPv4) or
+**/64** (IPv6): a large share of the internet, or more than one site, would
+count as local.
+
+The doctor uses the list to judge ports a template marks **LAN only**
+(Samba, for example):
+
+- bound to all interfaces (`0.0.0.0`, the default) → Warning;
+- bound to an address outside the local networks, or one your main
+  domain's DNS records point at → Problem.
+
+Both offer **Rebind…**: type the address to bind to (an IP inside the
+local networks, not `0.0.0.0` or `::` and not one your main domain points
+at; usually the host's LAN address, for example `192.168.1.10`); the Hub writes the port's bind address and restarts the
+app (putting the old bind back if the restart fails). A port added through
+a custom override is explain-only (edit the override). A LAN-only port of
+an app on the **host network** is always a Problem and explain-only: Docker
+publishes nothing for it, so the bind address has no effect; restrict it in
+the app's own listen address and in your router or host firewall. See
+[Security & Hardening](hardening.md#lan-only-ports-and-host-firewalls) for
+why a host firewall such as ufw doesn't help with published ports.
 
 ## Users & Groups tab
 

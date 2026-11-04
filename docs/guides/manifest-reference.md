@@ -507,6 +507,37 @@ and [§14](integration-contracts.md#14-shared-folders-and-the-doctor).
 
 **`ports[].lan_only`**: see [ports](#ports).
 
+**Choosing `runs_as` and `joins_group`.** Give the ids the app's process
+really has on the mount:
+
+- the image runs as root and the compose service sets no `user:` (Jellyfin,
+  Immich): `runs_as: {uid: 0, gid: 0}` with the default `group_add`;
+- the service sets `user: "1000:1000"`: the same numbers;
+- the service sets `user: "${PUID:-1000}:${PGID:-1000}"`: `runs_as:
+  {uid_env: PUID, gid_env: PGID}`, both instance `int` options;
+- the image drops supplementary groups before starting the app (s6
+  `s6-setuidgid`, `su -g`, many PUID/PGID images): a `group_add` gid never
+  reaches the process. Use `joins_group: gid_env` so the Hub writes the
+  folder's gid into the app's primary group variable instead (Plex:
+  `PLEX_GID`), or, for a root process that keeps its own rights, say so in
+  the notes (motionEye).
+
+**One primary group per process.** With `joins_group: gid_env` every
+folder option of the service shares that one variable, so they must all
+use the **same shared folder** (subfolders are fine) or all use host paths;
+the Hub refuses an assignment that would need two gids ("point both
+settings at the same shared folder"). Plex's three libraries follow this
+rule; say it in the template's notes so admins know. The variable may not
+be read by another service's `user:` or `group_add`.
+
+**Hardware transcoding next to a folder block.** Next to a `folder` block,
+every `group_add` entry of the target service must be a number or exactly
+one `${NAME}` of an instance `int` option; group names (`video`,
+`render`) are refused. The render group's gid differs from host to host,
+so declare an `int` option (for example `render_gid`, env `RENDER_GID`,
+default `109`) and write `group_add: ["${RENDER_GID:-109}"]`. A variable
+that isn't a declared `int` option is refused on every service.
+
 **Jellyfin example:**
 
 ```yaml
@@ -1135,6 +1166,18 @@ green Lint means the Hub lists the template. Besides the field rules above:
   holds no `'`, `\` or line break (JSON text: no `\"` escapes either).
 - **Secrets:** `scope: instance` only; `generate.length` within `min_len` /
   `max_len`.
+- **Shared folders, checks and gids:** the rules and every refusal are
+  listed in
+  [contracts §13.15](integration-contracts.md#1315-shared-folders-checks-and-lan-only-ports).
+  In short: `folder` only on instance `path` options and never with `mode`,
+  `needs` or `writes_as`; `runs_as` matches the service's compose `user:`;
+  gids 60000–60999 (the folder groups) are refused wherever a gid comes
+  from; on **every** service, the compose `user:` uid is a whole number, a
+  user name or one reference, its gid a whole number or one reference, and
+  each `group_add` entry a whole number, a group name or one reference,
+  where a reference is exactly `$NAME`, `${NAME}`, `${NAME:-n}` or
+  `${NAME-n}` naming an instance `int` option (no mixed text, nesting or
+  `+` forms); YAML `!!binary` is refused anywhere.
 
 The validator also warns when a service reads a secrets file but runs
 neither as root nor as `user: "10001"`.

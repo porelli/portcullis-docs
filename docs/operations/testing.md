@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`, `e2e-folders`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
@@ -292,6 +292,45 @@ container logs, screenshots and traces. The traces start after the
 setup-link sign-in; the setup pages' screenshots still show the (consumed)
 setup links, and traces carry session cookies of the throwaway stack.
 
+### `e2e-folders` (shared folders and the doctor)
+
+Built like `e2e-settings` (the same-named templates and Hub branches, else
+`main`; the Traefik alias override; the Hub's data seeded with one local
+source): the templates repo's `jellyfin` (the step fails if it has no
+`folder` block) and the CI fixture `tests/e2e/apps/folder-writer` (alpine
+as `user: "2001:2001"` with umask `022`, a read-only root filesystem and no
+capabilities; its option `shared` has `folder: {access: write, runs_as:
+{uid: 2001, gid: 2001}}`; it writes a new file into `/shared` at every start
+and has a `lan_only` TCP port `WRITER_PORT`, default 18765). Before the
+stack starts, the job installs `acl`, checks that `/srv` is ext4 and takes
+ACLs, and builds `/srv/e2e-media`: 6 directories `0750` and 50 files
+`0640`, all `1000:1000`.
+
+`tests/e2e/e2e_folders.py` (Python standard library only, no browser) drives
+the Hub's admin API, `sudo find` / `getfacl` and docker through 14
+scenarios, every count exact:
+
+| Scenario | Checks |
+|----------|--------|
+| tree | 50 files and 6 directories as built, no ACLs |
+| enable | jellyfin and folder-writer enable; the writer can't write yet and created no file |
+| check | Check path's summary is exactly `exists · ext4 · ACLs and xattrs supported · 50 files · owners 1000:1000 (all)` |
+| create | folder `media` gets gid 60000, not adopted |
+| preview | the preview's lines (gid allocated, "50 files and 6 folders change group 1000 → 60000", group 1000 keeps its access through an ACL on 56 entries, both apps stopped for under a minute); nothing changed on disk |
+| apply | the operation succeeds: 56 entries, a snapshot, 2 uses added |
+| host verify | every entry has gid 60000 and its old owner; directories `2770` with `group:1000:r-x` in the access ACL and a default ACL of `group::rwx`, `mask::rwx`, `other::---` and no entry for group 1000; files `0660` with `group:1000:r--` |
+| writer file | the writer's new file is `2001:60000`, mode `660` despite umask `022` |
+| jellyfin | its process has gid 60000, lists the library, and can't write (read-only file system) |
+| no drift | a disk check newer than the request finds no `folder_owner` finding |
+| drift | after a `chgrp 1000` of the writer's file, exactly one `folder_owner` Warning offering `reapply_folder` and `undo_folder` |
+| undo | the preview says 56 entries go back, 0 changed since; after the undo every original entry has its exact original owner, group and mode and no ACL, and the folder has nothing left to undo |
+| exposure | `WRITER_PORT` on `0.0.0.0` is one `lan_only_exposed` Warning; **Rebind…** to `127.0.0.1` leaves `docker port` showing only `127.0.0.1:18765`, and the finding is gone |
+| proxy | the Hub's socket proxy is unchanged from `main`, the Hub has no Docker socket, and no fixer helper container is left |
+
+A scenario that builds on a failed one fails too. On failure the job
+uploads `e2e-folders-artifacts`: logs, API answers, the tree and
+`getfacl -R`, the Hub's folder data, snapshots and the doctor cache.
+
 **Cross-repo branches.** `ci.yml` also runs on `workflow_dispatch`. On a
 branch whose name exists in porelli/portcullis-hub (not `main`, not a tag),
 `.github/actions/hub-image` builds the Hub from that branch instead of pulling
@@ -505,7 +544,21 @@ pinned by commit SHA.
 - **`test`**:
     - `gofmt -l .` must be empty
     - `go vet ./...`
-    - `go test -race -count=1 ./...`
+    - `go test -race -count=1 ./...` (after installing `acl`, so the ACL
+      codec is checked against the kernel's `setfacl` bytes)
+    - **folderfix root tests:** `sudo go test -tags fixerroot
+      ./internal/folderfix/` runs the shared-folder fixer as root on real
+      files: ACLs, setgid, `must_own`, hard links, setid files, file
+      capabilities, other mounts, devices, unreadable entries, apply,
+      snapshot, restore and its dry run. Under CI these tests fail instead
+      of skipping when root, ACLs, `getfacl` or `mount` are missing.
+    - **fixer helper docker tests:** `go test -tags docker -run TestDocker
+      ./internal/hub/` with a required Docker daemon builds a Hub-shaped
+      image and runs the real fixer helper: scan, snapshot, apply, verify
+      and restore on a real volume; its capabilities, no-new-privileges,
+      uid, network, read-only root filesystem and process limit from inside;
+      every capability dropped in turn (each mode needs exactly its set);
+      and the Hub finding its own container ID from its mountinfo.
     - `go build ./cmd/hub`
 
     The unit tests cover validation, strict route parsing, the policy-file

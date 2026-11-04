@@ -414,6 +414,51 @@ Each delivery fails closed: a value that can't be rendered for a claim or
 header is left out (the person gets none, never someone else's or a
 default), and a stale claim value is never kept in a token mapper.
 
+## Shared folders and the doctor
+
+A [shared folder](operations/hub.md#shared-folders) is a host directory
+several app instances use. The Hub gives it one group (a gid from
+60000–60999, or an adopted one), mounts it into each app (read-only for
+readers), adds the gid to the app's groups, and keeps the files' ownership
+consistent: the folder's group, setgid directories and default ACLs, so
+whatever uid and umask an app writes with, the others can use the result.
+The rules are [contracts §13.15 and §14](guides/integration-contracts.md#14-shared-folders-and-the-doctor).
+
+```mermaid
+flowchart LR
+    Admin[Admin<br/>Shared folders / Doctor]
+    Hub[Hub]
+    Proxy[socket-proxy-hub]
+    Fixer[fixer helper<br/>Hub image, uid 0,<br/>mode's capabilities only,<br/>no network]
+    Folder[(host folder<br/>/srv/media)]
+    Snap[(permissions snapshots<br/>hub_data)]
+    Apps[App instances]
+
+    Admin -->|preview, apply| Hub
+    Hub -->|Docker API| Proxy -->|start / remove| Fixer
+    Fixer -->|probe, scan, apply, restore| Folder
+    Fixer -->|snapshot| Snap
+    Hub -->|stop, regenerate, start| Apps
+    Apps -->|bind mount + group| Folder
+```
+
+The Hub never touches host files itself and has no host shell. Every
+change goes through a short-lived **fixer helper** (the Hub's own image,
+started through the Hub's socket proxy, one bind mount of the folder) and
+through one sequence: preview (nothing changes) → stop the affected apps →
+permissions snapshot → apply exactly the planned entries → verify → save
+the settings → start the apps. Undo restores the snapshot the same way.
+See [Security & Hardening](operations/hardening.md#shared-folders-and-the-fixer-helper)
+for the helper's limits.
+
+The **doctor** reads the whole setup (state, templates, overrides, ports,
+settings, group membership, cached disk scans, and the groups of the
+processes running in each app's containers) and reports findings with
+their severity and the fix it offers: one-click fixes go through the same
+previewed operations, risky ones are explained, and it never changes
+anything by itself. It also judges ports templates mark LAN only against
+the admin's [local networks](operations/hub.md#local-networks).
+
 ## Expiry Flow
 
 Temporary group memberships (manual memberships with expiry, or exceptions with expiry in rule-based groups) are enforced strictly, even while the Hub is down.

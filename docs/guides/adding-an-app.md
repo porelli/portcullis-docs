@@ -193,6 +193,62 @@ The complete list of fields and rules is in the
 [Manifest Reference](manifest-reference.md#settings); `tests/validate.py`
 refuses exactly what the Hub refuses, with the same messages.
 
+### Host folders, doctor checks and LAN-only ports
+
+If the app reads or writes a host folder (media libraries, photos, a
+recordings folder), give the `path` option a **`folder` block** instead of
+`mode`, `needs` and `writes_as`. It tells the Hub what the app does there
+and as which ids, so an admin can point the setting at a
+[shared folder](../operations/hub.md#shared-folders) that several apps use
+with consistent ownership:
+
+```yaml
+    - key: movies_path
+      label: Movies folder
+      type: path
+      target: {service: jellyfin, mount: /data/movies}
+      folder:
+        access: read                  # read is always mounted read-only
+        runs_as: {uid: 0, gid: 0}     # the ids the process has: here root, no compose user:
+      applies: restart
+```
+
+Check what the image really does before you choose `runs_as` and
+`joins_group`:
+
+- **Which uid and gid** the app's process has (`docker exec … id`). With a
+  compose `user:`, the numbers must match it; with `user:
+  "${PUID:-1000}:${PGID:-1000}"`, use `uid_env: PUID` / `gid_env: PGID`
+  (both instance `int` options).
+- **Whether it keeps supplementary groups.** The default `group_add` adds
+  the folder's gid as a supplementary group. Images that start the app
+  through `s6-setuidgid`, `su -g` or a similar switch drop it. Then use
+  `joins_group: gid_env` (the Hub writes the folder's gid into the
+  `runs_as.gid_env` variable), as Plex does with `PLEX_GID`. All folder
+  options of that service then share one primary group: they must use the
+  same shared folder, so say so in the notes (Plex's "keep all three
+  library settings on the same shared folder").
+- **Other `group_add` entries** on that service (hardware transcoding's
+  render group, for example) must be numbers or exactly one `${NAME}` of a
+  declared `int` option: declare `render_gid` (env `RENDER_GID`, default
+  `109`) and write `group_add: ["${RENDER_GID:-109}"]`. Group names are
+  refused next to a folder block.
+- **Never use gids 60000–60999**: they are the folder groups.
+
+Add **`checks`** next to `folder` when the app needs something the Hub can
+verify: a filesystem feature (`filesystem`, e.g. `needs: [xattr, acl]` for
+macOS metadata), no second writer (`exclusive`), or `free_space`. The
+doctor shows your `reason` with its finding.
+
+Mark a port that should never be reachable from the internet (SMB, a local
+discovery protocol) **`lan_only: true`**: the doctor then warns when it is
+bound to all interfaces or a public address.
+
+The fields are in
+[Manifest Reference → Shared folders](manifest-reference.md#shared-folders-folder-checks-lan_only);
+the full rule set and every refusal are in
+[contracts §13.15](integration-contracts.md#1315-shared-folders-checks-and-lan-only-ports).
+
 ### Data files, hooks and reload
 
 When the app reads a configuration file, or needs per-person values without
@@ -601,6 +657,7 @@ docker compose logs group-gate | grep myapp   # DENIED / ALLOW-UNMAPPED / STEPUP
 - [ ] `compose.yml`: networks, `` Host(`${PORTCULLIS_HOST_<ROUTER>:-…}`) `` form, own hostname / client id / groups via the instance variables, middleware order, `security-headers@file`, volumes without `name:`, no `ports:`
 - [ ] Secrets are `generate: random`; no default passwords; secrets an admin enters are `type: secret` options
 - [ ] Every option has an explicit `applies` that matches how the app reads it; per-person roles are `privileged`; hooks are idempotent and fail on any error
+- [ ] Host folders: a `folder` block with the `runs_as` ids the process really has, `joins_group: gid_env` where the image drops supplementary groups; LAN-only ports marked `lan_only: true`
 - [ ] Header-auth: identity header trusted only from `PORTCULLIS_TRAEFIK_IP`
 - [ ] Images pinned `tag@sha256:…`; directory added to `.github/dependabot.yml`
 - [ ] `tests/apps/<app-id>.sh` added

@@ -74,3 +74,5 @@
 *[data files]: JSON files the Hub writes for an app's settings and bind-mounts read-only into the app
 *[privileged option]: A per-person setting that grants a privilege; per-group values only from groups delegates can't steer
 *[privileged options]: Per-person settings that grant a privilege; per-group values only from groups delegates can't steer
+*[fixer helper]: Short-lived container the Hub starts from its own image to scan or fix a shared folder's ownership (no network, only the mode's capabilities)
+*[LAN only]: A template port that should be reachable only from the local networks; the Hub's doctor judges its binding

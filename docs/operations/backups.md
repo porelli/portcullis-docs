@@ -56,6 +56,34 @@ An instance backup can be restored into the same instance (replacing its data)
 or into a **new instance id** (creating a copy). See [integration contracts
 §11.5](../guides/integration-contracts.md#115-backups).
 
+### Shared folders and host paths
+
+**Neither backup copies the files in a [shared folder](hub.md#shared-folders)
+or in any host path an app mounts** (`/srv/media`, a photo library, …).
+Instance backups copy Docker volumes only, and the core backup copies the
+core's own volumes and files. Back those directories up with your own host
+tools (restic, borg, ZFS or Btrfs snapshots, a NAS job).
+
+What the backups do hold:
+
+- **Folder definitions** (name, path, gid, the gids ever allocated) are in
+  the Hub's `state.yaml`, so in the core backup. An instance backup keeps the
+  instance's settings, `folder:<id>` values included. Restoring it where
+  that folder doesn't exist clears those values with a warning ("setting <k>
+  named shared folder <id>, which doesn't exist; cleared"); restoring into a
+  new instance id warns about the folders the copy now uses.
+- **Permissions snapshots.** Every folder apply first saves a snapshot of
+  the permissions it is about to change (path, inode, owner, group, mode and
+  ACLs of each entry, not the contents) in
+  `<hub data>/folder-snapshots/<folder>/<UTC timestamp>.ndjson.gz` with a
+  `.sha256` next to it (files `0600`); the last 3 per folder are kept. They
+  are what **Undo last fix** restores, and they are in `hub_data`, so in the
+  core backup. An undo saves a safety copy of what it rewrote the same way,
+  but an undo itself can't be undone.
+
+A permissions snapshot only undoes a permissions fix on the same folder: it
+records inodes, so it doesn't apply to files restored from another backup.
+
 !!! note "First backup on a fresh host"
     On a host without the `group-gate` image (a fresh install before the first `portcullis up`, or after `docker image rm`), `./portcullis backup` builds it first (needs network access to Docker Hub and PyPI for the pinned, hashed Python dependencies: cryptography, PyJWT).
 
