@@ -641,7 +641,10 @@ person loses access.
 | `applies` | `live` | No | Credential changes reach the app through hooks with `credential_change` |
 
 `label`, `description` and `section` work as for every option;
-`self_visible` and `checks` are refused.
+`self_visible` and `checks` are refused. The template must declare at least
+one hook on `mount.service` whose `when` includes `credential_change`: it
+applies revocations live (within 8 s, else the Hub stops and restarts the
+instance).
 
 **`person_id`**: a stable number per person, allocated by the Hub.
 
@@ -1362,7 +1365,8 @@ green Lint means the Hub lists the template. Besides the field rules above:
   `group_access: true` and `access_group`; their fields as listed (wrong
   `hash`, `length` < 24 or not a multiple of 4, a list or non-file
   `delivery`, a missing or colliding `mount`, `revoke_on_leave` not `true`,
-  `on_restore` not `void`, any scope field, an unknown `pool`,
+  `on_restore` not `void`, no hook on `mount.service` with
+  `credential_change`, any scope field, an unknown `pool`,
   `self_visible` not `false` on `person_id`, a bad `username.pattern`, an
   `info` placeholder naming an unknown or ineligible option or port are
   refused); `uid_from` / `gid_from` name a `person_id` option, `gid_from`
