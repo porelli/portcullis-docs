@@ -401,6 +401,13 @@ statically (a root container that changes its own groups, an image's own
 reads the groups of the processes in each app's containers and reports any
 folder gid an app holds without an assignment.
 
+**Directories are group-writable** even for read-only uses: every directory
+gets `g+rwx` and setgid, so files created in them land in the folder's
+group with group write. This holds for readers too (an app can read a folder
+that changed since its last start), so a reader could write files there.
+Restrict write access by controlling the set of apps assigned the folder,
+not by relying on the mount's read-only flag alone.
+
 **Residual risks:**
 
 - **Swapping a subfolder while an app starts.** A writer app could replace

@@ -1696,6 +1696,7 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
 - **State** (`state.yaml`): `folders` (id → name, path, description, gid, adopted, created_at, the root's device, inode and mount root, the per-use write confirmations, `last_apply` `{at, files, owner_uid, snapshot}`, cleared by an undo) and `folder_gids`. A corrupt entry stops the Hub at start, like any corrupt `state.yaml`.
 - **Uses are derived** from the setting values (`folder:<id>[/<subpath>]`), never stored separately: "assigned but not applied" is never a stored state (§14.3).
 - **Update:** name and description at any time; a path change while any instance uses the folder is `409`. **Delete:** `409` while any instance's value names it (listing them); it never touches files and its gid stays used. Deleting an instance drops its uses (its values go with it) and its write confirmations; the folder stays.
+- **Re-check identity** (`POST /api/folders/{id}/recheck/preview` / `.../recheck/apply {plan_hash}`): after a reboot on btrfs or LVM, the folder's device or mount root may change while the folder path stays the same; messages caused by a device/inode/mount-root mismatch then say "the folder's identity changed (e.g. after a reboot on btrfs/LVM): re-check it in Shared folders" instead of "re-apply". The preview probes and scans the folder, showing old → new device/inode/mount root; apply re-stores them (audited `folder.update recheck`) after a confirmation. The folder is still usable (restart needed for the new identity to reach containers); `last_apply` is kept (same tree).
 
 ### 14.2 On disk
 
@@ -1782,6 +1783,7 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
     - `person_option`: a per-person option with no group rows → Info (Warning with `requires_group_value`, showing its reason; "No rows" counts only rows bound to an existing group id); a row whose group has nobody in the instance's population → Warning naming the group; a row whose group id no longer exists → Warning. All link to the option in the settings panel.
     - `no_acl`: a folder or scanned path without ACL support → Warning. `skipped_entries`: hard links, nested mount points, specials, setid files, files with file capabilities (`filecaps`), paths over 4096 bytes and entries with ACLs too large to snapshot → Warning, explain-only, with counts and samples.
     - `folder_changed`: the post-start probe found a folder's subpath or root changed (§14.2) → Problem, explain-only.
+    - `folder_reachable_above`: a target service (or any service the folder gid reaches) has another mount (setting, custom override) at or above the folder's path → Problem, explain-only with the mounts. The assignment preview refuses this setup with `409` before any run.
     - `lan_only_exposed`, `host_network` (§14.7). `scan_failed`.
 - Project 3 registers more kinds (file-share passwords) through the same check interface.
 
@@ -1799,7 +1801,7 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
 ### 14.7 Local networks and exposure
 
 - **Local networks** (Hub Settings, `GET` / `PUT /api/settings/local-networks`): a list of CIDRs, ≤ 64 entries, no host bits, no `/0` prefix. `null` = the defaults `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `100.64.0.0/10` (RFC 1918, IPv6 ULA, the tailnet); `[]` = loopback only. Loopback (`127.0.0.0/8`, `::1`) always counts as local. Stored in `state.yaml` `local_networks`; audited `settings.local_networks` (`<N> networks`).
-- **Only `lan_only` ports are judged** (§13.15), template ports and custom-override ports alike (matched by service and container port). Addresses are unmapped (`::ffff:192.168.1.10` is `192.168.1.10`) before every comparison; no address means all interfaces.
+- **Only `lan_only` ports are judged** (§13.15), template ports and custom-override ports alike (matched by service and container port). Addresses are unmapped (`::ffff:192.168.1.10` is `192.168.1.10`) before every comparison; no address means all interfaces. **Ephemeral ports** (host port `0`, `-` alone in compose short form, or long syntax without `published`, or `IP::container` without a host port: Docker picks a free host port at start) are judged with their bind address (loopback counted as local); collision checks skip port 0.
 - `lan_only_exposed`: bound to `0.0.0.0`, `::` or no address → **Warning**; to an address outside the local networks, or to an address the main domain's A / AAAA records point at → **Problem**. Both offer `rebind_port` for template ports; a custom-override port is explain-only (edit the override), A `lan_only` port of a `network_mode_host` service is always a **Problem**, explain-only, whatever its `<KEY>_BIND` says: compose publishes nothing for it, so the bind has no effect (steps: the app's own listen address, the host firewall); the bind isn't an input of its mute. The main domain is resolved with a 2 s timeout and cached for 5 minutes; a failed lookup escalates nothing and the finding says "couldn't resolve <domain>".
 - `host_network`: a `lan_only` port of a `network_mode_host` service → **Warning**, explain-only: "Docker publishes around host firewalls such as ufw; restrict the port in your router or host firewall". The Hub can't see host firewalls or NAT and doesn't probe reachability from outside.
 
@@ -1820,7 +1822,7 @@ Hub listener only (the people listener gets no new route, §5.1), `adminOnly` (n
 - `POST /api/doctor/scan` → 202 (`poll: "/api/doctor/op"`); `GET /api/doctor/op`;
 - `POST /api/doctor/findings/{fp}/preview` `{params}` → `FixPlan`;
 - `POST /api/doctor/findings/{fp}/apply` `{plan_hash, params}` → 202;
-- `POST /api/doctor/findings/{fp}/mute` `{reason}`;
+- `POST /api/doctor/findings/{fp}/mute` `{token, reason}` (the finding's opaque `token` from the report JSON; a mismatch → `409` "the finding changed since you saw it"); 
   `DELETE /api/doctor/findings/{fp}/mute`;
 - `GET|PUT /api/settings/local-networks` `{networks: [..] | null}` →
   `{networks, default}`.
