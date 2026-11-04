@@ -21,6 +21,7 @@ Portcullis is split across four repositories that meet at a few well-defined int
 - **Templates are versioned by tag.** The Hub tracks the source's default branch.
 - **Template contract v3** (§13 Settings, §4.1 user-attributes v2, §5.1 `/api/me/apps`, §6 exec stdin and kill, §8 per-client setting mappers) is a MAJOR bump.
 - **Shared folders** (§13.15 the `path` option's `folder` block, `checks` and `ports[].lan_only`; the `folder:<id>` value form; §6 the folder fixer; §14) add optional fields to template contract v3: a MINOR bump. A Hub without them refuses `folder` and `checks` (reserved fields, §13.2) and ignores `lan_only`, so a template that uses them lands only after a Hub that implements §14 is published (`edge`): merge order docs → Hub → templates → core.
+- **File sharing** (§13.2 the `person_secret` and `person_id` types, §13.7 `tsv` data files, §13.8 the `credential_change` trigger and hook reports, §13.16 per-person credentials and ids, §13.17 the file-sharing templates; §3 router-less `custom` templates and `PORTCULLIS_LOCAL_NETWORKS`; §5.1 the credential routes; §6 the `hub_secrets` mount; §10 url-less portal entries; §11.5 / §11.6 credentials outside backups) add optional fields to template contract v3: a MINOR bump. A Hub without them refuses `person_secret` and `person_id` (reserved types), so the templates that use them land only after a Hub that implements them is published (`edge`): merge order docs → Hub (wait for `edge`) → templates (`.core-ref` back to `main`) → core (whose file-sharing e2e needs Hub `edge` and templates `main`).
 - **Current state.** No repository has a release tag yet: `HUB_IMAGE` defaults to `edge` and `.core-ref` is `main`.
 
 ## 2. Core environment variables available to templates
@@ -36,7 +37,7 @@ When a template's `compose.yml` references a variable, the Hub copies its value 
 
 Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any other required variable must be declared in the manifest's `env:` with `generate: random`. The Hub writes those into the per-app `.env`.
 
-**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest. For shared folders (§13.15, §14) it also writes `PORTCULLIS_FOLDER_GID_<KEY>` and `PORTCULLIS_FOLDER_UID_<KEY>` for every `path` option; the whole prefix `PORTCULLIS_FOLDER_` is reserved.
+**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest. For shared folders (§13.15, §14) it also writes `PORTCULLIS_FOLDER_GID_<KEY>` and `PORTCULLIS_FOLDER_UID_<KEY>` for every `path` option; the whole prefix `PORTCULLIS_FOLDER_` is reserved. Every instance's `.env` also carries `PORTCULLIS_LOCAL_NETWORKS` (§3.1), which LAN-only templates read (§13.17).
 
 ## 3. Template layout
 
@@ -46,12 +47,14 @@ Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any 
 
 - **Support files.** Files that ship with a template are bind-mounted as `./templates/<app-id>/<file>`. Compose resolves relative paths against the core checkout on the host. Before every `compose up`, the Hub copies the template directory to `<core>/templates/<app-id>/`; core mounts `./templates` read-write into the Hub at `/project/templates`. All instances of a template share this copy, so support files are mounted read-only (`:ro`).
 - **Networks.** Frontends join the external network `portcullis-proxy`; internal services join only `default`. A service name on `portcullis-proxy` is ambiguous once a template has two instances, so services address each other only over `default` (Traefik reaches containers by IP, not by name).
-- **Volumes.** A `single` template may name a (non-external) volume only inside its own namespace: `name: portcullis_<template-id>`, or a name starting with `portcullis_<template-id>-` or `portcullis_<template-id>_` (without `name:` compose calls it `portcullis-<template-id>_<key>`); any other name — another app's, core's, a bare `portcullis_<key>`, a name outside `portcullis_` — is refused. A `multi` template (§3.1) declares **no** `name:`; the Hub's override sets it (§11.2). A name two templates' default instances (or an instance and a default instance, §11.1) would share — template `a`'s `portcullis_a-b-data` and template `a-b`'s, a `multi` default instance's `portcullis_<key>` — is a name collision: the Hub loads only the first template (enabled ones first, then source order) and refuses such an instance. Core's volume keys (`postgres_data`, `vault_data`, `lldap_data`, `hub_data`, `traefik_acme`, `domains_data`, `prometheus_data`, `alertmanager_data`, `grafana_data`: Docker names `portcullis_<key>`) are refused as volume keys and as volume names, and an external volume may not be named `portcullis*` (an external volume without `name:` is named by its key): that is core's or another instance's data. Volume names must be literals.
+- **Volumes.** A `single` template may name a (non-external) volume only inside its own namespace: `name: portcullis_<template-id>`, or a name starting with `portcullis_<template-id>-` or `portcullis_<template-id>_` (without `name:` compose calls it `portcullis-<template-id>_<key>`); any other name — another app's, core's, a bare `portcullis_<key>`, a name outside `portcullis_` — is refused. A `multi` template (§3.1) declares **no** `name:`; the Hub's override sets it (§11.2). A name two templates' default instances (or an instance and a default instance, §11.1) would share — template `a`'s `portcullis_a-b-data` and template `a-b`'s, a `multi` default instance's `portcullis_<key>` — is a name collision: the Hub loads only the first template (enabled ones first, then source order) and refuses such an instance. Core's volume keys (`postgres_data`, `vault_data`, `lldap_data`, `hub_data`, `hub_secrets`, `traefik_acme`, `domains_data`, `prometheus_data`, `alertmanager_data`, `grafana_data`: Docker names `portcullis_<key>`) are refused as volume keys and as volume names, and an external volume may not be named `portcullis*` (an external volume without `name:` is named by its key): that is core's or another instance's data. Volume names must be literals. The top-level volume key **`portcullis-hub-secrets`** is reserved for the Hub's override (§6, the per-person secrets mount): the Hub's and the templates repo's validators refuse it as a template volume key, as the source of a service's volume and in `volumes_from`, and the custom override refuses it as a named-volume source.
 - **Middlewares.** Forward-auth and header-auth routers use `portcullis-auth@docker,portcullis-groups@docker` (on extra-domain hosts the Hub's override renders `portcullis-auth-ext@docker` instead, §5; templates always write `portcullis-auth@docker`). Native-OIDC host-wide routers must not, nor may `mtls`, `custom` or `public` routers. For a `custom` template with `auth.native_login` the Hub's override sets every router's `middlewares` label: `portcullis-auth@docker,portcullis-groups@docker,<the template's own>` (Portcullis sign-in, the default) or the template's own without the pair ("own login only", only with `allow_without_gateway: true`; TLS tier `public@file`, no `groups` entry). The template is never edited.
 - **Public exceptions.** A template may declare share-link paths in `auth.public_access` (`enabled_by_default`, `default_mode` `listed|all`, `token_pattern`, `credential_headers`, `credential_cookies`, `credential_query`, `static_extensions`, `service`, `paths[]` with `prefix` (optionally one whole `{token}` segment), `description`, `supporting`, `exact`, `broad` + `justification`); header-auth templates with it also declare `auth.identity_headers`. Fields and rules: [Manifest reference](manifest-reference.md#authpublic_access). The template never ships the public router: the Hub generates it (§5). Router and middleware names starting with `portcullis-public-` are reserved for the Hub.
 - **Core names are off limits (NEW, domains).** The Hub rejects a template whose `compose.yml` mentions `forward-auth-ext`, `portcullis-auth-ext` or `portcullis-oauth2-` anywhere (the extra-domain sign-in is rendered by the Hub only, §5), sets `name:` or `external:` on any top-level network other than the `portcullis-proxy` placeholder (key exactly `portcullis-proxy`, `external: true`, `name` absent or exactly `portcullis-proxy`): every other network, `default` included, is project-scoped and may use any key, so a template can't join a core network (`portcullis`, `portcullis-auth`, `portcullis-certs`, …), another instance's `<project>_default` or any foreign network by name, sets `network_mode` to anything but exactly `none`, `host` or `service:<another service of the same template>` (any other value is a network name — `network_mode: portcullis` would put the service on core's internal network, `portcullis-proxy` or another project's network likewise; Docker matches the keywords exactly, so `Host` or ` none` are refused as network names; `container:…` is refused in any case or spacing; `network_mode` together with `networks` is refused), answers to a name ending in `-internal` — a gate's upstream (gated backends sit on the default network only, behind the template's gate) — on any network other than the project's own `default` (service name, `container_name` and `hostname` count on every network the service joins, an alias on its network; case-insensitive, trailing dot ignored; a service under `network_mode` has no DNS name of its own), or answers to a core DNS name (service name, `container_name`, `hostname` or a network alias; also as the first label of a dotted name, case-insensitively): every service name of core's `docker-compose.yml` (`traefik`, `socket-proxy-traefik`, `socket-proxy-hub`, `postgres`, `vault`, `lldap`, `keycloak`, `forward-auth`, `forward-auth-ext`, `group-gate`, `hub`, `enroll`, `domains`, `prometheus`, `alertmanager`, `blackbox`, `textfile-exporter`, `grafana`) and compose's container names for them (`portcullis-<service>-<n>`). Core's monitoring `grafana` is included (the Grafana template's compose service is `dashboards`). Network names, external names, `container_name`, `hostname`, `network_mode` and aliases must be literals (no `${…}` / `$VAR`; `$$` is a literal dollar), except that `hostname` may be exactly `${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}` (the §3.1 form) for a hostname variable of the template's own host routers, with a default that isn't reserved; compose `include` and service `extends` are refused. The checks run on the decoded YAML (anchors, merge keys, quoting and escapes resolved), and a present value of an unexpected shape (services, networks or a network's configuration that isn't a mapping with string keys) is refused. Also refused: more than one YAML document in `compose.yml` or `manifest.yaml` (any second document, even an empty one: compose merges documents, the checks read one); `container:` in `pid`, `ipc` or `volumes_from`; `ipv4_address` / `ipv6_address` / `link_local_ips` on `portcullis-proxy`; interpolation in any label key or in any `traefik.*` value other than an HTTP router `rule` (the template's own host variables excepted); Traefik label keys with surrounding whitespace or upper case in `traefik.<proto>.<kind>.<name>` (router keys: anywhere); reserved names split by a variable or written with characters that case-fold to them; label keys with non-ASCII characters (Traefik's label decoder compares with Unicode case folding, so `routerſ`, `middlewareſ` or `tlſ` would be read as `routers`, `middlewares`, `tls`); `traefik.*` keys other than `traefik.enable`, `traefik.docker.network` and `traefik.http.<routers|services|middlewares>.<name>.<attribute>`, every part compared case-folded like Traefik's decoder: router attributes `rule`, `entrypoints`, `middlewares`, `service`, `priority`, `tls`, `tls.options`, `observability.*` (no `tls.certresolver` or `tls.domains`: certificates are core's); service attributes only `loadbalancer.server.port`, `loadbalancer.server.scheme`, `loadbalancer.passhostheader`, `loadbalancer.responseforwarding.flushinterval` and `loadbalancer.sticky.cookie[.*]` — a service balances over the labelled container itself, never `server.url` / `servers[n].url` (Traefik would proxy to any address it reaches: the socket proxies, the Hub, Keycloak from the trusted Traefik address), a `serverstransport`, a `weighted` / `mirroring` / `failover` service, or a `healthcheck` (Traefik's own requests, sent from the address core's header-auth services trust, with the template's method and headers, following redirects); middleware types only `addprefix`, `stripprefix`, `stripprefixregex`, `replacepath`, `replacepathregex`, `redirectregex`, `redirectscheme`, `headers`, `compress`, `contenttype`, `chain`, `ratelimit`, `inflightreq` (no `redis.*`), `ipallowlist`, `buffering`, `retry`, `circuitbreaker`, `grpcweb`, each with its own attributes — never `forwardauth`, `errors`, `plugin`, `basicauth`, `digestauth`, `passtlsclientcert`; no `serverstransports`; explicit YAML tags other than the core `!!` ones (compose's `!reset` / `!override`); any `traefik.*` key segment outside `[A-Za-z0-9_-]` with an optional `[n]` (a stray `]` or `[`, or an empty segment, crashes Traefik's label decoder and stops its docker provider) and any name segment outside `^[a-z0-9][a-z0-9_-]*$`; TCP and UDP routing (`traefik.tcp.*`, `traefik.udp.*`); defining a router, service or middleware with a name core uses (core's `@docker` names: `hub`, `keycloak`, `portcullis-auth`, `hub-proxy-secret`, …); a router `service` that isn't a service the template defines itself (`<name>` or `<name>@docker`; never core's, another app's, `@file` or `@internal`), router / chain `middlewares` other than the template's own, `portcullis-auth@docker`, `portcullis-groups@docker` and core's five `@file` middlewares from `traefik/dynamic/middlewares.yml` — `client-headers@file`, `client-cert-pem@file`, `rate-limit@file`, `rate-limit-auth@file`, `security-headers@file` (never an administrator's own objects under `traefik/dynamic/local/`); a reference — router `service`, router `middlewares`, chain `middlewares` — whose key or value isn't lowercase (Traefik reads them case-insensitively, the Hub renames them per instance: both must read the same names); a service name whose container in the template's project (`portcullis-<id>-<service>-<n>`, also `portcullis_<id>_<service>_<n>`) is a core service's (`forward` + `auth` = `portcullis-forward-auth-1`) — for the default instance the template is skipped, for another instance the id is refused; compose keys outside an allowlist (top level: `services`, `volumes`, `networks`, `name`, `x-*`; per service the usual runtime keys — never `label_file`, `deploy`, `annotations`, `env_file`, `build`, `configs`, `secrets`, `profiles`, `links`, …). Templates join core only through `portcullis-proxy`.
 - **Image labels.** Docker merges an image's `LABEL`s into its containers' labels. The Hub first runs `compose up --no-start` (containers created, none started) and compares each created container's `traefik.*` label keys (folded like Traefik's decoder) with the keys compose was given (the template's and the Hub override's); any other key takes the project down (volumes kept) and fails the operation (`409`, naming the labels) before anything starts; the same check runs again after the real `up`. Reconcile reports such running containers as exposure drift.
 - **Trust model.** A template source is code the admin chose to install: `privileged`, `cap_add`, devices and host networking stay allowed in templates (their own containers). The Hub's checks protect core: routing it can see, no core networks, names or sign-in plumbing, no namespace or volume sharing with other containers. Bind mounts of host paths outside `./templates/<app-id>/` are host-level access, like `privileged`: the Hub doesn't confine them in templates (a template that bind-mounts Docker's volume directory reads core's data), so installing a template source means trusting it with the host. Custom overrides (Expert) are stricter (§5, the allowlist).
+- **HTTP routers (NEW, file sharing).** Every auth method except `custom` needs at least one HTTP router: a template without one is refused with a `400` naming the method (a forward-auth template with no router would protect nothing). An `auth.method: custom` template may have **zero** Traefik routers (no service with `traefik.enable: "true"`): a **router-less** template, such as the SMB templates (§13.17). It may then set `group_access: true` with an `access_group` and no `native_login`; the access group decides only who is in the population (§13.3, §13.16) and gates nothing on the network. A router-less instance has no hostnames, publishes no policy, group or denied host (§4), gets no Keycloak client or access role (§8) and no public router, and is never reported as exposure drift. `person_secret` and `person_id` options (§13.2) are allowed only on router-less templates with `group_access: true` and an `access_group`.
+- **`auth.notes`** is shown on the portal (§10, as the entry's `note` when the instance has no URL), in the policy view and on the app detail, besides the app's docs page.
 
 ### 3.1 Template contract v2: instances and hostname variables — NEW (contract v2)
 
@@ -73,8 +76,9 @@ Contract v2 lets a template run as several independent instances (§11) whose ho
     | `PORTCULLIS_OIDC_CLIENT_ID_<KEY>` | The same for **every** entry; `<KEY>` is the entry's manifest `client_id` upper-cased with `-` and `.` turned into `_` (headscale: `PORTCULLIS_OIDC_CLIENT_ID_HEADSCALE`, `PORTCULLIS_OIDC_CLIENT_ID_HEADPLANE`). Two entries whose `client_id`s map to the same `<KEY>` are an error |
     | `PORTCULLIS_ACCESS_GROUP` | The instance's access group (§11.2); empty if the manifest has no `access_group` |
     | `PORTCULLIS_ADMIN_GROUP` | The instance's admin group (§11.2); empty if the manifest has no `admin_group` |
+    | `PORTCULLIS_LOCAL_NETWORKS` | **NEW (file sharing).** The Hub's Local networks (§14.7) as comma-separated canonical CIDR prefixes, from `LocalNetworksView()`: the saved list, or `DefaultLocalNetworks` (`10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7,100.64.0.0/10`) when none was saved. Empty **only** when an empty list (`[]`, loopback only) was saved; a template that reads it must then refuse to serve (fail closed, §13.17). Written in every `.env` write (`prepareUp`) |
 
-    These names are reserved: a manifest may not declare them in `env`, `settings` or `ports`.
+    These names are reserved: a manifest may not declare them in `env`, `settings` or `ports`. `PORTCULLIS_LOCAL_NETWORKS` is the one exception to the default form: compose may reference it **only** as exactly `${PORTCULLIS_LOCAL_NETWORKS}`; every form with a default or alternate (`${PORTCULLIS_LOCAL_NETWORKS:-…}`, `-`, `:+`, `+`, `?`) and `$PORTCULLIS_LOCAL_NETWORKS` are refused, so no template default can widen `hosts allow`. Saving Local networks (`PUT /api/settings/local-networks`) queues a restart of every enabled instance whose `compose.yml` references the variable (found at discovery), and only of those.
 - **`multi` templates also** have no `${PORTCULLIS_DOMAIN}` in any router rule, no volume `name:` (the Hub sets it, §11.2), and no hard-coded Keycloak client id or group name in `compose.yml` (they use the variables above). Router, service and middleware names a template defines may not start with `portcullis-` (reserved for core and the Hub) and may not contain `_` (every v2 template, so the per-instance prefix below can't be ambiguous).
 - **Traefik names per instance.** Traefik's Docker provider merges same-named routers and services across containers, so two instances must never define the same name. For every instance **except the default one**, the Hub's override renames each router, service and middleware the template's labels define from `<name>` to `<instance-id>_<name>`. It also rewrites the references to them in `routers.*.service` and `routers.*.middlewares` (`<name>@docker`). Names the template doesn't define (`portcullis-auth@docker`, `security-headers@file`, …) are kept. The override replaces each labelled service's `labels` with compose's `!override` tag, so no original name survives. Neither instance ids nor v2 template names contain `_`, so the prefix can't be ambiguous. The default instance keeps the template's names unchanged. Every name an instance's Traefik objects use is a name claim (§11.1): two templates whose default instances define the same router, service or middleware name are not both loaded (enabled templates first, then source order), since Traefik would merge them and one app would receive the other's traffic, forward-auth identity headers included.
 - **Conversion period.** Until every template is converted, the Hub sets `PORTCULLIS_HOST_*` for every instance (default included). An `instances: single` template may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) `` rules. Such a template runs only as its default instance, its hostnames are fixed at `<sub>.<main domain>`, and the Hub refuses hostname changes for it (`409`). Its host keys are still its host routers' names. It uses that form for all its routers (no mixing).
@@ -317,11 +321,14 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
 - **Core routing.** Core routes `people.<domain>` to `http://hub:8889` with the middleware chain: `rate-limit@file`, `client-headers@file`, `portcullis-auth@docker`, `portcullis-groups@docker`, `hub-proxy-secret@docker`, `security-headers@file`. The same `X-Portcullis-Proxy-Secret` header is required.
 - **group-gate-map.conf.** The map file uses the special value **`*`** (asterisk) for the `people` subdomain, meaning "any signed-in user". This value is valid **only** in `group-gate-map.conf`, never in the policy file.
 - **Redirect.** The existing `directory.<domain>` subdomain redirects to `https://people.<domain>/` (previously it redirected to `https://hub.<domain>/#users`).
-- **My apps route.** The people listener registers exactly **three** app routes (all caller-only, read or write the caller's own data):
-  - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with enabled instances whose population includes them. Each entry has: instance id, name, link, the caller's per-person values (label, displayed value, reason — only the caller's own groups —, when it applies; see §13) and the caller's own person-entered `entries` (key, label, description, applies, input constraints, `unique`, the value only when stored under the caller's current LLDAP account, `set_by_admin` — never the admin's name —, `updated_at`). Apps with neither are left out. Options marked `self_visible: false` are left out. Instance options, secrets and other people are never included
+- **My apps route.** The people listener registers exactly **five** app routes (all caller-only, read or write the caller's own data): the three below and the two credential routes after them.
+  - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with `{"apps": [...], "fresh_auth": {...}}` — `apps` are the enabled instances whose population includes them. Each entry has: instance id, name, link (`url`, empty for a router-less instance, §3), the caller's per-person values (label, displayed value, reason — only the caller's own groups —, when it applies; see §13), the caller's own person-entered `entries` (key, label, description, applies, input constraints, `unique`, the value only when stored under the caller's current LLDAP account, `set_by_admin` — never the admin's name —, `updated_at`) and the caller's own `credentials` (one per `person_secret` option, §13.16: `{key, label, status, since, reason, info}`; `status` is `none`, `active` (`since` = created), `voided` (`reason: "restore"`, `since` = when it was voided) or `unavailable` (`reason` = the template's username reason); `info` = the option's `info` lines rendered for the caller). An app with values, entries or a `person_secret` option is listed; apps with none of them are left out. Options marked `self_visible: false` are left out; `person_id` values are never shown. Instance options, secrets, hashes and other people are never included. `fresh_auth` (**NEW**, file sharing) is present only when some listed app has a credential: `{authorize_url, client_id, redirect_uri}` of the fresh-auth client (§8)
   - `PUT /api/me/apps/{instance}/values/{key}` with `{"value": <json>}`: writes the caller's own person-entered value (§13.13). Returns 200 with the caller's entry. Refusals: 404 (instance not enabled, key not `person_entered`, or caller not in population — same answer for all three, no leak); 400 (constraint); 409 (uniqueness); 503 (LLDAP unavailable)
   - `DELETE /api/me/apps/{instance}/values/{key}`: clears the caller's value. Returns 204, also when nothing was set. Clearing a value stored under the caller's current LLDAP account always works (also outside the population or on a disabled instance); anything else gets the 404 above
-  - Common rules: no `X-Forwarded-User` is 401; a body over 4 KiB is 413; unknown fields or trailing data are 400 with a fixed usage text; 4xx answers carry the Hub's text (never another person's name or value), 5xx a generic message. After **10 refused saves in a minute** (any 4xx, 404 included; 5xx never count) every save of that caller is `429` until the minute ends (in memory, per caller; refusals past the limit are not audited one by one). Admins on the Hub listener are never limited
+  - `POST /api/me/apps/{instance}/credentials/{key}` (**NEW**, file sharing) with `{"code": "…", "code_verifier": "…", "nonce": "…"}` (the fresh-auth proof, below; body ≤ 8 KiB): creates the caller's file-share password for that `person_secret` option, or regenerates it (a new password replaces the old one at once). Returns 200 `{"password": "<29 characters>", "credential": <the caller's credential entry, status active>}` with `Cache-Control: no-store` and `Pragma: no-cache`; this answer is the only place the password ever appears (§13.16). Refusals, in this order: 404 (instance not enabled, key not a `person_secret` option, or caller not in the population — one answer for all three); 409 with the template's reason (the username rule, §13.16; checked **before** the proof, so a refused name doesn't consume it); 403 with the fixed text "a fresh passkey sign-in is required" (any fresh-auth failure; the reason goes only to the audit); 503 (LLDAP unavailable, the caller's LLDAP uuid unknown, or the secrets volume not usable, §6). Refused creates count toward the refused-save limit below (429)
+  - `DELETE /api/me/apps/{instance}/credentials/{key}` (**NEW**, file sharing): revokes the caller's own credential (`reason: self`). No fresh auth: it only removes access. Returns 204, also when nothing was active; it works outside the population and on a disabled instance too
+  - **Fresh auth** (people.html): the page opens `authorize_url` in a popup with `response_type=code`, `client_id`, `redirect_uri`, `scope=openid`, a random `state` and `nonce`, `code_challenge` (S256) of a random verifier, `prompt=login`, `max_age=0` and `acr_values=hwk`. The popup lands on `https://people.<domain>/`; the page there acts only when `window.opener` is same-origin, drops `code` / `state` from the URL at once (`history.replaceState`), posts them to the opener with `targetOrigin = location.origin` and closes; without an opener it ignores the parameters. The opener accepts only a message with `event.origin === location.origin` and its stored `state`, deletes its `sessionStorage` entries and posts `{code, code_verifier, nonce}`. The Hub exchanges the code itself (server-side, PKCE) and verifies the ID token (§8)
+  - Common rules: no `X-Forwarded-User` is 401; a body over 4 KiB (credentials: 8 KiB) is 413; unknown fields or trailing data are 400 with a fixed usage text; 4xx answers carry the Hub's text (never another person's name or value), 5xx a generic message. After **10 refused saves in a minute** (any 4xx, 404 included; 5xx never count) every save of that caller is `429` until the minute ends (in memory, per caller; refusals past the limit are not audited one by one). Admins on the Hub listener are never limited
   
   These are the **only** app-related routes on the people listener. They are read-only or self-service only (the caller's own data) and CSRF-guarded.
 
@@ -341,10 +348,10 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
 - **Volume helper** (§11.5), **created but never started.** The daemon itself reads and writes the one volume it mounts, through the archive endpoints. Unchanged.
 - **Folder fixer** (§14), **started.** Docker's archive endpoints can't change group owners recursively, set modes in place or write ACLs, so shared folders need a process. It is the only helper that runs:
     - **Image:** the Hub's own image, by **image ID** (`sha256:…`), found by inspecting the Hub's own container by its **full container ID**, read from `/proc/self/mountinfo` (the `…/docker/containers/<64 hex>/` root of the `/etc/hostname`, `/etc/hosts` or `/etc/resolv.conf` mount; every such mount must name the same ID). The answer's ID must equal it and carry core's compose labels `com.docker.compose.project=portcullis` and `com.docker.compose.service=hub`; any failure is the `503` below, with no fallback to the hostname (a name or short-ID prefix another container could shadow). No new image to trust or pull. `HUB_FIXER_IMAGE` (must contain `@sha256:`) replaces it for development only: it is honoured only with `HUB_DEV=1` and refused otherwise (an env-selected, root-capable image would be a privilege pivot). Image not found: every folder disk operation answers `503` "the Hub can't find its own image".
-    - **Command:** `Entrypoint` is the full argv `["/usr/local/bin/hub", "folderfix", <mode>, <flags>…]`, built from a Go struct, never a shell; `Cmd` is empty. Modes `probe`, `scan`, `snapshot`, `apply`, `restore` and `restore --dry-run` (§14.2–14.4). Paths aren't secrets, and no secret is ever passed.
+    - **Command:** `Entrypoint` is the full argv `["/usr/local/bin/hub", "folderfix", <mode>, <flags>…]`, built from a Go struct, never a shell; `Cmd` is empty. Modes `probe`, `scan`, `snapshot`, `apply`, `restore`, `restore --dry-run` (§14.2–14.4) and **`childfix`** (**NEW**, file sharing: `childfix --rel <tree> --child <name>:<uid>`, exactly one child; §14.6 `person_tree_owner`). Paths aren't secrets, and no secret is ever passed.
     - **Isolation:** `User "0:0"`, `NetworkMode "none"`, `no-new-privileges`, read-only rootfs, `CapDrop: ALL`, `Privileged false`, no devices, no port bindings, pids 16, memory 256 MiB, `Healthcheck {Test: ["NONE"]}` (the Hub image's own `HEALTHCHECK` would run `wget`), `LogConfig {Type: "json-file"}` (the report is read from the logs), no `Tty` / `OpenStdin`, `AutoRemove false` (the Hub removes it), label value `folder:<id>` for a folder's runs.
     - **Mounts:** one bind mount (`Type: bind`, never the `Binds` string form), at `/folder`: the folder (or a hand-typed path the doctor scans), read-only for `scan` and `snapshot`. `probe` binds the folder's **bind root** at `/broot` instead (read-only; read-write only for `probe --create`). Anonymous scratch volumes `/out` (`snapshot`) and `/in` (`restore`) only where the mode needs them; removing the container removes them. Docker's `CreateMountpoint` is never used: it would create a missing host path following host symlinks in its ancestors. Missing directories are created by `probe --create` (`mkdirat` under an `O_DIRECTORY|O_NOFOLLOW` fd of `/broot`, with no capability beyond `DAC_READ_SEARCH`; any failure is a `409`) and by `apply --mkdir` inside the folder.
-    - **Capabilities by mode** (each the measured minimum; the Hub's `docker`-tagged CI test drops each in turn): `probe`, `scan`, `snapshot`, `restore --dry-run` → `DAC_READ_SEARCH`; `apply`, `restore` → `CHOWN`, `FOWNER`, `FSETID`, `DAC_READ_SEARCH`, plus `DAC_OVERRIDE` for an `apply` with `--mkdir` only. `DAC_READ_SEARCH`: read and search entries uid 0 doesn't own (a `0750` directory of uid 1000). `CHOWN`: the new group (and owner under `must_own`). `FOWNER`: `fchmod` and the `system.posix_acl_*` xattrs of entries uid 0 doesn't own. `FSETID`: the fixer runs as uid 0, which isn't in the folder's group, so without it the kernel clears setgid when it sets a directory's mode or access ACL. `DAC_OVERRIDE`: `mkdirat` in a directory uid 0 has no write bit on; every other change goes through an open fd, which no write permission check applies to. `SETFCAP` is never given (it guards `security.capability`, which the fixer never writes). A `chown` clears setuid/setgid bits whatever the capabilities, so the fixer sets the mode again after changing the owner (order in §14.2).
+    - **Capabilities by mode** (each the measured minimum; the Hub's `docker`-tagged CI test drops each in turn): `probe`, `scan`, `snapshot`, `restore --dry-run` → `DAC_READ_SEARCH`; `apply`, `restore` → `CHOWN`, `FOWNER`, `FSETID`, `DAC_READ_SEARCH`, plus `DAC_OVERRIDE` for an `apply` with `--mkdir` only; `childfix` → `CHOWN`, `FOWNER`. **`childfix`** (a per-person tree's top-level directory, §13.17): its preview is a read-only probe that records the child's device, inode and mount root (the folder path rules and the Docker-root rule apply, as for doctor scans), and the plan hash covers them; the apply probes again, opens the child `O_NOFOLLOW|O_DIRECTORY` relative to the tree, refuses a symlink, a non-directory or another mount (exit `2`), then `fchown <uid>:<uid>` and `fchmod 0700` through that fd. Not recursive: nothing inside the child changes. `DAC_READ_SEARCH`: read and search entries uid 0 doesn't own (a `0750` directory of uid 1000). `CHOWN`: the new group (and owner under `must_own`). `FOWNER`: `fchmod` and the `system.posix_acl_*` xattrs of entries uid 0 doesn't own. `FSETID`: the fixer runs as uid 0, which isn't in the folder's group, so without it the kernel clears setgid when it sets a directory's mode or access ACL. `DAC_OVERRIDE`: `mkdirat` in a directory uid 0 has no write bit on; every other change goes through an open fd, which no write permission check applies to. `SETFCAP` is never given (it guards `security.capability`, which the fixer never writes). A `chown` clears setuid/setgid bits whatever the capabilities, so the fixer sets the mode again after changing the owner (order in §14.2).
     - **Run:** create → copy `/in` (restore) → start → wait for not-running (called after start; a timeout kills it and fails the run) → logs (demuxed) → copy `/out` (snapshot) → remove, always, also on failure. Exit `0` = done, `2` = refused (`409` with the report's first error; nothing changed), `1` = failed (`500`). The report is the last non-empty stdout line, one JSON document (≤ 256 KiB, decoded strictly; stderr ≤ 16 KiB, crashes only).
     - **Refusals before any run:** a daemon whose `Info` reports `userns` or `rootless` in `SecurityOptions` (ids inside the helper are translated: owners would read as 65534 and ACL entries would be written for the wrong ids) → `503`, explain-only. Every run on a **defined** folder (after its create) passes the folder root's stored device and inode (`--expect-dev`, `--expect-ino`) and its stored mount root (the root field of `/folder`'s line in `/proc/self/mountinfo`, recorded at create and at every path change, §14.1); the fixer exits `2` with nothing changed when `/folder` isn't that directory or its mount root isn't **exactly** the stored one (a symlink Docker resolved on the host). Check path, the create-time probe and scans of hand-typed paths have nothing stored yet and run unchecked.
 - **Proxy flags.** `CONTAINERS` and `POST` (plus the existing `ALLOW_LOGS`, `ALLOW_ARCHIVE` and `INFO`) already cover create, start, wait, kill, logs, archive and info. **No flag of `socket-proxy-hub` changes.** The compose `up` path already starts containers through the same proxy.
@@ -352,6 +359,31 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
 **Exec with stdin (§13.8).** The Hub runs `POST /containers/{id}/exec` with `AttachStdin: true` and hijacks the connection to send JSON on stdin to the process. Used for hooks that receive the full desired state.
 
 **Container kill (§13.8).** The Hub sends signals with `POST /containers/{id}/kill?signal=<HUP|USR1|USR2>` for reload actions. No change to `socket-proxy-hub` (already `CONTAINERS` + `POST`).
+
+**Per-person secrets volume (NEW, file sharing; §13.16).** File-share password hashes live on their own volume, never on `hub_data`:
+
+- **Core** declares the volume `hub_secrets` (`name: portcullis_hub_secrets`), mounts it into the Hub at `/secrets` and sets `HUB_SECRETS_DIR=/secrets` and `HUB_SECRETS_VOLUME=portcullis_hub_secrets` (the defaults). `./portcullis init`, `upgrade` and `restore` make sure the volume root is owned by `10001:10001` with mode `0700` (through the helper image, as restore already does for volume roots). Core's backup never copies it and core's restore empties it (§11.5, §11.6).
+- **The Hub** checks at start that `HUB_SECRETS_DIR` is owned by its own uid and is mode `0700`. Otherwise it fails closed: the credential routes (§5.1, §13.16) answer `503` and every instance with a `person_secret` option refuses to enable or start, naming the reason. It keeps one directory per (instance, option) on the volume: `<secrets>/<instance>/<key>/` (`0700`) holding one `<username>.nt` per active credential (`0600`, 32 uppercase hex characters and `\n`), all owned by uid 10001, plus `<secrets>/.epoch` (§11.6). The directory exists before every `up` of the instance.
+- **The Hub's override** mounts it into the option's `mount.service` only, read-only, as a subpath of the external volume:
+
+    ```yaml
+    volumes:
+      portcullis-hub-secrets:            # reserved key (§3)
+        external: true
+        name: portcullis_hub_secrets     # HUB_SECRETS_VOLUME
+    services:
+      <mount.service>:
+        volumes:
+          - type: volume
+            source: portcullis-hub-secrets
+            target: <mount.path>
+            read_only: true
+            volume: {subpath: <instance>/<key>}
+    ```
+
+    So a container sees only its own instance's and option's hash files, never another instance's. Before every `up` the Hub checks the rendered project: the only service that mounts `portcullis-hub-secrets` is `mount.service`, with exactly that subpath, read-only; anything else refuses the `up` (`409`). Templates and custom overrides can't name the key (§3).
+- **Requirements:** Docker Engine API **≥ 1.45** (Docker Engine 26.0, the first with volume subpath mounts) and a `docker compose` that supports `volume.subpath`. The Hub's startup compose version check refuses an older compose; the exact minimum compose release is recorded here by the Hub task that raises the check (file sharing plan, Task 6).
+- **Proxy flags:** none change (volume mounts are part of the container create the Hub already does through compose).
 
 ## 7. Docs ⇄ templates
 
@@ -386,6 +418,22 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
         - A realm admin can still open the client (remove the browser flow override; Keycloak then uses the realm's browser flow) until the Hub's next sync rebinds it. Keycloak refuses to delete a flow a client override binds.
 - **Backchannel logout (NEW).** A `keycloak_clients[]` entry with `backchannel_logout_url` (`https://{{HOST_<ROUTER>}}/<path>`) gets it as the client's backchannel logout URL, with "backchannel logout session required" on; it moves with hostname changes (§11.3). Keycloak then POSTs a logout token there whenever a session ends, so the app ends its own session. The path must be reachable from Keycloak without forward-auth. Supported upstream by Nextcloud `user_oidc` (`/index.php/apps/user_oidc/backchannel-logout/<provider>`) and Synapse (`/_synapse/client/oidc/backchannel_logout`, `backchannel_logout_enabled: true`).
 - **Setting claims (§13).** For each (instance, option) with a claim delivery, the Hub creates a Hub-owned LLDAP user attribute named `ps-<hash>` (LLDAP attribute names allow only letters, digits and `-`; a short hash of instance and key), STRING type, not visible, not editable. It writes each person's rendered value into it and adds an LDAP attribute mapper (on the LLDAP federation) plus a protocol mapper on the instance's client only (per-client, not shared), both named `portcullis-setting-<attr>` (e.g. `portcullis-setting-ps-0123456789ab`). The Hub owns every mapper with that prefix: on the client it keeps exactly the claims it delivers (other `portcullis-setting-*` mappers of that client are deleted, no other mapper is touched), the LDAP mapper goes with its attribute, and `./portcullis keycloak configure` must leave them alone (like the `portcullis-attr-<field>` mappers, §9.6). The attribute and mappers are removed when the instance is deleted.
+- **Fresh-auth client (NEW, file sharing; shared with the certificates project).** The Hub owns one Keycloak client, **`portcullis-fresh-auth`**, for proofs of a fresh hardware sign-in (§5.1, §13.16). It creates and re-asserts it in the directory sync loop (retried), tagged like every Hub-owned client (`portcullis.hub.template` = `portcullis-fresh-auth`; an untagged client of that id is a conflict and is left alone, so fresh auth then fails closed). Settings, each checked by the Hub's tests:
+    - public client, standard flow only; `pkce.code.challenge.method=S256`; no direct access grants, implicit flow, service accounts or device grant; `use.refresh.tokens=false`;
+    - default client scopes exactly `basic` and `acr` (with `openid`); no `groups`, no attributes scope, never `portcullis-invite-client`;
+    - redirect URIs exactly `[https://people.<domain>/]`, web origins exactly `[https://people.<domain>]`.
+
+    `./portcullis keycloak configure` leaves it alone. The Hub reaches Keycloak internally for the code exchange (`http://keycloak:8080/realms/portcullis/protocol/openid-connect/token`, with the PKCE verifier) and the keys (`…/certs`), and checks tokens against the public issuer `<HUB_KEYCLOAK_PUBLIC_URL>/realms/portcullis` (core sets `HUB_KEYCLOAK_PUBLIC_URL=https://auth.<domain>`). A proof is accepted only when every one of these holds; anything else is a `403` with the generic text:
+    - the code exchange succeeds (Keycloak's codes are single-use: a replay fails);
+    - the ID token is signed RS256 or ES256 by the realm's keys, `iss` is the public issuer, `exp` is in the future, `iat` ≤ now + 60 s;
+    - `aud` contains `portcullis-fresh-auth`, and `azp`, when present, is `portcullis-fresh-auth` (several `aud` values need `azp`);
+    - `nonce` is present and equals the one posted;
+    - `auth_time` is present and ≥ now − 300 s;
+    - `amr` is present, non-empty and contains `hwk` or `mtls`; neither `amr` nor `acr` contains `file`;
+    - `preferred_username`, lowercased, is the caller.
+
+    The code, verifier, nonce and token never appear in logs, the audit (refusals record only the reason), errors or answers.
+- **The `mtls` amr invariant (NEW).** Core's flows emit amr `mtls` **only** for a login with a hardware (`pki_int`) certificate; a login with a file certificate emits `file` in `amr` and `acr`. Fresh auth relies on it: it accepts `mtls` as a hardware proof. Today every certificate is `pki_int`; the certificates project adds file certificates together with a test of this invariant.
 
 ## 9. Hub ⇄ LLDAP (users & groups)
 
@@ -655,8 +703,9 @@ permissions:
     - **NEW (domains):** `domains` lists, sorted, every enrolled domain (§12) on which at least one listed instance has a hostname.
     - `access_group` is the group group-gate requires (`auth.group_access`); `""` means any signed-in user.
     - `admin_group` is informational.
-- **Rendering.** The portal filters by the signed-in user's groups (`X-Auth-Request-Groups`) and must escape every field. An unknown `version` means: show nothing.
-- **Core's portal** is group-gate's `/portal` at `https://<domain>/` (router `portal`: forward-auth, then `replacePath`). It reads `/hub-data/portal-apps.json`, shows only `https` URLs whose host is on the main domain or on a domain in `domains`, and adds the Hub, the Keycloak realm console, enrollment, LLDAP and Traefik for `lldap_admin`, plus every user's passkeys (account console) and certificate (`enroll.<domain>/self`).
+    - **NEW (file sharing):** a router-less instance (§3) has `"urls": []` and a `note` (the template's `auth.notes`, e.g. `"No web page: file sharing over SMB"`). `note` is present only on entries without URLs.
+- **Rendering.** The portal filters by the signed-in user's groups (`X-Auth-Request-Groups`) and must escape every field. An unknown `version` means: show nothing. An entry with `urls: []` is rendered as a card with its name, icon, description and `note`, and no link.
+- **Core's portal** is group-gate's `/portal` at `https://<domain>/` (router `portal`: forward-auth, then `replacePath`). It reads `/hub-data/portal-apps.json`, shows only `https` URLs whose host is on the main domain or on a domain in `domains` (url-less entries as above), and adds the Hub, the Keycloak realm console, enrollment, LLDAP and Traefik for `lldap_admin`, plus every user's passkeys (account console) and certificate (`enroll.<domain>/self`).
 
 ## 11. App instances (Hub) — NEW (instances)
 
@@ -713,7 +762,7 @@ Deleting an instance is permanent and needs the instance id typed: `{"confirm": 
 
 1. **Takes a backup** (§11.5, reason `delete`). If it fails, the delete stops and nothing is removed.
 2. Records `deleting` (and the backup path) in its state and marks the instance disabled. From here on the instance is listed as **partially deleted** until the delete completes, and the only action offered is Delete (retry).
-3. Stops and removes the project (`down --remove-orphans`), marks it disabled (the policy file drops it), then removes its volumes: the volumes compose labelled with the project (`com.docker.compose.project=portcullis-<id>`); external volumes aren't the instance's and are never removed.
+3. Stops and removes the project (`down --remove-orphans`), marks it disabled (the policy file drops it), right then removes its per-person secrets (`<secrets>/<id>/` on `hub_secrets` and its credential metadata, §13.16; no per-credential audit: `instance.delete` covers it), so a delete that fails later leaves no credential behind, then removes its volumes: the volumes compose labelled with the project (`com.docker.compose.project=portcullis-<id>`); external volumes aren't the instance's and are never removed.
 4. Removes its access roles and access flows (§8 "Access role"), deletes its Keycloak clients (only clients tagged with this instance; any other is kept with a warning) and the callback URIs of its hosts on `portcullis-forward-auth`.
 5. Deletes its access and admin groups through the Users & Groups guardrails (`DeleteGroup` as the acting admin, which also purges the group from `directory.yaml` and signs former members out) — only groups named exactly `users_<id>` / `admin_<id>`. Kept, with a warning: a group with any other name (a manifest's own group of a default instance), a built-in, administrator, permission or rule group, and a group another instance or another template's default instance also uses (templates may share a group). Without Users & Groups (no LLDAP credentials) the groups stay, with a warning. Without Keycloak configured step 4 is a warning. An instance whose template is missing and whose snapshot lists no clients gets its derived first client id (`<id>`) deleted, with a warning.
 6. Removes its env file, overrides, ops record, generated secrets, share tokens and state entry, and rewrites the policy file and `portal-apps.json`.
@@ -765,7 +814,8 @@ The **default instance** can be deleted the same way. That removes the manifest'
 
     `reason` is `manual`, `delete` or `restore`; `volumes` maps each volume key to the volume name it was copied from (the volumes compose labelled with the instance's project; an instance that never ran has none); `template_commit` is the template checkout's git commit and is left out when unknown. Members are written with mode `0600`. `config/instance.yaml` holds `id`, `template`, `default`, `hosts`, `enabled`, `settings` (the typed settings as in §13, person-entered values included), `auth_policy`, `public_access`, `public_mode`, `public_tokens`, `sign_in` and `published`. `config/settings-secrets.json` (also in `config/`) holds the secret store. Restore drops per-group rows whose group id no longer matches (warning).
 - **Shared folders are not backed up.** An instance backup copies the instance's volumes only. Shared folders (§14) and every other host path a `path` option mounts are host data: their contents are never in an archive. A `folder:<id>[/<subpath>]` value is a setting and is archived as text in `config/instance.yaml`, like a host path. The folder definitions and permission snapshots (§14.4) live in the Hub's state and `<data>/folder-snapshots/`, not in instance archives.
-- **Offsite.** Core's `./portcullis backup` archives the `hub_data` volume, so `<data>/backups/` is included (and shipped with `--offsite`), and so are `<data>/folder-snapshots/` and the folder definitions in `state.yaml`.
+- **Per-person credentials are never backed up (NEW, file sharing).** No instance archive contains a `person_secret` hash, its credential metadata (`config/instance.yaml` has no `credentials` key) or anything from `hub_secrets`: that volume is external to the instance's project, so it is never archived, replaced or removed by a backup, restore or delete of the instance. Neither do `delivered.json`, the hook input hash or any plan hash contain hash bytes or a function of them (only ids, versions and timestamps). The Hub-wide person ids (§13.16) live in `state.yaml`, not in instance archives.
+- **Offsite.** Core's `./portcullis backup` archives the `hub_data` volume, so `<data>/backups/` is included (and shipped with `--offsite`), and so are `<data>/folder-snapshots/`, the folder definitions, the person-id pools and the credential metadata in `state.yaml`. It **never** copies `hub_secrets` (core's backup lists the volumes it copies by name; core's tests assert that `hub_secrets` isn't one of them), so no hash ever leaves the host in a backup.
 - The archive contains the instance's generated secrets in clear; it is protected like the rest of `hub_data`.
 
 ### 11.6 Restore
@@ -779,6 +829,16 @@ A backup restores into the **same** instance (replacing its data) or into a **ne
 - **Shared-folder values** (§14), both restores. Before the checks above, every setting value that names a shared folder that doesn't exist (`folder:gone`) is cleared (the option is back to its default), with the warning "setting <key> named shared folder <id>, which doesn't exist; cleared". A restore never runs the folder fixer and changes nothing on disk.
     - **Same instance:** values naming an existing folder are kept; the next `up` mounts the folder with its group as for any assigned instance (§13.15).
     - **New id:** folder values are **kept** (it is the same host data). The new instance gets folder access without an assignment preview, so the result warns "instance <new id> now uses shared folder <name> (read-only)" or "(write, as its template declares)". An admin's write confirmation for a template without a `folder` block (§13.15) is per instance and is **not** copied: such a use is mounted read-only until an assignment confirms write again. The doctor's config checks, computed on every `GET /api/doctor`, show any `exclusive` conflict (§14.5).
+
+- **Per-person credentials (NEW, file sharing; §13.16).** Any restore voids every credential of the instance: a restored hash could revive a password someone regenerated because it leaked.
+    - **Same instance:** after the volumes are replaced and **before** the instance is enabled again, the Hub removes every hash file of the instance and marks each active credential `voided` (`reason: restore`), so the restored start never sees an old account. A restore that is rolled back voids nothing.
+    - **New id:** the new instance has no credentials (archives carry none) and nothing is audited.
+    - **Audit:** one `credential.void_restore` per instance with the count only (`count=N`), only when N > 0. My apps then shows "Your password was reset by a restore on <date>; create a new one" (status `voided`).
+- **Core restore (`./portcullis restore`) empties `hub_secrets`** (removes the volume and creates it again with core's project labels, root `10001:10001 0700`) before the Hub starts. The Hub detects it, and any other mismatch between `state.yaml` and the volume, with the **secrets epoch**:
+    - the Hub writes a random epoch (16 random bytes, hex) both into `state.yaml` (`secrets_epoch`) and into `<secrets>/.epoch`, and rotates it on **every** credential mutation (create, regenerate, revoke, void): the volume file first, then `state.yaml`. A failed `state.yaml` save keeps the in-memory epoch equal to the volume's and answers `500`;
+    - at boot and before every `credentials:<key>` delivery unit (§13.12) it compares them. `.epoch` missing or different (a core restore, a restored `state.yaml` next to a newer volume, a new volume, a crash between the two writes) → every credential of every instance is voided (`reason: restore`, audited `credential.void_restore` per instance with its count), the volume is emptied, and a new epoch is written to both. Then hash files without active metadata are deleted and active metadata without a hash file is voided;
+    - on that mismatch it also advances every person-id pool's next id by 1000 before any allocation (logged), so a pool restored from an older `state.yaml` never hands out a uid that files on disk may already carry (§13.16);
+    - a crash in the middle of a credential mutation therefore voids every password (fail closed, accepted). People create new ones on My apps.
 
 ### 11.7 Hub API and audit
 
@@ -995,15 +1055,16 @@ Every option has these fields:
 | `label` | single line, non-empty, ≤ 64 characters (runes, also for choice and column labels) | Yes | Display label |
 | `description` | text, ≤ 500 | No | Help text shown in the panel |
 | `section` | `^[A-Za-z0-9][A-Za-z0-9 ]{0,31}$` | No | Panel section name. Options in the same section are grouped |
-| `type` | enum | Yes | `string`, `int`, `size`, `duration`, `bool`, `enum`, `multi_enum`, `list`, `table`, `path`, `secret`, `group`, `groups`, `user`, `users`. See §13.2 |
-| `scope` | `instance`, `person`, `group` or `person_entered` | No (default `instance`) | Who the option applies to. See §13.3 |
+| `type` | enum | Yes | `string`, `int`, `size`, `duration`, `bool`, `enum`, `multi_enum`, `list`, `table`, `path`, `secret`, `group`, `groups`, `user`, `users`, `person_secret`, `person_id`. See §13.2 |
+| `scope` | `instance`, `person`, `group` or `person_entered` | No (default `instance`) | Who the option applies to. See §13.3. Refused on `person_secret` and `person_id`, whose effective scope is always `person` (one value per person, set by the Hub) |
 | `required` | boolean | No (default `false`) | The value must be non-empty. For `person` scope the default must be non-empty (the validator refuses an empty one), so every person in the population gets a non-empty resolved value. Not for `group` scope (its records are optional) |
 | `default` | typed value | Contextual | Fallback value. Required for `person` scope; refused for `person_entered` and `group` scopes. For other scopes it is optional |
 | `privileged` | boolean | No (default `false`) | The option grants a privilege (role, admin flag). Per-group values may come only from groups delegates can't steer (§13.3). Requires `scope: person` and type `enum` or `bool`; the default must be the lowest-ranked value (the first option, or `false`) and `group_values` may not use `{{ACCESS_GROUP}}` |
-| `self_visible` | boolean | No (default `true`) | Whether the option is shown on My apps (`GET /api/me/apps`, §5.1). `false` hides sensitive resolved values from people. Requires `scope: person`. Refused for `person_entered` |
+| `self_visible` | boolean | No (default `true`) | Whether the option is shown on My apps (`GET /api/me/apps`, §5.1). `false` hides sensitive resolved values from people. Requires the (effective) scope `person`. Refused for `person_entered`. `person_id` must set `self_visible: false`. **NEW (file sharing):** an instance option may set `self_visible: true` (never `false`) so that a `person_secret` `info` line may show it (`{value:<key>}`, §13.2); nothing else about it changes |
 | `applies` | enum | No | When a change takes effect: `live`, `reload`, `next_request`, `next_sign_in`, `restart`, `account_creation`. See §13.9. The default is `restart` for `scope: instance`, `next_sign_in` for claims and `next_request` for headers |
 | `requires` | list of option keys | No | Other instance options that must be non-empty when this one is. See §13.9 |
-| `delivery` | list | Yes, except an instance option (default `env: <UPPER(key)>`) and `path` (delivered as its `target`) | How the value reaches the app. See §13.6 |
+| `requires_any` | list of option keys | No | **NEW (file sharing).** Instance options only: when this one is non-empty, **at least one** of the listed instance options must be non-empty. See §13.9 |
+| `delivery` | list | Yes, except an instance option (default `env: <UPPER(key)>`) and `path` (delivered as its `target`) | How the value reaches the app. See §13.6. `person_secret` takes only the scalar `delivery: file` (§13.2) |
 
 Type-specific constraints are in §13.2. A `person` option needs `resolve` (§13.4) and at least one per-person delivery (claim, header, file or hook). Per-group options (`scope: group`) are delivered as maps through env (JSON), files or hooks. Person-entered options (`scope: person_entered`) follow the rules of §13.13.
 
@@ -1015,7 +1076,7 @@ Each type has validation constraints:
 
 - `pattern`: anchored regex `^...$`, ≤ 500 characters. Applied to the whole value
 - `min_len` / `max_len`: character bounds (0–65535)
-- `format`: `hostname`, `ip`, `cidr`, `url`, `email`, `iana_tz`, `locale`, `cron`, `semver`, `hex`. Formats give specialized UI pickers
+- `format`: `hostname`, `ip`, `cidr`, `url`, `email`, `iana_tz`, `locale`, `cron`, `semver`, `hex`. Formats give specialized UI pickers. `hostname` is a valid hostname in the §4 sense (lowercase, at least two labels, ≤ 253 characters); a dotted IPv4 address such as `192.168.1.10` matches it too, so an "address people connect to" option uses `hostname`. An IPv6 address and a single-label name (`nas`) don't
 
 **int**
 
@@ -1076,7 +1137,7 @@ Each type has validation constraints:
 
 **secret**
 
-- `scope: instance` only (a group or person value would be stored and shown in plaintext; a per-person credential is `person_secret`, project 3)
+- `scope: instance` only (a group or person value would be stored and shown in plaintext; a per-person credential is `person_secret`, below)
 - Write-only value
 - `generate`: `{length, charset}` or absent. When present, the Hub can generate a value (`crypto/rand`). `length` is 8–128 and within the option's `min_len` / `max_len`; `charset` is one of `hex` (0-9a-f), `alphanumeric` (A-Za-z0-9), `ascii_printable` (printable ASCII without space, `'` and `\`: 0x21–0x7E minus `'` and `\`)
 - `min_len` / `max_len`; no `default`. A value may not contain `'` or control characters
@@ -1088,6 +1149,8 @@ Each type has validation constraints:
 - LLDAP group names
 - `group`: one group
 - `groups`: a set of groups (like `multi_enum` over groups)
+- **NEW (file sharing): instance values are id-bound.** An instance-scope `group` / `groups` value is stored with each group's LLDAP id, like per-group rows (§13.11): a group deleted or re-created under the same name grants nothing and is purged from the value (audited `settings.purge`)
+- A file delivery of a `group` / `groups` option may set `render: {expand_members: true}` (§13.5): the file then holds the members of the bound groups that are in the instance's population, not the group names
 
 **user** / **users**
 
@@ -1095,13 +1158,40 @@ Each type has validation constraints:
 - `user`: one username
 - `users`: a set of usernames
 
-**Reserved types and option keys.** The following are reserved for later features; a Hub that doesn't implement them refuses the template with a clear reason:
+**person_secret** (**NEW**, file sharing; §13.16)
 
-- Types: `folder`, `person_secret`, `person_id` (shared folders add no type: they are `path` values, §13.15)
-- Option keys: `hash`, `length`, `revoke_on_leave`, `on_restore`, `pool`, `username`, `mount`
-- Fields `runs_as.uid_from` / `runs_as.gid_from` of the `folder` block (file sharing, project 3; §13.15)
+- A per-person **file-share password**: each person in the population creates their own on My apps (§5.1) after a fresh hardware sign-in, sees it once, and can regenerate or revoke it. The Hub stores only its hash, on the `hub_secrets` volume (§6), never the password. Admins list and revoke, never create
+- Effective scope `person`; `scope`, `default`, `required`, `resolve`, `resolve_choices`, `group_values`, `privileged`, `requires`, `requires_any`, `self_visible` and `checks` are refused. `applies`, when given, is `live`
+- `hash`: required, exactly `nt` (the NT hash, §13.16)
+- `length`: required, an integer ≥ 24 and a multiple of 4 (the password is shown in groups of 4)
+- `delivery`: required, exactly the scalar `file` (not a list): the hash files are mounted as below. Env, claim, header, hook and data-file deliveries are refused
+- `mount`: required, `{service, path}`: the compose service (it must exist) and the container directory (absolute, clean, no `:`) where the Hub mounts this option's directory of `<username>.nt` files, read-only (§6). It may not collide with a path option's target or a data file's mount on that service
+- `revoke_on_leave`: required, exactly `true` (§13.16 "Revocation")
+- `on_restore`: required, exactly `void` (§11.6)
+- `username`: optional `{pattern, reserved, reason}`: the usernames the app can serve. `pattern` is an anchored regex `^…$` limited to what Go RE2 and busybox ERE read alike (literals, bracket classes, `{m,n}`; nothing else); `reserved` a list of lowercase names, compared case-insensitively (the image's own accounts); `reason` one line, ≤ 200 characters, shown to a person whose name fails. Checked when My apps is built (status `unavailable`) and again on the create route (`409`). A template that also gives the rule to its container writes it in compose `environment:` as `PORTCULLIS_USERNAME_PATTERN` with every `$` doubled (`$$`); the validators require its unescaped value to equal `username.pattern`
+- `info`: optional list of `{label, value}` lines shown on the person's credential card (§5.1): `label` one line ≤ 64 characters; `value` text with placeholders, rendered for the person as plain text (the UI escapes it):
+    - `{user}`: the person's lowercase username;
+    - `{value:<key>}`: the displayed value of an instance option of type `string`, `int`, `enum` or `bool` that sets `self_visible: true` explicitly (never a secret, a path or any other type);
+    - `{port:<KEY>}`: the host port of the declared port `<KEY>` (`ports[].key`) for this instance;
+    - `{port_suffix:<KEY>:<default>}`: empty when that host port equals `<default>`, else `:<port>` (so `smb://{value:connect_address}{port_suffix:SMB:445}/…` shows a non-default port only).
 
-A Hub without §14 refuses the option keys `folder` and `checks` as reserved (§1).
+    Any other `{…}`, or a placeholder naming an unknown or ineligible option or port, is refused by both validators
+- Only on router-less `custom` templates with `group_access: true` and an `access_group` (§3); its population is the access group's members minus expired entries (§13.3)
+- Values are never parsed from an admin (any admin input is refused "set by the Hub"); the settings panel and `PUT …/settings` never address it. Displayed only as a status (§5.1)
+
+**person_id** (**NEW**, file sharing; §13.16)
+
+- A stable per-person number the Hub allocates, e.g. the Unix uid a file server gives each person
+- Effective scope `person`; `scope`, `default`, `required`, `resolve`, `resolve_choices`, `group_values`, `privileged`, `requires` and `requires_any` are refused
+- `pool`: required, exactly `posix_uid` (the only pool: Hub-wide, §13.16)
+- `self_visible`: required, exactly `false` (never shown on My apps)
+- `delivery`: only `file` deliveries (`{file: {name, field}}`): the person's id in the data file's people section. Every other delivery is refused
+- Values are never parsed from an admin ("set by the Hub"); displayed as the number (admin panel and File sharing tab only)
+- Only on router-less `custom` templates with `group_access: true` and an `access_group` (§3)
+
+Neither type is a SaveSettings key, a panel instance value, a seeded default, a pruned value, an env name (no implicit `UPPER(key)` env) or a My apps value.
+
+**Reserved types.** `folder` stays reserved: it is refused with "a shared folder is a type: path option with a folder block" (shared folders add no type: they are `path` values, §13.15). A Hub without §14 refuses the option keys `folder` and `checks` as reserved (§1); a Hub without file sharing refuses the types `person_secret` and `person_id` and the `folder` fields `runs_as.uid_from` / `gid_from`.
 
 ### 13.3 Scopes and population
 
@@ -1126,6 +1216,7 @@ A Hub without §14 refuses the option keys `folder` and `checks` as reserved (§
 - Admin, extra and core groups never widen the population. A member of `admin_<id>` who isn't in the access group can't reach the app
 - Public routes add nobody (anonymous visitors aren't people)
 - `sign_in: native`, method `public`, and `custom` without `native_login`: the population is empty (Portcullis passes no identity). The panel says why (`population.why`); a draft that switches to `sign_in: native` previews nobody
+- **NEW (file sharing):** a router-less `custom` template (§3) with `group_access: true` and an `access_group` is the exception: its population is the access group's current members minus expired entries, as above. People reach such an app only through credentials the Hub issues to that population (§13.16), not through Portcullis identity on a route
 - A disabled instance keeps its population for the preview, but delivers nothing
 
 **Privileged options.** An option marked `privileged: true` may take per-group values only from groups delegates can't steer:
@@ -1176,6 +1267,7 @@ Values are stored in canonical form (bytes, seconds, typed JSON). Each delivery 
 - `true` / `false`: for `bool`. The strings rendered for true and false (default `"true"` / `"false"`)
 - `join`: for `list`, `multi_enum`, `groups`, `users`. The separator (default `","`). Items are rendered in their stored order (list) or sorted (sets)
 - `format`: for structured values that don't fit a single env value. One of `json`, `yaml`, `csv`. `yaml` and `csv` are multi-line: only file and hook deliveries take them, and never for a `person_entered` scalar (outside env it is the person's own value). `json` is compact and never HTML-escapes `&`, `<`, `>`
+- `expand_members` (**NEW**, file sharing): for a file delivery of a `group` / `groups` option. `true` renders the value as the sorted lowercase usernames of the members of its bound groups (§13.2) who are in the instance's population, instead of the group names. A member outside the population is left out (the panel warns at save: "1 member of office_milan has no access to Samba and won't get this share"). With the directory unavailable the file keeps its last delivery
 
 A value that doesn't fit a delivery's granularity (e.g. 1.5 GiB rendered as an integer-GiB claim) is refused at save, naming the app and its unit.
 
@@ -1236,7 +1328,8 @@ Each option has at least one delivery. The value is rendered per delivery.
 - Form: `{file: {name: <file key>, field: <field name>, render: {…}}}`  (person/person_entered)  
   or `{file: {name: <file key>}}`  (instance/group: the whole file for the option)
 - `name`: the key of a declared `files[]` entry (§13.7)
-- `field`: for `person` and `person_entered` scopes, the field name in the data file's `people` or `entries` section (`^[a-z][a-z0-9_]{0,39}$`, default the option key; one option per field)
+- `field`: for `person` and `person_entered` scopes (and `person_id`), the field name in the data file's `people` or `entries` section (`^[a-z][a-z0-9_]{0,39}$`, default the option key; one option per field)
+- A `person_secret` option has no file delivery into a data file: its scalar `delivery: file` is its own hash-file mount (§13.2, §6)
 - The Hub writes the data file and, when the file holds a secret option, its secrets file (layout and modes in §13.7)
 - Bind-mounted read-only into the declared service. The Hub mounts the file's directory, not the file, because an atomic rename gives a new inode
 - The template's init one-shot renders the app's config from it
@@ -1264,12 +1357,14 @@ files:
   - name: <key>
     service: <service>
     mount: <container directory>
+    format: json|tsv
     on_membership_change: restart|reload|hook|none
 ```
 
 - `name`: matches `^[a-z][a-z0-9_-]{0,31}$`, unique across the template's files
 - `service`: the compose service
-- `mount`: container directory (absolute, clean, no `:`; not a single file). The file is `<mount>/<name>.json`. It may not collide with another file's mount or a path option's target on the same service
+- `mount`: container directory (absolute, clean, no `:`; not a single file). The file is `<mount>/<name>.json` (`<mount>/<name>.tsv` for `format: tsv`). It may not collide with another file's mount or a path option's target on the same service
+- `format` (**NEW**, file sharing): `json` (default) or `tsv` (below; for apps that read the file with a POSIX shell). A secret option delivered into a `tsv` file is refused at validation: secrets go only to a JSON file's `<name>.secrets.json`
 - `on_membership_change`: `restart`, `reload` (needs `reload`), `hook` (needs a hook with `membership_change`) or `none` (default): what happens when a membership-driven delivery changes the file (§13.8)
 
 **Host layout.** The Hub writes the files under `<ProjectDir>/appfiles` (core's `./appfiles`, mounted in the Hub at `/project/appfiles`; created by `./portcullis up`, 0750, owned by uid 10001). The daemon-side path the override mounts is `<ProjectHostDir>/appfiles`. `HUB_APPFILES_DIR` (the Hub's path) and `HUB_APPFILES_HOST_DIR` (the daemon's path for the same directory) move it; they are set together or not at all (one alone: the Hub refuses to start).
@@ -1277,8 +1372,8 @@ files:
 ```text
 <appfiles>/<instance>/                     0750
 <appfiles>/<instance>/<name>/              0750, bind-mounted read-only at the file's mount
-<appfiles>/<instance>/<name>/<name>.json           0640  data file
-<appfiles>/<instance>/<name>/<name>.secrets.json   0600  only when the file holds a secret option
+<appfiles>/<instance>/<name>/<name>.json           0640  data file (<name>.tsv for format: tsv)
+<appfiles>/<instance>/<name>/<name>.secrets.json   0600  only when the file holds a secret option (never for tsv)
 ```
 
 Every file is owned by the Hub (uid 10001) and written atomically. Secret values are only in the secrets file, never in the data file. The override bind-mounts `<ProjectHostDir>/appfiles/<instance>/<name>` at `mount`, read-only (`$` written as `$$`). The files are generated from the Hub's state (not backed up); deleting the instance removes `<appfiles>/<instance>/`.
@@ -1314,6 +1409,22 @@ Every file is owned by the Hub (uid 10001) and written atomically. Secret values
 
 Only secret option values, keyed by option key.
 
+**tsv format (NEW, file sharing).** The same document as `DataFileDoc`, one record per line: UTF-8, fields separated by one tab, each line ended by `\n`. The first line is the `version` line and the second the `instance` line; every other line follows, sorted by its bytes:
+
+```text
+version	1
+instance	<id>
+value	<key>	<rendered>
+person	<user>	<field>	<rendered>
+group	<key>	<group>	<rendered>
+entry	<field>	<user>	<rendered>
+```
+
+- `value`: an instance option's rendered value (the JSON `values`); `person`: a person's resolved value (the JSON `people`; `person_id` values are here, e.g. `person	alice	uid	20000`); `group`: one `scope: group` record (the JSON `groups`); `entry`: one person-entered value (the JSON `entries`; `<field>` is the delivery's field, default the option key), one line per (field, user) pair. People and users are lowercase usernames.
+- Lists and sets render comma-joined (so `expand_members` gives `value	share1_readers	alice,bob`). An empty value is an empty last field.
+- No field may hold a tab or a newline, and no list item a comma: such a value is refused when the file is rendered, naming the option and field (the unit fails, the last delivery stays). There is no escaping and no quoting.
+- There are no table-row lines: a `table` option delivered into a `tsv` file is refused at validation (deliver it to a JSON file).
+
 **Reading.** The service runs as root or, when not root, with `group_add: ["10001"]` to read the 0640 data file. The 0600 secrets file is readable only by root or `user: "10001"`. The validator warns when a service that is neither reads a secrets file.
 
 **Starting.** The data files are written before the containers are created, so an init one-shot always reads the current state. A file with per-person, group or entry values that was never delivered while Users & Groups is unavailable makes the start fail (503) rather than start the app without it.
@@ -1328,7 +1439,7 @@ hooks:
     service: <service>
     command: [<argv>]
     user: <user>
-    when: [start, settings_change, membership_change]
+    when: [start, settings_change, membership_change, credential_change]
     timeout: <duration>
 ```
 
@@ -1337,7 +1448,7 @@ hooks:
 - `command`: argv list, run directly (not through `sh -c`)
 - `user`: optional user to run as (default: container's user)
 - `command`: a non-empty argv list of non-empty strings without control characters
-- `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input
+- `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input; `credential_change` (**NEW**, file sharing) after a `person_secret` credential was created, regenerated, revoked or voided (§13.16), immediately (never debounced)
 - `timeout`: Go duration (e.g. `60s`). Default 30s, **at most 10m**
 
 The Hub runs the command verbatim (never through a shell) with Docker exec in a running container of the hook's service in this instance (replica 1 preferred) and sends the full desired state as JSON on stdin, the **HookInput**: the data-file document (§13.7) of the options delivered to that hook, plus `trigger` and `secrets`. It is never a diff.
@@ -1346,21 +1457,38 @@ The Hub runs the command verbatim (never through a shell) with Docker exec in a 
 
 ```json
 {
-  "trigger": "start|settings_change|membership_change",
+  "trigger": "start|settings_change|membership_change|credential_change",
   "version": 1,
   "instance": "<id>",
   "values": {"<key>": <rendered>},
   "people": {"<lowercase user>": {"<field>": <rendered>}},
   "groups": {"<key>": [{"group": "<name>", "value": <rendered>}]},
   "entries": {"<field>": [{"user": "<lowercase user>", "value": <rendered>}]},
-  "secrets": {"<key>": "<value>"}
+  "secrets": {"<key>": "<value>"},
+  "credentials": {"<key>": {"<lowercase user>": {"id": "<hex>", "version": <n>}}}
 }
 ```
 
 - `trigger`: the run's trigger when the hook declares it, else `settings_change` if declared, else its first `when`
 - `secrets`: the secret options delivered to the hook. **Secrets reach a hook only on stdin**: never in argv, its environment, logs, op records or errors
+- `credentials` (**NEW**, file sharing): for every `person_secret` option of the template, the people with an **active** credential, each with the credential's `id` (hex, new on every create and regenerate) and `version` (1 on create, +1 on every regenerate). Never a hash or a password: the hook reads the hashes from its own read-only mount (§6). Always an object (`{}` without such options)
 
-Hooks must be idempotent. Exit 0 means applied. Any other exit code (or the timeout) is "failed", recorded in the instance's op record (`hook`; a later success clears it). The output is redacted (the secrets sent, and the instance's stored secrets in their JSON and HTML encodings), then clipped.
+Hooks must be idempotent. Exit 0 means applied. Any other exit code (or the timeout) is "failed", recorded in the instance's op record (`hook`; a later success clears it). The output is redacted (the secrets sent, the instance's stored secrets in their JSON and HTML encodings, and every current `.nt` hash of the instance in upper and lower case), then clipped.
+
+**Hook reports (NEW, file sharing).** A hook may print **one** line starting with `PORTCULLIS-REPORT ` (with the space) followed by one JSON `HookReport`; every other output line is log only. The Hub reads it as untrusted input:
+
+```json
+{"version": 1,
+ "findings": [{"code": "former_account", "severity": "warning", "subject": "alice", "message": "alice's Time Machine folder belongs to a former account (uid 20023)", "uid": 20023}],
+ "folders": [{"option": "storage", "name": "alice", "uid": 20000, "former": false, "bytes": 107374182400}]}
+```
+
+- exactly one such line, at most 64 KiB, strict JSON (unknown fields refused, one document), `version` 1; at most 500 `findings` and 500 `folders`;
+- `code` is one of `former_account`, `wrong_owner`, `name_refused`, `owner_unwritable`; `severity` `problem`, `warning` or `info`; `subject` (a username, or a share name for `name_refused`), `message`, `option` and `name` are one line, at most 200 runes, without control characters; `uid` a whole number; `bytes` a whole number or `null` (unknown); `former` true when the folder's owner isn't the person's current id;
+- a `folders` entry describes one top-level directory of a per-person tree (§13.17): `option` is the `path` option, `name` the directory (a username);
+- findings whose subject isn't in the population (or, for `name_refused`, isn't a share name the instance's settings hold), and folders of an unknown option, are dropped; a malformed report is logged and ignored, and the hook unit stays OK;
+- the Hub stores the last accepted report with the time it received it (`<data>/settings/<id>/hook-report.json`) for the File sharing tab and the doctor (§14.5). A report never drives revocation or authorization;
+- the line is removed from op records and logs (after redaction).
 
 A hook runs when its `when` has the trigger and its input changed (a hash of the document and the secrets' `updated_at`, never their values) or its last run failed; every `start` hook runs on every start, and every hook on a retry. Runs per instance are serialised. A hook that timed out (Docker can't kill an exec) blocks the next run until it ends: meanwhile the hooks are skipped `previous run still running` and re-queued with backoff. With no running container the hook is skipped `not running` and the next start delivers it. The admin can retry from the panel.
 
@@ -1414,6 +1542,10 @@ The delivery engine picks the strongest effect among changed options: `live`, `n
 
 **Requires.** An instance option with `requires: [<key>, …]` is refused at save when it is non-empty and any listed key is empty. The listed keys must exist, be instance-scoped, and not self-reference. The panel shows the pair together. Used for Craft version + sha256 pairs.
 
+**Requires any (NEW, file sharing).** An instance option with `requires_any: [<key>, …]` is refused at save (`400`, naming the option) when it is non-empty and **every** listed key is empty. The listed keys must exist, be instance-scoped and not self-reference. Used by the Samba share slots: a slot's folder needs at least one reader or writer group (§13.17).
+
+**Credential changes (NEW, file sharing).** A credential mutation (§13.16) queues an immediate delivery with the trigger `credential_change`, which ranks above `settings_change`: a queued run that merges it keeps it, so hooks declaring `credential_change` still run. **Removals are immediate:** for an instance with `person_secret` options, a membership removal from its access group or from any group one of its instance `group` / `groups` options names delivers that instance's data files and runs its hooks at once, skipping the 60 s debounce below. Additions keep the debounce.
+
 **Order of a run.** Data files, then claims, then headers, then hooks, then the effect (one reload or one background restart). A run whose settings change under it stops at its next write (`superseded`) and is re-queued with the strongest effect it still owed.
 
 ### 13.10 Secrets
@@ -1432,6 +1564,7 @@ Delivered through env (in the 0600 `.env`, written from the store), file (secret
 When an LLDAP group is deleted (through the Hub or outside it), the Hub purges:
 
 - Per-group values and `scope: group` records that reference it (every instance)
+- **NEW (file sharing):** the group from every instance-scope `group` / `groups` value (§13.2), the same way and with the same audit; a re-created group of the same name grants nothing
 - The purge is audited `settings.purge`: by the deleting admin when the group is deleted through the Hub (immediately, then a delivery), by `hub` when the next reconcile finds a group gone or re-created outside the Hub
 
 Purges are irreversible. The reconcile purges only when the LDAP sanity check passes (the sweep baseline: `admin` and the service account present, and no drop of more than 20% and more than 2 users); otherwise it logs a warning and delivery only filters. A privileged option's row from a group that can no longer hold privileged values grants its lowest value at once and is purged the same way. A template's `group_values` preset row purged with its group comes back only when the Hub itself re-creates that group (enable, create missing groups).
@@ -1448,7 +1581,7 @@ Settings are read and edited only on the Hub listener by admins. Settings need U
 - `POST /api/instances/{id}/settings/retry` → run the delivery again (every hook included), audited `settings.retry`; answers the `DeliveryReport`
 - `PUT /api/instances/{id}/settings/entries/{key}/{user}` `{"value": …}` and `DELETE …` → an admin sets (only with `admin_override`, else 403) or clears (always) a person-entered value (§13.13)
 
-**Delivery status** (`deliveries` in the panel, `DeliveryReport` from save and retry): one result per unit, `{unit, ok, skipped, message, error, at}`, plus `pending` (a run is queued) and the last `trigger`. Units: `env`, `env:values` (only while some option value can't go in the `.env`: those variables are written empty, the unit's error names them, never the value), `file:<name>`, `claim:<attribute>`, `headers`, `hook:<name>`, `reload`, `restart`, and `delivery` (the run as a whole, when it couldn't run). `error` is redacted, then clipped. `skipped` is one of these stable strings:
+**Delivery status** (`deliveries` in the panel, `DeliveryReport` from save and retry): one result per unit, `{unit, ok, skipped, message, error, at}`, plus `pending` (a run is queued) and the last `trigger`. Units: `env`, `env:values` (only while some option value can't go in the `.env`: those variables are written empty, the unit's error names them, never the value), `file:<name>`, `credentials:<key>` (**NEW**, file sharing: one per `person_secret` option; it reconciles the option's hash files with the credential metadata — orphan files deleted, active metadata without a file voided, after the secrets-epoch check of §11.6 — and records a digest of the active metadata only: ids and versions, never hash bytes), `claim:<attribute>`, `headers`, `hook:<name>`, `reload`, `restart`, and `delivery` (the run as a whole, when it couldn't run). `error` is redacted, then clipped. `skipped` is one of these stable strings:
 
 | `skipped` | Meaning |
 |-----------|---------|
@@ -1546,7 +1679,7 @@ Three optional template fields (a MINOR addition to contract v3, §1) let a `pat
 | Field | Required | Description |
 |-------|----------|-------------|
 | `access` | Yes | `read` or `write`: what the app does on this mount. `read` is **always** mounted read-only, on a shared folder and on a custom host path alike |
-| `runs_as` | Yes | The uid and gid the app's process uses on this mount. Each of `uid` and `gid` has exactly one source: a number (`uid`, `gid`), or the env name of an instance `int` option of the same template (`uid_env`, `gid_env`; e.g. `PUID` / `PGID` images), or the reserved `uid_from` / `gid_from` (an option key; file sharing, project 3: refused until then with "file sharing (project 3)"). Both ids need a source |
+| `runs_as` | Yes | The uid and gid the app's process uses on this mount. Each of `uid` and `gid` has exactly one source: a number (`uid`, `gid`), or the env name of an instance `int` option of the same template (`uid_env`, `gid_env`; e.g. `PUID` / `PGID` images), or (**NEW**, file sharing) `uid_from` / `gid_from`: the key of a `person_id` option of the same template, meaning "each person's own id" (below). Both ids need a source, except that `uid_from` with `joins_group: template` needs no gid source (the template applies the folder gid itself) |
 | `joins_group` | No (default `group_add`) | How the app joins the folder's group: `group_add` (the Hub adds the folder gid as a supplementary group of the target service), `gid_env` (the folder gid becomes the app's primary group through `runs_as.gid_env`, which is then required), or `template` (the template does it itself, e.g. Samba's `force group`, from `PORTCULLIS_FOLDER_GID_<KEY>`) |
 | `must_own` | No (default `false`) | The app refuses files it doesn't own: the Hub also sets the owner to the app's uid. Only with `access: write`; at most one `must_own` use per folder (§14.3) |
 
@@ -1561,7 +1694,13 @@ The validator refuses, naming the option and the reason:
 - two folder options of one service naming the same `uid_env` or `gid_env` with different `runs_as` or `joins_group` (one primary gid per process; sharing the variable with identical blocks is normal); a service with a `gid_env` join where another folder option on it doesn't use that `gid_env` ("every folder option on it must use runs_as.gid_env <G>");
 - a `joins_group: gid_env` block whose variable another service, one no such folder option targets, reads in its compose `user:` gid or `group_add` ("only the services the folder options target may use a gid_env variable");
 - next to a folder block, a `group_add` entry of the target service that isn't a number or exactly one `${NAME}` of an instance `int` option (group names such as `video` included: a hardware-transcoding group needs a declared `int` option, e.g. `group_add: ["${RENDER_GID:-109}"]`);
-- the default of an option a `runs_as.uid_env` / `gid_env` or a `writes_as` key names that isn't a whole number ("whose default … is not a whole number"; ints, whole floats and decimal strings are read), and a non-integer numeric `runs_as` id ("want a whole number, not …", a variable goes in `uid_env` / `gid_env`).
+- the default of an option a `runs_as.uid_env` / `gid_env` or a `writes_as` key names that isn't a whole number ("whose default … is not a whole number"; ints, whole floats and decimal strings are read), and a non-integer numeric `runs_as` id ("want a whole number, not …", a variable goes in `uid_env` / `gid_env`);
+- (**NEW**, file sharing) a `uid_from` / `gid_from` that doesn't name a `person_id` option of the template; `gid_from` without `uid_from`; `gid_from` with a `joins_group` other than `template`; `uid_from` together with a numeric `uid` or `uid_env` (two sources for one id).
+
+**Per-person owners (NEW, file sharing).** `uid_from` / `gid_from` say that the app writes on this mount as **each person's** Hub-allocated id (§13.16), not as one fixed process id. Two forms:
+
+- **A shared folder written by every person** (the Samba share slots, §13.17): `runs_as: {uid_from: <person_id key>}` with `joins_group: template` and no gid source. Files land as `<person's uid>:<folder gid>`; the group is the folder gid the template applies itself from `PORTCULLIS_FOLDER_GID_<KEY>` (Samba's `force group`). This is project 2's full model: assignment, plan, undo, probes and the doctor work unchanged, with the owner unknown (`OwnerKnown` false: the plan is group-only, no principal uid).
+- **A per-person tree** (Time Machine storage, Samba homes): `runs_as: {uid_from: <person_id key>, gid_from: <person_id key>}` (each person's private group equals their uid) with `joins_group: template`. Such an option can't take a `folder:<id>` value: a settings save, its preview and an assignment refuse one with `409`. It gets no `PORTCULLIS_FOLDER_GID_<KEY>` (empty), no setgid / group ACL / mask plan, and is never a `shared_path` or `folder_owner` subject; the doctor checks each top-level directory instead (§13.17, §14.5).
 
 **The folder gid range.** Gids **60000–60999** are the folder groups (§14.1); only a folder assignment gives them to an app. Every **gid reference** is range-checked; uid sources never are (a uid in that range is harmless). The gid references are: a numeric `runs_as.gid`, `runs_as.gid_env`, a numeric `writes_as.gid` or the option a `writes_as` gid key names, and on **every** service the compose `user:` gid part and each `group_add` entry. The validator refuses, without a `setting` prefix and before the options are checked (services in sorted order):
 
@@ -1581,16 +1720,19 @@ The Hub enforces the same range at run time: a settings save and its preview ref
 - **Group:** with `joins_group: group_add` (and for options without a `folder` block), `group_add: ["<gid>"]` on the target service (strings; compose merges them with the template's own list). Only the gids of the folders the instance mounts. Never in the custom override: `group_add` stays forbidden there and the Hub never writes that file.
 - **`gid_env`:** the variable named by `runs_as.gid_env` is written with the folder gid instead of the option's stored value, on every `.env` write (save, start, delivery); no `group_add`.
 - **`template`:** no `group_add`; the template reads the variable below.
-- **Variables:** for **every** `path` option of the instance, every `.env` write carries `PORTCULLIS_FOLDER_GID_<UPPER(key)>` (the folder gid when the value is a folder value, else empty) and `PORTCULLIS_FOLDER_UID_<UPPER(key)>` (the `must_own` use's uid when the folder has one, else empty), single-quoted like every Hub-written value. Writing them empty clears them when a folder is unassigned. The prefix `PORTCULLIS_FOLDER_` is reserved (§2): no template may declare a name under it, and the Expert env editor refuses to change one ("set by the Hub").
+- **Variables:** for **every** `path` option of the instance, every `.env` write carries `PORTCULLIS_FOLDER_GID_<UPPER(key)>` (the folder gid when the value is a folder value, else empty) and `PORTCULLIS_FOLDER_UID_<UPPER(key)>` (the `must_own` use's uid when the folder has one, else empty), single-quoted like every Hub-written value. Writing them empty clears them when a folder is unassigned. The prefix `PORTCULLIS_FOLDER_` is reserved (§2): no template may declare a name under it, and the Expert env editor refuses to change one ("set by the Hub"). **NEW (file sharing):** a template may pass the folder gid to its container: `${PORTCULLIS_FOLDER_GID_<KEY>}` is allowed in a service's compose `environment:` values, in exactly that form (no default or alternate), only when `<KEY>` is a `path` option with a `folder` block that targets that service. Everywhere else a `PORTCULLIS_FOLDER_*` reference stays refused.
 - Before every `up` of an instance with a folder value that has a subpath, a read-only probe checks the subpath (§14.2).
 
 **Settings saves.** Folder values change only through an assignment (§14.3). A settings save **and** its preview (§13.12) refuse (`409`):
 
 - a value `folder:…`, or replacing or clearing one: "assign through Settings → Shared folders";
 - a change of an option a folder writes through `gid_env`: "set by shared folder <name> (gid <N>)";
-- a value in 60000–60999 for an option a gid reference names (`runs_as.gid_env`, a `writes_as` gid key, a compose `user:` gid or `group_add` `${X}`; never a uid source): "gid 60000–60999 is reserved for shared folder groups" (such values come only from a folder assignment's `gid_env`).
+- a value in 60000–60999 for an option a gid reference names (`runs_as.gid_env`, a `writes_as` gid key, a compose `user:` gid or `group_add` `${X}`; never a uid source): "gid 60000–60999 is reserved for shared folder groups" (such values come only from a folder assignment's `gid_env`);
+- (**NEW**, file sharing) a `folder:` value on an option with `runs_as.gid_from` (a per-person tree, above).
 
 Restores don't apply these refusals; they clear values naming a missing folder instead (§11.6).
+
+**Docker's data root (NEW, file sharing).** A settings save, its preview and both restores refuse (`400`; Docker's data root unreadable: `503`) a hand-typed `path` value at, above or under Docker's data root (`DockerRootDir`, the same rule as for folder paths, §14.1). It protects `hub_secrets` and every other volume.
 
 **`checks`** (option level, next to `folder`, never inside it): a list of doctor checks from a fixed catalog. Each entry has `kind` and a required `reason` (one line, ≤ 200 characters, no control characters) that the doctor shows. Adding a check kind is Hub work and a contract change; adding a check is template work.
 
@@ -1641,20 +1783,21 @@ services:
 
 and the `.env` `PORTCULLIS_FOLDER_GID_MOVIES_PATH='60001'` and an empty `PORTCULLIS_FOLDER_UID_MOVIES_PATH` (no `must_own` use).
 
-**Example** (Samba, **project 3**: `uid_from` and the `person_id` option it names are still refused):
+**Example** (Samba, one of its share slots, §13.17):
 
 ```yaml
 # manifest.yaml (excerpt)
 settings:
   options:
-    - key: share_path
-      label: Shared folder
+    - key: share1_folder
+      label: Share 1 folder
       type: path
-      target: {service: samba, mount: /shares/family}
+      target: {service: samba, mount: /shares/1}
       folder:
         access: write
-        runs_as: {uid_from: person_uid, gid: 0}   # project 3: each person's Hub-allocated uid
-        joins_group: template                     # reads PORTCULLIS_FOLDER_GID_SHARE_PATH
+        runs_as: {uid_from: uid}                  # each person's Hub-allocated uid (person_id option uid)
+        joins_group: template                     # reads PORTCULLIS_FOLDER_GID_SHARE1_FOLDER
+      requires_any: [share1_readers, share1_writers]
       checks:                                     # option level, next to folder
         - kind: filesystem
           needs: [xattr, acl]
@@ -1669,6 +1812,110 @@ ports:
     service: samba
     lan_only: true
 ```
+
+```yaml
+# compose.yml (excerpt)
+services:
+  samba:
+    environment:
+      SHARE1_GID: ${PORTCULLIS_FOLDER_GID_SHARE1_FOLDER}   # the one allowed form (§13.15 Variables)
+```
+
+### 13.16 Per-person credentials and ids — NEW (file sharing)
+
+The Hub implements `person_secret` and `person_id` (§13.2) generically: it knows nothing about Samba. Every Samba value (username rule, reserved names, share names) is in the templates' manifests (§13.17).
+
+**Passwords.**
+
+- One credential per (person, instance, `person_secret` option): a person with two file-sharing apps has two passwords, and regenerating one doesn't touch the other. **Self-service only:** only the person creates or regenerates theirs (§5.1); admins list and revoke, never create (an admin who created one would have seen it).
+- `length` characters (24 for both templates) drawn with `crypto/rand` (no modulo bias) from exactly this 54-character alphabet: `23456789ABCDEFGHJKLMNPQRSTUVWXYabcdefghjkmnpqrstuvwxyz` — the digits without `0 1`, upper case without `I O Z`, lower case without `i l o`; 24 characters are about 138 bits.
+- Shown as groups of 4 joined by `-` (29 characters for 24). The dashes are part of the password: what people read is what they type.
+- **NT hash:** the uppercase hex of MD4 over the UTF-16LE encoding of the whole dashed password (`golang.org/x/crypto/md4`). One file per person: `<secrets>/<instance>/<key>/<username>.nt` on `hub_secrets` (§6), 32 hex characters and `\n`, `0600`; directories `0700`; owner uid 10001.
+- **The secret never leaves its place.** Neither the password nor the hash appears in `state.yaml`, `instance.yaml`, env, argv, logs, the audit, op records, hook stdin or hook output, instance or core backups, or any API answer other than the one create / regenerate answer (`Cache-Control: no-store`). The password is a byte buffer zeroed once that answer is written. For an instance with `person_secret` options, every current hash (upper and lower case) is redacted from hook output, op records, unit errors, Exec answers and the container logs API of that instance. No digest or hash the Hub stores (`delivered.json`, the hook input hash, plan hashes) includes hash bytes or a function of them.
+- **Safe paths:** independently of the template's username rule, the Hub refuses (`500`, logged) any username or option key outside `^[a-z0-9_][a-z0-9_.-]{0,63}$` when it builds a secrets path, and confines the result under `HUB_SECRETS_DIR`.
+- **Metadata** in `state.yaml` `credentials`: instance → key → lowercase user → `{id, version, uuid, created_at, created_by, revoked_at, revoked_by, reason}`. `id` is new on every create and regenerate, `version` is 1 on create and +1 on every regenerate, `uuid` the person's LLDAP user uuid at creation, `created_by` always the person. `reason` is one of `self`, `admin`, `leave`, `deleted`, `restore`. Not in instance archives (§11.5).
+- **Statuses** on My apps (`MyCredential.status`, §5.1): `none`; `active` (`since` = created_at); `voided` (`reason: "restore"`, `since` = when it was voided; "Your password was reset by a restore on <date>; create a new one"); `unavailable` (`reason` = the template's username reason; no button).
+
+**Create and regenerate** (`POST /api/me/apps/{instance}/credentials/{key}`, §5.1), in this order:
+
+1. the instance is enabled, the key is a `person_secret` option and the caller is in its population; else `404` (one answer for all);
+2. the username rule (`username.pattern` and `reserved`); else `409` with the template's reason. The fresh-auth proof is not consumed;
+3. the caller's LLDAP uuid is known (`Membership.UUIDs`); else `503`. The secrets volume is usable (§6); else `503`;
+4. the fresh-auth proof (§8); else `403` with the generic text;
+5. the password and its hash; under the Hub's lock the hash file (rotating the secrets epoch, §11.6), the metadata and `state.yaml`;
+6. the audit (`credential.create` or `credential.regenerate`), then the answer;
+7. an immediate `credential_change` delivery (§13.9) and a non-blocking holder check (below), so a removal that raced the create is revoked at once.
+
+Refused creates count toward the people listener's per-caller limit (10 refusals a minute, then `429`, §5.1). Revoking your own (`DELETE`, `reason: self`) needs no fresh auth.
+
+**Revocation** (`revoke_on_leave: true`). A credential is destroyed, not paused: its hash file and active metadata go, and coming back means creating a new password.
+
+- **Who is revoked** (one pure holder check shared by the revoker and the doctor's canary, §14.5). With LLDAP answering, an active credential is revoked when its holder is absent from LLDAP (`reason: deleted`), outside the instance's population (`leave`), or has a non-empty uuid other than the recorded one (`deleted`: the account was deleted and created again). An **empty** current uuid revokes nothing on that ground; the doctor shows the Problem "can't verify <user>'s account". An LLDAP that answers but lacks the access group revokes everyone (fail closed, irreversible; logged loudly). LLDAP unreadable: the check does nothing, and the next one retries.
+- **When.** Hub-made changes (member removal, user or group deletion, instance delete) and the rule evaluator's removals revoke at once, with no debounce. Edits made directly in LLDAP are caught by the holder check on the evaluator's 60 s tick (the evaluator always runs while Users & Groups is configured): within about 60 s plus the hook. People should therefore be managed through the Hub.
+- **How it is applied**, independently of the delivery engine: under the Hub's lock the hash file and the metadata go (epoch rotated), then the audit (`credential.revoke_leave`). Then, per affected instance:
+    1. no running container of the hook's service: done (the next start's converge has no account for them);
+    2. otherwise the Hub runs every hook whose `when` lists `credential_change` with a freshly built `HookInput`, under the instance's delivery lock (taken with retries for at most 2 s) and with an exec timeout of min(the hook's timeout, 8 s); exit 0: done;
+    3. anything else (the lock not obtained, a skip, an error, a timeout, the directory unavailable, a previous exec still running): the Hub kills the project (`compose down`, else by container name, else SIGKILL to its containers) without waiting for a lifecycle operation, records op `credentials` "revocation could not be applied live; the instance was stopped", and starts it again in the background (the start-time converge has no account for them). If that start fails, the instance stays down and enabled (drift shows it).
+
+    A normal immediate `credential_change` delivery follows for the bookkeeping. A template's hook must therefore apply a revocation within 8 s.
+- **Instance delete** removes the instance's secrets right after its compose down (§11.4). **Restore** voids (§11.6).
+- **Admin revoke** (`reason: admin`, `revoked_by` = the admin).
+
+**Admin routes** (Hub listener, `adminOnly`, CSRF-guarded; never on the people listener):
+
+- `GET /api/instances/{id}/credentials` → `[CredentialsView]`, metadata only: per `person_secret` option `{instance, key, label, population, active, rows, folders, last_sync}`, each row `{user, status, since, reason, ids, values}` (`ids`: the person's `person_id` values by key; `values`: their displayed person-scope values), `folders` the last hook report's folders (§13.8). Never a password or hash;
+- `DELETE /api/instances/{id}/credentials/{key}/{user}` → `204`.
+
+**Audit** (`audit.jsonl`, §9.5): `credential.create`, `credential.regenerate`, `credential.revoke` (actor `self` or the admin), `credential.revoke_leave` (reason `leave` or `deleted`), `credential.void_restore` (the count only). Fields: instance, key, username, actor, reason. Never the password, the hash, or a fresh-auth code, verifier, nonce or token; a refused create is audited `refused` with the refusal's reason only.
+
+**Person ids** (`person_id`, pool `posix_uid`).
+
+- **Range 20000–59999.** The allocator also refuses every id in a static reserved set: 0–999, 1000, 10000–10099 (the Hub's 10001, enroll's 10002, …), 65534 and 60000–60999 (the shared-folder gids, §14.1), and skips any uid that a hook report or a per-person tree scan lists as an owner. A person sharing the Hub's uid could read every hash and data file.
+- **Hub-wide:** every `person_id` option with that pool, in every instance, gives a person the same id. Allocated the first time a person needs one, from the pool's `next` upwards (ids only increase), keyed by (lowercase username, LLDAP user uuid). **Never reused:** a changed uuid (the account was deleted and created again) retires the old id and allocates a new one, so a re-created account never owns a former account's files. An exhausted pool is an error ("uid pool posix_uid is exhausted"), nothing saved.
+- **A pool never rewinds:** on a secrets-epoch mismatch (§11.6, a core restore) every pool's `next` advances by 1000 before any allocation.
+- **Allocated before rendering**, in one short locked section that saves `state.yaml` once if anything was allocated, before the delivery's render and before a start's data files. A population member without a uuid gets no id and is left out of the file (logged); the rest is delivered. The whole delivery is skipped only while the directory is unavailable.
+- **State:** `state.yaml` `person_ids`: pool → `{next, entries: [{user, uuid, id, retired_at}]}`. Carried by core's backup with `state.yaml`; not in instance archives, so an instance restore keeps everyone's id.
+- Never shown on My apps; the admin panel and the File sharing tab show it.
+
+### 13.17 File-sharing templates (Samba, Time Machine) — NEW (file sharing)
+
+The templates repo's `samba` (ServerContainers, `smbd-only`) and `timemachine` (`mbentley/timemachine`) templates implement this section; their CI asserts it. The Hub enforces none of it beyond §13.2–13.16: these are the templates' obligations.
+
+**Common shape.**
+
+- `instances: multi`, `auth.method: custom` with **no** Traefik router, `group_access: true`, `access_group: users_<id>` (§3); `auth.notes` "No web page: file sharing over SMB …".
+- A `person_secret` option `share_password` (`hash: nt`, `length: 24`, `delivery: file`, `mount` at `/portcullis/secrets`, `revoke_on_leave: true`, `on_restore: void`, `username` `^[a-z_][a-z0-9_.-]{0,31}$` plus every account of the image, `info` with `smb://{value:connect_address}{port_suffix:<PORT KEY>:445}/<share>` and `{user}`) and a `person_id` option `uid` (pool `posix_uid`, `self_visible: false`, delivered to the people file).
+- A `tsv` people file (§13.7) and one hook, `sync` (`portcullis-sync`, `when: [start, settings_change, membership_change, credential_change]`, `timeout: 60s`).
+- `connect_address`: `string`, `format: hostname` (an IPv4 address matches too, §13.2), `required`, `self_visible: true`.
+- One port, 445/tcp, `lan_only: true` (no 137–139).
+
+**The converge script `portcullis-sync`** (busybox sh; one copy shared by both templates, kept identical by a test) runs before smbd starts and as the hook, idempotently:
+
+- It owns `smb.conf` entirely; the effective configuration may hold no `include`, `config backend` or `registry shares` (exit 4).
+- `[global]` has exactly: `server min protocol = SMB3`, `server smb encrypt = required`, `server signing = mandatory`, `ntlm auth = ntlmv2-only`, `lanman auth = no`, `map to guest = never`, `restrict anonymous = 2`, `disable netbios = yes`, `smb ports = 445`, `wide links = no`, `hosts allow = <PORTCULLIS_LOCAL_NETWORKS, space-separated>`, `hosts deny = 0.0.0.0/0 ::/0`. Every share has `guest ok = no`. `testparm -s` must show these values (as it normalises them), otherwise the script exits non-zero and nothing serves.
+- An empty `PORTCULLIS_LOCAL_NETWORKS` (§3.1): it never renders an allow-all `hosts allow`; the container doesn't start (the doctor's `local_networks_empty`, §14.5).
+- **No share is ever rendered with an empty `valid users`** (Samba reads it as "everyone"): a share whose user list is empty is left out.
+- The passdb and Samba's state are on tmpfs (`/var/lib/samba`, `/var/cache/samba`, `/run/samba`, `/run/portcullis`), so no hash reaches a Docker volume or an instance backup. It reads the Hub's files as uid/gid 10001 (a privilege drop, not `DAC_OVERRIDE` / `DAC_READ_SEARCH`, which the cap set doesn't have) and imports hashes from a `0600` root-owned temp file on tmpfs, never from argv.
+- Unix users get their Hub uid; every account not in the desired state is removed; a name that fails the username rule is skipped and reported.
+- It ends a user's open sessions (their `smbstatus -p -u <user>` PIDs: `TERM`, then `KILL` after 2 s) when their account goes, when their `.nt` changed (it keeps each hash's sha256 on tmpfs, never printed), and when the set of shares served to them shrank.
+- It prints one hook report (§13.8): former accounts, wrong owners, refused share names, unwritable owners, and each per-person folder with its size (`du -sk` as the folder's owner under `timeout 20`, else `bytes: null`).
+
+**Per-person trees** (Time Machine `storage`, Samba `homes`): `path` options with `runs_as: {uid_from: uid, gid_from: uid}` and `joins_group: template` (§13.15). Each top-level `<username>` directory must be `<uid>:<uid>`, mode `0700`. Before serving one the script checks its owner: another uid (a deleted account whose name was created again) is **not** served and is reported `former_account`; the right uid with another gid or mode is `wrong_owner` (the doctor offers the one-click `person_tree_owner`, §14.6). Former members' folders stay on disk.
+
+**Samba.**
+
+- **Eight fixed share slots** `share<n>_*`, n = 1–8 (no table rows): `share<n>_folder` (`type: path`, `target.mount: /shares/<n>`, `folder: {access: write, runs_as: {uid_from: uid}, joins_group: template}`, `requires_any: [share<n>_readers, share<n>_writers]`), `share<n>_name` (`string`, the share name pattern), `share<n>_readers` and `share<n>_writers` (`groups`, instance scope, delivered to the people file with `expand_members`, §13.5). A slot's folder is assigned like any shared folder (§14.3).
+- A slot's share: `valid users` = readers ∪ writers (population members only), `write list` = writers, `read only = yes`, `force group` = the folder gid (from `${PORTCULLIS_FOLDER_GID_SHARE<n>_FOLDER}` in compose `environment:`, §13.15), `create mask = 0660`, `directory mask = 2770`: files land as `<person uid>:<folder gid>`. Other people of the instance can't open it; to share with everyone who has access, pick `users_<id>` as a reader group. A slot without a folder, a name or a served user is not rendered.
+- Share names are refused, case-insensitively, when they are `global`, `homes`, `printers`, `print$`, `ipc$` or `home`, or a duplicate of another slot's: such a share isn't served and is reported `name_refused` (doctor Info).
+- `[Home]`: `path = /homes/%u`, `valid users` = the explicit list of people served (never empty, never `%U`).
+- No `ACCOUNT_*` env (it would put hashes in `docker inspect`); with no `ACCOUNT_*` the image creates no account or share, and never re-adds defaults on restart.
+
+**Time Machine.**
+
+- **mbentley's entrypoint never runs.** The start command is `portcullis-sync --boot`, then `exec s6-svscan` over a copy of `/etc/s6` without `avahi`, `dbus` and `nmbd`. There are no throwaway passwords and no `EXTERNAL_CONF`; the image's default `timemachine` account is never created, with nobody eligible or with people (CI asserts both).
+- One share per person with a password: `<share_prefix>-<username>`, with `fruit:time machine max size` = their resolved limit (cooperative: Time Machine prunes to fit; not a hard quota).
+
+**Bonjour (both).** Off by default: people connect with the `smb://` address on My apps. Opt-in: a `path` option mounts the host's Avahi services directory at `/portcullis/avahi`, and a `bool` option `advertise` (`applies: live`) controls the file `portcullis-<instance>.service` there: `_smb._tcp` on the published port (Time Machine also `_adisk._tcp` and `_device-info._tcp`). With `advertise` false (while the directory is mounted) the script removes the file; it also removes it when the container stops. The option's help says that advertising shows every share name, usernames included, to the local network, and to turn advertising off before clearing the directory.
 
 ## 14. Shared folders and the doctor
 
@@ -1785,7 +2032,15 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
     - `folder_changed`: the post-start probe found a folder's subpath or root changed (§14.2) → Problem, explain-only.
     - `folder_reachable_above`: a target service (or any service the folder gid reaches) has another mount (setting, custom override) at or above the folder's path → Problem, explain-only with the mounts. The assignment preview refuses this setup with `409` before any run.
     - `lan_only_exposed`, `host_network` (§14.7). `scan_failed`.
-- Project 3 registers more kinds (file-share passwords) through the same check interface.
+- **File sharing (NEW)** registers more kinds through the same check interface (§13.16–13.17):
+    - `credential_without_access`: an active credential whose holder the holder check would revoke (a canary for a failed revocation; it should never fire) → Problem, one-click `revoke_leaver`;
+    - `former_account_folder`: a per-person tree's top-level directory owned by another uid than the person's ("alice's Time Machine folder belongs to a former account (uid 20023)"), from the tree scan or the hook report (same fingerprint) → Warning, explain-only (moving or deleting it is the admin's call);
+    - `person_tree_owner`: the person's uid but another gid or a mode other than `0700` → Warning, one-click `person_tree_owner`; anything else at a tree's top level → Info; files inside a person's tree aren't checked;
+    - `local_networks_empty`: Local networks saved empty while an enabled instance references `PORTCULLIS_LOCAL_NETWORKS` → Problem, linking to Settings → Local networks ("Local networks is empty; file sharing is off");
+    - `unverifiable_account`: an active credential whose holder LLDAP lists with an empty uuid → Problem "can't verify <user>'s account", explain-only;
+    - the hook report's `name_refused` and `owner_unwritable` findings, with the report's severity and text (the templates send `name_refused` as `info`); its `former_account` and `wrong_owner` findings feed the two tree kinds above.
+
+    Per-person trees (`gid_from` options with a value) are scan targets with their top-level children read (owner, group, mode); they are never `shared_path` or `folder_owner` subjects.
 
 ### 14.6 Fix classes
 
@@ -1793,6 +2048,8 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
     - `manage_as_folder` (params `name`, `id`; default the path's base name, slugged): the folder definition lines plus the assignment plan for the finding's uses. The apply predicts the gid, holds the new id's folder lock across creating the definition and validating the assignment, and on a refusal or hash mismatch deletes the just-created definition (its gid stays used) and answers `409`.
     - `reapply_folder`: the assignment of the folder's current uses (§14.3).
     - `rebind_port` (param `address`): bind a LAN-only port to an address the admin types — a valid IP, not `0.0.0.0` / `::`, inside the local networks, not a main-domain address (`400` otherwise). Preview: "SAMBA_SMB bind 0.0.0.0 → 192.168.1.10, Samba restarts". Apply under the instance's lock (op `rebind`, the instance's op record): checked like a port save, `<KEY>_BIND` written to state, override and env, restarted at once if enabled; if the restart fails the old bind is put back and the instance started again (`rolled_back`, with the reason). Audited `settings.change` (`ports`) and `doctor.fix`.
+    - `revoke_leaver` (**NEW**, file sharing): preview "revoke <user>'s file-share password for <app>"; apply = the admin revoke (§13.16, `reason: admin`, actor the admin).
+    - `person_tree_owner` (**NEW**, file sharing): preview exactly one line, "chown <uid>:<uid> + chmod 0700 <tree>/<user> (not recursive)", with the plan hash over the child's device, inode and mount root; apply = the fixer's `childfix` mode (§6) on that one child. Audited `doctor.fix`.
     - **Undo the last fix** (§14.4), fix kind `undo_folder`, offered by `folder_owner` in `more_fix_kinds` while the folder's `last_apply` holds an apply snapshot. The param `fix` picks one of a finding's fixes (`fix_kind` by default; another value it doesn't offer is `400`).
     - Every fix that touches data goes through the assignment or undo operation (snapshot + verify), never another path. There is no "mount read-only" fix: `access: read` always mounts read-only.
 - **Explain-only** (the finding lists the steps; preview `409` "explain-only"): moving or merging data, nested or overlapping paths, custom-override mounts (remove the mount in Expert and use the template's folder setting with a shared folder, where it has one), hard links, nested mount points, setid files and files with file capabilities, `must_own` without ACLs when previous owners would lose access, two `must_own` uses, paths outside the bind roots or on unsupported filesystems, a userns-remapped or rootless Docker (§6), host networking (firewall steps).
@@ -1800,7 +2057,7 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
 
 ### 14.7 Local networks and exposure
 
-- **Local networks** (Hub Settings, `GET` / `PUT /api/settings/local-networks`): a list of CIDRs, ≤ 64 entries, no host bits, no `/0` prefix. `null` = the defaults `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `100.64.0.0/10` (RFC 1918, IPv6 ULA, the tailnet); `[]` = loopback only. Loopback (`127.0.0.0/8`, `::1`) always counts as local. Stored in `state.yaml` `local_networks`; audited `settings.local_networks` (`<N> networks`).
+- **Local networks** (Hub Settings, `GET` / `PUT /api/settings/local-networks`): a list of CIDRs, ≤ 64 entries, no host bits, no `/0` prefix. `null` = the defaults `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `100.64.0.0/10` (RFC 1918, IPv6 ULA, the tailnet); `[]` = loopback only (saveable: `PORTCULLIS_LOCAL_NETWORKS` is then empty, §3.1, and LAN-only file sharing refuses to start). Every instance's `.env` carries the list as `PORTCULLIS_LOCAL_NETWORKS`; a save restarts the enabled instances whose compose references it (§3.1). Loopback (`127.0.0.0/8`, `::1`) always counts as local. Stored in `state.yaml` `local_networks`; audited `settings.local_networks` (`<N> networks`).
 - **Only `lan_only` ports are judged** (§13.15), template ports and custom-override ports alike (matched by service and container port). Addresses are unmapped (`::ffff:192.168.1.10` is `192.168.1.10`) before every comparison; no address means all interfaces. **Ephemeral ports** (host port `0`, `-` alone in compose short form, or long syntax without `published`, or `IP::container` without a host port: Docker picks a free host port at start) are judged with their bind address (loopback counted as local); collision checks skip port 0.
 - `lan_only_exposed`: bound to `0.0.0.0`, `::` or no address → **Warning**; to an address outside the local networks, or to an address the main domain's A / AAAA records point at → **Problem**. Both offer `rebind_port` for template ports; a custom-override port is explain-only (edit the override), A `lan_only` port of a `network_mode_host` service is always a **Problem**, explain-only, whatever its `<KEY>_BIND` says: compose publishes nothing for it, so the bind has no effect (steps: the app's own listen address, the host firewall); the bind isn't an input of its mute. The main domain is resolved with a 2 s timeout and cached for 5 minutes; a failed lookup escalates nothing and the finding says "couldn't resolve <domain>".
 - `host_network`: a `lan_only` port of a `network_mode_host` service → **Warning**, explain-only: "Docker publishes around host firewalls such as ufw; restrict the port in your router or host firewall". The Hub can't see host firewalls or NAT and doesn't probe reachability from outside.

@@ -70,9 +70,16 @@
 *[access role]: Keycloak client role enforcing access group membership for native-OIDC apps
 *[My apps]: Tab on people.<domain> where each person sees their own app settings and enters their own values
 *[person-entered]: A setting each person enters for themselves on My apps (scope person_entered)
-*[data file]: JSON file the Hub writes for an app's settings and bind-mounts read-only into the app
-*[data files]: JSON files the Hub writes for an app's settings and bind-mounts read-only into the app
+*[data file]: JSON (or tsv) file the Hub writes for an app's settings and bind-mounts read-only into the app
+*[data files]: JSON (or tsv) files the Hub writes for an app's settings and bind-mounts read-only into the app
 *[privileged option]: A per-person setting that grants a privilege; per-group values only from groups delegates can't steer
 *[privileged options]: Per-person settings that grant a privilege; per-group values only from groups delegates can't steer
 *[fixer helper]: Short-lived container the Hub starts from its own image to scan or fix a shared folder's ownership (no network, only the mode's capabilities)
 *[LAN only]: A template port that should be reachable only from the local networks; the Hub's doctor judges its binding
+*[file-share password]: Per-person SMB password each person creates on My apps after a fresh passkey sign-in; the Hub keeps only its NT hash
+*[file-share passwords]: Per-person SMB passwords each person creates on My apps after a fresh passkey sign-in; the Hub keeps only their NT hashes
+*[fresh auth]: A new hardware sign-in (passkey or hardware certificate) within the last 5 minutes, proven to the Hub with an ID token
+*[router-less]: A custom-auth template with no Traefik router (no web page), such as the SMB file-sharing templates
+*[secrets epoch]: Random value the Hub keeps both in state.yaml and on the hub_secrets volume; a mismatch voids every file-share password
+*[share slot]: One of the Samba template's eight fixed shared-folder shares (share1–share8)
+*[share slots]: The Samba template's eight fixed shared-folder shares (share1–share8)

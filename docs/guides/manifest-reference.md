@@ -85,7 +85,7 @@ links:
 |-------|------|----------|-------------|
 | `method` | enum | Yes | `native-oidc`, `forward-auth`, `header-auth`, `mtls`, `custom` or `public` (see below) |
 | `sso` | `true`, `false` or `"partial"` | Yes | Whether single sign-on is supported |
-| `group_access` | boolean | Yes | group-gate restricts the instance's hostnames to its access group (`access_group` for the default instance). For `custom` apps only while Portcullis sign-in is in front of them (`native_login`) |
+| `group_access` | boolean | Yes | group-gate restricts the instance's hostnames to its access group (`access_group` for the default instance). For `custom` apps only while Portcullis sign-in is in front of them (`native_login`), or on a router-less `custom` template (no Traefik router), where the access group decides only who may create file-share passwords |
 | `group_admin` | boolean | Yes | The app maps `admin_group` to its admin role |
 | `access_group` | group | If `group_access: true` | LLDAP group required for access, by convention `users_<app>`. It is the **default instance's** group; every other instance uses `users_<instance-id>` ([instances](#instances)) |
 | `admin_group` | group | If `group_admin: true` or `admin_paths` is non-empty | LLDAP group for admin privileges, by convention `admin_<app>`. The default instance's; other instances use `admin_<instance-id>` |
@@ -94,7 +94,7 @@ links:
 | `native_login` | object | No | The app has its own login and no SSO (`method: custom` only); enables the Hub's Sign-in setting (see [auth.native_login](#authnative_login)) |
 | `keycloak_access_role` | boolean | No | `native-oidc` only, needs `access_group`. Keycloak itself refuses sign-in to anyone outside the instance's access group (see below) |
 | `identity_headers` | list of header names | If `method: header-auth` and `public_access` is set | Headers the app reads the user from (e.g. `X-Forwarded-User`); the Hub strips them on public paths |
-| `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page. Upgrade constraints go here too |
+| `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page, the portal (for an app without a web page), the policy view and the app detail. Upgrade constraints go here too |
 
 Constraints the schema enforces:
 
@@ -107,6 +107,9 @@ Constraints the schema enforces:
   or `native-oidc`; with `header-auth` it requires a non-empty
   `identity_headers` (each `^[A-Za-z][A-Za-z0-9-]{0,63}$`, unique).
 - `native_login` requires `method: custom` and `sso: false`.
+- Every method except `custom` needs at least one Traefik HTTP router. A
+  `custom` template may have none (router-less: no web page), and may then
+  set `group_access: true` without `native_login`.
 - `keycloak_access_role: true` requires `method: native-oidc` and
   `access_group`; so does `method: native-oidc` with `group_access: false`.
 
@@ -433,17 +436,18 @@ settings:
 | `description` | text, ≤ 500 chars, no control characters | No | Help text in the panel and on My apps |
 | `section` | one of `settings.sections` | No | Panel section |
 | `type` | see [Types](#types) | Yes | |
-| `scope` | `instance`, `person`, `group`, `person_entered` | No (default `instance`) | See [Scopes](#scopes) |
+| `scope` | `instance`, `person`, `group`, `person_entered` | No (default `instance`) | See [Scopes](#scopes). Refused on `person_secret` and `person_id` (always per person, set by the Hub) |
 | `required` | boolean | No | The value must be non-empty. A set secret counts as non-empty. On `person` scope the default must be non-empty; not for `group` scope |
 | `default` | a value of the option's type | `person`: yes; refused for `group`, `person_entered` and secrets | The template's default (for `person`: everyone else with access) |
 | `applies` | `live`, `reload`, `next_request`, `next_sign_in`, `restart`, `account_creation` | No | When a change takes effect. Default: `next_sign_in` with a claim delivery, `next_request` with a header delivery, otherwise `restart`. See [Applies](#applies) |
 | `requires` | list of option keys | No | Instance options only: other instance options that must be non-empty when this one is (not itself) |
+| `requires_any` | list of option keys | No | Instance options only: when this one is non-empty, at least one of the listed instance options must be non-empty (not itself). The Samba share slots use it: a slot's folder needs a reader or writer group |
 | `delivery` | list of [deliveries](#deliveries) | See [Deliveries](#deliveries) | How the value reaches the app |
 | `resolve` | `max`, `min`, `priority`, `union`, `intersection`, `any`, `all` | `person` only, and required there | How one value is picked for a person in several groups. See [Scopes](#scopes) |
 | `resolve_choices` | list of the above | `person` only | Other rules the admin may switch to; each must fit the type |
 | `group_values` | map `{{ACCESS_GROUP}}` / `{{ADMIN_GROUP}}` → value | `person` only | Preset rows for the instance's own groups (the manifest needs `access_group` / `admin_group`). Other group names are refused: the admin picks them |
 | `privileged` | boolean | `person` only | The option grants a privilege. Only `enum` and `bool`; the default must be the lowest value (the first `options` entry, or `false`); no `{{ACCESS_GROUP}}` preset |
-| `self_visible` | boolean (default `true`) | `person` only | `false` hides the person's value from My apps |
+| `self_visible` | boolean (default `true`) | `person` (and `person_id`, which requires `false`); on an instance option only `true` | `false` hides the person's value from My apps. An instance option with `self_visible: true` may be shown in a `person_secret` `info` line (`{value:<key>}`) |
 | `unique` | boolean | `list`, or `person_entered` `string` / `int` | No two items (list) or no two people (person-entered) hold the same value |
 | `admin_override` | boolean | `person_entered` only | Admins may enter a value for someone (they can always clear one) |
 
@@ -459,7 +463,7 @@ refused) and durations with a unit (`30d`, `90m`, `60s`). `default`, `min` /
 
 | Type | Holds | Constraints |
 |------|-------|-------------|
-| `string` | Text (one line) | `pattern` (anchored `^…$`, Go RE2 syntax: no lookarounds or backreferences, matches the whole value), `min_len` / `max_len` (0–65535), `format`: `hostname`, `ip`, `cidr` (no host bits), `url` (http/https), `email`, `iana_tz`, `locale`, `cron`, `semver`, `hex` |
+| `string` | Text (one line) | `pattern` (anchored `^…$`, Go RE2 syntax: no lookarounds or backreferences, matches the whole value), `min_len` / `max_len` (0–65535), `format`: `hostname` (lowercase, at least two labels; a dotted IPv4 address such as `192.168.1.10` matches too, an IPv6 address or a single label doesn't), `ip`, `cidr` (no host bits), `url` (http/https), `email`, `iana_tz`, `locale`, `cron`, `semver`, `hex` |
 | `int` | 64-bit integer | `min`, `max`, `step` (values are `min + k × step`), `unit` (a label, e.g. `days`) |
 | `size` | Bytes | `min`, `max`, `step` (values are `k × step`), `allow_unlimited` (the value `unlimited`; every delivery must then set `render.unlimited`) |
 | `duration` | Seconds | `min`, `max` |
@@ -470,16 +474,16 @@ refused) and durations with a unit (`30d`, `90m`, `60s`). `default`, `min` /
 | `table` | Records | `min_items` / `max_items`, `columns: [{name, label, type, required, …}]` (name `^[a-z][a-z0-9_]{0,31}$`, unique; type `string`, `int`, `bool` or `enum` with its constraints), `key_column` (that column's values are unique; records are delivered keyed by it) |
 | `path` | A host directory, bind-mounted | `target: {service, mount}` (an absolute, clean container path), `mode` (`ro` / `rw`), `needs` (`read` / `write`; `write` with `ro` is refused), `writes_as: {uid, gid}` (numbers, or keys of instance `int` / `string` options; shown in the panel), or instead of those three a `folder` block, and `checks` ([Shared folders](#shared-folders-folder-checks-lan_only)). Instance scope only, no `delivery`: the target is the delivery. The value is a host path or `folder:<id>[/<subpath>]` |
 | `secret` | A write-only value | `min_len` / `max_len`, `generate: {length, charset}` (length 8–128; charset `hex`, `alphanumeric` or `ascii_printable`: printable ASCII without space, `'` and `\`). No `default`. Values can't contain `'` or control characters |
-| `group` / `groups` | One / a set of LLDAP groups | `groups`: `min_items` / `max_items` |
+| `group` / `groups` | One / a set of LLDAP groups | `groups`: `min_items` / `max_items`. Instance values are bound to the groups' LLDAP ids: a deleted or re-created group grants nothing and is purged. A file delivery may render the members instead (`render.expand_members`) |
+| `person_secret` | A per-person file-share password; the Hub keeps only its hash | See [Per-person credentials and ids](#per-person-credentials-and-ids-person_secret-person_id) |
+| `person_id` | A Hub-allocated per-person number (a Unix uid) | See [Per-person credentials and ids](#per-person-credentials-and-ids-person_secret-person_id) |
 | `user` / `users` | One / a set of LLDAP usernames (lowercased; never an email) | `users`: `min_items` / `max_items` |
 
 **Refused:** the contract v2 types `text`, `boolean`, `select` and `paths`
 (use `string`, `bool`, `enum` with `options: [{value, label}]`, and one `path`
-per directory), and the reserved types `folder`, `person_secret`,
-`person_id`, option fields `hash`, `length`, `revoke_on_leave`,
-`on_restore`, `pool`, `username`, `mount` and `runs_as.uid_from` /
-`gid_from` (later features). `env[].generate: none` is gone: a value the admin enters is a
-setting.
+per directory), and the reserved type `folder` (a shared folder is a
+`type: path` option with a `folder` block). `env[].generate: none` is gone: a
+value the admin enters is a setting.
 
 ### Shared folders (`folder`, `checks`, `lan_only`)
 
@@ -491,7 +495,7 @@ and [§14](integration-contracts.md#14-shared-folders-and-the-doctor).
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `access` | `read` / `write` | Yes | `read` always mounts read-only |
-| `runs_as` | `{uid, gid}` numbers, or `{uid_env, gid_env}` env names of instance `int` options; one source per id (`uid_from` / `gid_from`: reserved, project 3) | Yes | The uid and gid the app uses on this mount; numbers must match the service's compose `user:` when the service sets one |
+| `runs_as` | `{uid, gid}` numbers, or `{uid_env, gid_env}` env names of instance `int` options, or `{uid_from, gid_from}` keys of a `person_id` option (each person's own id); one source per id | Yes | The uid and gid the app uses on this mount; numbers must match the service's compose `user:` when the service sets one. `uid_from` alone (no gid source) needs `joins_group: template`; `gid_from` needs `uid_from` and `joins_group: template` (a per-person tree) |
 | `joins_group` | `group_add` / `gid_env` / `template` | No (default `group_add`) | How the app joins the folder's group; `gid_env` needs `runs_as.gid_env` |
 | `must_own` | boolean | No | The Hub also sets the owner to the app's uid. Writers only |
 
@@ -609,6 +613,171 @@ example.
   `public` or `custom`, or `native_login.allow_without_gateway`) needs
   `auth.access_group`: its members may enter a value.
 
+### Per-person credentials and ids (`person_secret`, `person_id`)
+
+[Integration Contracts §13.16](integration-contracts.md#1316-per-person-credentials-and-ids-new-file-sharing)
+and [§13.17](integration-contracts.md#1317-file-sharing-templates-samba-time-machine-new-file-sharing).
+Both types are allowed only on a router-less `custom` template (no Traefik
+router) with `group_access: true` and an `access_group`: its population is
+the access group's members. Neither takes `scope`, `default`, `required`,
+`resolve`, `resolve_choices`, `group_values`, `privileged`, `requires` or
+`requires_any`; neither can be set by an admin.
+
+**`person_secret`**: each person with access creates their own file-share
+password on My apps after a fresh passkey sign-in. It is shown once; the Hub
+keeps only its NT hash, outside every backup, and destroys it when the
+person loses access.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `hash` | `nt` | Yes | The NT hash (MD4 of the UTF-16LE password), the one form Samba imports |
+| `length` | integer ≥ 24, a multiple of 4 | Yes | Password length, shown in groups of 4 joined by `-` (24 → 29 characters with the dashes) |
+| `delivery` | exactly `file` (a scalar, not a list) | Yes | The hashes are files in a read-only directory (below); no other delivery |
+| `mount` | `{service, path}` | Yes | The compose service and the absolute, clean container directory where the Hub mounts the directory of `<username>.nt` files (32 hex characters each), read-only. Not colliding with a path target or data-file mount on that service |
+| `revoke_on_leave` | `true` | Yes | The credential is destroyed when the person leaves the population, is deleted or is re-created |
+| `on_restore` | `void` | Yes | Any restore voids every credential of the instance |
+| `username` | `{pattern, reserved, reason}` | No | Usernames the app can serve. `pattern`: anchored `^…$`, only literals, bracket classes and `{m,n}` (what Go RE2 and busybox ERE read alike); `reserved`: lowercase names the image already has; `reason`: one line ≤ 200 characters shown to people whose name fails. If compose passes it to the container, it is `PORTCULLIS_USERNAME_PATTERN` in `environment:` with every `$` written `$$`, and must equal `pattern` |
+| `info` | list of `{label, value}` | No | Lines on the person's credential card. `value` placeholders: `{user}`, `{value:<key>}` (an instance `string` / `int` / `enum` / `bool` option with `self_visible: true`; never a secret or path), `{port:<PORT KEY>}` (the instance's host port), `{port_suffix:<PORT KEY>:<default>}` (empty when the host port is `<default>`, else `:<port>`). Any other `{…}` is refused |
+| `applies` | `live` | No | Credential changes reach the app through hooks with `credential_change` |
+
+`label`, `description` and `section` work as for every option;
+`self_visible` and `checks` are refused.
+
+**`person_id`**: a stable number per person, allocated by the Hub.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `pool` | `posix_uid` | Yes | The Hub-wide uid pool, 20000–59999 (never 0–999, 1000, 10000–10099, 65534 or 60000–60999). Every option with the pool, in every instance, gives a person the same id; ids are never reused, and a deleted and re-created account gets a new one |
+| `self_visible` | `false` | Yes | Never shown on My apps |
+| `delivery` | `file` deliveries only | Yes | `{file: {name, field}}`: the person's id in the people section of the data file |
+
+A `folder` block's `runs_as.uid_from` / `gid_from` name a `person_id` option
+([Shared folders](#shared-folders-folder-checks-lan_only)): `{uid_from: uid}`
+with `joins_group: template` for a shared folder every person writes (files
+land as `<person's uid>:<folder gid>`; the template reads
+`${PORTCULLIS_FOLDER_GID_<KEY>}` in compose `environment:`, the one allowed
+form), `{uid_from: uid, gid_from: uid}` with `joins_group: template` for a
+per-person tree (each `<username>` directory `<uid>:<uid>` 0700; such an
+option never takes a shared folder).
+
+**Time Machine example (abridged):**
+
+```yaml
+instances: multi
+auth:
+  method: custom                  # no Traefik router: no web page
+  sso: false
+  group_access: true
+  group_admin: false
+  access_group: users_timemachine
+  notes: "No web page: file sharing over SMB with per-person file-share passwords; LAN/VPN only."
+ports:
+  - {key: TM_SMB, label: SMB, container: 445, default: 445, protocol: tcp,
+     service: timemachine, lan_only: true}
+files:
+  - {name: people, service: timemachine, mount: /portcullis/data, format: tsv,
+     on_membership_change: hook}        # the sync hook applies changes live
+hooks:
+  - name: sync
+    service: timemachine
+    command: [/portcullis/portcullis-sync]
+    when: [start, settings_change, membership_change, credential_change]
+    timeout: 60s
+settings:
+  sections: [Access, Backups, Network]
+  options:
+    - key: share_password
+      label: File-share password
+      type: person_secret
+      hash: nt
+      length: 24
+      delivery: file                          # <username>.nt files, read-only at mount.path
+      mount: {service: timemachine, path: /portcullis/secrets}
+      revoke_on_leave: true
+      on_restore: void
+      username:
+        pattern: "^[a-z_][a-z0-9_.-]{0,31}$"
+        reserved: [root, nobody, timemachine]   # every account of the image
+        reason: "isn't a valid Samba and Unix name"
+      info:
+        - {label: Connect, value: "smb://{value:connect_address}{port_suffix:TM_SMB:445}/{value:share_prefix}-{user}"}
+        - {label: Username, value: "{user}"}
+      applies: live
+      section: Access
+    - key: uid
+      label: File owner id
+      type: person_id
+      pool: posix_uid
+      self_visible: false
+      delivery: [{file: {name: people, field: uid}}]
+    - key: size_limit
+      label: Backup size limit
+      type: size
+      step: 1GiB
+      allow_unlimited: true
+      scope: person
+      default: 500GiB
+      resolve: max
+      section: Backups
+      applies: live
+      delivery:
+        - file: {name: people, field: size_limit,
+                 render: {unit: MiB, integer: true, unlimited: ""}}
+      checks: [{kind: requires_group_value, reason: Most people should get a deliberate limit}]
+    - key: storage
+      label: Backup storage
+      type: path
+      target: {service: timemachine, mount: /opt}
+      folder:
+        access: write
+        runs_as: {uid_from: uid, gid_from: uid}   # a per-person tree
+        joins_group: template
+      checks:                                     # option level, next to folder
+        - {kind: filesystem, needs: [xattr], not: [nfs, cifs, fuse],
+           reason: Time Machine stores metadata in extended attributes}
+        - {kind: exclusive, reason: Backup bundles must not be written by other apps}
+      applies: restart
+      section: Backups
+    - key: share_prefix
+      label: Share name prefix
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$"
+      default: TimeMachine
+      self_visible: true                          # shown in the info line
+      applies: live
+      delivery: [{file: {name: people}}]
+    - key: connect_address
+      label: Address people connect to
+      type: string
+      format: hostname                            # an IPv4 address matches too
+      required: true
+      self_visible: true
+      section: Network
+      applies: live
+      delivery: [{file: {name: people}}]
+    - key: avahi_dir
+      label: Host Avahi services directory
+      description: Bonjour advertising. Advertising shows every share name, which contains usernames, to everyone on the local network.
+      type: path
+      target: {service: timemachine, mount: /portcullis/avahi}
+      mode: rw
+      needs: write
+      writes_as: {uid: 0, gid: 0}
+      section: Network
+      applies: restart
+    - key: advertise
+      label: Advertise with Bonjour
+      description: Turn this off before clearing the Avahi directory.
+      type: bool
+      default: false
+      section: Network
+      applies: live
+      delivery: [{file: {name: people}}]
+```
+
+The data file `people.tsv` then holds lines such as `person	alice	uid	20000`,
+`person	alice	size_limit	10240` and `value	share_prefix	TimeMachine`.
+
 ### Deliveries
 
 Each entry of `delivery` is exactly one of:
@@ -619,7 +788,7 @@ Each entry of `delivery` is exactly one of:
 | indexed env | `{env: NAME_{n}}` | An `instance` `list` with `max_items` (at most 64): writes `NAME_1` … `NAME_<max_items>`, one item each, unused ones empty. Every `NAME_<n>` compose references must be within `max_items` |
 | claim | `{claim: {client, name, json_type, render}}` | `person`, `person_entered` on `native-oidc` templates. `client` is a `keycloak_clients[]` `client_id`; `name` matches `^[a-z][a-z0-9_]{0,63}$` and isn't a standard OIDC / JWT, Keycloak, `attr_*` or `portcullis_*` claim; one option per claim and client |
 | header | `{header: {name, render}}` | `person`, `person_entered`. `name` matches `^X-Forwarded-Attr-[A-Za-z0-9]+(-[A-Za-z0-9]+){0,30}$`; one option per header. See the header rules below |
-| file | `{file: {name, field, render}}` | Any scope. `name` is a `files[]` entry. `field` (`person`, `person_entered` only; default the option key, `^[a-z][a-z0-9_]{0,39}$`) names the value in the file's `people` / `entries`; one option per field |
+| file | `{file: {name, field, render}}` | Any scope. `name` is a `files[]` entry. `field` (`person`, `person_entered` and `person_id` only; default the option key, `^[a-z][a-z0-9_]{0,39}$`) names the value in the file's `people` / `entries`; one option per field |
 | hook | `{hook: <name>, render}` | Any scope. `name` is a `hooks[]` entry |
 
 `render` goes inside the claim, header or file; on an env or hook delivery
@@ -652,6 +821,7 @@ declared header name (and its `_` spelling).
 | `true` / `false` | `bool` | The strings for true and false (default `true` / `false`) |
 | `join` | lists, sets, person-entered env lists | Separator (default `,`) |
 | `format` | structured values | `json`, `yaml` or `csv` |
+| `expand_members` | file deliveries of `group` / `groups` options | `true`: the file holds the members of the groups who have access to the instance (sorted usernames), not the group names |
 
 Env, header and claim values are one line; headers are at most 1 KiB and
 claims 4 KiB. Env values are single-quoted, so a value with `'`, `\` or a
@@ -678,9 +848,10 @@ Data files the Hub writes for file deliveries
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `^[a-z][a-z0-9_-]{0,31}$`, unique | Yes | The file is `<mount>/<name>.json` (and `<name>.secrets.json` when it holds a secret option) |
+| `name` | `^[a-z][a-z0-9_-]{0,31}$`, unique | Yes | The file is `<mount>/<name>.json` (and `<name>.secrets.json` when it holds a secret option), or `<mount>/<name>.tsv` with `format: tsv` |
 | `service` | service | Yes | The compose service that reads it |
 | `mount` | absolute, clean container directory (no `:`) | Yes | The Hub bind-mounts the file's directory here read-only (a directory, not a file: atomic renames give a new inode). It may not collide with another file's or a path option's target on the same service |
+| `format` | `json` (default) or `tsv` | No | `tsv`: one tab-separated record per line, for apps that read the file with a shell ([contracts §13.7](integration-contracts.md#137-data-files)). No secret and no `table` option may be delivered into a `tsv` file |
 | `on_membership_change` | `restart`, `reload`, `hook`, `none` (default) | No | What happens when people joining or leaving change the file. `reload` needs `reload`; `hook` a hook with `membership_change` |
 
 The data file is mode 0640 and the secrets file 0600, both owned by the
@@ -700,8 +871,15 @@ settings on standard input
 | `service` | service | Yes | Where it runs (a running container of this instance) |
 | `command` | non-empty list of non-empty strings, no control characters | Yes | argv, run directly (never through `sh -c`) |
 | `user` | string | No | User to run as (default: the container's) |
-| `when` | list of `start`, `settings_change`, `membership_change` (at least one) | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input. A hook whose last run failed runs again at its next trigger |
+| `when` | list of `start`, `settings_change`, `membership_change`, `credential_change` (at least one) | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input; `credential_change`: right after a file-share password was created, regenerated, revoked or voided (also how a revocation is applied live: within 8 s). A hook whose last run failed runs again at its next trigger |
 | `timeout` | Go duration, e.g. `60s` | No (default `30s`) | At most `10m` |
+
+A hook of a template with `person_secret` options also gets `credentials` on
+stdin (who has an active password: id and version, never a hash). A hook may
+print one line `PORTCULLIS-REPORT <json>` (findings and per-person folders
+for the doctor and the File sharing tab; shape and limits in
+[contracts §13.8](integration-contracts.md#138-hooks-and-reload)); all other
+output is log only.
 
 ## reload
 
@@ -1119,8 +1297,8 @@ discovers the template, with the same messages (`setting <key>: …`). A
 green Lint means the Hub lists the template. Besides the field rules above:
 
 - **Options:** keys unique; `section` listed in `sections`; `label`,
-  `description`, `scope` and `applies` valid; the type known (contract v2 and
-  reserved types and fields refused); only the constraints the type takes;
+  `description`, `scope` and `applies` valid; the type known (contract v2
+  types and the reserved `folder` type refused); only the constraints the type takes;
   `default`, bounds, `step` and `group_values` valid values of the option.
 - **Scope fields:** `privileged`, `self_visible`, `resolve`,
   `resolve_choices` and `group_values` only with `scope: person`, which needs
@@ -1178,6 +1356,24 @@ green Lint means the Hub lists the template. Besides the field rules above:
   where a reference is exactly `$NAME`, `${NAME}`, `${NAME:-n}` or
   `${NAME-n}` naming an instance `int` option (no mixed text, nesting or
   `+` forms); YAML `!!binary` is refused anywhere.
+
+- **File sharing** ([Per-person credentials and ids](#per-person-credentials-and-ids-person_secret-person_id)):
+  `person_secret` / `person_id` only on a router-less `custom` template with
+  `group_access: true` and `access_group`; their fields as listed (wrong
+  `hash`, `length` < 24 or not a multiple of 4, a list or non-file
+  `delivery`, a missing or colliding `mount`, `revoke_on_leave` not `true`,
+  `on_restore` not `void`, any scope field, an unknown `pool`,
+  `self_visible` not `false` on `person_id`, a bad `username.pattern`, an
+  `info` placeholder naming an unknown or ineligible option or port are
+  refused); `uid_from` / `gid_from` name a `person_id` option, `gid_from`
+  needs `uid_from` and `joins_group: template`; `requires_any` names
+  existing instance options, not itself; `format: tsv` files get no secret
+  and no `table`; `expand_members` only on file deliveries of `group` /
+  `groups` options; `credential_change` is a valid `when`; the volume key
+  `portcullis-hub-secrets` is refused (as a key, a volume source and in
+  `volumes_from`); `${PORTCULLIS_LOCAL_NETWORKS}` only in exactly that form;
+  `${PORTCULLIS_FOLDER_GID_<KEY>}` only in exactly that form, in
+  `environment:` of the service a folder option `<KEY>` targets.
 
 The validator also warns when a service reads a secrets file but runs
 neither as root nor as `user: "10001"`.
