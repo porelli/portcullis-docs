@@ -76,10 +76,10 @@ What the backups do hold:
   the permissions it is about to change (path, inode, owner, group, mode and
   ACLs of each entry, not the contents) in
   `<hub data>/folder-snapshots/<folder>/<UTC timestamp>.ndjson.gz` with a
-  `.sha256` next to it (files `0600`); the last 3 per folder are kept. They
-  are what **Undo last fix** restores, and they are in `hub_data`, so in the
-  core backup. An undo saves a safety copy of what it rewrote the same way,
-  but an undo itself can't be undone.
+  `.sha256` next to it (files `0600`); the last 3 per folder are kept, plus
+  the one Undo needs. They are what **Undo last fix** restores, and they are
+  in `hub_data`, so in the core backup. An undo saves a safety copy of what
+  it rewrote the same way, but an undo itself can't be undone.
 
 A permissions snapshot only undoes a permissions fix on the same folder: it
 records inodes, so it doesn't apply to files restored from another backup.

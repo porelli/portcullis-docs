@@ -183,7 +183,7 @@ def _run_id(runs_as: dict, which: str) -> str:
 
 
 JOIN_TEXT = {
-    "group_add": "joins the folder's group as a supplementary group (`group_add`)",
+    "group_add": "the Hub adds the folder's group (`group_add`)",
     "gid_env": "joins the folder's group as its primary group: the Hub writes the folder's gid to `{var}`",
     "template": "joins the folder's group itself, from `PORTCULLIS_FOLDER_GID_{key}`",
 }
@@ -193,7 +193,13 @@ def folder_text(folder: dict, key: str = "") -> str:
     """One line for a folder block: what the app does on a shared folder."""
     runs_as = folder.get("runs_as") or {}
     access = "writes" if folder.get("access") == "write" else "reads (read-only)"
-    who = f"uid {_run_id(runs_as, 'uid')}, gid {_run_id(runs_as, 'gid')}"
+    # uid 0 / gid 0 → "runs as root"
+    uid = _run_id(runs_as, 'uid')
+    gid = _run_id(runs_as, 'gid')
+    if uid == "0" and gid == "0":
+        who = "runs as root"
+    else:
+        who = f"uid {uid}, gid {gid}"
     join = folder.get("joins_group") or "group_add"
     jt = JOIN_TEXT.get(join, f"joins through `{join}`").format(
         var=runs_as.get("gid_env", ""), key=key.upper())
