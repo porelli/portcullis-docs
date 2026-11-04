@@ -422,6 +422,7 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
     - public client, standard flow only; `pkce.code.challenge.method=S256`; no direct access grants, implicit flow, service accounts or device grant; `use.refresh.tokens=false`;
     - default client scopes exactly `basic` and `acr` (with `openid`); no `groups`, no attributes scope, never `portcullis-invite-client`;
     - redirect URIs exactly `[https://people.<domain>/]`, web origins exactly `[https://people.<domain>]`.
+    - exactly one protocol mapper on the client itself: the username as `preferred_username`, in the ID token only (with only `basic` + `acr` Keycloak 26 puts no username in the token); the Hub removes any other mapper on it. Templates may not use the client id (it is a protected client).
 
     `./portcullis keycloak configure` leaves it alone. The Hub reaches Keycloak internally for the code exchange (`http://keycloak:8080/realms/portcullis/protocol/openid-connect/token`, with the PKCE verifier) and the keys (`…/certs`), and checks tokens against the public issuer `<HUB_KEYCLOAK_PUBLIC_URL>/realms/portcullis` (core sets `HUB_KEYCLOAK_PUBLIC_URL=https://auth.<domain>`). A proof is accepted only when every one of these holds; anything else is a `403` with the generic text:
     - the code exchange succeeds (Keycloak's codes are single-use: a replay fails);
