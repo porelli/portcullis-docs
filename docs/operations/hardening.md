@@ -245,7 +245,9 @@ CI fails if any of these is missing.
   65534, `--network none`, no capabilities, never started (the daemon copies
   through the archive endpoints)
 - the shared-folder fixer: the Hub's own image by image ID (found by
-  inspecting the Hub's container, never a tag), `hub folderfix <mode>` as
+  inspecting the Hub's container by the full ID in its own mountinfo, which
+  must answer that ID with core's `portcullis` / `hub` compose labels; never
+  a tag, a name or the hostname), `hub folderfix <mode>` as
   uid 0 with `no-new-privileges`, `CapDrop: ALL` plus only its mode's
   capabilities (`DAC_READ_SEARCH` to read; `CHOWN`, `FOWNER`, `FSETID` to
   apply or restore; `DAC_OVERRIDE` only to create missing subfolders),
