@@ -1867,7 +1867,7 @@ Refused creates count toward the people listener's per-caller limit (10 refusals
 
 **Admin routes** (Hub listener, `adminOnly`, CSRF-guarded; never on the people listener):
 
-- `GET /api/instances/{id}/credentials` → `[CredentialsView]`, metadata only: per `person_secret` option `{instance, key, label, population, active, rows, folders, last_sync}`, each row `{user, status, since, reason, ids, values}` (`ids`: the person's `person_id` values by key; `values`: their displayed person-scope values), `folders` the last hook report's folders (§13.8). Never a password or hash;
+- `GET /api/instances/{id}/credentials` → `[CredentialsView]`, metadata only: per `person_secret` option `{instance, key, label, population, active, rows, folders, last_sync}`, each row `{user, status, since, reason, ids, values}` (`status`: `none`, `active`, `voided` or `revoked`, with `reason` = `self`, `admin`, `leave`, `deleted` or `restore`; `ids`: the person's `person_id` values by key; `values`: their displayed person-scope values), `folders` the last hook report's folders (§13.8). Never a password or hash;
 - `DELETE /api/instances/{id}/credentials/{key}/{user}` → `204`.
 
 **Audit** (`audit.jsonl`, §9.5): `credential.create`, `credential.regenerate`, `credential.revoke` (actor `self` or the admin), `credential.revoke_leave` (reason `leave` or `deleted`), `credential.void_restore` (the count only). Fields: instance, key, username, actor, reason. Never the password, the hash, or a fresh-auth code, verifier, nonce or token; a refused create is audited `refused` with the refusal's reason only.
