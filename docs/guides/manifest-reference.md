@@ -1037,10 +1037,10 @@ of `mcp` and `unsupported`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `^[a-z][a-z0-9-]{0,30}$`, unique | Yes | Companion name: scope `mcp:<instance>.<name>`, router and alias `portcullis-mcp-<instance>_<name>`, variable `PORTCULLIS_AI_READONLY_<NAME>` |
+| `name` | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, ≤ 31 chars, unique | Yes | Companion name: scope `mcp:<instance>.<name>`, router and alias `portcullis-mcp-<instance>--<name>`, variable `PORTCULLIS_AI_READONLY_<NAME>` |
 | `label` | single line, 1–64 chars | Yes | Shown to people and the admin |
 | `kind` | `companion` or `builtin` | Yes | `companion`: a compose service only for AI (the Hub scales it to 0 while AI is off); `builtin`: the app's own service serves MCP |
-| `service` | service | Yes | The service that serves MCP. A `companion` service has no Traefik labels, doesn't join `portcullis-proxy` (the Hub adds it with the alias), has no `network_mode`, `container_name` or `hostname`, and backs one companion only |
+| `service` | service whose name matches `^[a-z0-9]+(-[a-z0-9]+)*$` | Yes | The service that serves MCP. A `companion` service has no Traefik labels, doesn't join `portcullis-proxy` (the Hub adds it with the alias), has no `network_mode`, `container_name` or `hostname`, and backs one companion only |
 | `port` | integer 1–65535 | Yes | Its container port (unused for `app_oauth`) |
 | `path` | absolute clean path | No (default `/mcp`) | The upstream MCP path |
 | `router` | host router name | Yes | The endpoint is `https://<that router's host><public_path>` |
@@ -1391,7 +1391,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 **AI support** (`check_ai`, the Hub's `ValidateAI` rule for rule; **NEW**)
 
 - an `ai:` block with exactly one of `mcp` and `unsupported` (non-empty, ≤ 200 characters); `alternative` and `chat` only with `unsupported`, `on_change` only with `mcp`
-- companions: the field rules of [ai](#ai); `source` set; `service` in `compose.yml`; a `companion` service without Traefik labels, off `portcullis-proxy`, without `network_mode` / `container_name` / `hostname`, used by one companion; `router` a host router; `public_path` rules; `builtin` with `upstream: official`; `app_oauth` only `builtin`, with `revoke` and `modes: [read_write]`; `app_token` with `mint` and `revoke`; `identity_headers` with a `caller_secret` whose `env` is a `generate: random` entry; `default_mode` in `modes`
+- companions: the field rules of [ai](#ai); `source` set; `service` in `compose.yml` with a name matching `^[a-z0-9]+(-[a-z0-9]+)*$`; a `companion` service without Traefik labels, off `portcullis-proxy`, without `network_mode` / `container_name` / `hostname`, used by one companion; `router` a host router; `public_path` rules; `builtin` with `upstream: official`; `app_oauth` only `builtin`, with `revoke` and `modes: [read_write]`; `app_token` with `mint` and `revoke`; `identity_headers` with a `caller_secret` whose `env` is a `generate: random` entry; `default_mode` in `modes`
 - every hook the block names exists with exactly `when: [ai]`; no `ai` hook the block doesn't name; `ai` never next to another trigger
 - no `ai.mcp` with `auth.admin_paths`, `auth.method` `public` or `mtls`, or without an HTTP router
 - `ai_client` only in an `ai.chat` template, which has exactly one
