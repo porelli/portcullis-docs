@@ -209,18 +209,13 @@ See also [Hardening](hardening.md#file-sharing) for the capabilities and contain
 
 ### Hosts Allow and the Userland Proxy
 
-**Residual:** A client whose connection Docker relays through its **userland proxy** arrives from the bridge gateway (inside `172.16.0.0/12`), so it passes `hosts allow` whatever its own address. This happens when:
+**Measured on the test server** (Docker 29.9.3, default settings: `userland-proxy` on): a connection to a published Samba / Time Machine port, even one bound to `127.0.0.1`, reached smbd from the **bridge gateway of the instance's own network** (for example `192.168.64.1`), not from the client's address: Docker's `docker-proxy` relayed it. The gateway sits in Docker's default address pools (`172.17.0.0/16`–`172.31.0.0/16`, then `192.168.x.0/20` once those are used), which are inside the default Local networks (`172.16.0.0/12`, `192.168.0.0/16`). So with the userland proxy on, **`hosts allow` can't tell clients apart**: every client looks local.
 
-- An IPv6 client connects to an IPv4-only container, or
-- Another container uses the published port.
+What actually limits who can connect:
 
-To avoid it:
-
-- Disable the userland proxy: set `"userland-proxy": false` in `/etc/docker/daemon.json` and restart Docker, or
-- Publish only on a LAN address (rebind the port in the Hub), or
-- Narrow Local networks to your real LAN (removing `172.16.0.0/12` if your LAN doesn't use it).
-
-**To be verified on the test server (Task 20):** Whether source addresses are preserved for published IPv4 ports.
+- **Who can reach the published port.** Publish on a LAN address only (rebind the port in the Hub), and keep the host firewall closed to anything outside your LAN. This is the real boundary.
+- **Disabling the userland proxy** (`"userland-proxy": false` in `/etc/docker/daemon.json`, then restart Docker) lets Docker forward with NAT, so smbd should see the real client address and `hosts allow` works as defence in depth. This was not measured for a LAN client here (the test server can't publish SMB beyond loopback).
+- Narrowing Local networks does **not** help while the proxy is on: the gateway is still in a range you probably also use for the LAN.
 
 ## Credentials
 
