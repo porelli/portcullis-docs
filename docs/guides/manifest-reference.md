@@ -1391,6 +1391,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 **AI support** (`check_ai`, the Hub's `ValidateAI` rule for rule; **NEW**)
 
 - an `ai:` block with exactly one of `mcp` and `unsupported` (non-empty, ≤ 200 characters); `alternative` and `chat` only with `unsupported`, `on_change` only with `mcp`
+- the alias `portcullis-mcp-<id>--<companion>` is one DNS label: `15 + len(<id>) + 2 + len(<companion>) ≤ 63`, checked with the template id (the default instance; the Hub also checks it for every other instance at create and at AI switch-on)
 - companions: the field rules of [ai](#ai); `source` set; `service` in `compose.yml` with a name matching `^[a-z0-9]+(-[a-z0-9]+)*$`; a `companion` service without Traefik labels, off `portcullis-proxy`, without `network_mode` / `container_name` / `hostname`, used by one companion; `router` a host router; `public_path` rules; `builtin` with `upstream: official`; `app_oauth` only `builtin`, with `revoke` and `modes: [read_write]`; `app_token` with `mint` and `revoke`; `identity_headers` with a `caller_secret` whose `env` is a `generate: random` entry; `default_mode` in `modes`
 - every hook the block names exists with exactly `when: [ai]`; no `ai` hook the block doesn't name; `ai` never next to another trigger
 - no `ai.mcp` with `auth.admin_paths`, `auth.method` `public` or `mtls`, or without an HTTP router
