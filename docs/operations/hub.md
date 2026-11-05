@@ -31,6 +31,12 @@ The main view lists every template from every [template source](#template-source
 1. Open the app card and review the details.
 2. Fill in its settings (media folders, ports, options) and, if needed, its
    [access policy](auth-policies.md).
+
+!!! warning "LAN-only ports (file sharing and other apps)"
+    Apps with `lan_only` ports (Samba port 445, Time Machine port 445, Pi-hole DNS port 53, NetBird's STUN/TURN ports) publish those ports directly on the host, **bypassing Docker's network isolation and any firewall rules like ufw**. Anyone on your network (or the internet, if the port is exposed through your router) can reach the port. See [LAN-only ports](hardening.md#lan-only-ports-and-host-firewalls) in the hardening guide.
+
+    File-sharing apps (Samba, Time Machine) also require [Local networks](file-sharing.md#2-configure-local-networks) to be configured: an empty Local networks list **stops the app from starting**, and the enable will fail. Set Local networks before enabling a file-sharing app.
+
 3. Click **Enable**.
 
 Before anything starts, the Hub refuses to enable the app if:
@@ -1212,6 +1218,33 @@ since. It stops and starts the apps like an apply; the settings stay
 pointed at the folder. An undo **can't be undone**: it saves a safety copy
 of what it rewrote, but offers no undo of itself.
 
+## File Sharing
+
+The **File Sharing** tab (admins only, `hub.<domain>`) lists every person's file-share credentials (Samba and Time Machine passwords) across all enabled file-sharing apps. A credential is created by the person on [My apps](#my-apps) via a fresh passkey touch; the Hub keeps only the NT hash on the `hub_secrets` volume, never the password itself.
+
+The table shows one row per person per app:
+
+- **Person** (username)
+- **App** (instance id: `samba` or `timemachine-<id>`)
+- **Status**:
+    - **Ready** (green): the credential exists, the person has access, and the app is enabled. The person can connect with the password they created.
+    - **No credential** (gray): the person never created a password, or they revoked it. They must create one on My apps to connect.
+    - **Voided by restore** (orange): every Hub restore from backup voids all file-share passwords (NT hashes are never backed up). The person must regenerate their password on My apps; the old one no longer works. See [Credentials](file-sharing.md#credentials) and [Backups](backups.md#what-is-backed-up-and-how).
+    - **No access** (gray): the person isn't in the app's access group (`users_samba` or `users_timemachine`), or their account is deleted. Any credential they had is not served by the app, even if they still know the password.
+    - **App disabled** (gray): the file-sharing app is disabled. Any credential is kept but not served.
+- **Created** (timestamp of the last create or regenerate, if a credential exists)
+- **Actions**:
+    - **Revoke** (admins only): deletes the person's credential. They lose access at once, and open sessions end within about a second. The person must create a new password on My apps to connect again. This is the break-glass for "someone's credential is compromised" or "they left and we need to cut off access before the LLDAP group update propagates." No audit trail in the file-sharing table (the credential is just deleted from `hub_secrets`), but revocation appears in the Hub's audit log and the file-sharing app's hook logs. See [measured revocation latencies](file-sharing.md#revocation-latencies).
+
+The tab also links to [Doctor](#doctor) findings about file-sharing:
+
+- **hub_secrets ownership**: the `hub_secrets` volume must be owned by uid 10000:10000 (mode 0700), or Samba and Time Machine can't read the hashes. The doctor lists any wrong ownership and offers a fix (the Hub runs `chown -R 10000:10000` on the volume).
+- **former_account folders**: a folder in the per-person tree (`<homes>/<username>` for Samba, `<storage>/<username>` for Time Machine) whose owner uid no longer belongs to a current account (the account was deleted and a new one created with a different Hub-allocated uid). Such folders are never served; the doctor lists them with their paths and current owner uids.
+
+Credentials are scoped to an app instance (one Samba credential, one per Time Machine instance), never shared across apps. A person in both `users_samba` and `users_timemachine` creates two separate passwords.
+
+Removing someone from an app's access group or deleting their account **revokes their credential at once**: the Hub's `credential_change` hook (called within about a second of any LLDAP membership or account change, or up to about a minute for a change made directly in LLDAP) removes the person from the app's people file and ends their open SMB sessions. See [Credentials](file-sharing.md#credentials) and [Revocation latencies](file-sharing.md#revocation-latencies).
+
 ## Doctor
 
 The **Doctor** tab checks the whole setup, including folders and paths you
@@ -1423,6 +1456,45 @@ something personal for them, sorted by id, each with its link:
       person can still change or clear it, and saving it makes it theirs;
     - the Hub's refusal, e.g. "this value is already registered for Firefox
       Sync by another person". It never says who.
+- **file-share passwords** (Samba and Time Machine apps): the person's own
+  SMB password for connecting from macOS, Windows or Linux. The password is
+  never shown after creation:
+    - **Create password** (shown when no password exists): the button asks for
+      a fresh passkey touch (the same passkey you signed in with, within 10
+      minutes of signing in), then the Hub generates a 32-character random
+      password and shows it **once** in a dialog. The password never appears
+      again — the Hub keeps only its NT hash on the `hub_secrets` volume,
+      never in a backup. Copy it now; the SMB client on your device will save
+      it in its own keychain. The credential appears on the file-sharing app
+      (Samba or Time Machine) within about a second; see [measured revocation
+      latencies](file-sharing.md#revocation-latencies) in the file-sharing
+      operations guide.
+    - **Regenerate password** (shown when a password already exists): same
+      fresh passkey flow and one-time display. The old password stops working
+      within about a second; anyone still connected with it is disconnected.
+    - **Revoke**: deletes the credential. You lose access to the shares at
+      once, and open sessions end within about a second. To connect again,
+      create a new password.
+    - Status line: "Credential created 2 Nov 2026 · ready" (the password
+      works), or "no credential" (you've never created one, or you revoked
+      it), or "credential voided by core restore" (every Hub restore from
+      backup voids every file-share password — the NT hashes are never backed
+      up — so everyone must regenerate; see
+      [Credentials](file-sharing.md#credentials) and
+      [Backups](backups.md#what-is-backed-up-and-how)).
+
+  The fresh passkey requirement stops an attacker with only your Portcullis
+  session cookie from silently creating or rotating a credential: the create
+  or regenerate fails without the passkey touch, and an attacker who gets the
+  password can't rotate it away without also having your passkey. Revocation
+  needs no passkey (it's strictly reducing access). The rate limit is 10
+  refused fresh-auth attempts per person per minute.
+
+  Only members of the file-sharing app's access group (`users_samba` or
+  `users_timemachine`) see the file-share password controls, and only while
+  the app is enabled. Losing access (removed from the group, or your account
+  deleted) revokes your credential at once; the app won't serve you even if
+  you still know the password.
 
 A person enters a value only for apps they have access to; for anything
 else the answer is the same "not found". Clearing your own value always

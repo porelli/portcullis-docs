@@ -81,7 +81,7 @@ Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-set
 | **Role** | `enum` | per person | `next_sign_in` | Immich administrators. The instance's admin group is an administrator by default; Immich applies the role at the person's next sign-in. Choices: `user`, `admin`. Default: `user`. Preset for the admin group: `admin`. Privileged: per-group values only from [groups delegates can't steer](../operations/groups.md#guarding-groups). |
 | **Keep deleted items for** | `int` (days) | instance | `restart` | Days a deleted photo or video stays in the trash before Immich removes it. Default: `30`. |
 | **Machine learning** | `bool` | instance | `restart` | Smart search, face recognition and duplicate detection (the immich-machine-learning service). Off = Immich never calls it. Default: `true`. |
-| **External photo library** | `path` | instance | `restart` | Host path to existing photos to import (mounted read-only). Mounted at `/usr/src/app/external` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as runs as root; the Hub adds the folder's group (`group_add`). |
+| **External photo library** | `path` | instance | `restart` | Host path to existing photos to import (mounted read-only). Mounted at `/usr/src/app/external` (ro). Folder mount: reads (read-only) as runs as root. |
 
 ## Environment Variables
 

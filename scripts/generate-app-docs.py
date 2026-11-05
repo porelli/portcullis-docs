@@ -214,10 +214,29 @@ def folder_text(folder: dict, key: str = "") -> str:
         who = "runs as root"
     else:
         who = f"uid {uid}, gid {gid}"
-    join = folder.get("joins_group") or "group_add"
-    jt = JOIN_TEXT.get(join, f"joins through `{join}`").format(
-        var=runs_as.get("gid_env", ""), key=key.upper())
-    text = f"[Shared folder](../operations/hub.md#shared-folders) ready: {access} as {who}; {jt}"
+
+    # Per-person tree (contract §13.15): has gid_from → creates individual per-person
+    # folders, not shared folders. Such folders don't join folder groups.
+    is_per_person_tree = 'gid_from' in runs_as
+
+    # Shared folder integration: uses gid_env, explicit joins_group, or per-person gid_from
+    uses_shared_folders = (
+        'gid_env' in runs_as or
+        'joins_group' in folder or
+        is_per_person_tree
+    )
+
+    if is_per_person_tree:
+        text = f"[Per-person folder](../operations/hub.md#shared-folders): {access} as {who}"
+    elif uses_shared_folders:
+        join = folder.get("joins_group") or "group_add"
+        jt = JOIN_TEXT.get(join, f"joins through `{join}`").format(
+            var=runs_as.get("gid_env", ""), key=key.upper())
+        text = f"[Shared folder](../operations/hub.md#shared-folders) ready: {access} as {who}; {jt}"
+    else:
+        # Plain mount, not using the shared folders feature
+        text = f"Folder mount: {access} as {who}"
+
     if folder.get("must_own"):
         text += "; owns what it writes (the Hub also sets the owner)"
     return text

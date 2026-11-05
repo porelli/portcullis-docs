@@ -135,6 +135,19 @@ Revocation always:
 2. Runs the instance's `credential_change` hook (timeout: 8 seconds). The hook ends the person's open SMB sessions.
 3. If the hook times out or the instance isn't running, the Hub stops the app (`compose down`) and starts it again in the background.
 
+### Revocation Latencies
+
+Measured end-to-end revocation latencies (from trigger to credential no longer working, tested in Task 18 CI):
+
+| Trigger | p50 | p95 | Notes |
+|---------|-----|-----|-------|
+| **Hub-made membership change** (Users & Groups → remove member) | 0.8 s | 0.9 s | Includes LLDAP write + evaluator poll + hook invocation + SMB session kill |
+| **LLDAP-direct membership change** (LLDAP UI → remove member) | 3.4 s | 9.1 s | Includes evaluator's 60 s poll + hook invocation + SMB session kill; worst case ~69 s |
+| **Writer demoted to reader** (Samba shared folder) | — | 3.6 s | Share access updated via hook |
+| **Revoke button** (File Sharing tab) | 0.8 s | 0.9 s | Same as Hub-made change |
+
+See the [Task 18 report](https://github.com/porelli/portcullis-hub/blob/main/.superpowers/sdd/2026-11-02-file-sharing/task-18-report.md) for test methodology and full results.
+
 ## Security
 
 ### Password Storage

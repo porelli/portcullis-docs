@@ -414,6 +414,106 @@ Each delivery fails closed: a value that can't be rendered for a claim or
 header is left out (the person gets none, never someone else's or a
 default), and a stale claim value is never kept in a token mapper.
 
+## File Sharing (Samba and Time Machine)
+
+File-sharing apps (Samba and Time Machine) use SMB3 to serve per-person and shared folders with per-person passwords. The Hub creates and revokes file-share credentials outside the normal settings delivery flow, and the app picks up changes within about a second.
+
+```mermaid
+flowchart TB
+    Person[Person on My apps<br/>fresh passkey touch]
+    Hub[(Hub<br/>portcullis-fresh-auth client)]
+    FreshAuth[Fresh auth<br/>passkey verification]
+    Secrets[(hub_secrets volume<br/>uid 10000:10000, mode 0700)]
+    People[people.tsv<br/>data file]
+    Hashes[username.nt files<br/>NT hashes]
+    Hook[credential_change hook<br/>≤ 8s timeout]
+    App[Samba / Time Machine<br/>reads people + hashes]
+    Report[PORTCULLIS-REPORT<br/>sizes, errors]
+    LLDAP[(LLDAP<br/>membership changes)]
+
+    Person -->|create/regenerate password| Hub
+    Hub -->|verify fresh passkey| FreshAuth
+    FreshAuth -->|OK + session user| Hub
+    Hub -->|generate NT hash| Secrets
+    Secrets -.->|subpath mount /hub-secrets<br/>read-only| App
+    Hub -->|membership snapshot| People
+    People -.->|data file<br/>read-only mount| App
+    LLDAP -->|membership change| Hub
+    Hub -->|invoke within ~1s| Hook
+    Hook -->|reads people + hashes| App
+    Hook -->|updates served state| App
+    App -->|du, errors| Report
+    Hub -.->|reads report on demand| Report
+```
+
+### hub_secrets Volume
+
+The `hub_secrets` volume (named `portcullis_hub_secrets` in the core compose) stores NT password hashes for file-sharing apps. It is **never backed up** (see [Backups](operations/backups.md#what-is-backed-up-and-how)): every Hub restore from backup voids all file-share credentials, and people must regenerate their passwords.
+
+- **Owner**: uid 10000:10000, mode 0700 (the Hub's user). The Hub writes hashes as uid 10000; Samba and Time Machine services run as uid 10000 and read them.
+- **Mounted in**: only the file-sharing app's service (Samba's `samba` service, Time Machine's `timemachine` service), as a **subpath mount** at `/hub-secrets` (read-only). No other app or service can reach it.
+- **Contents**: one `<username>.nt` file per person with a file-share password (32 bytes: the MD4 hash of the UTF-16LE password, with no salt). The Hub generates hashes using the `portcullis-fresh-auth` client's `/derive-nt-hash` endpoint.
+- **Secrets epoch**: the Hub tracks a secrets epoch counter in its state. Every restore from backup increments the epoch, voiding all credentials. The Hub's File Sharing tab shows "voided by restore" for every credential until the person regenerates.
+
+### People File and Credential Flow
+
+File-sharing apps use a **people tsv** data file (delivered like other settings data files, at `appfiles/<id>/people` in the Hub data directory, mounted read-only in the app) listing the current members with their Hub-allocated Unix UIDs and approved usernames. The Hub creates or updates this file on:
+
+- membership changes (someone joins or leaves the app's access group, or their account is deleted);
+- a person creating, regenerating or revoking their file-share password;
+- settings delivery (e.g., the Local networks list changes).
+
+When the people file or a hash file changes, the Hub **does not use the settings delivery engine**. Instead, it immediately (within about a second of the LLDAP change or the My apps button click) invokes the app's **`credential_change` hook** with a JSON payload on stdin:
+
+```json
+{
+  "trigger": "membership_change",
+  "changed_people": ["alice", "bob"]
+}
+```
+
+or
+
+```json
+{
+  "trigger": "credential_change",
+  "changed_people": ["alice"]
+}
+```
+
+The hook (a `portcullis-sync` script shared by Samba and Time Machine, running in the app's container via `docker exec`) has an **8-second timeout**. It:
+
+1. Reads the people file and every `<username>.nt` hash from `hub_secrets`.
+2. Updates the served state (Unix accounts, smbpasswd passdb, smb.conf, Bonjour file).
+3. Ends open SMB sessions for removed accounts or changed hashes (via `smbstatus` and `kill`).
+4. Verifies the configuration (testparm) and **stops smbd** (via the supervisor: runit for Samba, s6 for Time Machine) if anything is broken (fail-closed).
+5. Writes a report (`PORTCULLIS-REPORT` in the app's data directory) with per-person folder sizes (via `du`, time-limited) and any errors.
+
+If the hook times out or exits non-zero after making changes, **the Hub stops the app** (Docker stop) to avoid serving a broken or stale credential set. The app stays stopped until an admin investigates and restarts it. See [measured hook latencies](operations/file-sharing.md#revocation-latencies).
+
+### Fresh Auth Client (portcullis-fresh-auth)
+
+The Hub uses a **fresh auth client** (`portcullis-fresh-auth`, part of the core's `enroll` service codebase) to verify that a person creating or regenerating a file-share password has recently touched their passkey. This prevents an attacker with a stolen session cookie from silently creating a credential.
+
+- **Endpoint**: `http://enroll:3030/api/fresh-auth` (internal, not published).
+- **Flow**:
+    1. Person clicks "Create password" or "Regenerate password" on My apps.
+    2. Hub calls `/api/fresh-auth` with the person's username and session.
+    3. The client verifies the session and checks that the person touched their passkey within the last 10 minutes of signing in.
+    4. If verified, the client returns `200 OK` and the Hub generates a 32-character random password, derives its NT hash via `/derive-nt-hash`, and writes `<username>.nt` to `hub_secrets`.
+    5. The Hub returns the password **once** to the person; it is never shown or stored again.
+- **Rate limiting**: 10 refused fresh-auth attempts per person per minute (429 Too Many Requests).
+- **Revocation** (deleting a credential) does not require fresh auth, as it strictly reduces access.
+
+### Revocation Latency
+
+Removing someone from an app's access group, deleting their account, or clicking **Revoke** on the File Sharing tab triggers the `credential_change` hook within:
+
+- **0.8–0.9 seconds** (measured p50/p95) when the change is made via the Hub (Users & Groups tab, or File Sharing revoke button);
+- **3.4–9.1 seconds** (measured p50/p95) when the change is made directly in the LLDAP UI (the Hub polls LLDAP every ~5 seconds for membership changes).
+
+See [Revocation latencies](operations/file-sharing.md#revocation-latencies) for full test results.
+
 ## Shared folders and the doctor
 
 A [shared folder](operations/hub.md#shared-folders) is a host directory
