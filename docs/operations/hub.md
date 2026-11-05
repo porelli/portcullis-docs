@@ -35,7 +35,7 @@ The main view lists every template from every [template source](#template-source
 !!! warning "LAN-only ports (file sharing and other apps)"
     Apps with `lan_only` ports (Samba port 445, Time Machine port 445, Pi-hole DNS port 53, NetBird's STUN/TURN ports) publish those ports directly on the host, **bypassing Docker's network isolation and any firewall rules like ufw**. Anyone on your network (or the internet, if the port is exposed through your router) can reach the port. See [LAN-only ports](hardening.md#lan-only-ports-and-host-firewalls) in the hardening guide.
 
-    File-sharing apps (Samba, Time Machine) also require [Local networks](file-sharing.md#2-configure-local-networks) to be configured: an empty Local networks list **stops the app from starting**, and the enable will fail. Set Local networks before enabling a file-sharing app.
+    File-sharing apps (Samba, Time Machine) also require [Local networks](file-sharing.md#2-configure-local-networks) to be configured: an empty Local networks list **keeps the app from starting** (its container exits at boot, and the doctor reports `local_networks_empty`). Set Local networks before enabling a file-sharing app.
 
 3. Click **Enable**.
 
@@ -1220,30 +1220,80 @@ of what it rewrote, but offers no undo of itself.
 
 ## File Sharing
 
-The **File Sharing** tab (admins only, `hub.<domain>`) lists every person's file-share credentials (Samba and Time Machine passwords) across all enabled file-sharing apps. A credential is created by the person on [My apps](#my-apps) via a fresh passkey touch; the Hub keeps only the NT hash on the `hub_secrets` volume, never the password itself.
+File-sharing apps (Samba, Time Machine) have a **File sharing** tab in
+their instance's detail view on `hub.<domain>`. It is for admins only, one
+instance at a time. People create their own file-share passwords on
+[My apps](#my-apps). Admins list and revoke passwords, but never create
+them: an admin who created one would have seen it. The Hub keeps only
+each password's NT hash on the `hub_secrets` volume. See
+[File Sharing](file-sharing.md) for setup.
 
-The table shows one row per person per app:
+For each file-share password option of the instance, the tab shows:
 
-- **Person** (username)
-- **App** (instance id: `samba` or `timemachine-<id>`)
-- **Status**:
-    - **Ready** (green): the credential exists, the person has access, and the app is enabled. The person can connect with the password they created.
-    - **No credential** (gray): the person never created a password, or they revoked it. They must create one on My apps to connect.
-    - **Voided by restore** (orange): every Hub restore from backup voids all file-share passwords (NT hashes are never backed up). The person must regenerate their password on My apps; the old one no longer works. See [Credentials](file-sharing.md#credentials) and [Backups](backups.md#what-is-backed-up-and-how).
-    - **No access** (gray): the person isn't in the app's access group (`users_samba` or `users_timemachine`), or their account is deleted. Any credential they had is not served by the app, even if they still know the password.
-    - **App disabled** (gray): the file-sharing app is disabled. Any credential is kept but not served.
-- **Created** (timestamp of the last create or regenerate, if a credential exists)
-- **Actions**:
-    - **Revoke** (admins only): deletes the person's credential. They lose access at once, and open sessions end within about a second. The person must create a new password on My apps to connect again. This is the break-glass for "someone's credential is compromised" or "they left and we need to cut off access before the LLDAP group update propagates." The row stays, with status `revoked` and reason `admin`, and the revoke is audited `credential.revoke`. See [measured revocation times](file-sharing.md#measured-revocation-times).
+- **People with access** (the instance's access group, `users_<id>`) and
+  how many of them have a password.
+- **One row per person:**
+    - **Person:** their username.
+    - **Ids:** their Hub uid (`uid`). My apps never shows it.
+    - **Values:** their person-scope values, such as Time Machine's size
+      limit.
+    - **Password:** one of these statuses:
+        - **no password** (`none`): they never created one.
+        - **password since <date>** (`active`): it works.
+        - **reset by a restore on <date>** (`voided`): a restore voided it
+          (see [Restores](file-sharing.md#restores)), and they have no
+          password until they create a new one.
+        - **revoked (<reason>) on <date>** (`revoked`). The reason is one
+          of: by the person, by an administrator, left the app, or account
+          deleted.
+        - **unavailable** (`unavailable`): the app can't serve their
+          username (the template's username rule), so they get no button
+          on My apps.
+    - **Revoke**, on active rows only. Revoke asks for a confirmation,
+      then deletes the hash and ends the person's sessions. Revoking takes
+      a few seconds and can take up to about 30 seconds. It is audited as
+      `credential.revoke` with you as the actor. The person must create a
+      new password to connect again.
+- **Former members' folders:** top-level folders in the per-person tree
+  (Samba's home folders, Time Machine's storage) owned by an account that
+  is gone, with their uid and size. They are kept on disk and never
+  served.
+- **Last sync:** the app's last `sync` hook run (ok, skipped or failed,
+  with its time). Sizes come from the hook's last report.
 
-The tab also links to [Doctor](#doctor) findings about file-sharing:
+A banner at the top links to the [Doctor](#doctor) card when the app's
+SMB port is reachable from outside your Local networks
+(`lan_only_exposed`). From there you can rebind the port.
 
-- **hub_secrets ownership**: the `hub_secrets` volume must be owned by uid 10000:10000 (mode 0700), or Samba and Time Machine can't read the hashes. The doctor lists any wrong ownership and offers a fix (the Hub runs `chown -R 10000:10000` on the volume).
-- **former_account folders**: a folder in the per-person tree (`<homes>/<username>` for Samba, `<storage>/<username>` for Time Machine) whose owner uid no longer belongs to a current account (the account was deleted and a new one created with a different Hub-allocated uid). Such folders are never served; the doctor lists them with their paths and current owner uids.
+**Revocation happens on its own.** A person who leaves the access group,
+or whose account is deleted, loses their password at once when the
+change is made in the Hub. A change made directly in LLDAP is caught
+within about a minute. Leaving a share's reader or writer group drops
+that share only, and keeps the password. See
+[Managing people](file-sharing.md#managing-people).
 
-Credentials are scoped to an app instance (one Samba credential, one per Time Machine instance), never shared across apps. A person in both `users_samba` and `users_timemachine` creates two separate passwords.
+**Restores.** An instance restore voids that instance's passwords only.
+A core restore (`./portcullis restore`) empties `hub_secrets` and voids
+every password of every instance.
 
-Removing someone from an app's access group or deleting their account **revokes their credential at once**: the Hub's `credential_change` hook (called within about a second of any LLDAP membership or account change, or up to about a minute for a change made directly in LLDAP) removes the person from the app's people file and ends their open SMB sessions. See [Credentials](file-sharing.md#credentials) and [Measured revocation times](file-sharing.md#measured-revocation-times).
+**The `hub_secrets` volume** must be owned by `10001:10001` with mode
+`0700`. Core sets this on every `./portcullis init`, `up`, `upgrade` and
+`restore`, so you never change it by hand, and the doctor offers no fix
+for it. If the Hub finds the volume wrong at start, the credential routes
+answer `503` and file-sharing apps refuse to start, naming the reason. To
+fix it, run `./portcullis up` (which sets the owner and mode again), then
+restart the Hub container: the Hub checks the volume only at start.
+
+The doctor's file-sharing findings
+([contracts §14.5](../guides/integration-contracts.md#145-the-doctor)) are:
+
+- a password whose holder should have been revoked (one-click revoke);
+- a former account's folder (explain-only);
+- a per-person folder with the wrong group or mode (one-click fix);
+- an account the Hub can't verify (no LLDAP uuid);
+- Local networks saved empty;
+- a share slot served to nobody;
+- a refused share name or username, as reported by the app.
 
 ## Doctor
 
@@ -1457,44 +1507,49 @@ something personal for them, sorted by id, each with its link:
     - the Hub's refusal, e.g. "this value is already registered for Firefox
       Sync by another person". It never says who.
 - **file-share passwords** (Samba and Time Machine apps): the person's own
-  SMB password for connecting from macOS, Windows or Linux. The password is
-  never shown after creation:
-    - **Create password** (shown when no password exists): the button asks for
-      a fresh passkey touch (the same passkey you signed in with, within 10
-      minutes of signing in), then the Hub generates a 32-character random
-      password and shows it **once** in a dialog. The password never appears
-      again — the Hub keeps only its NT hash on the `hub_secrets` volume,
-      never in a backup. Copy it now; the SMB client on your device will save
-      it in its own keychain. The credential appears on the file-sharing app
-      (Samba or Time Machine) within about a second; see [measured revocation
-      latencies](file-sharing.md#measured-revocation-times) in the file-sharing
-      operations guide.
-    - **Regenerate password** (shown when a password already exists): same
-      fresh passkey flow and one-time display. The old password stops working
-      within about a second; anyone still connected with it is disconnected.
-    - **Revoke**: deletes the credential. You lose access to the shares at
-      once, and open sessions end within about a second. To connect again,
-      create a new password.
-    - Status line: "Credential created 2 Nov 2026 · ready" (the password
-      works), or "no credential" (you've never created one, or you revoked
-      it), or "credential voided by core restore" (every Hub restore from
-      backup voids every file-share password — the NT hashes are never backed
-      up — so everyone must regenerate; see
-      [Credentials](file-sharing.md#credentials) and
-      [Backups](backups.md#what-is-backed-up-and-how)).
+  SMB password, for connecting from macOS, Windows or Linux. There is one
+  password per app instance. The card shows the address to connect to
+  (for example `smb://nas.home.arpa/Home`) and the username.
+    - **Create password** (when there is none): a popup asks the person to
+      sign in again with their hardware key. This is a **fresh** sign-in,
+      even if they signed in a minute ago, and the Hub accepts it only if
+      it is at most 5 minutes old. The Hub then generates a 24-character
+      random password and shows it **once**, as 6 groups of 4 joined by
+      `-` (29 characters; the dashes are part of the password). The dialog
+      has **Copy** and **I've saved it**. The password never appears
+      again: the Hub keeps only its NT hash on the `hub_secrets` volume,
+      never in a backup.
+    - **Regenerate** (when a password is active): it asks for confirmation
+      ("Your Mac will ask for the new password; running backups stop. The
+      old password stops working at once."), then repeats the same fresh
+      sign-in and one-time display. The Hub removes the old hash the way it
+      revokes a password (see [Managing
+      people](file-sharing.md#managing-people)), so the old password stops
+      working even when the app's hook is busy or fails, and open sessions
+      that used it end.
+    - **Revoke** (when a password is active): after a confirmation, the
+      password is deleted and every device using it loses access. No fresh
+      sign-in is needed. To connect again, create a new password.
+    - The status line shows one of:
+        - "No password yet"
+        - "Password active since <date>"
+        - "Your password was reset by a restore on <date>; create a new
+          one." Restores are covered in
+          [Restores](file-sharing.md#restores): an instance restore voids
+          that instance's passwords, a core restore voids them all.
+        - "File sharing isn't available for the username <name>; ask an
+          administrator." (the app can't serve that username; there is no
+          button)
 
-  The fresh passkey requirement stops an attacker with only your Portcullis
-  session cookie from silently creating or rotating a credential: the create
-  or regenerate fails without the passkey touch, and an attacker who gets the
-  password can't rotate it away without also having your passkey. Revocation
-  needs no passkey (it's strictly reducing access). The rate limit is 10
-  refused fresh-auth attempts per person per minute.
+  The fresh sign-in means that someone with only the person's Portcullis
+  session cookie can't create or replace a password. Revoking needs no
+  fresh sign-in, because it only removes access. Refused creates count
+  toward the refusal limit below.
 
-  Only members of the file-sharing app's access group (`users_samba` or
-  `users_timemachine`) see the file-share password controls, and only while
-  the app is enabled. Losing access (removed from the group, or your account
-  deleted) revokes your credential at once; the app won't serve you even if
-  you still know the password.
+  Only people in the app's access group (`users_<id>`) see the card, and
+  only while the app is enabled. Leaving the group, or having the account
+  deleted, revokes the password: at once for a change made in the Hub,
+  within about a minute for one made directly in LLDAP.
 
 A person enters a value only for apps they have access to; for anything
 else the answer is the same "not found". Clearing your own value always

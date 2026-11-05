@@ -46,9 +46,9 @@ Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-set
 
 | Setting | Type | Scope | Applies | Description |
 |---------|------|-------|---------|-------------|
-| **Movies folder** | `path` | instance | `restart` | Host path to your movies library. Mounted at `/data/movies` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as runs as root; the Hub adds the folder's group (`group_add`). |
-| **TV Shows folder** | `path` | instance | `restart` | Host path to your TV shows library. Mounted at `/data/tv` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as runs as root; the Hub adds the folder's group (`group_add`). |
-| **Music folder** | `path` | instance | `restart` | Host path to your music library. Mounted at `/data/music` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as runs as root; the Hub adds the folder's group (`group_add`). |
+| **Movies folder** | `path` | instance | `restart` | Host path to your movies library. Mounted at `/data/movies` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as root; the Hub adds the folder's group (`group_add`). |
+| **TV Shows folder** | `path` | instance | `restart` | Host path to your TV shows library. Mounted at `/data/tv` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as root; the Hub adds the folder's group (`group_add`). |
+| **Music folder** | `path` | instance | `restart` | Host path to your music library. Mounted at `/data/music` (ro). [Shared folder](../operations/hub.md#shared-folders) ready: reads (read-only) as root; the Hub adds the folder's group (`group_add`). |
 
 ## Environment Variables
 

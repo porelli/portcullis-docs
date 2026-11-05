@@ -196,12 +196,15 @@ What the service does:
 ./portcullis restore --from-offsite 1a2b3c4d    # a specific one
 ```
 
-The restore first checks the backup's checksums and saves the current `.env`,
-`secrets/` and `certs/` to `backups/pre-restore-<timestamp>/`. Then it stops
-Portcullis and:
+The restore first checks the backup's checksums. Before anything changes, it
+stops the Hub (so nothing can start a file-sharing app again) and takes down
+every app project with a container mounting `hub_secrets` (`compose down`,
+volumes kept); a failure there, or a container left, aborts the restore with
+nothing restored. It saves the current `.env`, `secrets/` and `certs/` to
+`backups/pre-restore-<timestamp>/`. Then it stops Portcullis and:
 
 1. Restores `.env`, `certs/` and the config files. An existing `config/` repo is left alone.
-2. **Stops file-sharing apps and empties `hub_secrets`.** Every running app instance that mounts `hub_secrets` is stopped (`compose down`, volumes kept). The `hub_secrets` volume is then removed and re-created with its labels and ownership (`10001:10001 0700`). After the restore the Hub voids every file-share password (reason `restore`, audited `credential.void_restore` per instance with the count): people create new ones on [My apps](hub.md#my-apps). The Hub never starts the stopped apps again (drift shows them down); an admin re-enables them from the Hub. See [File Sharing](file-sharing.md#restores).
+2. **Empties `hub_secrets`.** The file-sharing apps are already down (above). The `hub_secrets` volume is removed and re-created with its labels and ownership (`10001:10001 0700`). After the restore the Hub voids every file-share password (reason `restore`, audited `credential.void_restore` per instance with the count): people create new ones on [My apps](hub.md#my-apps). The Hub starts again with the core, but never starts the apps taken down: the restore lists them, their drift shows them not running, and an admin starts each one again from the Hub. See [File Sharing](file-sharing.md#restores).
 3. Recreates the Postgres and Vault volumes, and `pg_restore`s the Keycloak database into the fresh Postgres.
 4. Initialises the fresh Vault with throwaway keys, then force-restores the raft snapshot, which brings back the original keyring. It installs the backed-up `secrets/` and recreates Vault, which auto-unseals with the **original** unseal key.
 5. Restores the LLDAP, Hub and ACME volumes.

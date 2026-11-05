@@ -46,7 +46,7 @@ Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-set
 
 | Setting | Type | Scope | Applies | Description |
 |---------|------|-------|---------|-------------|
-| **Storage folder** | `path` | instance | `restart` | Host folder for recordings and pictures (empty = the instance's own volume). Mounted at `/var/lib/motioneye` (rw). Folder mount: writes as runs as root. |
+| **Storage folder** | `path` | instance | `restart` | Host folder for recordings and pictures (empty = the instance's own volume). Mounted at `/var/lib/motioneye` (rw). [Shared folder](../operations/hub.md#shared-folders) ready: writes as root; the Hub adds the folder's group (`group_add`). |
 | **Time zone** | `string` | instance | `restart` | IANA time zone for timestamps and schedules, e.g. Europe/Rome (default UTC). |
 | **Local cameras** | `list` of `string` | instance | `restart` | Device paths of local (USB/V4L2) cameras, e.g. /dev/video0 (up to 4; empty = none). |
 

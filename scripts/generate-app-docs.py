@@ -155,10 +155,9 @@ def effective_scope(o: dict) -> str:
 
 
 def effective_applies(o: dict) -> str:
-    """The option's applies, or the Hub's default (contracts §13.9, §13.2)."""
-    # person_secret applies is always "live" when given, else default "live"
-    if o.get("type") == "person_secret":
-        return o.get("applies") or "live"
+    """The option's applies, or the Hub's default (contracts §13.9): the
+    same rule for every type, person_secret included (no applies and no
+    claim or header delivery = restart)."""
     if o.get("applies"):
         return o["applies"]
     for d in o.get("delivery") or []:
@@ -187,13 +186,13 @@ def effective_mode(o: dict) -> str:
 
 
 def _run_id(runs_as: dict, which: str) -> str:
+    """One id of a folder block's runs_as (contracts §13.15), "" if it has
+    no source."""
     if runs_as.get(which) is not None:
         return str(runs_as[which])
     if runs_as.get(f"{which}_env"):
         return f"`{runs_as[f'{which}_env']}`"
-    if runs_as.get(f"{which}_from"):
-        return f"each person's (`{runs_as[f'{which}_from']}`)"
-    return "?"
+    return ""
 
 
 JOIN_TEXT = {
@@ -203,40 +202,36 @@ JOIN_TEXT = {
 }
 
 
+def _runs_as_text(runs_as: dict) -> str:
+    """Who the app writes or reads as on the mount (contracts §13.15)."""
+    if runs_as.get("uid_from"):
+        who = f"each person's own uid (`{runs_as['uid_from']}`)"
+        if runs_as.get("gid_from"):
+            return who + f" and private group (`{runs_as['gid_from']}`)"
+        gid = _run_id(runs_as, "gid")
+        return who + (f", gid {gid}" if gid else " with the folder's group")
+    uid, gid = _run_id(runs_as, "uid"), _run_id(runs_as, "gid")
+    if uid == "0" and gid == "0":
+        return "root"
+    return f"uid {uid}, gid {gid}"
+
+
 def folder_text(folder: dict, key: str = "") -> str:
-    """One line for a folder block: what the app does on a shared folder."""
+    """One line for a folder block: what the app does on the mount."""
     runs_as = folder.get("runs_as") or {}
     access = "writes" if folder.get("access") == "write" else "reads (read-only)"
-    # uid 0 / gid 0 → "runs as root"
-    uid = _run_id(runs_as, 'uid')
-    gid = _run_id(runs_as, 'gid')
-    if uid == "0" and gid == "0":
-        who = "runs as root"
-    else:
-        who = f"uid {uid}, gid {gid}"
-
-    # Per-person tree (contract §13.15): has gid_from → creates individual per-person
-    # folders, not shared folders. Such folders don't join folder groups.
-    is_per_person_tree = 'gid_from' in runs_as
-
-    # Shared folder integration: uses gid_env, explicit joins_group, or per-person gid_from
-    uses_shared_folders = (
-        'gid_env' in runs_as or
-        'joins_group' in folder or
-        is_per_person_tree
-    )
-
-    if is_per_person_tree:
-        text = f"[Per-person folder](../operations/hub.md#shared-folders): {access} as {who}"
-    elif uses_shared_folders:
-        join = folder.get("joins_group") or "group_add"
-        jt = JOIN_TEXT.get(join, f"joins through `{join}`").format(
-            var=runs_as.get("gid_env", ""), key=key.upper())
-        text = f"[Shared folder](../operations/hub.md#shared-folders) ready: {access} as {who}; {jt}"
-    else:
-        # Plain mount, not using the shared folders feature
-        text = f"Folder mount: {access} as {who}"
-
+    who = _runs_as_text(runs_as)
+    if runs_as.get("gid_from"):
+        # A per-person tree (contracts §13.15): one top-level folder per
+        # person; it can't take a shared folder.
+        return (f"Per-person folders: {access} as {who}; one `<username>` folder per person, "
+                f"mode `0700` (it can't be a [shared folder](../operations/hub.md#shared-folders))")
+    # Every other folder block is shared-folder ready; joins_group
+    # defaults to group_add.
+    join = folder.get("joins_group") or "group_add"
+    jt = JOIN_TEXT.get(join, f"joins through `{join}`").format(
+        var=runs_as.get("gid_env", ""), key=key.upper())
+    text = f"[Shared folder](../operations/hub.md#shared-folders) ready: {access} as {who}; {jt}"
     if folder.get("must_own"):
         text += "; owns what it writes (the Hub also sets the owner)"
     return text

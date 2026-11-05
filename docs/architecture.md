@@ -416,103 +416,194 @@ default), and a stale claim value is never kept in a token mapper.
 
 ## File Sharing (Samba and Time Machine)
 
-File-sharing apps (Samba and Time Machine) use SMB3 to serve per-person and shared folders with per-person passwords. The Hub creates and revokes file-share credentials outside the normal settings delivery flow, and the app picks up changes within about a second.
+The Samba and Time Machine templates serve SMB3 with a password of each
+person's own ([operator guide](operations/file-sharing.md),
+[contracts §13.16–§13.17](guides/integration-contracts.md#1316-per-person-credentials-and-ids-new-file-sharing)).
+They have no web page and no Traefik router. The Hub knows nothing about
+Samba: it implements two generic option types, `person_secret` (a
+password per person) and `person_id` (a uid per person), plus hooks, `tsv`
+data files and hook reports. Everything Samba-specific is in the
+templates' manifests and their converge script, `portcullis-sync`.
 
 ```mermaid
 flowchart TB
-    Person[Person on My apps<br/>fresh passkey touch]
-    Hub[(Hub<br/>portcullis-fresh-auth client)]
-    FreshAuth[Fresh auth<br/>passkey verification]
-    Secrets[(hub_secrets volume<br/>uid 10000:10000, mode 0700)]
-    People[people.tsv<br/>data file]
-    Hashes[username.nt files<br/>NT hashes]
-    Hook[credential_change hook<br/>≤ 8s timeout]
-    App[Samba / Time Machine<br/>reads people + hashes]
-    Report[PORTCULLIS-REPORT<br/>sizes, errors]
-    LLDAP[(LLDAP<br/>membership changes)]
+    Person[Person on My apps<br/>people.domain]
+    KC[Keycloak<br/>portcullis-fresh-auth client]
+    Hub[Hub]
+    Secrets[(hub_secrets volume<br/>10001:10001, mode 0700)]
+    People[people.tsv data file<br/>uids, shares, groups]
+    LLDAP[(LLDAP<br/>users, groups)]
+    App[Samba / Time Machine container<br/>portcullis-sync + smbd]
 
-    Person -->|create/regenerate password| Hub
-    Hub -->|verify fresh passkey| FreshAuth
-    FreshAuth -->|OK + session user| Hub
-    Hub -->|generate NT hash| Secrets
-    Secrets -.->|subpath mount /hub-secrets<br/>read-only| App
-    Hub -->|membership snapshot| People
-    People -.->|data file<br/>read-only mount| App
-    LLDAP -->|membership change| Hub
-    Hub -->|invoke within ~1s| Hook
-    Hook -->|reads people + hashes| App
-    Hook -->|updates served state| App
-    App -->|du, errors| Report
-    Hub -.->|reads report on demand| Report
+    Person -->|popup: fresh hardware sign-in, PKCE| KC
+    Person -->|code, verifier, nonce| Hub
+    Hub -->|code exchange, ID token check| KC
+    Hub -->|NT hash file per person| Secrets
+    Hub -->|delivery engine| People
+    LLDAP -->|membership snapshot| Hub
+    Secrets -.->|subpath, read-only<br/>/portcullis/secrets| App
+    People -.->|read-only<br/>/portcullis/data| App
+    Hub -->|sync hook: docker exec,<br/>HookInput on stdin| App
+    App -->|PORTCULLIS-REPORT line| Hub
 ```
 
-### hub_secrets Volume
+### hub_secrets volume
 
-The `hub_secrets` volume (named `portcullis_hub_secrets` in the core compose) stores NT password hashes for file-sharing apps. It is **never backed up** (see [Backups](operations/backups.md#what-is-backed-up-and-how)): every Hub restore from backup voids all file-share credentials, and people must regenerate their passwords.
+- **Core** declares the volume `hub_secrets` (`portcullis_hub_secrets`),
+  mounts it into the Hub at `/secrets` (`HUB_SECRETS_DIR`), and sets its
+  root to `10001:10001`, mode `0700` (the Hub's uid) on every `init`, `up`,
+  `upgrade` and `restore`.
+- **The Hub** checks the owner and mode at start. If they are wrong, the
+  credential routes answer `503` and every instance with a `person_secret`
+  option refuses to start, naming the reason.
+- **Contents:** one directory per instance and option,
+  `<instance>/<key>/` (`0700`). Each holds one `<username>.nt` per active
+  password (`0600`, owner 10001): the uppercase hex of MD4 over the
+  UTF-16LE encoding of the password, 32 characters and a newline. The
+  volume also holds `.epoch` (below).
+- **Mounts:** the Hub's override mounts only that instance's and option's
+  directory, read-only, as a volume subpath at `/portcullis/secrets` in the
+  template's one service. A container never sees another instance's
+  hashes. Before every `up` the Hub checks that nothing else mounts the
+  volume.
+- **Backups:** the volume is never backed up. A core restore empties it
+  ([Backups](operations/backups.md#what-is-backed-up-and-how)).
 
-- **Owner**: uid 10000:10000, mode 0700 (the Hub's user). The Hub writes hashes as uid 10000; Samba and Time Machine services run as uid 10000 and read them.
-- **Mounted in**: only the file-sharing app's service (Samba's `samba` service, Time Machine's `timemachine` service), as a **subpath mount** at `/hub-secrets` (read-only). No other app or service can reach it.
-- **Contents**: one `<username>.nt` file per person with a file-share password (32 bytes: the MD4 hash of the UTF-16LE password, with no salt). The Hub generates hashes using the `portcullis-fresh-auth` client's `/derive-nt-hash` endpoint.
-- **Secrets epoch**: the Hub tracks a secrets epoch counter in its state. Every restore from backup increments the epoch, voiding all credentials. The Hub's File Sharing tab shows "voided by restore" for every credential until the person regenerates.
+### Creating a password
 
-### People File and Credential Flow
+1. On [My apps](operations/hub.md#my-apps) the person clicks **Create
+   password**. The page opens Keycloak's `portcullis-fresh-auth` client in
+   a popup (PKCE S256, `prompt=login`, `max_age=0`, `acr_values=hwk`), so
+   they sign in again with their hardware key.
+2. The popup hands the code back to the page, which posts the code, the
+   PKCE verifier and the nonce to the Hub. The Hub exchanges the code with
+   Keycloak itself and checks the ID token: the sign-in is at most 300 s
+   old, `amr` contains `hwk` or `mtls` (never `file`), the nonce matches,
+   `aud` / `azp` is the client, and `preferred_username` is the caller.
+3. The Hub draws 24 characters from a 54-character alphabet with
+   `crypto/rand`. It shows them as 6 groups of 4 joined by `-`: 29
+   characters, dashes included. The Hub computes the NT hash itself.
+4. Under the Hub's lock, it writes the hash file, rotates the secrets
+   epoch, and saves the metadata (id, version, uuid, dates; never the hash)
+   to `state.yaml`. Then it writes the audit.
+5. The password goes into the one answer (`Cache-Control: no-store`) and
+   the buffer is zeroed. It never appears anywhere else: not in logs, the
+   audit, hook input or output, or a backup.
+6. An immediate `credential_change` delivery runs the app's hook. A
+   **regenerate** also removes the old hash: it is applied like a
+   revocation (below), so the old password stops working even when the
+   hook is skipped or fails.
 
-File-sharing apps use a **people tsv** data file (delivered like other settings data files, at `appfiles/<id>/people` in the Hub data directory, mounted read-only in the app) listing the current members with their Hub-allocated Unix UIDs and approved usernames. The Hub creates or updates this file on:
+**Ids:** each person gets a uid from the Hub-wide pool `posix_uid`,
+20000–59999. A uid is allocated once, keyed by username and LLDAP uuid,
+and never reused. An account that is deleted and created again gets a new
+uid, so it never owns the former account's files.
 
-- membership changes (someone joins or leaves the app's access group, or their account is deleted);
-- a person creating, regenerating or revoking their file-share password;
-- settings delivery (e.g., the Local networks list changes).
+### People file and the sync hook
 
-When the people file or a hash file changes, the Hub **does not use the settings delivery engine**. Instead, it immediately (within about a second of the LLDAP change or the My apps button click) invokes the app's **`credential_change` hook** with a JSON payload on stdin:
+The people file is an ordinary settings data file
+([Settings Delivery](#settings-delivery)) in `tsv` format, read-only at
+`/portcullis/data/people.tsv`. It holds each person's uid, the connect
+address and the Bonjour switch. For Samba it also holds the share names
+and the reader and writer groups, expanded to their members. For Time
+Machine it holds the share prefix and each person's size limit. The delivery engine renders it
+like any data file. It is written again when people join or leave, when a
+setting changes, and on every start. A change to it runs the hook
+(`on_membership_change: hook`).
 
-```json
-{
-  "trigger": "membership_change",
-  "changed_people": ["alice", "bob"]
-}
-```
+The hook `sync` (`portcullis-sync`, timeout 60 s) runs on `start`,
+`settings_change`, `membership_change` and `credential_change`. Docker
+exec gives it the full desired state on stdin as JSON (the **HookInput**),
+never a diff:
 
-or
+- `trigger` comes first;
+- then the data-file document;
+- then `credentials`: for each person with an active password, its id and
+  version, never a hash.
 
-```json
-{
-  "trigger": "credential_change",
-  "changed_people": ["alice"]
-}
-```
+The script reads the hashes from its own read-only mount. It converges,
+idempotently and under its own lock:
 
-The hook (a `portcullis-sync` script shared by Samba and Time Machine, running in the app's container via `docker exec`) has an **8-second timeout**. It:
+1. the Unix accounts (each person's Hub uid; every other account in its
+   range is removed);
+2. the passdb, on tmpfs;
+3. the whole `smb.conf`, which `testparm` must show exactly as hardened.
 
-1. Reads the people file and every `<username>.nt` hash from `hub_secrets`.
-2. Updates the served state (Unix accounts, smbpasswd passdb, smb.conf, Bonjour file).
-3. Ends open SMB sessions for removed accounts or changed hashes (via `smbstatus` and `kill`).
-4. Verifies the configuration (testparm) and **stops smbd** (via the supervisor: runit for Samba, s6 for Time Machine) if anything is broken (fail-closed).
-5. Writes a report (`PORTCULLIS-REPORT` in the app's data directory) with per-person folder sizes (via `du`, time-limited) and any errors.
+It then ends the open sessions of people whose account went, whose hash
+changed, or whose shares shrank or went from write to read.
 
-On a revocation the Hub runs this hook itself, outside the delivery engine; if it can't run, fails or takes longer than 8 seconds, **the Hub stops the app** and starts it again in the background, so a revoked password never keeps a session. Inside the container, a hook run that fails after starting a change stops smbd, and the healthcheck refuses until a good run. See [measured revocation times](operations/file-sharing.md#measured-revocation-times).
+Any failure after a change has started is fail-closed: the script stops
+smbd and writes a down marker, which the healthcheck and smbd's run
+script refuse until a run succeeds. The script prints one
+`PORTCULLIS-REPORT` line (below 60 KiB). The line holds:
 
-### Fresh Auth Client (portcullis-fresh-auth)
+- former accounts' folders;
+- wrong owners;
+- refused share and user names;
+- the per-person folder sizes.
 
-The Hub uses a **fresh auth client** (`portcullis-fresh-auth`, part of the core's `enroll` service codebase) to verify that a person creating or regenerating a file-share password has recently touched their passkey. This prevents an attacker with a stolen session cookie from silently creating a credential.
+A detached background job measures the sizes, and every hook run reports
+the last ones it cached. The Hub keeps the last report for the File
+sharing tab and the doctor. A report never drives revocation.
 
-- **Endpoint**: `http://enroll:3030/api/fresh-auth` (internal, not published).
-- **Flow**:
-    1. Person clicks "Create password" or "Regenerate password" on My apps.
-    2. Hub calls `/api/fresh-auth` with the person's username and session.
-    3. The client verifies the session and checks that the person touched their passkey within the last 10 minutes of signing in.
-    4. If verified, the client returns `200 OK` and the Hub generates a 32-character random password, derives its NT hash via `/derive-nt-hash`, and writes `<username>.nt` to `hub_secrets`.
-    5. The Hub returns the password **once** to the person; it is never shown or stored again.
-- **Rate limiting**: 10 refused fresh-auth attempts per person per minute (429 Too Many Requests).
-- **Revocation** (deleting a credential) does not require fresh auth, as it strictly reduces access.
+### Revocation
 
-### Revocation Latency
+A password is revoked when its holder leaves the instance's access group,
+is deleted (or deleted and created again), revokes it on My apps, or an
+admin revokes it on the File sharing tab. The Hub runs one holder check
+for every trigger:
 
-Removing someone from an app's access group, deleting their account, or clicking **Revoke** on the File Sharing tab triggers the `credential_change` hook within:
+- **Hub-made changes** (member removal, user or group deletion) and the
+  rule evaluator's removals: the check runs at once, with no debounce.
+- **Changes made directly in LLDAP:** the check runs on the evaluator's
+  60 s tick. The same tick also compares the share readers and writers
+  with the last delivered people file. A removal delivers at once, and
+  the hook ends the sessions of people whose shares shrank.
 
-- **0.8–0.9 seconds** (measured p50/p95) when the change is made via the Hub (Users & Groups tab, or File Sharing revoke button);
-- **3.4–9.1 seconds** (measured p50/p95) when the change is made directly in the LLDAP UI (the Hub polls LLDAP every ~5 seconds for membership changes).
+Every revocation is applied the same way, outside the delivery engine:
 
-See [Measured revocation times](operations/file-sharing.md#measured-revocation-times) for full test results.
+1. Under the Hub's lock, the hash file and the active metadata go (the
+   epoch is rotated). Then the audit is written.
+2. No running container: done. The next start's converge has no account
+   for them.
+3. Otherwise the Hub runs the `credential_change` hooks with a freshly
+   built HookInput. It holds the instance's delivery lock (taken within
+   2 s) and gives each exec at most 8 s.
+4. Anything else is handled by the kill path. That covers: no hook run,
+   the lock not obtained, a skip, a failure, a timeout, or a hash file that
+   may remain. The Hub kills the project (`compose down`) and starts it
+   again in the background, so no old session survives. A hash file that
+   may remain also makes the Hub refuse to start file-sharing instances
+   until a secrets reconcile succeeds.
+
+A backup, restore, restart or delete of the instance waits at most 10 s
+for the delivery lock first, so a revocation hook in flight finishes.
+Measured in the core `e2e-filesharing` CI job (three runs, plus one
+more), from the change until the session was gone and a new login was
+refused:
+
+- a removal through the Hub took 0.8–0.9 s;
+- a removal directly in LLDAP took 3.4–51.8 s (it waits for the 60 s
+  tick);
+- a writer demoted to reader took 3.5–3.6 s.
+
+See [Measured revocation times](operations/file-sharing.md#measured-revocation-times).
+
+### Secrets epoch and restores
+
+The Hub writes a random epoch (16 random bytes, hex) both into
+`state.yaml` and into `<secrets>/.epoch`. It rotates the epoch on every
+credential mutation: create, regenerate, revoke and void. At boot, and
+before every credentials delivery unit, it compares the two.
+
+On a mismatch, every credential of every instance is voided
+(`reason: restore`) and the volume is emptied. A mismatch comes from a
+core restore, an older `state.yaml` next to a newer volume, or a crash
+between the two writes. Every uid pool also advances by 1000, so a pool
+restored from an older `state.yaml` never hands out a uid that files on
+disk may carry. An instance restore voids that instance's credentials
+only. In both cases, My apps shows "Your password was reset by a restore
+on <date>; create a new one."
 
 ## Shared folders and the doctor
 

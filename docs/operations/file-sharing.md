@@ -22,7 +22,7 @@ Both use hardened SMB3 (encryption required, NTLMv2 only, SMB2 refused) and trus
 
 ### 1. Enable Users & Groups
 
-File sharing needs [Users & Groups](../setup/quickstart.md#step-5-create-users): an LLDAP instance and a directory sync interval. Without it, the file-sharing templates don't appear in the catalog.
+File sharing needs [Users & Groups](../setup/quickstart.md#step-5-create-users): who may create a password is decided by the instance's access group in LLDAP, and every password belongs to an LLDAP account.
 
 ### 2. Configure Local Networks
 
@@ -31,11 +31,11 @@ File sharing should only be reachable from your LAN or VPN. Go to **Hub → Sett
 - **Default:** RFC 1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), IPv6 ULA (`fc00::/7`) and the Tailscale range (`100.64.0.0/10`).
 - **Empty list** (`[]`): loopback only. File sharing then refuses to start (the Hub writes `PORTCULLIS_LOCAL_NETWORKS` empty, and the templates fail closed).
 
-Save the list, and every enabled file-sharing app restarts.
+When you save a changed list, every enabled app that reads it (the file-sharing apps) restarts.
 
 ### 3. Create an Instance
 
-Create a Samba or Time Machine instance from the catalog. Give it a name (e.g. `samba-office`) and choose whether to use the default hostname on the main domain or pick an enrolled domain.
+Create a Samba or Time Machine instance from the catalog and give it an id (e.g. `samba-office`). File-sharing apps have no web page, so there is no hostname to choose.
 
 File-sharing apps have `instances: multi`, so you can run several Samba or Time Machine instances for different groups.
 
@@ -59,9 +59,18 @@ Each app has settings:
 Both apps also have:
 
 - **Username rule:** usernames the app can serve (a pattern plus reserved names). A person whose username fails sees "File sharing isn't available for your username: …" on My apps, with no button.
-- **Bonjour (optional):** advertise shares to the local network. Off by default. Enable it by mounting your host's Avahi services directory (e.g. `/var/run/avahi-daemon/services`) and ticking "Advertise". macOS and iOS clients then see the shares in Finder → Network. **Warning:** advertising shows every share name and username to the local network. Turn it off before clearing the Avahi directory.
+- **Bonjour (optional):** advertise shares to the local network. Off by default. Enable it by mounting your host's Avahi services directory (usually `/etc/avahi/services`) and ticking "Advertise". macOS and iOS clients then see the shares in Finder → Network. **Warning:** advertising shows every share name and username to the local network. Turn it off before clearing the Avahi directory.
 
-### 5. Bind the Port
+### 5. Add People
+
+Add the people who should use the instance to its access group,
+`users_<id>` (e.g. `users_samba-office`), in [Users & Groups](hub.md#users-groups-tab).
+Only members of that group see the instance on My apps and can create a
+password. On Samba, put people in the reader and writer groups of the
+shares they should open too. To share a folder with everyone who has
+access, pick `users_<id>` as its reader group.
+
+### 6. Bind the Port
 
 Each app publishes port 445/tcp, marked `lan_only: true`. The Hub's [doctor](hub.md#doctor) warns if the bind makes it reachable from outside your local networks:
 
@@ -79,11 +88,12 @@ Once the app is enabled, people visit [My apps](hub.md#my-apps) (`https://people
 3. The password is shown **once** as 6 groups of 4 characters joined by `-` (29 characters total, e.g. `a2bC-d3eF-g4hJ-…`). The dashes are part of the password.
 4. After "I've saved it", the password disappears from the DOM. It is never shown again and never logged.
 
-The card then shows:
+The card then shows two lines:
 
-- **smb://{connect address}/Home** (Samba)
-- **smb://{connect address}/TimeMachine-{username}** (Time Machine)
-- **smb://{connect address}/{share name}** (for each Samba share the person may use)
+- **Connect:** `smb://<connect address>/Home` on Samba, or `smb://<connect address>/<prefix>-<username>` on Time Machine (`TimeMachine-<username>` by default). A port other than 445 is part of the address.
+- **Username:** the person's username.
+
+The card doesn't list Samba's shared folders. A share's address is `smb://<connect address>/<share name>`: tell people the share names they may use.
 
 ### macOS
 
@@ -126,19 +136,21 @@ Windows then shows the share in This PC → Network Locations.
 **People should be managed through the Hub's [Users & Groups](hub.md#users-groups-tab), not directly in LLDAP.** Here's why:
 
 - **Hub-made changes** (removing a member, deleting a user or group) revoke file-share passwords **at once**, with no delay.
-- **LLDAP-direct changes** (e.g. removing a user from a group in LLDAP's web UI) are caught by the evaluator's 60-second tick. The worst case is **about 60 seconds plus the revocation hook**, measured between 3 and 52 seconds in CI (contract §13.16). Direct password changes in LLDAP sign the user out of Keycloak but **do not** revoke their file-share password.
-- **Writer demoted to reader:** When a Samba share's writer group loses a member or is emptied, that person's write access ends in about **3.6 seconds**.
+- **LLDAP-direct changes** (e.g. removing a user from a group in LLDAP's web UI) are caught by the evaluator's 60-second tick. The worst case is **about 60 seconds plus the revocation hook**; measured: 3.4–51.8 seconds. A changed LLDAP password doesn't touch the file-share password: they are separate.
+- **Leaving a share's group:** someone removed from a Samba share's reader or writer group loses **that share only**, not their password. Their sessions end, and their other shares and Home stay. A writer who is still a reader keeps the share read-only; measured: 3.5–3.6 seconds.
 
 Revocation always:
 
 1. Removes the hash file from the `hub_secrets` volume.
 2. If the app isn't running, that's the end of it: it starts without the account.
 3. Otherwise it runs the app's `credential_change` hook directly (at most 8 seconds), which removes the account and ends the person's open SMB sessions.
-4. If the hook can't run, fails or times out, the Hub stops the app (`compose down`) and starts it again in the background, so no old session survives.
+4. If the hook can't run, fails or times out, the Hub stops the app (`compose down`) and starts it again in the background, so no old session survives. It does the same, without trying the hook, when the hash file could not be removed. Until the Hub's secrets volume is consistent again, it then refuses to start file-sharing apps.
+
+A regenerated password goes the same way: the old hash's removal is applied like a revocation. A backup, restore or restart of the app waits up to 10 seconds for a revocation in flight to finish.
 
 ### Measured revocation times
 
-From the core `e2e-filesharing` CI job (three runs; time from the change until the open session was gone and a new login refused):
+From the core `e2e-filesharing` CI job (three runs, plus one more; time from the change until the open session was gone and a new login refused):
 
 | Change | Measured | Notes |
 |---|---|---|
@@ -172,6 +184,8 @@ restrict anonymous = 2
 disable netbios = yes
 smb ports = 445
 wide links = no
+follow symlinks = no
+smb3 unix extensions = no
 hosts allow = <Local networks, space-separated>
 hosts deny = 0.0.0.0/0 ::/0
 ```
@@ -182,7 +196,14 @@ And for every share:
 guest ok = no
 ```
 
-The container exits 4 (restart loop) if `testparm -s` shows any other value, so the image's own config switches are dead. SMB2, NTLMv1, guest access and unencrypted sessions are all refused.
+`testparm -s` must show exactly these values. SMB2, NTLMv1, guest access and unencrypted sessions are all refused, and the images' own config switches do nothing (their entrypoints never run).
+
+**When the check fails (fail closed):**
+
+- **At boot**, the converge script exits 4 before smbd starts, so the container exits and Docker restarts it (a restart loop). Its logs say why.
+- **At hook time** (a setting, membership or password change), any failure after the script started changing things brings smbd down. The container stays up and turns unhealthy, and a down marker keeps smbd from starting again, whatever its supervisor does. The app's Deliveries strip shows the failed `sync` hook.
+
+**Bringing smbd back:** fix the cause, then run the hook again: click **Retry** on the app's Deliveries strip, or make any change that runs it. smbd comes back with the first hook run that succeeds. A restart of the app also brings it back, because the boot starts with a fresh tmpfs, and its own checks still apply.
 
 See also [Hardening](hardening.md#file-sharing) for the capabilities and container configuration.
 
@@ -211,17 +232,17 @@ To avoid it:
 - **Person ids:** each person's Unix uid.
 - **Per-person values:** their displayed person-scope settings (e.g. the Time Machine size limit).
 - **Former members' folders:** top-level directories in per-person trees (Home, Time Machine storage) whose owner isn't the person's current uid, with sizes (or "size unknown").
-- **Last sync:** when the revocation hook last ran (ok / skipped / failed).
+- **Last sync:** when the app's `sync` hook last ran (ok / skipped / failed).
 
 ### Regenerating
 
-A person regenerates their password by clicking [Regenerate] on My apps. The new password replaces the old one **at once**, and their open SMB sessions end. macOS prompts for the new password; running Time Machine backups stop.
+A person regenerates their password by clicking [Regenerate] on My apps (after a fresh sign-in, like a create). The old hash's removal is applied like a revocation: the hook runs within 8 seconds, or the Hub stops and restarts the app. So the old password stops working even when the hook is busy or fails, and the sessions that used it end. macOS prompts for the new password; running Time Machine backups stop.
 
 ### Revoking
 
 - **Self:** A person clicks [Revoke] on their own card. No fresh sign-in needed. Their hash file and metadata go, and the hook ends their sessions.
 - **Admin:** An admin clicks [Revoke] on the File sharing tab. Same effect, audited with the admin as actor.
-- **Automatic:** The Hub revokes when the person leaves the instance's access group, is removed from a share's reader or writer group, or their account is deleted (reasons: `leave`, `deleted`). These are immediate (Hub-made) or caught within about 60 seconds (LLDAP-direct).
+- **Automatic:** The Hub revokes when the person leaves the instance's access group or their account is deleted (reasons: `leave`, `deleted`). These are immediate (Hub-made) or caught within about 60 seconds (LLDAP-direct). Leaving a share's reader or writer group is not a revocation: it drops that share only (see [Managing People](#managing-people)).
 
 A revoked credential is **destroyed**, not paused. Coming back means creating a new password.
 
@@ -230,7 +251,10 @@ A revoked credential is **destroyed**, not paused. Coming back means creating a 
 - **Instance restore** (`POST /api/instances/{id}/restore`): Every active credential of the instance is voided (`reason: restore`, audited `credential.void_restore` with the count). My apps then shows "Your password was reset by a restore on <date>; create a new one."
 - **Core restore** (`./portcullis restore`): The `hub_secrets` volume is **emptied** (removed and re-created with its labels and ownership). The Hub detects it at start via the **secrets epoch** (a random 16-byte value in both `state.yaml` and `<secrets>/.epoch`). Every credential of every instance is voided, every hash file deleted, and every person-id pool's next uid advances by 1000 (so a pool restored from an older `state.yaml` never hands out a uid that files may already carry). People create new passwords on My apps.
 
-Both restores also stop every running app that mounts `hub_secrets` **before** the volume is touched, so a restored start never sees an old hash. The Hub never starts them again (drift shows them down); an admin re-enables them from the Hub.
+The two restores stop the apps differently:
+
+- **Instance restore:** the Hub stops that one instance for the restore and voids its passwords before it starts it again. If the instance was enabled, it is enabled again; other instances aren't touched.
+- **Core restore:** before anything changes, it stops the Hub, then takes down every app project with a container mounting `hub_secrets` (volumes kept). If that fails, or a container is left, the restore aborts with nothing restored. The Hub starts again with the core, but the apps stay down: the restore lists them, their drift shows them not running, and you start each one again from the Hub.
 
 ## Filesystems
 
@@ -241,5 +265,5 @@ Per-person trees (Home, Time Machine storage) and Samba share folders need:
 
 The Hub's [doctor](hub.md#doctor) checks these when you assign a shared folder or run Check path. For Samba shares, it also checks ACL support (needed for the folder's group ownership).
 
-If your folder is **its own filesystem** (a ZFS dataset or btrfs subvolume), the one-click fix can't touch it: the Hub refuses a different mount. **Fix it on the host:** `chown -R <uid>:<uid>` the folder, then `chmod 0700` it, where `<uid>` is the person's id from the File sharing tab.
+If your folder is **its own filesystem** (a ZFS dataset or btrfs subvolume), the one-click fix can't touch it: the Hub refuses a different mount. **Fix it on the host:** `chown <uid>:<uid>` the folder, then `chmod 0700` it, where `<uid>` is the person's id from the File sharing tab (the one-click fix changes only the folder itself, not what is inside).
 

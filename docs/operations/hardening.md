@@ -442,10 +442,10 @@ Both templates require exactly:
 - **`server signing = mandatory`**, **`ntlm auth = ntlmv2-only`**, **`lanman auth = no`**: NTLMv1 is refused.
 - **`map to guest = never`**, **`restrict anonymous = 2`**, **`guest ok = no`**: guest access is refused.
 - **`hosts allow = <PORTCULLIS_LOCAL_NETWORKS>`**, **`hosts deny = 0.0.0.0/0 ::/0`**: only the configured local networks may connect.
-- **`wide links = no`**: symlinks are confined to the share.
+- **`wide links = no`**, **`follow symlinks = no`**, **`smb3 unix extensions = no`**: symlinks are never followed, and the SMB3 Unix extensions are off.
 - **`disable netbios = yes`**, **`smb ports = 445`**: only port 445 is published (no 137–139).
 
-The container exits 4 (restart loop) if `testparm -s` shows any other value. The templates' converge script (`portcullis-sync`) writes `smb.conf` and the images' own config switches are dead.
+`testparm -s` must show exactly these values. At boot a mismatch makes the converge script exit 4 before smbd starts (the container restarts in a loop). At hook time the script brings smbd down instead: the container stays up, unhealthy, until a hook run succeeds or the app restarts ([File Sharing](file-sharing.md#hardened-smb)). The templates' converge script (`portcullis-sync`) writes `smb.conf`, and the images' own config switches do nothing.
 
 ### Container hardening
 
