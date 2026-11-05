@@ -200,7 +200,8 @@ The restore first checks the backup's checksums. Before anything changes, it
 stops the Hub (so nothing can start a file-sharing app again) and takes down
 every app project with a container mounting `hub_secrets` (`compose down`,
 volumes kept); a failure there, or a container left, aborts the restore with
-nothing restored. It saves the current `.env`, `secrets/` and `certs/` to
+nothing restored and starts the Hub again (if that start fails, the message
+says so). It saves the current `.env`, `secrets/` and `certs/` to
 `backups/pre-restore-<timestamp>/`. Then it stops Portcullis and:
 
 1. Restores `.env`, `certs/` and the config files. An existing `config/` repo is left alone.

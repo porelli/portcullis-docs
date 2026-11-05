@@ -146,7 +146,7 @@ Revocation always:
 3. Otherwise it runs the app's `credential_change` hook directly (at most 8 seconds), which removes the account and ends the person's open SMB sessions.
 4. If the hook can't run, fails or times out, the Hub stops the app (`compose down`) and starts it again in the background, so no old session survives. It does the same, without trying the hook, when the hash file could not be removed. Until the Hub's secrets volume is consistent again, it then refuses to start file-sharing apps.
 
-A regenerated password goes the same way: the old hash's removal is applied like a revocation. A backup, restore or restart of the app waits up to 10 seconds for a revocation in flight to finish.
+A regenerated password goes the same way: the old hash's removal is applied like a revocation. A backup, restore, delete, restart or disable of the app waits once, up to 10 seconds, for a revocation in flight to finish, then goes on.
 
 ### Measured revocation times
 
@@ -228,7 +228,7 @@ To avoid it:
 
 **Admins** see every credential on the instance's File sharing tab (Hub Management):
 
-- **Status:** none, active (with the creation date), voided (by a restore), revoked (self / admin / leave / deleted), or unavailable (username doesn't meet the rule).
+- **Status:** none, active (with the creation date), voided (by a restore), revoked (self / admin / leave / deleted), or unavailable: the username doesn't meet the template's rule (its pattern and reserved names) or the hard rules every file-sharing app applies: no `/`, no `..`, no leading `.` or `-`, and not `pfg<digits>`.
 - **Person ids:** each person's Unix uid.
 - **Per-person values:** their displayed person-scope settings (e.g. the Time Machine size limit).
 - **Former members' folders:** top-level directories in per-person trees (Home, Time Machine storage) whose owner isn't the person's current uid, with sizes (or "size unknown").
@@ -254,7 +254,7 @@ A revoked credential is **destroyed**, not paused. Coming back means creating a 
 The two restores stop the apps differently:
 
 - **Instance restore:** the Hub stops that one instance for the restore and voids its passwords before it starts it again. If the instance was enabled, it is enabled again; other instances aren't touched.
-- **Core restore:** before anything changes, it stops the Hub, then takes down every app project with a container mounting `hub_secrets` (volumes kept). If that fails, or a container is left, the restore aborts with nothing restored. The Hub starts again with the core, but the apps stay down: the restore lists them, their drift shows them not running, and you start each one again from the Hub.
+- **Core restore:** before anything changes, it stops the Hub, then takes down every app project with a container mounting `hub_secrets` (volumes kept). If that fails, or a container is left, the restore aborts with nothing restored and starts the Hub again, so the Hub is running; if starting it fails, the message says so. The Hub starts again with the core, but the apps stay down: the restore lists them, their drift shows them not running, and you start each one again from the Hub.
 
 ## Filesystems
 

@@ -576,8 +576,10 @@ Every revocation is applied the same way, outside the delivery engine:
    may remain also makes the Hub refuse to start file-sharing instances
    until a secrets reconcile succeeds.
 
-A backup, restore, restart or delete of the instance waits at most 10 s
-for the delivery lock first, so a revocation hook in flight finishes.
+Every lifecycle down of the instance (backup, restore, delete, restart,
+disable) waits once, at most 10 s, for the delivery lock, so a revocation
+hook in flight finishes; then it goes on. A restart's start step then
+waits for the delivery lock without a time limit.
 Measured in the core `e2e-filesharing` CI job (three runs, plus one
 more), from the change until the session was gone and a new login was
 refused:

@@ -1554,7 +1554,7 @@ The delivery engine picks the strongest effect among changed options: `live`, `n
 
 **Order of a run.** Data files, then claims, then headers, then hooks, then the effect (one reload or one background restart). A run whose settings change under it stops at its next write (`superseded`) and is re-queued with the strongest effect it still owed. A run superseded after it wrote a data file with `on_membership_change: hook` carries a forced run of those hooks into its re-queue: the re-run runs them even though the file is now unchanged, and records the delivered members (§13.16) only when they succeeded.
 
-**Lifecycle downs and revocations (NEW, file sharing).** A backup, restore, restart or delete of an instance takes the instance's delivery lock after its own lock and waits for it at most 10 s before it takes the containers down, so a revocation hook in flight (§13.16) finishes first; after 10 s it goes on regardless.
+**Lifecycle downs and revocations (NEW, file sharing).** Every lifecycle down of an instance (backup, restore, delete, restart, disable) takes the instance's delivery lock after its own lock and waits for it **once**, at most 10 s, before it takes the containers down, so a revocation hook in flight (§13.16) finishes first; after 10 s it goes on regardless. A restart's start step then waits for the delivery lock without a time limit (its data files are written under it before the containers are created).
 
 ### 13.10 Secrets
 
@@ -1867,8 +1867,8 @@ Refused creates count toward the people listener's per-caller limit (10 refusals
 
     A normal immediate `credential_change` delivery follows for the bookkeeping. A template's hook must therefore apply a revocation within 8 s.
 
-    **A hash that may remain.** When the hash file's removal failed, or the secrets volume couldn't be opened, the file may still be there: the Hub skips step 2 and goes straight to step 3 (the kill), and records the failure as a secrets reconcile error: every start of a `person_secret` instance is refused until a reconcile succeeds, and a start's delivery refuses while the instance has a `credentials:<key>` unit error.
-- **Keys no longer `person_secret`.** Active credentials on a key that is no longer a `person_secret` option of the instance's template (renamed or dropped by a source sync, §11.8) are revoked (`reason: leave`, logged as an error) and the instance's project is killed by name.
+    **A hash that may remain.** When a revocation's removal of the **old** hash file failed, or the secrets volume couldn't be opened, that file may still be there: the Hub skips step 2 and goes straight to step 3 (the kill), and records the failure as a secrets reconcile error: every start of a `person_secret` instance is refused until a reconcile succeeds, and a start's delivery refuses while the instance has a `credentials:<key>` unit error. A failed **regenerate** whose **new** hash file may remain is different: that hash belongs to a password nobody received, so the Hub voids the credential and still runs the hooks (steps 2–3 as usual).
+- **Keys no longer `person_secret`.** Active credentials on a key that is no longer a `person_secret` option of the instance's template (renamed or dropped by a source sync, §11.8) are revoked (`reason: leave`, logged as an error), the instance's project is killed by name, and it is then started again in the background on the current template.
 - **Instance delete** removes the instance's secrets right after its compose down (§11.4). **Restore** voids (§11.6).
 - **Self and admin revokes** take the same steps 1–3: self (`DELETE /api/me/apps/{instance}/credentials/{key}`, §5.1, `reason: self`, audited `credential.revoke` actor `self`) and admin (`DELETE /api/instances/{id}/credentials/{key}/{user}`, `reason: admin`, `revoked_by` = the admin, audited `credential.revoke` with the admin as actor).
 
