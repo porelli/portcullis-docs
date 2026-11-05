@@ -1369,7 +1369,7 @@ files:
 - `service`: the compose service
 - `mount`: container directory (absolute, clean, no `:`; not a single file). The file is `<mount>/<name>.json` (`<mount>/<name>.tsv` for `format: tsv`). It may not collide with another file's mount or a path option's target on the same service
 - `format` (**NEW**, file sharing): `json` (default) or `tsv` (below; for apps that read the file with a POSIX shell). A secret option delivered into a `tsv` file is refused at validation: secrets go only to a JSON file's `<name>.secrets.json`
-- `on_membership_change`: `restart`, `reload` (needs `reload`), `hook` (needs a hook with `membership_change`) or `none` (default): what happens when a membership-driven delivery changes the file (§13.8)
+- `on_membership_change`: `restart`, `reload` (needs `reload`), `hook` (needs a hook with `membership_change`) or `none` (default): what happens when a membership-driven delivery changes the file (§13.8); with `hook`, any run that changes the file (a save included) runs the hooks it names in that run
 
 **Host layout.** The Hub writes the files under `<ProjectDir>/appfiles` (core's `./appfiles`, mounted in the Hub at `/project/appfiles`; created by `./portcullis up`, 0750, owned by uid 10001). The daemon-side path the override mounts is `<ProjectHostDir>/appfiles`. `HUB_APPFILES_DIR` (the Hub's path) and `HUB_APPFILES_HOST_DIR` (the daemon's path for the same directory) move it; they are set together or not at all (one alone: the Hub refuses to start).
 
@@ -1452,7 +1452,7 @@ hooks:
 - `command`: argv list, run directly (not through `sh -c`)
 - `user`: optional user to run as (default: container's user)
 - `command`: a non-empty argv list of non-empty strings without control characters
-- `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input; `credential_change` (**NEW**, file sharing) after a `person_secret` credential was created, regenerated, revoked or voided (§13.16), immediately (never debounced)
+- `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input, or after any run changed a data file with `on_membership_change: hook`; `credential_change` (**NEW**, file sharing) after a `person_secret` credential was created, regenerated, revoked or voided (§13.16), immediately (never debounced)
 - `timeout`: Go duration (e.g. `60s`). Default 30s, **at most 10m**
 
 The Hub runs the command verbatim (never through a shell) with Docker exec in a running container of the hook's service in this instance (replica 1 preferred) and sends the full desired state as JSON on stdin, the **HookInput**: the data-file document (§13.7) of the options delivered to that hook, plus `trigger` and `secrets`. It is never a diff.
