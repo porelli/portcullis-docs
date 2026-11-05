@@ -126,7 +126,7 @@ Windows then shows the share in This PC → Network Locations.
 **People should be managed through the Hub's [Users & Groups](hub.md#users-groups-tab), not directly in LLDAP.** Here's why:
 
 - **Hub-made changes** (removing a member, deleting a user or group) revoke file-share passwords **at once**, with no delay.
-- **LLDAP-direct changes** (e.g. removing a user from a group in LLDAP's web UI) are caught by the evaluator's 60-second tick. The worst case is **about 60 seconds plus the revocation hook**, measured at 3–9 seconds in CI (contract §13.16). Direct password changes in LLDAP sign the user out of Keycloak but **do not** revoke their file-share password.
+- **LLDAP-direct changes** (e.g. removing a user from a group in LLDAP's web UI) are caught by the evaluator's 60-second tick. The worst case is **about 60 seconds plus the revocation hook**, measured between 3 and 52 seconds in CI (contract §13.16). Direct password changes in LLDAP sign the user out of Keycloak but **do not** revoke their file-share password.
 - **Writer demoted to reader:** When a Samba share's writer group loses a member or is emptied, that person's write access ends in about **3.6 seconds**.
 
 Revocation always:
@@ -143,7 +143,7 @@ From the core `e2e-filesharing` CI job (three runs; time from the change until t
 | Change | Measured | Notes |
 |---|---|---|
 | Removal through the Hub (Users & Groups) | 0.8–0.9 s | applied at once by the hook |
-| Removal directly in LLDAP | 3.4–9.1 s | caught by the evaluator's 60 s tick: worst case about 60 s plus the hook |
+| Removal directly in LLDAP | 3.4–51.8 s | caught by the evaluator's 60 s tick: worst case about 60 s plus the hook |
 | Writer demoted to reader | 3.5–3.6 s | the share's `write list` is applied and the person's sessions end |
 
 ## Security
