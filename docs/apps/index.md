@@ -55,6 +55,7 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 📄 [Docs Site](docs.md) | `docs` | public | `public` | :x: No | :x: | :x: |
 | 🖥 [Apache Guacamole](guacamole.md) | `remote` | remote-access | `header-auth` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🔐 [Vaultwarden](vaultwarden.md) | `passwords` | security | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
+| 📂 [Samba](samba.md) | — | storage | `custom` | :x: No | :white_check_mark: | :x: |
 | 🕰 [Time Machine](timemachine.md) | — | storage | `custom` | :x: No | :white_check_mark: | :x: |
 | 🌐 [Headscale](headscale.md) | `vpn-admin`, `vpn` | vpn | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |
 | 🐦 [NetBird](netbird.md) | `netbird` | vpn | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: |

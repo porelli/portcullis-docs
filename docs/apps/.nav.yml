@@ -46,6 +46,7 @@ nav:
   - 📄 Docs Site: docs.md
   - 🖥 Apache Guacamole: guacamole.md
   - 🔐 Vaultwarden: vaultwarden.md
+  - 📂 Samba: samba.md
   - 🕰 Time Machine: timemachine.md
   - 🌐 Headscale: headscale.md
   - 🐦 NetBird: netbird.md
