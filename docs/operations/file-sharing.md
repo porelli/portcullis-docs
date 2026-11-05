@@ -126,27 +126,25 @@ Windows then shows the share in This PC → Network Locations.
 **People should be managed through the Hub's [Users & Groups](hub.md#users-groups-tab), not directly in LLDAP.** Here's why:
 
 - **Hub-made changes** (removing a member, deleting a user or group) revoke file-share passwords **at once**, with no delay.
-- **LLDAP-direct changes** (e.g. removing a user from a group in LLDAP's web UI) are caught by the evaluator's 60-second tick. The worst case is **about 60 seconds plus the revocation hook**, measured at 3–9 seconds in CI (contract §13.16, task 18 report). Direct password changes in LLDAP sign the user out of Keycloak but **do not** revoke their file-share password.
-- **Writer demoted to reader:** When a Samba share's writer group loses a member or is emptied, that person's write access ends in about **3.6 seconds** (task 18 report).
+- **LLDAP-direct changes** (e.g. removing a user from a group in LLDAP's web UI) are caught by the evaluator's 60-second tick. The worst case is **about 60 seconds plus the revocation hook**, measured at 3–9 seconds in CI (contract §13.16). Direct password changes in LLDAP sign the user out of Keycloak but **do not** revoke their file-share password.
+- **Writer demoted to reader:** When a Samba share's writer group loses a member or is emptied, that person's write access ends in about **3.6 seconds**.
 
 Revocation always:
 
 1. Removes the hash file from the `hub_secrets` volume.
-2. Runs the instance's `credential_change` hook (timeout: 8 seconds). The hook ends the person's open SMB sessions.
-3. If the hook times out or the instance isn't running, the Hub stops the app (`compose down`) and starts it again in the background.
+2. If the app isn't running, that's the end of it: it starts without the account.
+3. Otherwise it runs the app's `credential_change` hook directly (at most 8 seconds), which removes the account and ends the person's open SMB sessions.
+4. If the hook can't run, fails or times out, the Hub stops the app (`compose down`) and starts it again in the background, so no old session survives.
 
-### Revocation Latencies
+### Measured revocation times
 
-Measured end-to-end revocation latencies (from trigger to credential no longer working, tested in Task 18 CI):
+From the core `e2e-filesharing` CI job (three runs; time from the change until the open session was gone and a new login refused):
 
-| Trigger | p50 | p95 | Notes |
-|---------|-----|-----|-------|
-| **Hub-made membership change** (Users & Groups → remove member) | 0.8 s | 0.9 s | Includes LLDAP write + evaluator poll + hook invocation + SMB session kill |
-| **LLDAP-direct membership change** (LLDAP UI → remove member) | 3.4 s | 9.1 s | Includes evaluator's 60 s poll + hook invocation + SMB session kill; worst case ~69 s |
-| **Writer demoted to reader** (Samba shared folder) | — | 3.6 s | Share access updated via hook |
-| **Revoke button** (File Sharing tab) | 0.8 s | 0.9 s | Same as Hub-made change |
-
-See the [Task 18 report](https://github.com/porelli/portcullis-hub/blob/main/.superpowers/sdd/2026-11-02-file-sharing/task-18-report.md) for test methodology and full results.
+| Change | Measured | Notes |
+|---|---|---|
+| Removal through the Hub (Users & Groups) | 0.8–0.9 s | applied at once by the hook |
+| Removal directly in LLDAP | 3.4–9.1 s | caught by the evaluator's 60 s tick: worst case about 60 s plus the hook |
+| Writer demoted to reader | 3.5–3.6 s | the share's `write list` is applied and the person's sessions end |
 
 ## Security
 

@@ -1234,7 +1234,7 @@ The table shows one row per person per app:
     - **App disabled** (gray): the file-sharing app is disabled. Any credential is kept but not served.
 - **Created** (timestamp of the last create or regenerate, if a credential exists)
 - **Actions**:
-    - **Revoke** (admins only): deletes the person's credential. They lose access at once, and open sessions end within about a second. The person must create a new password on My apps to connect again. This is the break-glass for "someone's credential is compromised" or "they left and we need to cut off access before the LLDAP group update propagates." No audit trail in the file-sharing table (the credential is just deleted from `hub_secrets`), but revocation appears in the Hub's audit log and the file-sharing app's hook logs. See [measured revocation latencies](file-sharing.md#revocation-latencies).
+    - **Revoke** (admins only): deletes the person's credential. They lose access at once, and open sessions end within about a second. The person must create a new password on My apps to connect again. This is the break-glass for "someone's credential is compromised" or "they left and we need to cut off access before the LLDAP group update propagates." The row stays, with status `revoked` and reason `admin`, and the revoke is audited `credential.revoke`. See [measured revocation times](file-sharing.md#measured-revocation-times).
 
 The tab also links to [Doctor](#doctor) findings about file-sharing:
 
@@ -1243,7 +1243,7 @@ The tab also links to [Doctor](#doctor) findings about file-sharing:
 
 Credentials are scoped to an app instance (one Samba credential, one per Time Machine instance), never shared across apps. A person in both `users_samba` and `users_timemachine` creates two separate passwords.
 
-Removing someone from an app's access group or deleting their account **revokes their credential at once**: the Hub's `credential_change` hook (called within about a second of any LLDAP membership or account change, or up to about a minute for a change made directly in LLDAP) removes the person from the app's people file and ends their open SMB sessions. See [Credentials](file-sharing.md#credentials) and [Revocation latencies](file-sharing.md#revocation-latencies).
+Removing someone from an app's access group or deleting their account **revokes their credential at once**: the Hub's `credential_change` hook (called within about a second of any LLDAP membership or account change, or up to about a minute for a change made directly in LLDAP) removes the person from the app's people file and ends their open SMB sessions. See [Credentials](file-sharing.md#credentials) and [Measured revocation times](file-sharing.md#measured-revocation-times).
 
 ## Doctor
 
@@ -1467,7 +1467,7 @@ something personal for them, sorted by id, each with its link:
       never in a backup. Copy it now; the SMB client on your device will save
       it in its own keychain. The credential appears on the file-sharing app
       (Samba or Time Machine) within about a second; see [measured revocation
-      latencies](file-sharing.md#revocation-latencies) in the file-sharing
+      latencies](file-sharing.md#measured-revocation-times) in the file-sharing
       operations guide.
     - **Regenerate password** (shown when a password already exists): same
       fresh passkey flow and one-time display. The old password stops working

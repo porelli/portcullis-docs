@@ -338,7 +338,7 @@ uploads `e2e-folders-artifacts`: logs, API answers, the tree and
 - Setup: connect_address, ports on 127.0.0.1, size_limit 500GiB / office_milan 10GiB, folder slot via assignment, readers / writers before enable, testparm hardening.
 - Sign-in via setup links (alice, bob, carol); fresh auth popup flow (COOP, the authorize parameters, the password once, replay refused).
 - SMB3 sessions: Time Machine and Samba list shares, carol writes as `21002:60000`, encryption required, SMB2/NTLMv1/guest/wrong password refused, outside-LAN client refused.
-- Revocation: hub-made ≤ 10 s, LLDAP-direct ≤ 75 s, writer demoted ≤ 4 s (session gone, login refused). Measured at 0.8–0.9 s, 3.4–9.1 s, and about 3.6 s (task 18 report).
+- Revocation: hub-made ≤ 10 s, LLDAP-direct ≤ 75 s, writer demoted ≤ 4 s (session gone, login refused). Measured at 0.8–0.9 s, 3.4–9.1 s, and about 3.6 s.
 - Restore: instance restore → credential voided, card says "reset by a restore", re-create works. Core restore → no hash in 45 backup files, `hub_secrets` emptied, credentials voided, uid pool +1000, Samba restarted from Hub.
 - No hash visible: `docker inspect`, container logs, `hub_data`, audit, ops, archives, `state.yaml`.
 

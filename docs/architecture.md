@@ -489,7 +489,7 @@ The hook (a `portcullis-sync` script shared by Samba and Time Machine, running i
 4. Verifies the configuration (testparm) and **stops smbd** (via the supervisor: runit for Samba, s6 for Time Machine) if anything is broken (fail-closed).
 5. Writes a report (`PORTCULLIS-REPORT` in the app's data directory) with per-person folder sizes (via `du`, time-limited) and any errors.
 
-If the hook times out or exits non-zero after making changes, **the Hub stops the app** (Docker stop) to avoid serving a broken or stale credential set. The app stays stopped until an admin investigates and restarts it. See [measured hook latencies](operations/file-sharing.md#revocation-latencies).
+On a revocation the Hub runs this hook itself, outside the delivery engine; if it can't run, fails or takes longer than 8 seconds, **the Hub stops the app** and starts it again in the background, so a revoked password never keeps a session. Inside the container, a hook run that fails after starting a change stops smbd, and the healthcheck refuses until a good run. See [measured revocation times](operations/file-sharing.md#measured-revocation-times).
 
 ### Fresh Auth Client (portcullis-fresh-auth)
 
@@ -512,7 +512,7 @@ Removing someone from an app's access group, deleting their account, or clicking
 - **0.8–0.9 seconds** (measured p50/p95) when the change is made via the Hub (Users & Groups tab, or File Sharing revoke button);
 - **3.4–9.1 seconds** (measured p50/p95) when the change is made directly in the LLDAP UI (the Hub polls LLDAP every ~5 seconds for membership changes).
 
-See [Revocation latencies](operations/file-sharing.md#revocation-latencies) for full test results.
+See [Measured revocation times](operations/file-sharing.md#measured-revocation-times) for full test results.
 
 ## Shared folders and the doctor
 
