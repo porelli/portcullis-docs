@@ -22,6 +22,7 @@ Portcullis is split across four repositories that meet at a few well-defined int
 - **Template contract v3** (§13 Settings, §4.1 user-attributes v2, §5.1 `/api/me/apps`, §6 exec stdin and kill, §8 per-client setting mappers) is a MAJOR bump.
 - **Shared folders** (§13.15 the `path` option's `folder` block, `checks` and `ports[].lan_only`; the `folder:<id>` value form; §6 the folder fixer; §14) add optional fields to template contract v3: a MINOR bump. A Hub without them refuses `folder` and `checks` (reserved fields, §13.2) and ignores `lan_only`, so a template that uses them lands only after a Hub that implements §14 is published (`edge`): merge order docs → Hub → templates → core.
 - **File sharing** (§13.2 the `person_secret` and `person_id` types, §13.7 `tsv` data files, §13.8 the `credential_change` trigger and hook reports, §13.16 per-person credentials and ids, §13.17 the file-sharing templates; §3 router-less `custom` templates and `PORTCULLIS_LOCAL_NETWORKS`; §5.1 the credential routes; §6 the `hub_secrets` mount; §10 url-less portal entries; §11.5 / §11.6 credentials outside backups) add optional fields to template contract v3: a MINOR bump. A Hub without them refuses `person_secret` and `person_id` (reserved types), so the templates that use them land only after a Hub that implements them is published (`edge`): merge order docs → Hub (wait for `edge`) → templates (`.core-ref` back to `main`) → core (whose file-sharing e2e needs Hub `edge` and templates `main`).
+- **AI support** (§3.2 the `ai:` block, required in every template; §3.1 the AI instance variables; §2 `PORTCULLIS_MCP_GATE_IP`; §4 the core host `mcp` and the gate files; §5 the MCP routers; §5.1 the AI and confirmation routes; §6 split exec output; §8 AI clients and `mcp:*` scopes; §9.5 `via` / `client`; §11 AI state; §13.8 the `ai` trigger; §14.5 the AI doctor kinds; §15) is part of template contract v3. A Hub with it refuses a template without an `ai:` block, so every template gets its block in the same change that makes the validators require it. Merge order docs → Hub (wait for `edge`) → templates (`.core-ref` back to `main`) → core (the Hub may list the core names `mcp-gate`, `mcp_gate_data` and `mcp` before core has them: its core-names check is one-directional, core ⊆ Hub; core's AI e2e needs Hub `edge`).
 - **Current state.** No repository has a release tag yet: `HUB_IMAGE` defaults to `edge` and `.core-ref` is `main`.
 
 ## 2. Core environment variables available to templates
@@ -33,11 +34,12 @@ When a template's `compose.yml` references a variable, the Hub copies its value 
 | `PORTCULLIS_DOMAIN` | Main (base) domain. Core hosts live at `<sub>.${PORTCULLIS_DOMAIN}` (e.g. Keycloak at `auth.${PORTCULLIS_DOMAIN}`). A contract v2 template uses it only for core hosts, never for its own hostnames (§3.1) |
 | `PORTCULLIS_PROXY_SUBNET` | Subnet of the `portcullis-proxy` network (default `172.31.250.0/24`) |
 | `PORTCULLIS_PROXY_IP_RANGE` | Dynamic allocation range (default `172.31.250.128/25`) |
-| `PORTCULLIS_TRAEFIK_IP` | Traefik's static IP on `portcullis-proxy` (default `172.31.250.2`). The **only** peer allowed to send identity headers |
+| `PORTCULLIS_TRAEFIK_IP` | Traefik's static IP on `portcullis-proxy` (default `172.31.250.2`). The **only** peer allowed to send identity headers to an app |
+| `PORTCULLIS_MCP_GATE_IP` | **NEW (AI support).** `mcp-gate`'s static IP on `portcullis-proxy` (default `172.31.250.3`: inside `PORTCULLIS_PROXY_SUBNET`, outside `PORTCULLIS_PROXY_IP_RANGE`, never equal to `PORTCULLIS_TRAEFIK_IP`; `./portcullis` refuses anything else). The only peer that calls companions (§15). It sends identity headers only to an `identity_headers` companion, together with the caller secret the companion must check (§15.5); an app never trusts identity headers from it |
 
 Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any other required variable must be declared in the manifest's `env:` with `generate: random`. The Hub writes those into the per-app `.env`.
 
-**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest. For shared folders (§13.15, §14) it also writes `PORTCULLIS_FOLDER_GID_<KEY>` and `PORTCULLIS_FOLDER_UID_<KEY>` for every `path` option; the whole prefix `PORTCULLIS_FOLDER_` is reserved. Every instance's `.env` also carries `PORTCULLIS_LOCAL_NETWORKS` (§3.1), which LAN-only templates read (§13.17).
+**NEW (contract v2):** the Hub also writes instance-scoped variables into every instance's `.env`: `PORTCULLIS_INSTANCE`, `PORTCULLIS_HOST_<ROUTER>`, `PORTCULLIS_OIDC_CLIENT_ID`, `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`, `PORTCULLIS_ACCESS_GROUP` and `PORTCULLIS_ADMIN_GROUP` (§3.1). They don't come from `core.env` and templates don't declare them in the manifest. For shared folders (§13.15, §14) it also writes `PORTCULLIS_FOLDER_GID_<KEY>` and `PORTCULLIS_FOLDER_UID_<KEY>` for every `path` option; the whole prefix `PORTCULLIS_FOLDER_` is reserved. Every instance's `.env` also carries `PORTCULLIS_LOCAL_NETWORKS` (§3.1), which LAN-only templates read (§13.17). **NEW (AI support):** templates with `ai.mcp` also get `PORTCULLIS_AI_ENABLED` and `PORTCULLIS_AI_READONLY_<COMPANION>`, and `ai-chat` instances the provider variables `PORTCULLIS_AI_PROVIDER_<NAME>_<FIELD>` (§3.1, §3.2).
 
 ## 3. Template layout
 
@@ -47,10 +49,10 @@ Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_IP:-172.31.250.2}`. Any 
 
 - **Support files.** Files that ship with a template are bind-mounted as `./templates/<app-id>/<file>`. Compose resolves relative paths against the core checkout on the host. Before every `compose up`, the Hub copies the template directory to `<core>/templates/<app-id>/`; core mounts `./templates` read-write into the Hub at `/project/templates`. All instances of a template share this copy, so support files are mounted read-only (`:ro`).
 - **Networks.** Frontends join the external network `portcullis-proxy`; internal services join only `default`. A service name on `portcullis-proxy` is ambiguous once a template has two instances, so services address each other only over `default` (Traefik reaches containers by IP, not by name).
-- **Volumes.** A `single` template may name a (non-external) volume only inside its own namespace: `name: portcullis_<template-id>`, or a name starting with `portcullis_<template-id>-` or `portcullis_<template-id>_` (without `name:` compose calls it `portcullis-<template-id>_<key>`); any other name — another app's, core's, a bare `portcullis_<key>`, a name outside `portcullis_` — is refused. A `multi` template (§3.1) declares **no** `name:`; the Hub's override sets it (§11.2). A name two templates' default instances (or an instance and a default instance, §11.1) would share — template `a`'s `portcullis_a-b-data` and template `a-b`'s, a `multi` default instance's `portcullis_<key>` — is a name collision: the Hub loads only the first template (enabled ones first, then source order) and refuses such an instance. Core's volume keys (`postgres_data`, `vault_data`, `lldap_data`, `hub_data`, `hub_secrets`, `traefik_acme`, `domains_data`, `prometheus_data`, `alertmanager_data`, `grafana_data`: Docker names `portcullis_<key>`) are refused as volume keys and as volume names, and an external volume may not be named `portcullis*` (an external volume without `name:` is named by its key): that is core's or another instance's data. Volume names must be literals. The top-level volume key **`portcullis-hub-secrets`** is reserved for the Hub's override (§6, the per-person secrets mount): the Hub's and the templates repo's validators refuse it as a template volume key, as the source of a service's volume and in `volumes_from`, and the custom override refuses it as a named-volume source. The custom override's top-level volumes may set only `labels` (no `driver`, `driver_opts`, `external` or `name`), so it can declare no external volume at all, `portcullis*` ones included ([Hub Management](../operations/hub.md#custom-override)).
+- **Volumes.** A `single` template may name a (non-external) volume only inside its own namespace: `name: portcullis_<template-id>`, or a name starting with `portcullis_<template-id>-` or `portcullis_<template-id>_` (without `name:` compose calls it `portcullis-<template-id>_<key>`); any other name — another app's, core's, a bare `portcullis_<key>`, a name outside `portcullis_` — is refused. A `multi` template (§3.1) declares **no** `name:`; the Hub's override sets it (§11.2). A name two templates' default instances (or an instance and a default instance, §11.1) would share — template `a`'s `portcullis_a-b-data` and template `a-b`'s, a `multi` default instance's `portcullis_<key>` — is a name collision: the Hub loads only the first template (enabled ones first, then source order) and refuses such an instance. Core's volume keys (`postgres_data`, `vault_data`, `lldap_data`, `hub_data`, `hub_secrets`, `traefik_acme`, `domains_data`, `mcp_gate_data`, `prometheus_data`, `alertmanager_data`, `grafana_data`: Docker names `portcullis_<key>`) are refused as volume keys and as volume names, and an external volume may not be named `portcullis*` (an external volume without `name:` is named by its key): that is core's or another instance's data. Volume names must be literals. The top-level volume key **`portcullis-hub-secrets`** is reserved for the Hub's override (§6, the per-person secrets mount): the Hub's and the templates repo's validators refuse it as a template volume key, as the source of a service's volume and in `volumes_from`, and the custom override refuses it as a named-volume source. The custom override's top-level volumes may set only `labels` (no `driver`, `driver_opts`, `external` or `name`), so it can declare no external volume at all, `portcullis*` ones included ([Hub Management](../operations/hub.md#custom-override)).
 - **Middlewares.** Forward-auth and header-auth routers use `portcullis-auth@docker,portcullis-groups@docker` (on extra-domain hosts the Hub's override renders `portcullis-auth-ext@docker` instead, §5; templates always write `portcullis-auth@docker`). Native-OIDC host-wide routers must not, nor may `mtls`, `custom` or `public` routers. For a `custom` template with `auth.native_login` the Hub's override sets every router's `middlewares` label: `portcullis-auth@docker,portcullis-groups@docker,<the template's own>` (Portcullis sign-in, the default) or the template's own without the pair ("own login only", only with `allow_without_gateway: true`; TLS tier `public@file`, no `groups` entry). The template is never edited.
 - **Public exceptions.** A template may declare share-link paths in `auth.public_access` (`enabled_by_default`, `default_mode` `listed|all`, `token_pattern`, `credential_headers`, `credential_cookies`, `credential_query`, `static_extensions`, `service`, `paths[]` with `prefix` (optionally one whole `{token}` segment), `description`, `supporting`, `exact`, `broad` + `justification`); header-auth templates with it also declare `auth.identity_headers`. Fields and rules: [Manifest reference](manifest-reference.md#authpublic_access). The template never ships the public router: the Hub generates it (§5). Router and middleware names starting with `portcullis-public-` are reserved for the Hub.
-- **Core names are off limits (NEW, domains).** The Hub rejects a template whose `compose.yml` mentions `forward-auth-ext`, `portcullis-auth-ext` or `portcullis-oauth2-` anywhere (the extra-domain sign-in is rendered by the Hub only, §5), sets `name:` or `external:` on any top-level network other than the `portcullis-proxy` placeholder (key exactly `portcullis-proxy`, `external: true`, `name` absent or exactly `portcullis-proxy`): every other network, `default` included, is project-scoped and may use any key, so a template can't join a core network (`portcullis`, `portcullis-auth`, `portcullis-certs`, …), another instance's `<project>_default` or any foreign network by name, sets `network_mode` to anything but exactly `none`, `host` or `service:<another service of the same template>` (any other value is a network name — `network_mode: portcullis` would put the service on core's internal network, `portcullis-proxy` or another project's network likewise; Docker matches the keywords exactly, so `Host` or ` none` are refused as network names; `container:…` is refused in any case or spacing; `network_mode` together with `networks` is refused), answers to a name ending in `-internal` — a gate's upstream (gated backends sit on the default network only, behind the template's gate) — on any network other than the project's own `default` (service name, `container_name` and `hostname` count on every network the service joins, an alias on its network; case-insensitive, trailing dot ignored; a service under `network_mode` has no DNS name of its own), or answers to a core DNS name (service name, `container_name`, `hostname` or a network alias; also as the first label of a dotted name, case-insensitively): every service name of core's `docker-compose.yml` (`traefik`, `socket-proxy-traefik`, `socket-proxy-hub`, `postgres`, `vault`, `lldap`, `keycloak`, `forward-auth`, `forward-auth-ext`, `group-gate`, `hub`, `enroll`, `domains`, `prometheus`, `alertmanager`, `blackbox`, `textfile-exporter`, `grafana`) and compose's container names for them (`portcullis-<service>-<n>`). Core's monitoring `grafana` is included (the Grafana template's compose service is `dashboards`). Network names, external names, `container_name`, `hostname`, `network_mode` and aliases must be literals (no `${…}` / `$VAR`; `$$` is a literal dollar), except that `hostname` may be exactly `${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}` (the §3.1 form) for a hostname variable of the template's own host routers, with a default that isn't reserved; compose `include` and service `extends` are refused. The checks run on the decoded YAML (anchors, merge keys, quoting and escapes resolved), and a present value of an unexpected shape (services, networks or a network's configuration that isn't a mapping with string keys) is refused. Also refused: more than one YAML document in `compose.yml` or `manifest.yaml` (any second document, even an empty one: compose merges documents, the checks read one); `container:` in `pid`, `ipc` or `volumes_from`; `ipv4_address` / `ipv6_address` / `link_local_ips` on `portcullis-proxy`; interpolation in any label key or in any `traefik.*` value other than an HTTP router `rule` (the template's own host variables excepted); Traefik label keys with surrounding whitespace or upper case in `traefik.<proto>.<kind>.<name>` (router keys: anywhere); reserved names split by a variable or written with characters that case-fold to them; label keys with non-ASCII characters (Traefik's label decoder compares with Unicode case folding, so `routerſ`, `middlewareſ` or `tlſ` would be read as `routers`, `middlewares`, `tls`); `traefik.*` keys other than `traefik.enable`, `traefik.docker.network` and `traefik.http.<routers|services|middlewares>.<name>.<attribute>`, every part compared case-folded like Traefik's decoder: router attributes `rule`, `entrypoints`, `middlewares`, `service`, `priority`, `tls`, `tls.options`, `observability.*` (no `tls.certresolver` or `tls.domains`: certificates are core's); service attributes only `loadbalancer.server.port`, `loadbalancer.server.scheme`, `loadbalancer.passhostheader`, `loadbalancer.responseforwarding.flushinterval` and `loadbalancer.sticky.cookie[.*]` — a service balances over the labelled container itself, never `server.url` / `servers[n].url` (Traefik would proxy to any address it reaches: the socket proxies, the Hub, Keycloak from the trusted Traefik address), a `serverstransport`, a `weighted` / `mirroring` / `failover` service, or a `healthcheck` (Traefik's own requests, sent from the address core's header-auth services trust, with the template's method and headers, following redirects); middleware types only `addprefix`, `stripprefix`, `stripprefixregex`, `replacepath`, `replacepathregex`, `redirectregex`, `redirectscheme`, `headers`, `compress`, `contenttype`, `chain`, `ratelimit`, `inflightreq` (no `redis.*`), `ipallowlist`, `buffering`, `retry`, `circuitbreaker`, `grpcweb`, each with its own attributes — never `forwardauth`, `errors`, `plugin`, `basicauth`, `digestauth`, `passtlsclientcert`; no `serverstransports`; explicit YAML tags other than the core `!!` ones (compose's `!reset` / `!override`); any `traefik.*` key segment outside `[A-Za-z0-9_-]` with an optional `[n]` (a stray `]` or `[`, or an empty segment, crashes Traefik's label decoder and stops its docker provider) and any name segment outside `^[a-z0-9][a-z0-9_-]*$`; TCP and UDP routing (`traefik.tcp.*`, `traefik.udp.*`); defining a router, service or middleware with a name core uses (core's `@docker` names: `hub`, `keycloak`, `portcullis-auth`, `hub-proxy-secret`, …); a router `service` that isn't a service the template defines itself (`<name>` or `<name>@docker`; never core's, another app's, `@file` or `@internal`), router / chain `middlewares` other than the template's own, `portcullis-auth@docker`, `portcullis-groups@docker` and core's five `@file` middlewares from `traefik/dynamic/middlewares.yml` — `client-headers@file`, `client-cert-pem@file`, `rate-limit@file`, `rate-limit-auth@file`, `security-headers@file` (never an administrator's own objects under `traefik/dynamic/local/`); a reference — router `service`, router `middlewares`, chain `middlewares` — whose key or value isn't lowercase (Traefik reads them case-insensitively, the Hub renames them per instance: both must read the same names); a service name whose container in the template's project (`portcullis-<id>-<service>-<n>`, also `portcullis_<id>_<service>_<n>`) is a core service's (`forward` + `auth` = `portcullis-forward-auth-1`) — for the default instance the template is skipped, for another instance the id is refused; compose keys outside an allowlist (top level: `services`, `volumes`, `networks`, `name`, `x-*`; per service the usual runtime keys — never `label_file`, `deploy`, `annotations`, `env_file`, `build`, `configs`, `secrets`, `profiles`, `links`, …). Templates join core only through `portcullis-proxy`.
+- **Core names are off limits (NEW, domains).** The Hub rejects a template whose `compose.yml` mentions `forward-auth-ext`, `portcullis-auth-ext` or `portcullis-oauth2-` anywhere (the extra-domain sign-in is rendered by the Hub only, §5), sets `name:` or `external:` on any top-level network other than the `portcullis-proxy` placeholder (key exactly `portcullis-proxy`, `external: true`, `name` absent or exactly `portcullis-proxy`): every other network, `default` included, is project-scoped and may use any key, so a template can't join a core network (`portcullis`, `portcullis-auth`, `portcullis-certs`, …), another instance's `<project>_default` or any foreign network by name, sets `network_mode` to anything but exactly `none`, `host` or `service:<another service of the same template>` (any other value is a network name — `network_mode: portcullis` would put the service on core's internal network, `portcullis-proxy` or another project's network likewise; Docker matches the keywords exactly, so `Host` or ` none` are refused as network names; `container:…` is refused in any case or spacing; `network_mode` together with `networks` is refused), answers to a name ending in `-internal` — a gate's upstream (gated backends sit on the default network only, behind the template's gate) — on any network other than the project's own `default` (service name, `container_name` and `hostname` count on every network the service joins, an alias on its network; case-insensitive, trailing dot ignored; a service under `network_mode` has no DNS name of its own), or answers to a core DNS name (service name, `container_name`, `hostname` or a network alias; also as the first label of a dotted name, case-insensitively): every service name of core's `docker-compose.yml` (`traefik`, `socket-proxy-traefik`, `socket-proxy-hub`, `postgres`, `vault`, `lldap`, `keycloak`, `forward-auth`, `forward-auth-ext`, `group-gate`, `hub`, `enroll`, `domains`, `mcp-gate`, `prometheus`, `alertmanager`, `blackbox`, `textfile-exporter`, `grafana`) and compose's container names for them (`portcullis-<service>-<n>`). Core's monitoring `grafana` is included (the Grafana template's compose service is `dashboards`). Network names, external names, `container_name`, `hostname`, `network_mode` and aliases must be literals (no `${…}` / `$VAR`; `$$` is a literal dollar), except that `hostname` may be exactly `${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}` (the §3.1 form) for a hostname variable of the template's own host routers, with a default that isn't reserved; compose `include` and service `extends` are refused. The checks run on the decoded YAML (anchors, merge keys, quoting and escapes resolved), and a present value of an unexpected shape (services, networks or a network's configuration that isn't a mapping with string keys) is refused. Also refused: more than one YAML document in `compose.yml` or `manifest.yaml` (any second document, even an empty one: compose merges documents, the checks read one); `container:` in `pid`, `ipc` or `volumes_from`; `ipv4_address` / `ipv6_address` / `link_local_ips` on `portcullis-proxy`; interpolation in any label key or in any `traefik.*` value other than an HTTP router `rule` (the template's own host variables excepted); Traefik label keys with surrounding whitespace or upper case in `traefik.<proto>.<kind>.<name>` (router keys: anywhere); reserved names split by a variable or written with characters that case-fold to them; label keys with non-ASCII characters (Traefik's label decoder compares with Unicode case folding, so `routerſ`, `middlewareſ` or `tlſ` would be read as `routers`, `middlewares`, `tls`); `traefik.*` keys other than `traefik.enable`, `traefik.docker.network` and `traefik.http.<routers|services|middlewares>.<name>.<attribute>`, every part compared case-folded like Traefik's decoder: router attributes `rule`, `entrypoints`, `middlewares`, `service`, `priority`, `tls`, `tls.options`, `observability.*` (no `tls.certresolver` or `tls.domains`: certificates are core's); service attributes only `loadbalancer.server.port`, `loadbalancer.server.scheme`, `loadbalancer.passhostheader`, `loadbalancer.responseforwarding.flushinterval` and `loadbalancer.sticky.cookie[.*]` — a service balances over the labelled container itself, never `server.url` / `servers[n].url` (Traefik would proxy to any address it reaches: the socket proxies, the Hub, Keycloak from the trusted Traefik address), a `serverstransport`, a `weighted` / `mirroring` / `failover` service, or a `healthcheck` (Traefik's own requests, sent from the address core's header-auth services trust, with the template's method and headers, following redirects); middleware types only `addprefix`, `stripprefix`, `stripprefixregex`, `replacepath`, `replacepathregex`, `redirectregex`, `redirectscheme`, `headers`, `compress`, `contenttype`, `chain`, `ratelimit`, `inflightreq` (no `redis.*`), `ipallowlist`, `buffering`, `retry`, `circuitbreaker`, `grpcweb`, each with its own attributes — never `forwardauth`, `errors`, `plugin`, `basicauth`, `digestauth`, `passtlsclientcert`; no `serverstransports`; explicit YAML tags other than the core `!!` ones (compose's `!reset` / `!override`); any `traefik.*` key segment outside `[A-Za-z0-9_-]` with an optional `[n]` (a stray `]` or `[`, or an empty segment, crashes Traefik's label decoder and stops its docker provider) and any name segment outside `^[a-z0-9][a-z0-9_-]*$`; TCP and UDP routing (`traefik.tcp.*`, `traefik.udp.*`); defining a router, service or middleware with a name core uses (core's `@docker` names: `hub`, `keycloak`, `portcullis-auth`, `hub-proxy-secret`, …); a router `service` that isn't a service the template defines itself (`<name>` or `<name>@docker`; never core's, another app's, `@file` or `@internal`), router / chain `middlewares` other than the template's own, `portcullis-auth@docker`, `portcullis-groups@docker` and core's five `@file` middlewares from `traefik/dynamic/middlewares.yml` — `client-headers@file`, `client-cert-pem@file`, `rate-limit@file`, `rate-limit-auth@file`, `security-headers@file` (never an administrator's own objects under `traefik/dynamic/local/`); a reference — router `service`, router `middlewares`, chain `middlewares` — whose key or value isn't lowercase (Traefik reads them case-insensitively, the Hub renames them per instance: both must read the same names); a service name whose container in the template's project (`portcullis-<id>-<service>-<n>`, also `portcullis_<id>_<service>_<n>`) is a core service's (`forward` + `auth` = `portcullis-forward-auth-1`) — for the default instance the template is skipped, for another instance the id is refused; compose keys outside an allowlist (top level: `services`, `volumes`, `networks`, `name`, `x-*`; per service the usual runtime keys — never `label_file`, `deploy`, `annotations`, `env_file`, `build`, `configs`, `secrets`, `profiles`, `links`, …). Templates join core only through `portcullis-proxy`.
 - **Image labels.** Docker merges an image's `LABEL`s into its containers' labels. The Hub first runs `compose up --no-start` (containers created, none started) and compares each created container's `traefik.*` label keys (folded like Traefik's decoder) with the keys compose was given (the template's and the Hub override's); any other key takes the project down (volumes kept) and fails the operation (`409`, naming the labels) before anything starts; the same check runs again after the real `up`. Reconcile reports such running containers as exposure drift.
 - **Trust model.** A template source is code the admin chose to install: `privileged`, `cap_add`, devices and host networking stay allowed in templates (their own containers). The Hub's checks protect core: routing it can see, no core networks, names or sign-in plumbing, no namespace or volume sharing with other containers. Bind mounts of host paths outside `./templates/<app-id>/` are host-level access, like `privileged`: the Hub doesn't confine them in templates (a template that bind-mounts Docker's volume directory reads core's data), so installing a template source means trusting it with the host. Custom overrides (Expert) are stricter (§5, the allowlist).
 - **HTTP routers (NEW, file sharing).** Every auth method except `custom` needs at least one HTTP router: a template without one is refused with a `400` naming the method (a forward-auth template with no router would protect nothing). An `auth.method: custom` template may have **zero** Traefik routers (no service with `traefik.enable: "true"`): a **router-less** template, such as the SMB templates (§13.17). It may then set `group_access: true` with an `access_group` and no `native_login`; the access group decides only who is in the population (§13.3, §13.16) and gates nothing on the network. A router-less instance has no hostnames, publishes no policy, group or denied host (§4), gets no Keycloak client or access role (§8) and no public router, and is never reported as exposure drift. `person_secret` and `person_id` options (§13.2) are allowed only on router-less templates with `group_access: true` and an `access_group`.
@@ -77,8 +79,11 @@ Contract v2 lets a template run as several independent instances (§11) whose ho
     | `PORTCULLIS_ACCESS_GROUP` | The instance's access group (§11.2); empty if the manifest has no `access_group` |
     | `PORTCULLIS_ADMIN_GROUP` | The instance's admin group (§11.2); empty if the manifest has no `admin_group` |
     | `PORTCULLIS_LOCAL_NETWORKS` | **NEW (file sharing).** The Hub's Local networks (§14.7) as comma-separated canonical CIDR prefixes, from `LocalNetworksView()`: the saved list, or `DefaultLocalNetworks` (`10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7,100.64.0.0/10`) when none was saved. Empty **only** when an empty list (`[]`, loopback only) was saved; a template that reads it must then refuse to serve (fail closed, §13.17). Written in every `.env` write (`prepareUp`) |
+    | `PORTCULLIS_AI_ENABLED` | **NEW (AI support).** `true` while at least one of the instance's companions has AI support on (§15), else `false`. Written only for templates with `ai.mcp` (§3.2) |
+    | `PORTCULLIS_AI_READONLY_<COMPANION>` | **NEW (AI support).** Per companion: `true` unless the companion is on in mode `read_write`. `<COMPANION>` is the companion's `name` upper-cased with `-` turned into `_` (`gitea` → `PORTCULLIS_AI_READONLY_GITEA`). Written only for templates with `ai.mcp` |
+    | `PORTCULLIS_AI_PROVIDER_<NAME>_<FIELD>` | **NEW (AI support).** Only in the `.env` of an instance whose template has `ai.chat` (§3.2), one per secret field of each model provider the instance selected; never referenced by a template (§3.2) |
 
-    These names are reserved: a manifest may not declare them in `env`, `settings` or `ports`. `PORTCULLIS_LOCAL_NETWORKS` is the one exception to the default form: compose may reference it **only** as exactly `${PORTCULLIS_LOCAL_NETWORKS}`; every form with a default or alternate (`${PORTCULLIS_LOCAL_NETWORKS:-…}`, `-`, `:+`, `+`, `?`) and `$PORTCULLIS_LOCAL_NETWORKS` are refused, so no template default can widen `hosts allow`. Saving Local networks (`PUT /api/settings/local-networks`) queues a restart of every enabled instance whose `compose.yml` references the variable (found at discovery), and only of those.
+    These names are reserved: a manifest may not declare them in `env`, `settings` or `ports` (**NEW, AI support:** the prefixes `PORTCULLIS_AI_` and `PORTCULLIS_AI_PROVIDER_` and the core variable `PORTCULLIS_MCP_GATE_IP` too). A template may reference `PORTCULLIS_AI_ENABLED` only as exactly `${PORTCULLIS_AI_ENABLED:-false}` and `PORTCULLIS_AI_READONLY_<COMPANION>` only as exactly `${PORTCULLIS_AI_READONLY_<COMPANION>:-true}` for one of its own companions (the defaults fail closed), and never references `PORTCULLIS_AI_PROVIDER_*` (§3.2, `ai.chat.env`). `PORTCULLIS_LOCAL_NETWORKS` is the one exception to the default form: compose may reference it **only** as exactly `${PORTCULLIS_LOCAL_NETWORKS}`; every form with a default or alternate (`${PORTCULLIS_LOCAL_NETWORKS:-…}`, `-`, `:+`, `+`, `?`) and `$PORTCULLIS_LOCAL_NETWORKS` are refused, so no template default can widen `hosts allow`. Saving Local networks (`PUT /api/settings/local-networks`) queues a restart of every enabled instance whose `compose.yml` references the variable (found at discovery), and only of those.
 - **`multi` templates also** have no `${PORTCULLIS_DOMAIN}` in any router rule, no volume `name:` (the Hub sets it, §11.2), and no hard-coded Keycloak client id or group name in `compose.yml` (they use the variables above). Router, service and middleware names a template defines may not start with `portcullis-` (reserved for core and the Hub) and may not contain `_` (every v2 template, so the per-instance prefix below can't be ambiguous).
 - **Traefik names per instance.** Traefik's Docker provider merges same-named routers and services across containers, so two instances must never define the same name. For every instance **except the default one**, the Hub's override renames each router, service and middleware the template's labels define from `<name>` to `<instance-id>_<name>`. It also rewrites the references to them in `routers.*.service` and `routers.*.middlewares` (`<name>@docker`). Names the template doesn't define (`portcullis-auth@docker`, `security-headers@file`, …) are kept. The override replaces each labelled service's `labels` with compose's `!override` tag, so no original name survives. Neither instance ids nor v2 template names contain `_`, so the prefix can't be ambiguous. The default instance keeps the template's names unchanged. Every name an instance's Traefik objects use is a name claim (§11.1): two templates whose default instances define the same router, service or middleware name are not both loaded (enabled templates first, then source order), since Traefik would merge them and one app would receive the other's traffic, forward-auth identity headers included.
 - **Conversion period.** Until every template is converted, the Hub sets `PORTCULLIS_HOST_*` for every instance (default included). An `instances: single` template may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) `` rules. Such a template runs only as its default instance, its hostnames are fixed at `<sub>.<main domain>`, and the Hub refuses hostname changes for it (`409`). Its host keys are still its host routers' names. It uses that form for all its routers (no mixing).
@@ -117,6 +122,135 @@ volumes:
 ```
 
 For the instance `grafana-team-b` on `grafana.team-b.example.org`, the Hub writes `PORTCULLIS_INSTANCE=grafana-team-b`, `PORTCULLIS_HOST_GRAFANA=grafana.team-b.example.org`, `PORTCULLIS_ACCESS_GROUP=users_grafana-team-b`, `PORTCULLIS_ADMIN_GROUP=admin_grafana-team-b` and `PORTCULLIS_OIDC_CLIENT_ID=` (no clients) into `<data>/env/grafana-team-b.env`. Its override renames the router and the service to `grafana-team-b_grafana`, renders the router's middlewares as `portcullis-auth-ext@docker,portcullis-groups@docker,security-headers@file` (an extra-domain host, §5), adds the sign-in router `portcullis-oauth2-grafana-team-b_grafana`, and names the volume `portcullis_grafana-team-b-grafana-data`.
+
+### 3.2 AI support: the `ai:` block — NEW (AI support)
+
+Every template says in its manifest whether the AI can act in the app, and how (§15). The templates repo's schema, `tests/validate.py` and the Hub's `ValidateAI` implement exactly what this section says, with the same refusals; the Hub skips a template that fails them.
+
+- **Required, in exactly one of two forms.** A template without an `ai:` block, with both forms or with neither is refused:
+    - `ai.mcp`: a non-empty list of **companions**, the MCP servers the AI talks to (below);
+    - `ai.unsupported`: one sentence (a single line, 1–200 characters) shown to the admin on the instance's AI tab and in the catalog, e.g. `"No official MCP server; community servers are small and not vetted by Portcullis"`.
+- **`ai.alternative`** `{name, source, note}`, only with `ai.unsupported`: a community server the admin may evaluate on their own. `name` a single line ≤ 64, `source` an `https://` URL, `note` a single line ≤ 200 (e.g. `"community, 248★, last change Nov 2025, API token per person"`). The Hub only displays it, labelled "not vetted by Portcullis", and never installs it.
+- **Companions are never Portcullis code.** A companion is the app's built-in MCP server (`kind: builtin`) or a service running the upstream's published image (`upstream: official`) or a vetted community project's published image (`upstream: community`), pinned `tag@sha256:…` like every template image (§1). Templates never build images (`build` is refused, §3) and never ship MCP server, adapter, wrapper or proxy code; template review refuses one written for Portcullis, inside or outside the template repo. "Vetted" means a template reviewer checked the project (maintained, licence, a multi-user identity that fits an identity mode, no shared admin identity) and pinned a release; the template's docs page records why. Mint and revoke hooks (below) are glue that calls the app's own CLI or API; they never see tool traffic and define no tools.
+- **`ai.mcp[]`**, one entry per companion:
+
+    | Field | Rule | Meaning |
+    |-------|------|---------|
+    | `name` | `^[a-z][a-z0-9-]{0,30}$`, unique in the template | Names the companion: scope `mcp:<instance-id>.<name>`, alias and router `portcullis-mcp-<instance-id>_<name>`, `PORTCULLIS_AI_READONLY_<NAME>` |
+    | `label` | single line, 1–64 | Shown to people and the admin; the consent text and the confirmation page's typed check (§15.6) use the instance's label |
+    | `kind` | `companion` or `builtin` | `companion`: a compose service that exists only for AI. `builtin`: the app's own service serves MCP |
+    | `service` | a service of `compose.yml` | Where MCP is served. A `companion` service backs exactly one companion |
+    | `port` | 1–65535 | The container port of `service` (unused for `app_oauth`) |
+    | `path` | absolute, clean, no `?` / `#`; default `/mcp` | The upstream's MCP path |
+    | `router` | a host router of the template (§3.1) | The companion's endpoint is on this router's hostname: `https://<host><public_path>` |
+    | `public_path` | absolute, clean; default `/mcp` | The path people connect to. Not `/`, never at or under `/.well-known/` or `/oauth2/`, never at or under a path of `auth.public_access`, unique per router. Refused on `app_oauth` companions (the endpoint is then the app's own route `https://<host><path>`, which the Hub doesn't route) |
+    | `identity` | object, below | How the person's identity reaches the companion |
+    | `modes` | non-empty subset of `read_only`, `read_write`, no repeats | What the admin may choose. `app_oauth`: exactly `[read_write]` |
+    | `default_mode` | one of `modes` | Required when `modes` has two entries |
+    | `tools` | `{writes, confirm, never}`, each a list (≤ 256) of patterns | Tool classes (§15.5): patterns are tool names with `*` globs, or `tool:method` for consolidated tools (matches `tool` when its argument `method` equals `method`); `^[A-Za-z0-9_.*-]{1,128}(:[A-Za-z0-9_.*-]{1,128})?$`, matched case-insensitively |
+    | `aggregate` | boolean, default `true` | Whether the companion's tools are in "all my apps" (§15.9). `app_oauth`: never (`true` is refused; the default becomes `false`) |
+    | `upstream` | `official` or `community` | Shown to the admin ("community-maintained companion"). `builtin` ⇒ `official` |
+    | `source` | `https://` URL, required | The companion project's home |
+    | `protocol` | non-empty list of `2025-06-18`, `2025-11-25`, `2026-07-28` | The MCP versions the companion speaks; the gate speaks the newest common one upstream (§15.3) |
+
+- **`identity`** (`mode` plus that mode's parameters only; any other key is refused):
+
+    | `mode` | Parameters | Meaning |
+    |--------|------------|---------|
+    | `app_token` | `header` (an HTTP header name, default `Authorization`); exactly one of `format` (`^[A-Za-z][A-Za-z0-9-]{0,31} \{credential\}$`, e.g. `"token {credential}"`, `"Bearer {credential}"`) and `basic` `{user, password}` (HTTP Basic: `user` exactly `{username}` or a single-line literal without `:`, `{` or `}`; `password` exactly `{credential}`); `mint` and `revoke` (hook names, required); `scopes` `{read_only: [...], read_write: [...]}` (optional; keys from `modes`; each a list of single-line strings ≤ 128) | A per-person app credential, minted by the Hub through the `mint` hook on first use and injected by the gate on every request (§15.5) |
+    | `identity_headers` | `caller_secret` `{env, header, format}`, required: `env` an `env` entry with `generate: random`, `header` an HTTP header name (default `Authorization`), `format` containing `{secret}` exactly once (default `"Bearer {secret}"`, `^[A-Za-z][A-Za-z0-9-]{0,31} \{secret\}$` or exactly `{secret}`) | The gate sends the person's identity headers plus the caller secret; the companion must refuse every caller without the secret |
+    | `app_oauth` | `revoke` (hook name, required) | The app is its own MCP authorization server (signing in through Keycloak); the gate is not in the path. Only `kind: builtin`, `modes: [read_write]`, never aggregated |
+
+    A `header` is `^[A-Za-z0-9-]{1,64}$` and never `Host`, `Cookie`, `Content-Type`, `Accept`, `Proxy-Authorization`, `Mcp-*`, `MCP-Protocol-Version`, `Mcp-Session-Id`, `X-Forwarded-*`, `X-Auth-Request-*`, `Remote-*` or `X-Portcullis-*` (case-insensitive). No mode runs requests as one shared admin identity.
+- **`ai.on_change`** (a hook name, only with `ai.mcp`): run when a companion's AI support or mode changes, with the stdin of §15.5 (e.g. to turn an app's own MCP integration on or off). Optional: `PORTCULLIS_AI_ENABLED` / `PORTCULLIS_AI_READONLY_<COMPANION>` (§3.1) often suffice.
+- **Hooks an `ai:` block names** (`mint`, `revoke`, `on_change`) must exist and have exactly `when: [ai]` (§13.8); a hook with `ai` that no `ai:` field names is refused.
+- **`ai.chat`** (only with `ai.unsupported`): the template is an AI page, an MCP client people chat in (the `ai-chat` template), not an app the AI drives. Fields, all required:
+    - `provider_kinds`: `{<kind>: one|many}` for the model provider kinds the template can render (`litellm`, `openai_compatible`, `anthropic`, `openai`, `google`, `bedrock`, `azure_openai`; at least one). `one`: at most one provider of that kind per instance;
+    - `file: {service, mount}`: the service that reads `ai-providers.json` (below) and the absolute, clean container directory it is mounted at read-only (the rules of a `files[]` mount, §13.7);
+    - `env: {service}`: the one service whose environment receives the selected providers' secret variables (§15.12). The Hub's override adds `environment: {<VAR>: ${<VAR>}}` for each of them to that service only; compose `env_file` stays refused (§3).
+
+    A template with `ai.chat` has exactly one `keycloak_clients[]` entry with `ai_client: true` (§8; refused without `ai.chat`); its other clients are ordinary. The data file name `ai-providers` is reserved (`files[]` may not use it).
+- **Also refused** (the Hub at discover, `tests/validate.py` alike):
+    - `ai.mcp` on a template with `auth.admin_paths` (the gate can't apply path groups), with `auth.method` `public` or `mtls` (no Portcullis identity, or LoA 3: §15.2), or on a router-less template (§3);
+    - a `companion` service with any `traefik.*` label, on `portcullis-proxy` itself, with `network_mode`, `container_name`, `hostname`, or used by two companions; an `identity_headers` `caller_secret.env` that isn't a `generate: random` env entry; `upstream: community` with `kind: builtin`;
+    - the prefix **`portcullis-mcp-`** (case-insensitive) as a Traefik router, service or middleware name, a compose service name, `container_name`, `hostname`, or a network alias on any network (the Hub's override owns it; the same walk as the core-name checks of §3);
+    - a `keycloak_clients[].client_id` starting with `portcullis-ai-` (the Hub's AI clients, §8);
+    - `mcp` as a default subdomain (a core host, §4);
+    - any reference to `${PORTCULLIS_AI_PROVIDER_…}` or `$PORTCULLIS_AI_PROVIDER_…` in `compose.yml`, and the AI variables in any other form than §3.1's.
+- **What the Hub renders** (its override, for every instance; never the template):
+    - a `companion` service gets `scale: 0` while its companion is off and `scale: 1` while it is on;
+    - while a companion is on (`app_token` and `identity_headers` only), its service joins `portcullis-proxy` with the alias **`portcullis-mcp-<instance-id>_<companion>`** (for a `builtin` service, added to its existing attachment), and the router of §5 is added. The Hub refuses `_` in template and instance ids (its id shape check: the id must be its own Traefik-normalised form) and the `name` pattern has none, so the pair is unambiguous (with `-` it wouldn't be: `a` + `b-c` = `a-b` + `c`). Switching on is refused (`409`) while another container on `portcullis-proxy` already answers to that name;
+    - nothing for `app_oauth` companions but `PORTCULLIS_AI_*` and the `on_change` hook: their endpoint is the app's own route;
+    - switching a companion on or off on an enabled instance recreates the project (`compose up`): the router labels live on the instance's first `traefik.enable` service, so the app restarts (the answer says `restarts: true`, §15.11). On a disabled instance the switch only saves state.
+- **Companions are reachable on `portcullis-proxy`.** Any container on that network can reach a companion by its alias, not only the gate. A companion must therefore serve nothing without the identity mode's credential: the app's own authentication of the minted credential (`app_token`), or the caller secret (`identity_headers`). It never trusts identity headers alone, and the app behind an `identity_headers` companion trusts them only from that companion (template responsibility; a template that can't prove it uses `ai.unsupported`).
+- **`ai-providers.json`** (the AI page's data file, Hub → template). For an `ai.chat` instance the Hub writes `<appfiles>/<instance-id>/ai-providers/ai-providers.json` (mode 0640, directory 0750, atomic, like the data files of §13.7; delivery unit `file:ai-providers`) and bind-mounts its directory read-only at `ai.chat.file.mount` in `ai.chat.file.service`:
+
+    ```json
+    {
+      "version": 1,
+      "instance": "ai-chat",
+      "providers": [
+        {
+          "name": "ollama-gpu",
+          "label": "Ollama on the office GPU",
+          "kind": "openai_compatible",
+          "base_url": "http://gpu.lan:11434/v1",
+          "region": "",
+          "instance_name": "",
+          "api_version": "",
+          "deployments": {},
+          "models": {"fetch": false, "list": ["llama3.3:70b", "qwen3:32b"]},
+          "credentials": "admin",
+          "env": {"key": "PORTCULLIS_AI_PROVIDER_OLLAMA_GPU_KEY"}
+        }
+      ]
+    }
+    ```
+
+    - one entry per provider the instance selected (§15.12), sorted by `name`; every field always present (`""`, `{}` or `[]` when the kind has no such field); `deployments` maps an Azure deployment to its model; `models.fetch` only where the kind allows it (`litellm`, `openai_compatible`, `openai`);
+    - `credentials` is `admin` or `per_person` (each person enters their own key in the chat app; the Hub stores none);
+    - `env` maps each of the kind's secret fields whose value is set to the **name** of the variable that holds it (`PORTCULLIS_AI_PROVIDER_<NAME>_<FIELD>`, §15.12); `{}` for `per_person`. The file **never** holds a secret value. The template renders its own configuration from it (the `ai-chat` template's `config` init service writes `librechat.yaml` with env references such as `apiKey: "${PORTCULLIS_AI_PROVIDER_OLLAMA_GPU_KEY}"`), so no secret is written into a file either.
+
+Example (`gitea`, abridged; hooks in §13.8):
+
+```yaml
+# manifest.yaml (excerpt)
+ai:
+  mcp:
+    - name: gitea
+      label: Gitea
+      kind: companion
+      service: gitea-mcp
+      port: 8080
+      router: gitea                 # https://<gitea host>/mcp
+      upstream: official
+      source: https://gitea.com/gitea/gitea-mcp
+      protocol: ["2026-07-28", "2025-11-25"]
+      modes: [read_only, read_write]
+      default_mode: read_write
+      identity:
+        mode: app_token
+        format: "token {credential}"
+        mint: mcp-mint
+        revoke: mcp-revoke
+        scopes:
+          read_only:  [read:repository, read:issue, read:user]
+          read_write: [write:repository, write:issue, read:user]
+      tools:
+        writes:  ["*_write", "create_*", "update_*", "merge_*", "delete_*"]
+        confirm: ["delete_*", "repo_write:delete"]
+        never:   []
+```
+
+```yaml
+# compose.yml (excerpt)
+services:
+  gitea-mcp:                         # no Traefik labels, not on portcullis-proxy
+    image: docker.gitea.com/gitea-mcp-server:<tag>@sha256:<digest>
+    environment:
+      GITEA_READONLY: ${PORTCULLIS_AI_READONLY_GITEA:-true}
+    networks: [default]
+```
 
 ## 4. Policy file (Hub → group-gate)
 
@@ -207,7 +341,8 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
 - **`path_groups`** comes from enabled instances of templates that declare `auth.admin_paths` (a list of path prefixes). Each prefix requires the instance's admin group, **in addition** to the hostname's group.
     - Matching uses group-gate's normalized `X-Forwarded-Uri` path: percent-decoded once, `//` collapsed, dot-segments resolved.
     - It is a prefix match on segment boundaries (`/admin` matches `/admin` and `/admin/x`, not `/administrator`). The longest matching prefix wins.
-- **Core hosts** are never taken from this file. `group-gate-map.conf` in core owns them; it keeps `<sub>=<group>` entries, and group-gate expands each `<sub>` to `<sub>.<main domain>` (**NEW**, policy v5; `PORTCULLIS_DOMAIN` is required). The core hosts are `<main domain>` itself (the portal) and `<sub>.<main domain>` for the core subdomains `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`. A policy-file entry for a core host is ignored, as before. The map file's app entries (e.g. `grafana=users_grafana`) expand the same way and, as before, policy-file entries add to or override them.
+- **Core hosts** are never taken from this file. `group-gate-map.conf` in core owns them; it keeps `<sub>=<group>` entries, and group-gate expands each `<sub>` to `<sub>.<main domain>` (**NEW**, policy v5; `PORTCULLIS_DOMAIN` is required). The core hosts are `<main domain>` itself (the portal) and `<sub>.<main domain>` for the core subdomains `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp` (**NEW**, AI support). A policy-file entry for a core host is ignored, as before. The map file's app entries (e.g. `grafana=users_grafana`) expand the same way and, as before, policy-file entries add to or override them.
+    - `mcp` (**NEW**, AI support) is the "all my apps" MCP endpoint (§15). Its map entry is `mcp=*`, but its router has no forward-auth (§5): group-gate never sees MCP requests; `mcp-gate` authorizes them. Listing it makes `mcp.<main domain>` a core host everywhere (group-gate, `policy.CoreHosts`, the templates validator), so no template or instance can take it.
     - `people` is accessible to any signed-in user (§5.1); `metrics` (Grafana of core's optional [monitoring](../operations/monitoring.md) profile) is a core subdomain too. All appear in group-gate, the Hub (`policy.CoreHosts(mainDomain)`) and the templates validator.
     - **Extra domains never route core services**: no core host is on an enrolled domain, and the Hub never assigns a core host to an instance.
 - **`public_paths`** is, per hostname, the configuration of core's public guard (§5) for an enabled instance whose public router exists:
@@ -260,6 +395,16 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
 - **Encoding (field headers):** Each attribute value is percent-encoded before being joined: `%` becomes `%25` and `,` becomes `%2C`. After encoding, values are joined with `, ` (comma-space). Apps must percent-decode each value after splitting on `, `. The **1 KB limit** per value is measured **before** percent-encoding; a value over 1 KB (before encoding) is dropped and logged.
 - **Security:** group-gate returns these headers only on **allow** (after auth factors are satisfied). Client copies of `X-Forwarded-Attr-*` headers are stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on **every** forwardAuth middleware in Traefik (Traefik cannot delete headers by prefix in a headers middleware, so each middleware's regex is the mechanism). Routers **without** a forwardAuth middleware in their chain (such as `keycloak`, `enroll-invite`, `headscale`, `netbird`, and `docs`) do not strip these headers, so backends on those routes **must not trust** `X-Forwarded-Attr-*` headers.
 - **Logging:** A corrupt `user-attributes.json` file is logged by group-gate; no attribute headers are sent (never a deny).
+- **`mcp-gate` reads it too (NEW, AI support).** For `identity_headers` companions the gate sends the same `X-Forwarded-Attr-*` headers group-gate would send on the companion's host (fields, then `hosts[<host>]`), read from this file with the same rules; a missing or corrupt file means no attribute headers, never a deny, and a person missing from it gets none (§15.5).
+
+### 4.2 AI gate files (Hub → mcp-gate) — NEW (AI support)
+
+Next to the policy file, in the same `hub_data` directory, the Hub writes **`mcp-gate.json`** (every MCP resource, who may use it, the limits; rewritten in the same pass as every policy-file write, so a membership change reaches the gate as fast as it reaches group-gate) and **`mcp-credentials.json`** (per-person app credentials and caller secrets, age-encrypted to the gate; rewritten on every credential change). Both are mode 0640, group 10001, written atomically (temp file + rename). `mcp-gate` mounts `hub_data` read-only with `group_add: ["10001"]` and nothing else of the Hub's. Formats, example and rules: §15.4.
+
+- **Fail closed.** A missing `mcp-gate.json` means AI support is off: every MCP request is `503` "AI support is off on this Portcullis", like the master switch off (`enabled: false`). A file that exists but can't be read or doesn't decode strictly (unknown fields, trailing data, another `version`, a value outside its rule) makes the gate refuse **every** MCP request (`503`) until a good file appears; the last good configuration is dropped, never kept. A missing `mcp-credentials.json` is an empty one (companions mint on first use); one that exists but can't be read, decoded or decrypted refuses every request the same way.
+- **Re-read.** The gate polls both files every second and re-reads a file when its (device, inode, size, mtime in ns) changed. The Hub never writes a credential or a population anywhere else the gate reads.
+- **Group-readable `hub_data`.** The only group-readable files in `HUB_DATA_DIR` are the policy file, `portal-apps.json`, `user-attributes.json`, `mcp-gate.json` and `mcp-credentials.json`. At start the Hub logs any other group- or world-readable file there and sets it to 0600 (the gate's group 10001 must not read the rest of the Hub's data).
+
 
 ## 5. Hub ⇄ Traefik
 
@@ -293,7 +438,7 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
     - no cookie (every `Cookie` header, split on `;` and `,`) and no query key (everything after the first `?`, split on `&` and `;`) names a credential. Names are compared case-insensitively after PHP's mangling (php-src `main/php_variables.c`, `php_register_variable_ex`: leading spaces dropped, ` ` and `.` become `_`, `name[…]` is `name`, an unclosed `[` becomes `_`, NUL ends the name), both raw and percent- / `+`-decoded; a name that isn't valid UTF-8 after decoding (overlong forms) or has control characters is refused.
 
     On allow it returns 200 without identity headers. Its logs mask token-like path segments and show query parameter names only.
-- **Exposure drift.** The Hub compares every exposure label of each running container (each router's `tls.options`, all `portcullis-public-<instance-id>` and `portcullis-oauth2-<instance-id>_<router>` router labels and the strip middleware, every router's `middlewares` of `native_login` apps and of routers on extra-domain hosts) with what it would render now, `PORTCULLIS_DOMAIN` and the instance's `PORTCULLIS_HOST_*` expanded; any difference is `public_access_mismatch` drift.
+- **Exposure drift.** The Hub compares every exposure label of each running container (each router's `tls.options`, all `portcullis-public-<instance-id>`, `portcullis-oauth2-<instance-id>_<router>` and `portcullis-mcp-<instance-id>_<companion>` router labels and the strip middleware, the `portcullis-mcp-` network aliases, every router's `middlewares` of `native_login` apps and of routers on extra-domain hosts) with what it would render now, `PORTCULLIS_DOMAIN` and the instance's `PORTCULLIS_HOST_*` expanded; any difference is `public_access_mismatch` drift.
 - **Extra-domain hosts — NEW (contract v2 / domains).** An instance hostname equal to or under an enrolled domain (§12; listed in the policy file's `extra_domains`, §4) is an **extra-domain host**. That includes enrolled subdomains of the main domain: with `team-a.portcullis.example.com` enrolled, both `team-a.portcullis.example.com` and `x.team-a.portcullis.example.com` are extra-domain hosts. Every other instance hostname is a **main-domain host** (`<label>.<main domain>`). On extra-domain hosts:
     - **Same protection.** Routers carry the same middleware chain, `tls.options` tier, public router and group-gate checks they would carry on the main domain, with one substitution: the Hub's override renders `portcullis-auth-ext@docker` in place of `portcullis-auth@docker` (in the template's middlewares and in the `native_login` prepend alike). `portcullis-groups@docker` is unchanged. Nothing else about an instance's protection depends on its domain.
     - **Second oauth2-proxy (core).** Core runs a second oauth2-proxy service, **`forward-auth-ext`**, that serves extra-domain hosts only. It uses the same Keycloak client (`portcullis-forward-auth`) and the same cookie secret source (`FORWARD_AUTH_COOKIE_SECRET`) as `forward-auth`, a **relative** redirect URL `/oauth2/callback` (resolved against the request host) and a **host-only** cookie named **`__Host-portcullis_ext`** (the `__Host-` prefix: browsers accept it only `Secure`, without `Domain`, with `Path=/`, so a sibling host can't plant or widen it; the CSRF and split-session cookies inherit the prefix). The distinct name keeps it apart from the main domain's `.<main domain>` cookie, which a host under an enrolled subdomain of the main domain also receives. Core defines its forwardAuth middleware **`portcullis-auth-ext`** (`http://forward-auth-ext:4180`) with the same `trustForwardHeader`, `authResponseHeaders` and `authResponseHeadersRegex` as `portcullis-auth`. `forward-auth`, `portcullis-auth`, the `auth.<main domain>` callback and the `.<main domain>` cookie stay exactly as they are.
@@ -312,7 +457,24 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
     - **Callback and cookie.** On an extra-domain host the callback is `https://<host>/oauth2/callback` (served by `forward-auth-ext` through the sign-in router) and the session cookie is the host-only `__Host-portcullis_ext`. On main-domain hosts nothing changes: `forward-auth`, callback `https://auth.<main domain>/oauth2/callback`, cookie for `.<main domain>`. The user's Keycloak session at `auth.<main domain>` makes the extra-domain sign-in a silent redirect (no key touch) unless the instance's policy needs a stronger factor than the session has.
     - **Callback redirect URIs.** The Hub keeps `https://<host>/oauth2/callback` for every extra-domain host with a sign-in router in the redirect URIs of core's Keycloak client `portcullis-forward-auth` (shared by both oauth2-proxy services). It adds and removes only such entries (Keycloak has no wildcard host matching), on enable, hostname change, disable and delete, and when an enabled instance's sign-in mode changes (gateway ↔ native, `auth.native_login`): the change takes the instance's lock (`409` busy while another operation on it runs), the Keycloak update comes first, and a failure is a `502` with nothing changed. A failed enable removes the callbacks it added. Core's `./portcullis keycloak configure` keeps redirect URIs of that form that it didn't set itself, and the Hub's access sync loop (§8) re-asserts the running instances' callbacks.
     - **Step-up URL.** group-gate builds the step-up URL from the request host: `https://auth.<main domain>/oauth2/start?acr_values=<acr>&rd=https://<host>/` for main-domain hosts (unchanged), and `https://<host>/oauth2/start?acr_values=<acr>&rd=/` for extra-domain hosts (`extra_domains`, §4; served by `forward-auth-ext`; same host, so `rd` needs no whitelist entry).
-    - **Never core.** Extra domains never route core services: no core router has a host on an enrolled domain, and the portal, Hub, people, auth, enroll, directory, traefik and metrics pages exist only on the main domain.
+    - **Never core.** Extra domains never route core services: no core router has a host on an enrolled domain, and the portal, Hub, people, auth, enroll, directory, traefik and metrics pages and the `mcp` endpoint exist only on the main domain.
+- **MCP routes — NEW (AI support).** MCP requests (§15) go to core's `mcp-gate` service (`mcp-gate@docker`, port 8080, on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP`), never through forward-auth:
+    - **Per companion** (the Hub's override, while the companion is on; `app_token` and `identity_headers` companions only), labels on the instance's first service with `traefik.enable: "true"`, like the sign-in router:
+
+        ```yaml
+        traefik.http.routers.portcullis-mcp-gitea_gitea.rule: Host(`gitea.example.com`) && (Path(`/mcp`) || Path(`/.well-known/oauth-protected-resource/mcp`))
+        traefik.http.routers.portcullis-mcp-gitea_gitea.entrypoints: websecure
+        traefik.http.routers.portcullis-mcp-gitea_gitea.tls.options: authaware@file   # the host's tier
+        traefik.http.routers.portcullis-mcp-gitea_gitea.priority: "<above every router of the instance, its public and sign-in routers>"
+        traefik.http.routers.portcullis-mcp-gitea_gitea.service: mcp-gate@docker
+        traefik.http.routers.portcullis-mcp-gitea_gitea.middlewares: rate-limit@file,security-headers@file
+        ```
+
+        Named `portcullis-mcp-<instance-id>_<companion>` (the alias of §3.2 has the same form); the rule is `` Host(`<the router's hosts>`) && (Path(`<public_path>`) || Path(`/.well-known/oauth-protected-resource<public_path>`)) `` with exact `Path` matchers only, so the companion's other paths and the app's own routes are never reachable through the gate, and the app's routers never see those two paths. The host's TLS tier as for every router of the host (above); the priority is computed like the public router's. Router names starting with `portcullis-mcp-` are reserved for the Hub. Its labels are exposure labels (drift, below) and Hub labels for the image-label check (§3).
+    - **Core routers** (core's compose, labels on `mcp-gate`): `mcp` — `` Host(`mcp.<main domain>`) ``, every path, `authaware@file`; `hub-mcp` and `people-mcp` — `` Host(`hub.<main domain>`) `` / `` Host(`people.<main domain>`) `` `&& (Path(`/mcp`) || Path(`/.well-known/oauth-protected-resource/mcp`))`, priority above `hub` / `people`, and **the same `tls.options` value as the `hub` / `people` router** of that host (one SNI host, one TLS option; core CI asserts they are equal). All three: middlewares `rate-limit@file,security-headers@file`, service `mcp-gate`. Never on an extra domain.
+    - **No forward-auth, no bearer on browser routes.** MCP routers carry no `portcullis-auth`, `portcullis-auth-ext`, `portcullis-groups` or proxy-secret middleware, and the gate reads no cookie and sets none. Browser routers keep oauth2-proxy, which never accepts bearer tokens: `skip_jwt_bearer_tokens` stays off in both oauth2-proxy services (core CI asserts there is no `skipJwtBearerTokens: true` and no `--skip-jwt-bearer-tokens`). An MCP token opens no page and a session cookie authorizes no MCP request.
+    - **Extra-domain instances** work the same: the companion's resource is on the extra-domain host; the authorization server stays `https://auth.<main domain>/realms/portcullis`.
+    - The Hub's `:8890` MCP listener (§15.7) is never a Traefik target (core CI asserts no router points at port 8890).
 
 ### 5.1 People subdomain (NEW)
 
@@ -321,16 +483,20 @@ The Hub writes `user-attributes.json` atomically to the same directory as the po
 - **Core routing.** Core routes `people.<domain>` to `http://hub:8889` with the middleware chain: `rate-limit@file`, `client-headers@file`, `portcullis-auth@docker`, `portcullis-groups@docker`, `hub-proxy-secret@docker`, `security-headers@file`. The same `X-Portcullis-Proxy-Secret` header is required.
 - **group-gate-map.conf.** The map file uses the special value **`*`** (asterisk) for the `people` subdomain, meaning "any signed-in user". This value is valid **only** in `group-gate-map.conf`, never in the policy file.
 - **Redirect.** The existing `directory.<domain>` subdomain redirects to `https://people.<domain>/` (previously it redirected to `https://hub.<domain>/#users`).
-- **My apps route.** The people listener registers exactly **five** app routes (all caller-only, read or write the caller's own data): the three below and the two credential routes after them.
-  - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with `{"apps": [...], "fresh_auth": {...}}` — `apps` are the enabled instances whose population includes them. Each entry has: instance id, name, link (`url`, empty for a router-less instance, §3), the caller's per-person values (label, displayed value, reason — only the caller's own groups —, when it applies; see §13), the caller's own person-entered `entries` (key, label, description, applies, input constraints, `unique`, the value only when stored under the caller's current LLDAP account, `set_by_admin` — never the admin's name —, `updated_at`) and the caller's own `credentials` (one per `person_secret` option, §13.16: `{key, label, status, since, reason, info}`; `status` is `none`, `active` (`since` = created), `voided` (`reason: "restore"`, `since` = when it was voided) or `unavailable` (`reason` = the template's username reason); `info` = the option's `info` lines rendered for the caller). An app with values, entries or a `person_secret` option is listed; apps with none of them are left out. Options marked `self_visible: false` are left out; `person_id` values are never shown. Instance options, secrets, hashes and other people are never included. `fresh_auth` (**NEW**, file sharing) is present only when some listed app has a `person_secret` option: `{authorize_url, client_id, redirect_uri}` of the fresh-auth client (§8)
+- **My apps route.** The people listener registers exactly **nine** app routes (all caller-only, read or write the caller's own data; none takes a username): the three below, the two credential routes after them, and the four AI routes (**NEW**, AI support): `GET /api/me/ai`, `DELETE /api/me/ai/connections/{client}`, `GET /confirm/{id}` and `POST /api/me/confirmations/{id}`. The two AI routes `/api/me/ai*` exist only on the people listener (`404` on the Hub listener). The two confirmation routes are also registered on the Hub listener, for confirmations of admin tools (§15.6); each listener answers only for confirmations created for it.
+  - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with `{"apps": [...], "fresh_auth": {...}}` — `apps` are the enabled instances whose population includes them. Each entry has: instance id, name, link (`url`, empty for a router-less instance, §3), the caller's per-person values (label, displayed value, reason — only the caller's own groups —, when it applies; see §13), the caller's own person-entered `entries` (key, label, description, applies, input constraints, `unique`, the value only when stored under the caller's current LLDAP account, `set_by_admin` — never the admin's name —, `updated_at`) and the caller's own `credentials` (one per `person_secret` option, §13.16: `{key, label, status, since, reason, info}`; `status` is `none`, `active` (`since` = created), `voided` (`reason: "restore"`, `since` = when it was voided) or `unavailable` (`reason` = the template's username reason); `info` = the option's `info` lines rendered for the caller). An app with values, entries, a `person_secret` option or AI support on for the caller is listed; apps with none of them are left out. Options marked `self_visible: false` are left out; `person_id` values are never shown. Instance options, secrets, hashes and other people are never included. `fresh_auth` (**NEW**, file sharing) is present only when some listed app has a `person_secret` option: `{authorize_url, client_id, redirect_uri}` of the fresh-auth client (§8). **NEW (AI support):** an app with a companion that is on, whose population includes the caller, carries `"ai": {"companions": [{"name", "label", "url", "identity_mode", "mode", "official"}]}` (`url` the companion's resource URL, §15.1, or for `app_oauth` the app's own MCP route; `official` = `upstream: official`); the answer carries a top-level `"ai": {"aggregate_url": "https://mcp.<domain>/mcp", "clients": {"claude": {"client_id"}, "claude_code": {"client_id", "callback_port": 33418}, "generic": {"client_id", "redirect_uris": [...]}}, "admin_url": "https://hub.<domain>/mcp"}` — `clients` only those the admin offers (§8), `admin_url` only for `lldap_admin` members while the Portcullis admin MCP is on — present only while the master switch is on and the caller has at least one AI resource (a companion, or the people MCP); otherwise no `ai` key anywhere
   - `PUT /api/me/apps/{instance}/values/{key}` with `{"value": <json>}`: writes the caller's own person-entered value (§13.13). Returns 200 with the caller's entry. Refusals: 404 (instance not enabled, key not `person_entered`, or caller not in population — same answer for all three, no leak); 400 (constraint); 409 (uniqueness); 503 (LLDAP unavailable)
   - `DELETE /api/me/apps/{instance}/values/{key}`: clears the caller's value. Returns 204, also when nothing was set. Clearing a value stored under the caller's current LLDAP account always works (also outside the population or on a disabled instance); anything else gets the 404 above
   - `POST /api/me/apps/{instance}/credentials/{key}` (**NEW**, file sharing) with `{"code": "…", "code_verifier": "…", "nonce": "…"}` (the fresh-auth proof, below; body ≤ 8 KiB): creates the caller's file-share password for that `person_secret` option, or regenerates it (a new password replaces the old one at once). Returns 200 `{"password": "<29 characters>", "credential": <the caller's credential entry, status active>}` with `Cache-Control: no-store` and `Pragma: no-cache`; this answer is the only place the password ever appears (§13.16). Refusals, in this order: 404 (instance not enabled, key not a `person_secret` option, or caller not in the population — one answer for all three); 409 with the template's reason (the username rule, §13.16; checked **before** the proof, so a refused name doesn't consume it); 503 (LLDAP unavailable, the caller's LLDAP uuid unknown, or the secrets volume not usable, §6; also before the proof); 403 with the fixed text "a fresh passkey sign-in is required" (any fresh-auth failure; the reason goes only to the audit); 503 with a generic text when the Hub itself can't verify a proof: the fresh-auth client is not in place (§8) or Keycloak's token endpoint can't be reached. Refused creates count toward the refused-save limit below (429); the two 503 answers of a fresh-auth outage, like every 5xx, never do
   - `DELETE /api/me/apps/{instance}/credentials/{key}` (**NEW**, file sharing): revokes the caller's own credential (`reason: self`, audited `credential.revoke`), applied exactly like every other revocation (§13.16 "How it is applied", steps 1–3). No fresh auth: it only removes access. Returns 204, also when nothing was active; it works outside the population and on a disabled instance too
-  - **Fresh auth** (people.html): the page opens `authorize_url` in a popup with `response_type=code`, `client_id`, `redirect_uri`, `scope=openid`, a random `state` and `nonce`, `code_challenge` (S256) of a random verifier, `prompt=login`, `max_age=0` and `acr_values=hwk`. The popup lands on `https://people.<domain>/`; the page there acts only when `window.opener` is same-origin, drops `code` / `state` from the URL at once (`history.replaceState`), posts them to the opener with `targetOrigin = location.origin` and closes; without an opener it ignores the parameters. Every page of the people listener is served with `Referrer-Policy: no-referrer`, so the `code` / `state` in the callback URL never reach a `Referer` header. The opener accepts only a message with `event.origin === location.origin` and its stored `state`, deletes its `sessionStorage` entries and posts `{code, code_verifier, nonce}`. The Hub exchanges the code itself (server-side, PKCE) and verifies the ID token (§8)
-  - Common rules: no `X-Forwarded-User` is 401; a body over 4 KiB (credentials: 8 KiB) is 413; unknown fields or trailing data are 400 with a fixed usage text; 4xx answers carry the Hub's text (never another person's name or value), 5xx a generic message. After **10 refused saves in a minute** (any 4xx, 404 included; 5xx never count) every save of that caller is `429` until the minute ends (in memory, per caller; refusals past the limit are not audited one by one). Admins on the Hub listener are never limited
+  - `GET /api/me/ai` (**NEW**, AI support): the caller's AI connections and activity. `200` `{"connections": [{"client", "label", "consented_at", "last_used_at", "expires_at"}], "activity": [<access-log line>]}`: one connection per AI client (§8) the caller has a consent or an offline session for (`label` the Hub's name for the client, `expires_at` the offline session's end, each time RFC 3339 or `null`), and the caller's own last 50 access-log lines (§15.8), newest first. Only the caller's own data; `503` with a generic text when Keycloak or the access log can't be read
+  - `DELETE /api/me/ai/connections/{client}` (**NEW**, AI support): revokes the caller's consent and offline sessions for that AI client (§8; Keycloak admin API), audited `ai.connection.revoke`. `{client}` must be one of the Hub's AI client ids (the three of §8 and the `ai_client` clients); anything else is `404`. `204`, also when nothing was there
+  - `GET /confirm/{id}` (**NEW**, AI support): the confirmation page of §15.6, for the person the confirmation was created for only (anyone else, an unknown id, and a confirmation created for the other listener: `404`). A Hub-rendered HTML page (every value escaped, `Cache-Control: no-store`) with the action, its consequences and arguments, the typed check and the listener's fresh-auth `{authorize_url, client_id, redirect_uri}`; a decided or expired confirmation shows its state and offers nothing
+  - `POST /api/me/confirmations/{id}` (**NEW**, AI support) with `{"decision": "approve"|"decline", "typed": "…", "code": "…", "code_verifier": "…", "nonce": "…"}` (body ≤ 8 KiB; `typed` and the proof only for `approve`): records the caller's decision. `200` `{"state": "approved"|"declined"}`. Refusals, in this order: `404` (as the page); `409` `{"state": "<state>"}` when it isn't pending (approved, declined, consumed or expired); `409` "type <check> to confirm" when the typed check doesn't match (nothing recorded); `403` with the fixed text "a fresh passkey sign-in is required" when the proof fails, or when its `auth_time` is earlier than 60 s before the confirmation was created (a sign-in from before the request never approves it); `503` when the Hub can't verify proofs (as for credentials). A decline needs neither the typed check nor a proof. Refused approvals count toward the refused-save limit below (`429`)
+  - **Fresh auth** (people.html): the page opens `authorize_url` in a popup with `response_type=code`, `client_id`, `redirect_uri`, `scope=openid`, a random `state` and `nonce`, `code_challenge` (S256) of a random verifier, `prompt=login`, `max_age=0` and `acr_values=hwk`. The popup lands on `https://people.<domain>/`; the page there acts only when `window.opener` is same-origin, drops `code` / `state` from the URL at once (`history.replaceState`), posts them to the opener with `targetOrigin = location.origin` and closes; without an opener it ignores the parameters. Every page of the people listener is served with `Referrer-Policy: no-referrer`, so the `code` / `state` in the callback URL never reach a `Referer` header. The opener accepts only a message with `event.origin === location.origin` and its stored `state`, deletes its `sessionStorage` entries and posts `{code, code_verifier, nonce}`. The Hub exchanges the code itself (server-side, PKCE) and verifies the ID token (§8). **NEW (AI support):** the confirmation page uses exactly this popup flow on both listeners: on the Hub listener the popup lands on `https://hub.<domain>/`, where `index.html` runs the same callback handler, and every Hub-listener answer is served with `Referrer-Policy: no-referrer` too. Each listener has its own verifier, whose redirect URI is its own host (§8)
+  - Common rules: no `X-Forwarded-User` is 401; a body over 4 KiB (credentials and confirmations: 8 KiB) is 413; unknown fields or trailing data are 400 with a fixed usage text; 4xx answers carry the Hub's text (never another person's name or value), 5xx a generic message. After **10 refused saves in a minute** (any 4xx, 404 included; 5xx never count) every save of that caller is `429` until the minute ends (in memory, per caller; refusals past the limit are not audited one by one). Admins on the Hub listener are never limited, except for refused confirmation approvals (§15.6), which count there too
   
-  These are the **only** app-related routes on the people listener. They are read-only or self-service only (the caller's own data) and CSRF-guarded.
+  These are the **only** app-related routes on the people listener. They are read-only or self-service only (the caller's own data) and CSRF-guarded. The people listener's MCP endpoint (`people.<domain>/mcp`) is not one of its routes: core routes it to `mcp-gate` (§5), which forwards to the Hub's MCP listener (§15.7).
 
 ## 6. Docker access
 
@@ -357,6 +523,8 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
 - **Proxy flags.** `CONTAINERS` and `POST` (plus the existing `ALLOW_LOGS`, `ALLOW_ARCHIVE` and `INFO`) already cover create, start, wait, kill, logs, archive and info. **No flag of `socket-proxy-hub` changes.** The compose `up` path already starts containers through the same proxy.
 
 **Exec with stdin (§13.8).** The Hub runs `POST /containers/{id}/exec` with `AttachStdin: true` and hijacks the connection to send JSON on stdin to the process. Used for hooks that receive the full desired state.
+
+**Split output for AI hooks (NEW, AI support; §15.5).** `ai` hooks run through the same exec endpoint with `Tty: false`, and the Hub demultiplexes stdout and stderr into two separate capped buffers (stdout ≤ 64 KiB, more is a failure; stderr the first 16 KiB), never one merged stream: a credential printed on stdout can't reach the stderr text that a failure records. No proxy flag changes.
 
 **Container kill (§13.8).** The Hub sends signals with `POST /containers/{id}/kill?signal=<HUP|USR1|USR2>` for reload actions. No change to `socket-proxy-hub` (already `CONTAINERS` + `POST`).
 
@@ -418,10 +586,10 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
         - A realm admin can still open the client (remove the browser flow override; Keycloak then uses the realm's browser flow) until the Hub's next sync rebinds it. Keycloak refuses to delete a flow a client override binds.
 - **Backchannel logout (NEW).** A `keycloak_clients[]` entry with `backchannel_logout_url` (`https://{{HOST_<ROUTER>}}/<path>`) gets it as the client's backchannel logout URL, with "backchannel logout session required" on; it moves with hostname changes (§11.3). Keycloak then POSTs a logout token there whenever a session ends, so the app ends its own session. The path must be reachable from Keycloak without forward-auth. Supported upstream by Nextcloud `user_oidc` (`/index.php/apps/user_oidc/backchannel-logout/<provider>`) and Synapse (`/_synapse/client/oidc/backchannel_logout`, `backchannel_logout_enabled: true`).
 - **Setting claims (§13).** For each (instance, option) with a claim delivery, the Hub creates a Hub-owned LLDAP user attribute named `ps-<hash>` (LLDAP attribute names allow only letters, digits and `-`; a short hash of instance and key), STRING type, not visible, not editable. It writes each person's rendered value into it and adds an LDAP attribute mapper (on the LLDAP federation) plus a protocol mapper on the instance's client only (per-client, not shared), both named `portcullis-setting-<attr>` (e.g. `portcullis-setting-ps-0123456789ab`). The Hub owns every mapper with that prefix: on the client it keeps exactly the claims it delivers (other `portcullis-setting-*` mappers of that client are deleted, no other mapper is touched), the LDAP mapper goes with its attribute, and `./portcullis keycloak configure` must leave them alone (like the `portcullis-attr-<field>` mappers, §9.6). The attribute and mappers are removed when the instance is deleted.
-- **Fresh-auth client (NEW, file sharing; shared with the certificates project).** The Hub owns one Keycloak client, **`portcullis-fresh-auth`**, for proofs of a fresh hardware sign-in (§5.1, §13.16). It creates and re-asserts it in the directory sync loop (retried), tagged like every Hub-owned client (`portcullis.hub.template` = `portcullis-fresh-auth`; an untagged client of that id is a conflict and is left alone, so fresh auth then fails closed). Settings, each checked by the Hub's tests:
+- **Fresh-auth client (NEW, file sharing; shared with the certificates project).** The Hub owns one Keycloak client, **`portcullis-fresh-auth`**, for proofs of a fresh hardware sign-in (§5.1, §13.16; **NEW, AI support:** confirmations, §15.6). It creates and re-asserts it in the directory sync loop (retried), tagged like every Hub-owned client (`portcullis.hub.template` = `portcullis-fresh-auth`; an untagged client of that id is a conflict and is left alone, so fresh auth then fails closed). Settings, each checked by the Hub's tests:
     - public client, standard flow only; `pkce.code.challenge.method=S256`; no direct access grants, implicit flow, service accounts or device grant; `use.refresh.tokens=false`;
     - default client scopes exactly `basic` and `acr` (with `openid`); no `groups`, no attributes scope, never `portcullis-invite-client`;
-    - redirect URIs exactly `[https://people.<domain>/]`, web origins exactly `[https://people.<domain>]`.
+    - redirect URIs exactly `[https://people.<domain>/, https://hub.<domain>/]`, web origins exactly `[https://people.<domain>, https://hub.<domain>]` (**NEW, AI support:** the Hub listener's confirmation page signs in through the same client). The Hub keeps one verifier per listener, each with its own redirect URI (`https://people.<domain>/` / `https://hub.<domain>/`), behind one readiness gate;
     - an untagged or foreign-tagged client of that id, or any failed ensure, makes every proof fail closed until an ensure succeeds: the create answers `503` with a generic text ("fresh-auth client not in place" goes only to the log and the audit), not counted as the caller's refusal (§5.1);
     - exactly one protocol mapper on the client itself: the username as `preferred_username`, in the ID token only (with only `basic` + `acr` Keycloak 26 puts no username in the token); the Hub removes any other mapper on it. Templates may not use the client id (it is a protected client).
 
@@ -436,6 +604,33 @@ The Hub reads `DOCKER_HOST` for both the `docker compose` CLI (only `up`/`down`)
     - `preferred_username`, lowercased, is the caller.
 
     The code, verifier, nonce and token never appear in logs, the audit (refusals record only the reason), errors or answers.
+- **AI clients (NEW, AI support).** While the master switch "AI support" is on (Hub Settings → AI, §15.11), the Hub owns one Keycloak client per AI client kind the admin offers, created and re-asserted in the directory sync loop like the fresh-auth client, tagged `portcullis.hub.template` = `portcullis-ai` (an untagged or foreign-tagged client of that id is a conflict, left alone, and not listed in `mcp-gate.json`'s `clients`):
+
+    | Client | Type | Redirect URIs |
+    |--------|------|---------------|
+    | `portcullis-ai-claude` | public | exactly `https://claude.ai/api/mcp/auth_callback` (claude.ai, Claude desktop and mobile) |
+    | `portcullis-ai-claude-code` | public | `http://localhost:33418/callback`, `http://127.0.0.1:33418/callback` (Claude Code with `--callback-port 33418`) |
+    | `portcullis-ai-generic` | public | the same two loopback URIs (other MCP clients that accept a client id) |
+
+    Settings on each, checked by the Hub's tests: standard flow only; `pkce.code.challenge.method=S256` required; direct access grants, implicit flow, service accounts, device grant (`oauth2.device.authorization.grant.enabled=false`), CIBA (`oidc.ciba.grant.enabled=false`) and standard token exchange (`standard.token.exchange.enabled=false`) off; `consentRequired: true`; `default.acr.values=hwk` (an AI sign-in is a passkey or hardware-certificate touch); `fullScopeAllowed=false`; `client.offline.session.idle.timeout` and `client.offline.session.max.lifespan` from Settings → AI "Connection length" (idle default 7 days, bounds 1–30; max default 30 days, bounds 1–90; in seconds); no flow overrides.
+    - **Exact scopes, no personal data beyond the username.** Default client scopes exactly `basic` and `acr` (`acr` carries the `amr` mapper); optional scopes exactly `offline_access` plus the Hub's `mcp:*` scopes below. The realm-default `profile`, `email`, `roles`, `groups` and `web-origins` scopes are removed from the client, and `portcullis-attributes` is never attached: the Hub's attribute-scope sync skips clients owned by `portcullis-ai` and every `ai_client` client. One protocol mapper on the client itself puts the username into `preferred_username`, in the access token and the ID token (with only `basic` + `acr`, Keycloak 26 puts no username in the token; same shape as the fresh-auth client's mapper, plus the access token). An MCP token therefore carries `sub`, `preferred_username`, `acr`, `amr`, `azp`, `aud`, `scope` and the standard times, nothing else Portcullis-specific.
+    - **Lifecycle.** Unticking a client in Settings → AI deletes it (only when tagged `portcullis-ai`). Switching the master switch off keeps the clients and scopes (the gate refuses everything: `enabled: false`, §15.4). The prefix `portcullis-ai-` is protected: templates can't name such a client (§3.2) and client registration never adopts one.
+    - **Connection length and rotation.** AI clients may request `offline_access` (Claude does), so a connection outlives the browser session until the offline session's idle or max time, then the person touches their passkey again. Access tokens live 5 minutes (realm default). Core's realm sets the offline upper bounds (`offlineSessionIdleTimeout` 30 days, `offlineSessionMaxLifespanEnabled`, `offlineSessionMaxLifespan` 90 days); the Hub's per-client values are shorter. Refresh tokens rotate ("Revoke refresh token" on, max reuse 0): **on the AI clients only** when Keycloak 26.8 offers a client-level override (the Hub then sets it per AI client); otherwise realm-wide, where it also applies to every app client, `portcullis-forward-auth` and the fresh-auth client, and core's e2e-login checks two concurrent refreshes for forward-auth and for one native-OIDC app. Task 10's `TestLiveAIObjects` decides which; this bullet records the result.
+    - **Verified on Keycloak 26.8.1** by `TestLiveAIObjects` (results recorded here when it runs): whether loopback redirect URIs match port-agnostically (the fixed port 33418 stays either way: it is on the People card); that requesting a scope the client lacks fails; that a passkey sign-in with default ACR `hwk` gives `acr`/`amr` `hwk`; the consent screen text; per-client offline limits; refresh-token rotation with offline tokens; the real token's claims.
+- **`mcp:*` scopes (NEW, AI support).** One **optional** client scope per MCP resource (§15.1), owned by the Hub (`./portcullis keycloak configure` never deletes or rewrites a scope named `mcp:*` or a client tagged `portcullis-ai`):
+
+    | Scope | Audience (the resource URL) | Consent text |
+    |-------|-----------------------------|--------------|
+    | `mcp:<instance-id>.<companion>` | `https://<host of the router><public_path>` | `Use <label> (<host>) as you` |
+    | `mcp:all` | `https://mcp.<main domain>/mcp` | `Use all your Portcullis apps as you` |
+    | `mcp:portcullis.admin` | `https://hub.<main domain>/mcp` | `Manage Portcullis as you — administrator` |
+    | `mcp:portcullis.people` | `https://people.<main domain>/mcp` | `Use your Portcullis account as you` |
+
+    Each has `include.in.token.scope=true`, `consent.screen.text` as above, `display.on.consent.screen=true`, and exactly one protocol mapper, an Audience mapper named `portcullis-mcp-audience` with `included.custom.audience` = the resource URL, in the access token only. No group or attribute mappers. This is Keycloak's documented way to put a resource in `aud`; the experimental resource-indicators feature stays off, and so do dynamic client registration and client ID metadata documents (CIMD).
+    - **Attached only** as optional scopes of the AI clients: every companion scope, `mcp:all` and `mcp:portcullis.people` on the three clients above; `mcp:portcullis.admin` on them only while "Portcullis MCP for admins" is on; on an `ai_client` client only `mcp:all`. **The Hub attaches an `mcp:*` scope nowhere else**: never to an app client, `portcullis-forward-auth`, `portcullis-fresh-auth` or the realm's default scopes.
+    - **Follows the resource.** A companion's scope exists while its AI support is on (master switch on). A hostname change (§11.3) rewrites its audience and consent text in the same Keycloak step as the redirect URIs (undone with them); old tokens stop matching. Switching the companion off, deleting the instance (§11.4 step 4) or dropping the companion from the template (§15.11) deletes the scope, detached from every client first, and with it every consent that named it.
+- **`ai_client` entries (NEW, AI support).** A `keycloak_clients[]` entry with `ai_client: true` (only in a template with `ai.chat`, §3.2) is the AI page's MCP client: the Hub registers it through the AI client path, not as an app client — confidential with the entry's `secret_env`, standard flow only, the entry's redirect URIs, `consentRequired: true`, `default.acr.values=hwk`, the AI clients' exact scopes and username mapper (above) with the one optional MCP scope `mcp:all`, the offline settings of Settings → AI — tagged with the **instance id** like the instance's other clients, and with the instance's **access role and access flow** unchanged (only the access group's members sign in through it). It is listed in `mcp-gate.json`'s `clients` while AI support is on.
+- **Disconnecting.** `DELETE /api/me/ai/connections/{client}` (§5.1) and the Hub's leaver cleanup (§15.5) delete the person's consent for that client (`/users/{id}/consents/{client}`) and its offline sessions. **Residual:** a client's online (non-offline) refresh tokens live until the person's SSO session ends, and issued access tokens for up to 5 minutes; the gate's per-request population check (§15.2) still refuses a person who left, and the People card and the admin guide say so.
 - **The `mtls` amr invariant (NEW).** Core's flows emit amr `mtls` **only** for a login with a hardware (`pki_int`) certificate; a login with a file certificate emits `file` in `amr` and `acr`. Fresh auth relies on it: it accepts `mtls` as a hardware proof. Today every certificate is `pki_int`; the certificates project adds file certificates together with a test of this invariant.
 
 ## 9. Hub ⇄ LLDAP (users & groups)
@@ -529,6 +724,10 @@ New users are onboarded **without a password**. The admin creates the user in th
     ```
 
     `result` is `ok`, `refused` or `error`. The log never contains passwords, tokens or invite links. `GET /api/directory/audit` and the UI show the last 100 entries.
+
+    **NEW (AI support).** Two more keys, present only on entries made through the Portcullis MCP (§15.10): `"via": "ai"` and `"client": "<azp>"` (the AI client, e.g. `portcullis-ai-claude-code`). The Hub sets them **only** from the identity the gate sent on the MCP listener (§15.7); the Hub and people listeners never read them from a request, so a browser can't forge "via AI". Everything else is unchanged: `actor` is the person, `action` exactly the HTTP handler's action name (e.g. `instance.delete`, `group.rule`, `group.add_member`), `result` `ok` / `refused` / `error`, and refusals are audited too. `GET /api/directory/audit?via=ai` returns only such entries.
+
+    New actions, with their HTTP and MCP twins: `ai.enable`, `ai.disable`, `ai.mode` (instance, companion, before → after), `ai.providers` (an AI page instance's provider selection), `ai.credential.mint`, `ai.credential.revoke` (instance, companion, person, app-side id or count; never a credential), `ai.connection.revoke` (person, client), `ai.confirm` (§15.6: `approved`, `declined`, `expired`, `refused`; the argument digest, never arguments), `settings.ai` (Hub Settings → AI; the changed keys), `ai.provider.add`, `ai.provider.update`, `ai.provider.secret` (which field was replaced, never the value), `ai.provider.delete`. Mutations audited only from now on, for parity with their tools: `instance.enable`, `instance.disable`, `instance.restart`, `instance.exec` (detail: the service, never the command's output), `app.env`, `drift.resolve`, `source.add`, `source.remove`, `source.sync`. `ai.credential.*` (app credentials for AI) and file sharing's `credential.*` are distinct families. Actions on app companions are not Hub actions: they are in the gate's access log (§15.8).
 
 ### 9.6 Custom fields and delegated permissions (NEW)
 
@@ -750,10 +949,10 @@ A template can run as several fully separate **instances**. Each instance has it
 - **Hostnames a router can't serve** are a `400` at create, hostname change and restore into a new id (not only at enable): a router whose hosts mix main-domain and extra-domain hostnames, and a router on extra-domain hosts that reaches `portcullis-auth` through the template's own chain middlewares (nested chains included, with or without `@docker`). The extra-domain sign-in (§5) swaps only a `portcullis-auth@docker` (or bare `portcullis-auth`) listed on the router itself, so templates list it on the router, never inside a chain.
 - **A change applies immediately.** In order:
     1. **Validate** (the refusals above): nothing has changed yet.
-    2. **Keycloak**: the instance's clients' redirect URIs and web origins, and the `portcullis-forward-auth` callback URIs (§5), are updated for the new hostnames.
+    2. **Keycloak**: the instance's clients' redirect URIs and web origins, the `portcullis-forward-auth` callback URIs (§5) and (**NEW**, AI support) the audience and consent text of its companions' `mcp:*` scopes (§8) are updated for the new hostnames.
     3. **Env and override**: the instance's `.env` and compose override are regenerated with the new hostnames.
     4. **Save state — the commit point.** The Hub records the new hostnames in its state. A failure before this step leaves the recorded hostnames, the policy file and the routing as they were; retrying the change reconciles Keycloak, env and override.
-    5. **Policy**: the policy file and `portal-apps.json` are rewritten (the old hostnames vanish from them at once).
+    5. **Policy**: the policy file, `portal-apps.json` and `mcp-gate.json` are rewritten (the old hostnames vanish from them at once; a companion's resource URL moves to the new host).
     6. **Restart** the instance (`compose up`).
 
     Public share links keep their tokens and move to the new host. **There are no redirects:** the old hostnames stop routing. A step that fails after the commit point is reported like any lifecycle operation (`OpError`, op `hosts`), and the instance is reconciled by retrying the change: the same hostnames again re-apply every step while the last **hostname-change** record (`<data>/ops/<id>.hosts.json`, kept apart from the instance's other op records) is a failure — another operation in between doesn't hide it.
@@ -765,8 +964,8 @@ Deleting an instance is permanent and needs the instance id typed: `{"confirm": 
 
 1. **Takes a backup** (§11.5, reason `delete`). If it fails, the delete stops and nothing is removed.
 2. Records `deleting` (and the backup path) in its state and marks the instance disabled. From here on the instance is listed as **partially deleted** until the delete completes, and the only action offered is Delete (retry).
-3. Stops and removes the project (`down --remove-orphans`), marks it disabled (the policy file drops it), right then removes its per-person secrets (`<secrets>/<id>/` on `hub_secrets` and its credential metadata, §13.16; each active credential audited `credential.revoke_leave` reason `deleted`, actor the deleting admin), so a delete that fails later leaves no credential behind, then removes its volumes: the volumes compose labelled with the project (`com.docker.compose.project=portcullis-<id>`); external volumes aren't the instance's and are never removed.
-4. Removes its access roles and access flows (§8 "Access role"), deletes its Keycloak clients (only clients tagged with this instance; any other is kept with a warning) and the callback URIs of its hosts on `portcullis-forward-auth`.
+3. Stops and removes the project (`down --remove-orphans`), marks it disabled (the policy file drops it), right then removes its per-person secrets (`<secrets>/<id>/` on `hub_secrets` and its credential metadata, §13.16; each active credential audited `credential.revoke_leave` reason `deleted`, actor the deleting admin), so a delete that fails later leaves no credential behind, and (**NEW**, AI support) right then removes its AI state: every AI credential entry of the instance in `mcp-credentials.json` (each audited `ai.credential.revoke` reason `deleted`, actor the deleting admin; no revoke hook runs — the project is down and the app's tokens go with its volumes), its `app_oauth` record (`oauth-seen`) and its `AIInstances` entry, rewriting the gate file so its resources vanish; then removes its volumes: the volumes compose labelled with the project (`com.docker.compose.project=portcullis-<id>`); external volumes aren't the instance's and are never removed.
+4. Removes its access roles and access flows (§8 "Access role"), deletes its Keycloak clients (only clients tagged with this instance; any other is kept with a warning), its `mcp:<instance-id>.*` scopes (§8; **NEW**, AI support) and the callback URIs of its hosts on `portcullis-forward-auth`.
 5. Deletes its access and admin groups through the Users & Groups guardrails (`DeleteGroup` as the acting admin, which also purges the group from `directory.yaml` and signs former members out) — only groups named exactly `users_<id>` / `admin_<id>`. Kept, with a warning: a group with any other name (a manifest's own group of a default instance), a built-in, administrator, permission or rule group, and a group another instance or another template's default instance also uses (templates may share a group). Without Users & Groups (no LLDAP credentials) the groups stay, with a warning. Without Keycloak configured step 4 is a warning. An instance whose template is missing and whose snapshot lists no clients gets its derived first client id (`<id>`) deleted, with a warning.
 6. Removes its env file, overrides, ops record, generated secrets, share tokens and state entry, and rewrites the policy file and `portal-apps.json`.
 
@@ -791,6 +990,7 @@ The **default instance** can be deleted the same way. That removes the manifest'
     config/env                 # <data>/env/<instance-id>.env (generated secrets included)
     config/override.yml        # the Hub override as last applied
     config/user.yml            # the custom override, only if there is one
+    config/ai.json             # NEW (AI support): the instance's AI state (below), only for templates with ai.mcp or ai.chat
     volumes/<volume key>.tar   # one inner tar per volume as the daemon's archive endpoint writes it: entries
                                # "data/" (the volume root) and "data/…"; numeric uid/gid, modes and mtimes preserved
     ```
@@ -816,6 +1016,7 @@ The **default instance** can be deleted the same way. That removes the manifest'
     ```
 
     `reason` is `manual`, `delete` or `restore`; `volumes` maps each volume key to the volume name it was copied from (the volumes compose labelled with the instance's project; an instance that never ran has none); `template_commit` is the template checkout's git commit and is left out when unknown. Members are written with mode `0600`. `config/instance.yaml` holds `id`, `template`, `default`, `hosts`, `enabled`, `settings` (the typed settings as in §13, person-entered values included), `auth_policy`, `public_access`, `public_mode`, `public_tokens`, `sign_in` and `published`. `config/settings-secrets.json` (also in `config/`) holds the secret store. Restore drops per-group rows whose group id no longer matches (warning).
+- **AI state (NEW, AI support).** `config/ai.json` is the instance's `AIInstances` entry: `{"companions": {"<name>": {"enabled": <bool>, "mode": "read_only|read_write"}}, "providers": ["<provider name>", …]}`. It never holds a credential, a caller secret, an `oauth-seen` record or a provider secret: AI credentials live only in `mcp-credentials.json`, encrypted to the gate, and are minted again lazily; provider variables in `config/env` are blanked by name like secret options (§15.12).
 - **Shared folders are not backed up.** An instance backup copies the instance's volumes only. Shared folders (§14) and every other host path a `path` option mounts are host data: their contents are never in an archive. A `folder:<id>[/<subpath>]` value is a setting and is archived as text in `config/instance.yaml`, like a host path. The folder definitions and permission snapshots (§14.4) live in the Hub's state and `<data>/folder-snapshots/`, not in instance archives.
 - **Per-person credentials (NEW, file sharing).** No instance archive contains a `person_secret` hash, its credential metadata (`config/instance.yaml` has no `credentials` key) or anything from `hub_secrets`: that volume is external to the instance's project, so it is never archived, replaced or removed by a backup, restore or delete of the instance. No stored digest holds hash bytes (§13.16). The Hub-wide person ids (§13.16) live in `state.yaml`, not in instance archives.
 - **Offsite.** Core's `./portcullis backup` archives the `hub_data` volume, so `<data>/backups/` is included (and shipped with `--offsite`), and so are `<data>/folder-snapshots/`, the folder definitions and the person-id pools in `state.yaml`. Credential metadata stays in core backups: it lives in `state.yaml` and holds no secret, and on a core restore the epoch check voids it (§11.6). Hashes and the secrets volume are never in a backup: core's backup never copies `hub_secrets` (it lists the volumes it copies by name; core's tests assert that `hub_secrets` isn't one of them).
@@ -837,6 +1038,10 @@ A backup restores into the **same** instance (replacing its data) or into a **ne
     - **Same instance:** after the volumes are replaced and **before** the instance is enabled again, the Hub removes every hash file of the instance and marks each active credential `voided` (`reason: restore`), so the restored start never sees an old account. A restore rolled back before the void step voids nothing; credentials voided before a later rollback stay voided.
     - **New id:** the new instance has no credentials (archives carry none) and nothing is audited.
     - **Audit:** one `credential.void_restore` per instance with the count only (`count=N`), only when N > 0. My apps then shows "Your password was reset by a restore on <date>; create a new one" (status `voided`).
+- **AI support (NEW).** Any restore may bring back an app database holding `portcullis-ai-*` credentials the gate no longer knows, so:
+    - **Same instance:** the instance's AI credential entries are deleted before the volumes are replaced; the archive's AI state is restored; before any of its companions is in `mcp-gate.json` again, the Hub runs each companion's `revoke` hook with `revoke_all` (§15.5) in the restored app. A companion whose `revoke_all` fails stays out of the gate file (switched off, the error on its AI tab and in the op record) until a switch-on succeeds. `app_oauth` companions get `revoke_all` too.
+    - **New id:** every companion starts **off** (the archive's modes and provider selection are kept). Switching one on runs `revoke_all` first (§15.5), which covers the tokens copied from the archive's app database.
+    - Provider variables are rewritten from the provider store for the restored instance's own selection only (§15.12).
 - **Core restore (`./portcullis restore`) empties `hub_secrets`** (removes the volume and creates it again with core's project labels, root `10001:10001 0700`) before the Hub starts. The Hub detects it, and any other mismatch between `state.yaml` and the volume, with the **secrets epoch**:
     - the Hub writes a random epoch (16 random bytes, hex) both into `state.yaml` (`secrets_epoch`) and into `<secrets>/.epoch`, and rotates it on **every** credential mutation (create, regenerate, revoke, void): the volume file first, then `state.yaml`. A failed `state.yaml` save keeps the in-memory epoch equal to the volume's and answers `500`;
     - at boot and before every `credentials:<key>` delivery unit (§13.12) it compares them. `.epoch` missing or different (a core restore, a restored `state.yaml` next to a newer volume, a new volume, a crash between the two writes) → every credential of every instance is voided (`reason: restore`, audited `credential.void_restore` per instance with its count), the volume is emptied, and a new epoch is written to both. Then hash files without active metadata are deleted and active metadata without a hash file is voided;
@@ -846,7 +1051,7 @@ A backup restores into the **same** instance (replacing its data) or into a **ne
 
 ### 11.7 Hub API and audit
 
-Instance and domain operations live on the Hub listener only (never on the people listener, §5.1), are **admin-only** (`lldap_admin`; delegates get `403`) and pass the proxy-secret and CSRF guards. Each one is appended to `audit.jsonl` (§9.5) as one of `instance.create`, `instance.update`, `instance.delete`, `instance.backup`, `instance.restore`, `domain.enroll`, `domain.token`, `domain.delete`, with `result` `ok`, `refused` or `error`. DNS credentials never appear in audit entries, logs, errors or responses.
+Instance and domain operations live on the Hub listener only (never on the people listener, §5.1), are **admin-only** (`lldap_admin`; delegates get `403`) and pass the proxy-secret and CSRF guards. Each one is appended to `audit.jsonl` (§9.5) as one of `instance.create`, `instance.update`, `instance.delete`, `instance.backup`, `instance.restore`, `domain.enroll`, `domain.token`, `domain.delete` (**NEW**, AI support: also `instance.enable`, `instance.disable`, `instance.restart`, `instance.exec`, `app.env`, `drift.resolve`, and the AI actions of §9.5), with `result` `ok`, `refused` or `error`. AI routes: §15.11. DNS credentials never appear in audit entries, logs, errors or responses.
 
 | Route | Body | Does |
 |-------|------|------|
@@ -1445,7 +1650,7 @@ hooks:
     service: <service>
     command: [<argv>]
     user: <user>
-    when: [start, settings_change, membership_change, credential_change]
+    when: [start, settings_change, membership_change, credential_change]   # or exactly [ai]
     timeout: <duration>
 ```
 
@@ -1456,6 +1661,7 @@ hooks:
 - `command`: a non-empty argv list of non-empty strings without control characters
 - `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input, or after any run changed a data file with `on_membership_change: hook`; `credential_change` (**NEW**, file sharing) after a `person_secret` credential was created, regenerated, revoked or voided (§13.16), immediately (never debounced)
 - `timeout`: Go duration (e.g. `60s`). Default 30s, **at most 10m**
+- **`ai` (NEW, AI support).** A hook with `when: [ai]` is run **only** by the AI machinery (§15.5: `mint`, `revoke`, `revoke_all`, `on_change`), never by the settings delivery engine: not on any settings trigger, not on a retry from the panel (`POST …/settings/retry`), not by a forced or start run, and its input is never built. `ai` can't be combined with another trigger, and no option delivery `{hook: …}` and no `reload: {hook: …}` may name an `ai` hook (refused). Every hook an `ai:` block names must be an `ai` hook (§3.2). An `ai` hook gets the AI stdin of §15.5 instead of the HookInput, its stdout is never stored and its output is split (§6, §15.5). The validators' refusal texts name all five triggers (`start`, `settings_change`, `membership_change`, `credential_change`, `ai`)
 
 The Hub runs the command verbatim (never through a shell) with Docker exec in a running container of the hook's service in this instance (replica 1 preferred) and sends the full desired state as JSON on stdin, the **HookInput**: the data-file document (§13.7) of the options delivered to that hook, plus `trigger` and `secrets`. It is never a diff.
 
@@ -1496,7 +1702,7 @@ Hooks must be idempotent. Exit 0 means applied. Any other exit code (or the time
 - the Hub stores the last accepted report with the time it received it (`<data>/settings/<id>/hook-report.json`) for the File sharing tab and the doctor (§14.5). A report never drives revocation or authorization;
 - the line is removed from op records and logs (after redaction, §13.16).
 
-A hook runs when its `when` has the trigger and its input changed (a hash of the document and the secrets' `updated_at`, never their values) or its last run failed; every `start` hook runs on every start, and every hook on a retry. Runs per instance are serialised. A hook that timed out (Docker can't kill an exec) blocks the next run until it ends: meanwhile the hooks are skipped `previous run still running` and re-queued with backoff. With no running container the hook is skipped `not running` and the next start delivers it. The admin can retry from the panel.
+A hook runs when its `when` has the trigger and its input changed (a hash of the document and the secrets' `updated_at`, never their values) or its last run failed; every `start` hook runs on every start, and every hook on a retry (except `ai` hooks, which the engine never runs). Runs per instance are serialised. A hook that timed out (Docker can't kill an exec) blocks the next run until it ends: meanwhile the hooks are skipped `previous run still running` and re-queued with backoff. With no running container the hook is skipped `not running` and the next start delivers it. The admin can retry from the panel.
 
 **Reload:**
 
@@ -1585,8 +1791,8 @@ Settings are read and edited only on the Hub listener by admins. Settings need U
 
 - `GET /api/instances/{id}/settings` → the settings panel: options with their defaults and warnings, stored values (never secrets), per-person and group rows with their `group_id`, secrets as `{set, updated_at, generated}`, ports, `population {count, why}`, `deliveries`, `entries`, `directory_groups`
 - `PUT /api/instances/{id}/settings` → save: `values`, `person` (`{default, resolve, rows: [{group, value, group_id}]}`), `groups`, `secrets` (`{value}` / `{generate}` / `{clear}`), `ports`, `auth_policy`, `auth_policy_inherit`, `public_access`, `public_mode`, `public_tokens`, `sign_in`; only what changed. Unknown fields, trailing data and bodies over 256 KiB are refused with a fixed message (never echoing a value). Answers `{effect, changed, warnings, deliveries}`. A row sent with a `group_id` no stored row of that group has (purged or re-created since the panel loaded) is `409`; a row without one is new
-- `POST /api/instances/{id}/settings/preview` → the same body, nothing stored: per person option every member's value and reason (including the losing rows, only here), `changes`, `no_access`, `population` and the effect
-- `POST /api/instances/{id}/settings/retry` → run the delivery again (every hook included), audited `settings.retry`; answers the `DeliveryReport`
+- `POST /api/instances/{id}/settings/preview` → the same body, nothing stored: per person option every member's value and reason (including the losing rows, only here), `changes`, `no_access`, `population`, the effect and (**NEW**, AI support) `plan_hash` (a digest of the update and this preview; the Portcullis MCP's `save_settings` requires it and recomputes it before saving, `409` when it differs; the HTTP `PUT` doesn't take it) and `warnings` (e.g. a policy that reaches LoA 3 switches AI support off, §15.11)
+- `POST /api/instances/{id}/settings/retry` → run the delivery again (every hook included except `ai` hooks, §13.8), audited `settings.retry`; answers the `DeliveryReport`
 - `PUT /api/instances/{id}/settings/entries/{key}/{user}` `{"value": …}` and `DELETE …` → an admin sets (only with `admin_override`, else 403) or clears (always) a person-entered value (§13.13)
 
 **Delivery status** (`deliveries` in the panel, `DeliveryReport` from save and retry): one result per unit, `{unit, ok, skipped, message, error, at}`, plus `pending` (a run is queued) and the last `trigger`. Units: `env`, `env:values` (only while some option value can't go in the `.env`: those variables are written empty, the unit's error names them, never the value), `file:<name>`, `credentials:<key>` (**NEW**, file sharing: one per `person_secret` option; it reconciles the option's hash files with the credential metadata — orphan files deleted, active metadata without a file voided, after the secrets-epoch check of §11.6 — and records a digest of the active metadata only: ids and versions, never hash bytes), `claim:<attribute>`, `headers`, `hook:<name>`, `reload`, `restart`, and `delivery` (the run as a whole, when it couldn't run). `error` is redacted, then clipped. `skipped` is one of these stable strings:
@@ -2025,7 +2231,7 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
 ### 14.5 The doctor
 
 - **Severities:** `problem` (broken or unsafe now: a writer can't write, a LAN-only port on a public address), `warning` (likely to break or weaker than intended: drift, a LAN-only port on all interfaces, no ACL support), `info` (worth knowing: a per-person option with no group values, a template that doesn't say how it writes).
-- **Findings** say what is wrong, why it matters, which instances, folders and paths are affected, and what the fix would do: `{fp, kind, severity, title, why, fix_text, instances, folders, paths, fix_class, fix_kind, more_fix_kinds, steps, link, partial, muted}` (`more_fix_kinds`: further one-click fixes the finding offers, e.g. `undo_folder` on `folder_owner`). They are sorted by severity, then title, then `fp`; the report also has `counts` (unmuted Problems, Warnings, Infos), `muted` and the disk scans `{target, at, partial, entries}`. Only **enabled** instances are judged.
+- **Findings** say what is wrong, why it matters, which instances, folders and paths are affected, and what the fix would do: `{fp, kind, severity, title, why, fix_text, instances, folders, paths, fix_class, fix_kind, more_fix_kinds, steps, link, partial, muted}` (`more_fix_kinds`: further one-click fixes the finding offers, e.g. `undo_folder` on `folder_owner`; `link` is `{instance, option, tab}` — **NEW**, AI support: `tab` opens a tab of the instance, today only `"ai"`, instead of a settings option). They are sorted by severity, then title, then `fp`; the report also has `counts` (unmuted Problems, Warnings, Infos), `muted` and the disk scans `{target, at, partial, entries}`. Only **enabled** instances are judged.
 - **Fingerprint** `fp` = the first 16 hex digits of sha256(`<kind>\x00<subjects, sorted, joined by \x00>`): stable across runs and order.
 - **Mutes:** an admin mutes a finding with a reason (non-empty, ≤ 200 characters). The mute stores the finding's inputs digest; the finding comes back as soon as its inputs change. Muted findings stay in the answer with `muted`, outside `counts`. Mutes and unmutes are audited. Unknown `fp` → `404`.
 - **Config checks** (state, manifests, overrides, ports, settings values, the directory's group membership) are cheap: they run on every `GET /api/doctor` and after every relevant save or restore. **Disk checks** (fixer `scan`) run on demand (`POST /api/doctor/scan`), after every folder apply, and daily; results are cached with their time in `<data>/doctor/scans.json` (`0600`) and survive a Hub restart. One scan at a time (`409` busy). Scheduled scans skip a folder whose lock is held and keep its previous result.
@@ -2055,10 +2261,16 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
     - the hook report's `name_refused` (a share name, or a username the template's script won't serve) and `owner_unwritable` findings (kinds named after the codes), with the report's severity and text (the templates send `name_refused` as `info`); its `former_account` and `wrong_owner` findings feed the two tree kinds above.
 
     Per-person trees (`gid_from` options with a value) are scan targets with their top-level children read (owner, group, mode); they are never `shared_path` or `folder_owner` subjects.
+- **AI support (NEW)** registers more kinds through the same check interface (§15), each linking to the instance's AI tab (`link {instance, tab: "ai"}`):
+    - `ai_companion_unhealthy` (Problem): a companion with AI support on whose service isn't running or is unhealthy;
+    - `ai_policy_needs_mtls` (Problem): AI support on for an instance whose effective policy now reaches LoA 3 (a canary: a policy save switches AI off first, §15.11);
+    - `ai_credentials_revoking` (Warning): AI credential entries stuck in `revoking` (the revoke hook keeps failing, or the template dropped the companion or its hook), naming the instance and the count;
+    - `ai_companion_image_old` (Warning): a running companion whose image digest isn't the template's pinned one.
+
 
 ### 14.6 Fix classes
 
-- **One-click** (preview → plan hash → Apply, `202`; `409` "the setup changed since the preview" on a mismatch; audited `doctor.fix` besides what the steps audit):
+- **One-click** (preview → plan hash → Apply, `202`; `409` "the setup changed since the preview" on a mismatch; audited `doctor.fix` besides what the steps audit). **NEW (AI support):** the preview's `FixPlan` carries `touches_data`, true for the fixes that change data on disk or revoke access (the folder assignment and undo, `person_tree_owner`, `revoke_leaver`); the Portcullis MCP's `doctor_apply_fix` is class D (a confirmation, §15.6) exactly when it is set:
     - `manage_as_folder` (params `name`, `id`; default the path's base name, slugged): the folder definition lines plus the assignment plan for the finding's uses. The apply predicts the gid, holds the new id's folder lock across creating the definition and validating the assignment, and on a refusal or hash mismatch deletes the just-created definition (its gid stays used) and answers `409`.
     - `reapply_folder`: the assignment of the folder's current uses (§14.3).
     - `rebind_port` (param `address`): bind a LAN-only port to an address the admin types — a valid IP, not `0.0.0.0` / `::`, inside the local networks, not a main-domain address (`400` otherwise). Preview: "SAMBA_SMB bind 0.0.0.0 → 192.168.1.10, Samba restarts". Apply under the instance's lock (op `rebind`, the instance's op record): checked like a port save, `<KEY>_BIND` written to state, override and env, restarted at once if enabled; if the restart fails the old bind is put back and the instance started again (`rolled_back`, with the reason). Audited `settings.change` (`ports`) and `doctor.fix`.
@@ -2067,7 +2279,7 @@ Everything here is **admin-only, on the Hub listener, audited** (§14.8), and ne
     - **Undo the last fix** (§14.4), fix kind `undo_folder`, offered by `folder_owner` in `more_fix_kinds` while the folder's `last_apply` holds an apply snapshot. The param `fix` picks one of a finding's fixes (`fix_kind` by default; another value it doesn't offer is `400`).
     - Every fix that touches data goes through the assignment or undo operation (snapshot + verify), never another path. There is no "mount read-only" fix: `access: read` always mounts read-only.
 - **Explain-only** (the finding lists the steps; preview `409` "explain-only"): moving or merging data, nested or overlapping paths, custom-override mounts (remove the mount in Expert and use the template's folder setting with a shared folder, where it has one), hard links, nested mount points, setid files and files with file capabilities, `must_own` without ACLs when previous owners would lose access, two `must_own` uses, paths outside the bind roots or on unsupported filesystems, a userns-remapped or rootless Docker (§6), host networking (firewall steps).
-- **Link-out:** per-person option findings open the settings panel at the option; the doctor never edits settings values itself.
+- **Link-out:** per-person option findings open the settings panel at the option, AI findings the instance's AI tab; the doctor never edits settings values or AI switches itself.
 
 ### 14.7 Local networks and exposure
 
@@ -2101,3 +2313,532 @@ Hub listener only (the people listener gets no new route, §5.1), `adminOnly` (n
 Every field of these answers is snake_case. `FolderView`: `id`, `name`, `path`, `description`, `gid`, `adopted`, `uses` (`instance`, `key`, `label`, `subpath`, `access`, `declared`, `read_only`), `last_op`, `last_check`. The `202` answers and op records follow §11.7 (`op_id`, `op`, `poll`; records `running`, then `ok`, `error`, `status`, `output`, `hint`, `rolled_back`, `result`, `warnings`); doctor scans use the op key `_doctor`, a rebind the instance's own record. Status meanings: `400` bad input, `404` unknown folder, finding or snapshot, `409` refused, busy or "the setup changed since the preview", `503` no Users & Groups, the Hub's own image not found, or a userns-remapped / rootless Docker, `507` too little free space.
 
 **Audit actions** (`audit.jsonl`, §9.5; result `ok`, `refused` or `error`; written after the Hub's lock is released): `folder.create`, `folder.update`, `folder.delete`, `folder.assign`, `folder.apply`, `doctor.fix`, `doctor.mute`, `doctor.unmute`, `doctor.scan`, `settings.local_networks`, plus `settings.change` for every setting value an apply or rebind changes. The detail holds counts and ids, never file lists: `folder.create` target `<id>`, detail `gid=<N> path=<path>`; `folder.assign` `add=<n> remove=<n> entries=<n> snapshot=<ts>`; `folder.apply` the disk change (`undo snapshot=<ts>` for an undo); `doctor.fix` target `<fp>`, detail `fix=<kind> <ids>`; `doctor.mute` the reason; `doctor.scan` (an on-demand disk check, `POST /api/doctor/scan`) target `disks`, detail `targets=<n> scanned=<n> failed=<n> skipped=<n> containers=<n>`, a refusal (`401`, `503`, `409` busy) `refused`; `settings.local_networks` `<N> networks`.
+
+## 15. AI support (MCP) — NEW (AI support)
+
+People use their Portcullis apps from Claude or any other MCP client, and from an AI page, as themselves. A core service, **`mcp-gate`**, terminates every MCP request: it validates the Keycloak access token for exactly that resource, checks that the person is in the resource's population right now, applies tool policy, rate limits and confirmations, writes the access log, and forwards the request to the upstream with the person's identity in the form the template declared (§3.2). It never forwards the person's token. The Hub manages everything around it: Keycloak AI clients and `mcp:*` scopes (§8), the gate's files (§15.4), per-person app credentials, the companion containers (§3.2, §5), the confirmation pages, the Portcullis MCP itself (§15.10), the People card (§5.1) and Settings → AI (§15.11). No template id appears in Hub or gate code: everything app-specific is the template's `ai:` block and hooks.
+
+**Service, networks and secrets (core):**
+
+- **`mcp-gate`**: a Go service in core's repo (`mcp-gate/`, the official MCP Go SDK), image built like `domains` with pinned base images, uid/gid 10005 with `group_add: ["10001"]` only, read-only root filesystem, the hardening anchor. Networks: `portcullis` (Keycloak's JWKS at `http://keycloak:8080/realms/portcullis/protocol/openid-connect/certs`, the Hub at `http://hub:8890`) and `portcullis-proxy` at **`PORTCULLIS_MCP_GATE_IP`** (§2). No Docker access, no LLDAP or Keycloak admin credentials.
+- **Volumes:** `hub_data` mounted read-only at `/hub-data` (§4.2); its own **`mcp_gate_data`** at `/data` (the access log, §15.8), which core mounts read-only into the Hub at `/mcp-gate-data` (`HUB_MCP_GATE_DATA_DIR`). Core reserves the service name `mcp-gate`, the volume key `mcp_gate_data` and the subdomain `mcp` (§3, §4).
+- **Secrets**, generated by `./portcullis init` / `up` when missing (never env vars): `secrets/mcp-gate/age.key` (an age X25519 identity, the gate only: group 10005, 0640), `secrets/mcp-gate/age.pub` (its recipient, for the Hub: group 10001, 0640, mounted at `HUB_MCP_GATE_RECIPIENT_FILE`, default `/run/portcullis/mcp-gate/age.pub`) and `secrets/mcp-gate/hub-secret` (48 random characters, shared by the gate and the Hub: group 10001, 0640, mounted at `HUB_MCP_GATE_SECRET_FILE`, default `/run/portcullis/mcp-gate/hub-secret`). The Hub encrypts to the recipient and holds no identity: it can replace or delete a credential entry, never read one back.
+- **Without the gate.** A Hub without a readable recipient file writes `mcp-gate.json` with `enabled: false` and Settings → AI says "This core has no mcp-gate". Without the gate secret file the Hub doesn't start its MCP listener (§15.7) and AI support stays off; a secret file under 32 characters makes the Hub refuse to start.
+- **Gate configuration** (env): `MCP_GATE_LISTEN` (`:8080`), `MCP_GATE_HUB_DATA` (`/hub-data`), `MCP_GATE_DATA` (`/data`), `MCP_GATE_AGE_KEY_FILE`, `MCP_GATE_HUB_SECRET_FILE`, `MCP_GATE_JWKS_URL`, `MCP_GATE_HUB_URL` (`http://hub:8890`).
+
+### 15.1 Resources
+
+Each MCP endpoint is its own OAuth protected resource, identified by its canonical URL, which is also its audience:
+
+| Resource | URL | Scope | Population |
+|---|---|---|---|
+| companion | `https://<host of router><public_path>` | `mcp:<instance-id>.<companion>` | the instance's settings population (§13.3), instance enabled |
+| all my apps | `https://mcp.<d>/mcp` | `mcp:all` | every LLDAP user except the service account |
+| Portcullis admin | `https://hub.<d>/mcp` | `mcp:portcullis.admin` | `lldap_admin` members |
+| Portcullis people | `https://people.<d>/mcp` | `mcp:portcullis.people` | every LLDAP user except the service account |
+
+- `<d>` is the main domain; a companion's host may be an extra-domain host (§5). A companion is a resource only while its AI support is on, the master switch is on and it isn't `app_oauth` (the gate isn't in its path). The admin resource exists while "Portcullis MCP for admins" is on, the people resource while "… for people" is on (§15.11). The population of a companion is the settings population: the access group's members minus expired-not-removed entries, everyone when group access is off and no access role applies, nobody for `sign_in: native` instances (no identity).
+- **Metadata (RFC 9728).** For each resource the gate serves `GET /.well-known/oauth-protected-resource<path>` on the same host (e.g. `https://gitea.example.com/.well-known/oauth-protected-resource/mcp`), no authentication, no cookie:
+
+    ```json
+    {"resource": "https://gitea.example.com/mcp",
+     "authorization_servers": ["https://auth.example.com/realms/portcullis"],
+     "scopes_supported": ["mcp:gitea.gitea"],
+     "bearer_methods_supported": ["header"],
+     "resource_name": "Gitea on Portcullis"}
+    ```
+
+    `resource_name` is `<label> on Portcullis`. The authorization server is always `https://auth.<main domain>/realms/portcullis` (Keycloak's own discovery; the `keycloak` router has no forward-auth). An unknown path is `404`.
+- **Challenges.** A request without a valid token gets `401` with `WWW-Authenticate: Bearer resource_metadata="<metadata URL>", scope="<scope>"`; a valid token without the resource's scope gets `403` with `WWW-Authenticate: Bearer error="insufficient_scope", scope="<scope>", resource_metadata="<metadata URL>"`.
+
+### 15.2 Token rules
+
+The gate serves a request only when every rule holds:
+
+- **Resource from the request line only.** The resource is looked up from `Host` (lowercased, a numeric `:<port>` and trailing dots stripped) and the exact path; `X-Forwarded-*` headers are never read for routing.
+- `Authorization: Bearer <JWT>` only: never a token in the query, a cookie or another header.
+- Signature RS256 or ES256 by a key of the realm's JWKS (never `none`, never HS*). An unknown `kid` refreshes the key set at most once per 60 s, gate-wide; otherwise it is a `401` with no fetch.
+- `iss` exactly `https://auth.<main domain>/realms/portcullis` (the file's `issuer`); `exp`, `nbf` and `iat` within ±60 s; `typ` `Bearer`.
+- `azp` is one of the file's `clients` (the Hub's AI clients and `ai_client` clients, §8): never `portcullis-forward-auth`, `portcullis-fresh-auth` or an app's client.
+- **Audience:** `aud` contains this resource's URL, and no other `http://` or `https://` value at all (a URL of another resource, of a deleted or renamed one, or any other URL is a `401`: a token minted for several resources at once works nowhere). Non-URL values (client ids such as `account`) are ignored.
+- `scope` contains this resource's scope (else `403 insufficient_scope`).
+- `acr`, mapped through the file's `acr_loa` (`{"public": 0, "pwd": 1, "hwk": 2, "mtls": 3}`), is at least the resource's `min_loa` (an unknown `acr` is LoA 0). `min_loa` is the instance's effective policy LoA (`policy.LoA(policy.Resolve(…))`) for a companion, `2` for the other three. An instance whose effective policy reaches LoA 3 can't get AI support (`409`; no MCP client can present the person's certificate) — no exception; the same holds for the admin resource if the hub host becomes mTLS-only.
+- `preferred_username`, lowercased, is in the resource's `population` and not at or past its `expiring` time. The gate checks this on **every** request, so a person who leaves is refused from their next request, without waiting for token expiry.
+- An `Origin` header, if present, is in the file's `allowed_origins` (default empty): the MCP rule against DNS rebinding.
+
+Answers: `401` bad or missing token; `403` a valid token that isn't allowed (population, LoA, `Origin`), `403 error="insufficient_scope"` without the scope; `429` with `Retry-After` over a limit (§15.9); `503` "AI support is off on this Portcullis" while the master switch is off or `mcp-gate.json` is missing; `503` for every request while the file exists but doesn't decode (§4.2). Insufficient scope and the challenges follow §15.1.
+
+### 15.3 Protocol versions
+
+- The gate and the Hub's MCP listener accept exactly `2025-06-18`, `2025-11-25` and `2026-07-28`, from the `MCP-Protocol-Version` header or, for `initialize`, the body's `protocolVersion`. Anything else is `400` "unsupported protocol version".
+- On 2026-07-28 requests the `Mcp-Method` / `Mcp-Name` headers must match the body, else `400` with JSON-RPC error `-32020`. Decisions always use the parsed body, never the headers alone.
+- Towards a companion the gate speaks the newest version in the companion's `protocol` list that it supports.
+
+### 15.4 Hub → gate files
+
+Both files live in `hub_data` next to the policy file (§4.2): mode 0640, group 10001, written atomically. Both are JSON, `version` 1, decoded **strictly** by the gate (unknown fields, trailing data, a missing field or a value outside its rule refuse the whole file, §4.2). The Hub writes them in Go's `encoding/json` indented form (two spaces, keys in the order shown, map keys sorted, lists sorted as stated, a trailing newline). The examples below are a complete shared test vector: the same bytes are committed in the Hub (`internal/aigate/testdata/`) and the gate (`internal/config/testdata/`), and both sides must decode them strictly and re-encode them byte for byte.
+
+**`mcp-gate.json`** (written with every policy-file write):
+
+```json
+{
+  "version": 1,
+  "enabled": true,
+  "issuer": "https://auth.example.com/realms/portcullis",
+  "main_domain": "example.com",
+  "clients": [
+    "ai-chat-mcp",
+    "portcullis-ai-claude",
+    "portcullis-ai-claude-code",
+    "portcullis-ai-generic"
+  ],
+  "allowed_origins": [],
+  "acr_loa": {
+    "hwk": 2,
+    "mtls": 3,
+    "public": 0,
+    "pwd": 1
+  },
+  "limits": {
+    "resource_rpm": 120,
+    "resource_burst": 30,
+    "person_rpm": 600,
+    "tool_calls_rpm": 60,
+    "confirmations_per_hour": 10,
+    "mints_per_minute": 10,
+    "fanout": 4,
+    "max_request_bytes": 8388608,
+    "max_result_bytes": 16777216,
+    "upstream_timeout_s": 120
+  },
+  "core_hosts": [
+    "auth.example.com",
+    "directory.example.com",
+    "enroll.example.com",
+    "example.com",
+    "hub.example.com",
+    "mcp.example.com",
+    "metrics.example.com",
+    "people.example.com",
+    "traefik.example.com"
+  ],
+  "resources": [
+    {
+      "url": "https://gitea.example.com/mcp",
+      "scope": "mcp:gitea.gitea",
+      "kind": "companion",
+      "instance": "gitea",
+      "companion": "gitea",
+      "label": "Gitea",
+      "host": "gitea.example.com",
+      "hosts": [
+        "gitea.example.com"
+      ],
+      "app_url": "https://gitea.example.com",
+      "min_loa": 2,
+      "upstream": "http://portcullis-mcp-gitea_gitea:8080/mcp",
+      "protocol": [
+        "2026-07-28",
+        "2025-11-25"
+      ],
+      "mode": "read_write",
+      "identity": {
+        "mode": "app_token",
+        "header": "Authorization",
+        "format": "token {credential}",
+        "basic_user": "",
+        "secret_ref": ""
+      },
+      "tools": {
+        "writes": [
+          "*_write",
+          "create_*",
+          "update_*",
+          "merge_*",
+          "delete_*"
+        ],
+        "confirm": [
+          "delete_*",
+          "repo_write:delete"
+        ],
+        "never": []
+      },
+      "aggregate": true,
+      "population": [
+        "alice",
+        "bob"
+      ],
+      "expiring": {
+        "bob": "2027-03-31T23:59:59Z"
+      }
+    },
+    {
+      "url": "https://grafana.example.com/mcp",
+      "scope": "mcp:grafana.grafana",
+      "kind": "companion",
+      "instance": "grafana",
+      "companion": "grafana",
+      "label": "Grafana",
+      "host": "grafana.example.com",
+      "hosts": [
+        "grafana.example.com"
+      ],
+      "app_url": "https://grafana.example.com",
+      "min_loa": 2,
+      "upstream": "http://portcullis-mcp-grafana_grafana:8000/mcp",
+      "protocol": [
+        "2025-11-25"
+      ],
+      "mode": "read_only",
+      "identity": {
+        "mode": "identity_headers",
+        "header": "Authorization",
+        "format": "Bearer {secret}",
+        "basic_user": "",
+        "secret_ref": "grafana/grafana"
+      },
+      "tools": {
+        "writes": [
+          "create_*",
+          "update_*",
+          "delete_*"
+        ],
+        "confirm": [
+          "delete_*"
+        ],
+        "never": []
+      },
+      "aggregate": true,
+      "population": [
+        "alice"
+      ],
+      "expiring": {},
+      "people": {
+        "alice": {
+          "email": "alice@example.org",
+          "groups": [
+            "design",
+            "users_grafana"
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://hub.example.com/mcp",
+      "scope": "mcp:portcullis.admin",
+      "kind": "portcullis_admin",
+      "instance": "",
+      "companion": "",
+      "label": "Portcullis (admin)",
+      "host": "hub.example.com",
+      "hosts": [],
+      "app_url": "",
+      "min_loa": 2,
+      "upstream": "",
+      "protocol": [],
+      "mode": "",
+      "identity": {
+        "mode": "none",
+        "header": "",
+        "format": "",
+        "basic_user": "",
+        "secret_ref": ""
+      },
+      "tools": {
+        "writes": [],
+        "confirm": [],
+        "never": []
+      },
+      "aggregate": false,
+      "population": [
+        "root"
+      ],
+      "expiring": {}
+    },
+    {
+      "url": "https://mcp.example.com/mcp",
+      "scope": "mcp:all",
+      "kind": "aggregate",
+      "instance": "",
+      "companion": "",
+      "label": "All my apps",
+      "host": "mcp.example.com",
+      "hosts": [],
+      "app_url": "",
+      "min_loa": 2,
+      "upstream": "",
+      "protocol": [],
+      "mode": "",
+      "identity": {
+        "mode": "none",
+        "header": "",
+        "format": "",
+        "basic_user": "",
+        "secret_ref": ""
+      },
+      "tools": {
+        "writes": [],
+        "confirm": [],
+        "never": []
+      },
+      "aggregate": false,
+      "population": [
+        "alice",
+        "bob",
+        "carol",
+        "root"
+      ],
+      "expiring": {}
+    },
+    {
+      "url": "https://people.example.com/mcp",
+      "scope": "mcp:portcullis.people",
+      "kind": "portcullis_people",
+      "instance": "",
+      "companion": "",
+      "label": "Portcullis",
+      "host": "people.example.com",
+      "hosts": [],
+      "app_url": "",
+      "min_loa": 2,
+      "upstream": "",
+      "protocol": [],
+      "mode": "",
+      "identity": {
+        "mode": "none",
+        "header": "",
+        "format": "",
+        "basic_user": "",
+        "secret_ref": ""
+      },
+      "tools": {
+        "writes": [],
+        "confirm": [],
+        "never": []
+      },
+      "aggregate": true,
+      "population": [
+        "alice",
+        "bob",
+        "carol",
+        "root"
+      ],
+      "expiring": {}
+    }
+  ]
+}
+```
+
+- `enabled`: the master switch (§15.11); `false` (or a Hub without the gate's recipient) means every request is `503` "AI support is off on this Portcullis". `issuer` the realm's public issuer; `main_domain` the main domain; `clients` the AI client ids the gate accepts as `azp` (sorted): the offered clients of §8 and every enabled `ai_client` client; `allowed_origins` Settings → AI's list (`https://<host>[:port]` each, sorted); `acr_loa` the realm's map.
+- `limits` (§15.9): positive integers. The first seven come from Settings → AI; `max_request_bytes`, `max_result_bytes` and `upstream_timeout_s` are fixed at these values in this release.
+- `core_hosts`: every core host (§4), sorted. A resource of kind `companion` whose `host` or `hosts` names a core host refuses the file.
+- `resources`: sorted by `url`. A `Resource`:
+    - `url` (§15.1), `scope`, `kind` (`companion`, `aggregate`, `portcullis_admin`, `portcullis_people`; at most one of each of the last three), `label`, `host` (the URL's host; the lookup key with the URL's path);
+    - companion only, else `""` / `[]`: `instance`, `companion`, `hosts` (every hostname of the instance, sorted; where its URL elicitations may point, §15.5), `app_url` (`https://<host>`, for the "open it once" message), `upstream`, `protocol` (from the template), `mode` (`read_only` or `read_write`, the admin's choice);
+    - `upstream`: for a companion exactly `http://portcullis-mcp-<instance>_<companion>:<port><path>` (any other value refuses the file); `""` for the other kinds — the gate serves the aggregate itself and sends the Portcullis kinds only to its own `MCP_GATE_HUB_URL` (`/mcp/admin`, `/mcp/people`), never to a URL from the file;
+    - `min_loa` (§15.2);
+    - `identity`: `{mode, header, format, basic_user, secret_ref}`. `mode` is `app_token`, `identity_headers` or `none` (the non-companion kinds). `app_token`: `header` and either `format` (`token {credential}`) or, for HTTP Basic, `format` `""` and `basic_user` the user template (`{username}` or a literal); the password is the credential. `identity_headers`: `header` and `format` of the caller secret (`Bearer {secret}`) and `secret_ref` = `<instance>/<companion>`, the `caller_secrets` entry. Unused fields are `""`;
+    - `tools`: the template's `{writes, confirm, never}` patterns (§3.2), in the template's order;
+    - `aggregate`: whether the resource's tools are in "all my apps" (§15.9): the companion's `aggregate`, `true` for the people resource, `false` for the others;
+    - `population`: lowercase usernames, sorted (§15.1); `expiring`: `{"<user>": "<RFC 3339 UTC>"}`, the earliest pending expiry of the membership that puts the person in the population (the gate refuses from that time on, even before the Hub removes them); `{}` when none;
+    - `people`: **only** for `identity_headers` companions: per population member `{email, groups}` — the LLDAP email and the groups group-gate would let through (LLDAP groups minus memberships past their expiry), sorted. A person missing from it gets no `X-Forwarded-Email` or `X-Auth-Request-Groups`, never a stale value.
+- **Never listed:** `app_oauth` companions, companions that are off, instances that are disabled, deleting or restoring, templates with `ai.unsupported`, and companions whose restore `revoke_all` hasn't succeeded (§11.6).
+- **Write failures fail closed.** When the directory can't be read, the Hub keeps the last `mcp-gate.json` (like `expiring` in the policy file) and retries; it never writes a file with populations it couldn't compute.
+
+**`mcp-credentials.json`** (written on every mint, revocation, caller-secret change and AI switch):
+
+```json
+{
+  "version": 1,
+  "credentials": [
+    {
+      "instance": "gitea",
+      "companion": "gitea",
+      "user": "alice",
+      "id": "7",
+      "minted_at": "2026-11-05T09:30:00Z",
+      "state": "active",
+      "age": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBleGFtcGxl\n-----END AGE ENCRYPTED FILE-----\n"
+    },
+    {
+      "instance": "gitea",
+      "companion": "gitea",
+      "user": "carol",
+      "id": "4",
+      "minted_at": "2026-11-01T14:02:11Z",
+      "state": "revoking",
+      "age": ""
+    }
+  ],
+  "caller_secrets": [
+    {
+      "ref": "grafana/grafana",
+      "age": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBleGFtcGxl\n-----END AGE ENCRYPTED FILE-----\n"
+    }
+  ]
+}
+```
+
+- `credentials`: sorted by `instance`, `companion`, `user`; at most one entry per (instance, companion, user). `id` is the app-side id the mint hook returned (`^[A-Za-z0-9._:-]{1,128}$`), `minted_at` RFC 3339 UTC, `state` `active` or `revoking`, `age` the credential as ASCII-armored age ciphertext to the gate's recipient (`age.pub`). A `revoking` entry has `age` `""` (the Hub drops the ciphertext when it marks the entry) and is **never** used: the gate treats the person as having no credential.
+- `caller_secrets`: one per enabled `identity_headers` companion, sorted by `ref` (`<instance>/<companion>`); `age` the value of the companion's `caller_secret.env` variable, encrypted the same way.
+- An entry whose (instance, companion) has no resource in `mcp-gate.json` is ignored. A ciphertext the gate can't decrypt refuses the file (the error names the entry's index, never the ciphertext).
+- The `age` values above are shortened placeholders: the vector tests decoding and encoding, not decryption.
+
+### 15.5 Identity modes, tool policy and hook I/O
+
+**Towards the upstream** the gate sends only what the identity mode defines plus `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `Content-Type`, `Accept` and the upstream's session id. It never forwards `Cookie`, `Authorization` (the person's token), `Proxy-Authorization`, any `X-Forwarded-*` or `X-Auth-Request-*` header the client sent, `Remote-*` or `X-Portcullis-*`; it strips `Set-Cookie` from upstream answers and sets no cookie itself.
+
+- **`app_token`.** The gate injects the person's credential from `mcp-credentials.json`: `<header>: <format with {credential}>` (e.g. `Authorization: token <credential>`), or with `basic_user` `<header>: Basic <base64(<user>:<credential>)>` (`{username}` = the lowercase username). Without an active entry it never calls the upstream anonymously: it asks the Hub to mint one (`POST /internal/credentials`, §15.7), waits up to **20 s** for the entry to appear in the file and then proceeds; otherwise the request gets a JSON-RPC error "Preparing your access to <label>, try again in a moment". A Hub answer `409 no_account` gives "Open <label> (<app_url>) in your browser once, then try again". Concurrent requests of one person for one resource share one mint (single flight).
+- **`identity_headers`.** The gate sends `X-Forwarded-User` (the lowercase username), `X-Forwarded-Email` and `X-Auth-Request-Groups` (comma-joined) from the resource's `people`, the `X-Forwarded-Attr-*` headers group-gate would send on the resource's host (§4.1), and the caller secret: `<caller_secret.header>: <format with {secret}>`. A person missing from `people` or from `user-attributes.json` gets no such header.
+- **`app_oauth`.** The gate is not in the path: the person's client talks to the app's own MCP route, signing in through the app (which signs in through Keycloak). The gate's population check, tool filtering, confirmations, rate limits and access log don't apply there; the app's own rules do, and the AI tab and People card say so ("<label> applies its own rules; Portcullis doesn't log or confirm its AI actions"). What still holds: Keycloak sign-in with the instance's access role, the `revoke` hook on leaving (below), and AI support off turns it off (`on_change`).
+
+**Tool policy** (companions; the gate decides every `tools/call` from the template's policy and the admin's mode, whether or not the tool was listed before):
+
+- Patterns are matched case-insensitively on both sides; `tool:method` matches the tool whose arguments' `method` equals `method`.
+- `never` tools are hidden from `tools/list` and refused in every mode; in `read_only` mode `writes` tools are hidden and refused too (a JSON-RPC error, logged `deny:never` / `deny:read_only`). Read-only is also enforced by the companion itself (`PORTCULLIS_AI_READONLY_<COMPANION>`, the credential's scopes).
+- `confirm` tools need a confirmation (§15.6). A tool the companion annotates `destructiveHint: true` that `confirm` misses needs one too (a template warning in the gate's log). Annotations come from the gate's own cached `tools/list` of that upstream for that person (fetched first when it has none); an annotation never relaxes a rule (`readOnlyHint` on a `writes` tool doesn't unhide it) and a missing one changes nothing.
+- **Server-to-client requests** from a companion: `sampling` and `roots` are declined (a companion must not drive the person's model or see their files); form-mode elicitation is passed through; URL-mode elicitation is passed through only for an `https://` URL whose host is one of the resource's `hosts` or `people.<main domain>` — never `auth.`, `hub.`, `mcp.` or any other host (declined, logged `deny:url_elicitation`).
+- **Sessions** are bound to the person: the gate gives clients its own opaque session ids mapped to (person, resource, upstream session); another person presenting one gets `404`. Pooled upstream sessions of a person who left a population are closed at the next file change.
+
+**Hook I/O.** The Hub runs `mint`, `revoke` and `on_change` hooks (`when: [ai]`, §13.8) like other hooks — argv verbatim, never a shell, in a running container of the hook's service in this instance, the hook's `user` and `timeout` — but outside the settings delivery engine, with split output (§6), one JSON document on stdin and these rules:
+
+| Action | stdin | stdout | Exit |
+|--------|-------|--------|------|
+| mint | `{"action": "mint", "user": "alice", "instance": "gitea", "companion": "gitea", "name": "portcullis-ai-k3x9q2m7w1ab", "mode": "read_write", "scopes": ["write:repository", "…"]}` | exactly one JSON document `{"credential": "…", "id": "…"}` (strict; `credential` 1–4096 printable ASCII characters, `id` as in §15.4) | `0` minted; `3` the person has no app account yet (they never signed in to the app; the hook never creates accounts); anything else failed |
+| revoke | `{"action": "revoke", "user": "alice", "ids": ["7"]}` (`ids` `[]` for `app_oauth`: every app-side token the person holds for MCP) | ignored | `0` revoked, else failed |
+| revoke_all | `{"action": "revoke_all", "prefix": "portcullis-ai-"}` (every credential whose name starts with the prefix, every person; for `app_oauth` every person's MCP tokens) | ignored | `0` done, else failed |
+| on_change | `{"action": "on_change", "enabled": true, "mode": "read_write", "companion": "gitea"}` | ignored | `0` applied, else failed |
+
+- `name` is `portcullis-ai-` + 12 random `[a-z0-9]`: the name the app shows for the credential. `scopes` is the template's `identity.scopes[<mode>]` (`[]` when absent).
+- **stdout is never stored.** On success the mint output is parsed, the credential encrypted to the gate (§15.4) and every plaintext copy zeroed; any other output is dropped unread. Stdout is never logged, audited, put in an op record, an error or an answer. On failure the op record (op `ai`) and the companion's last error on the AI tab get the exit code and stderr only, redacted (the instance's secrets, any stdout bytes) and then clipped. Hook output is never parsed for `PORTCULLIS-REPORT` lines.
+- **Locks.** Mint and revoke never take the instance's lifecycle try-lock (a backup would make them `409`): they take a per-instance AI lock that waits, plus single flight per (resource, user). Lifecycle operations (switching AI on or off, restore, delete) take the lifecycle lock, then the AI lock. A hook whose service has no running container fails (mint: `502 mint_failed`; revoke: retried).
+
+**Credential lifecycle.**
+
+- **Mint** (lazy, on a person's first request): the Hub re-checks the population against a fresh directory snapshot, returns the existing active entry's id if there is one, else runs `mint`, writes the entry (`active`) and answers; audited `ai.credential.mint` (target `<instance>/<companion>/<user>`, detail `id <id>`; never the credential).
+- **Revoke on leave.** When a person leaves a companion's population (rule evaluator, admin removal, expiry, user or group deletion, instance disabled), the same Hub pass that rewrites `mcp-gate.json` marks their entries `revoking` (the gate stops using them at its next reload, within seconds), then runs `revoke` with their ids; success removes the entries, a failure keeps them `revoking`, retried at every reconcile and shown on the AI tab (never reported as done). Audited `ai.credential.revoke`. For `app_oauth` companions the Hub records who was in the population while AI was on (`<data>/ai/oauth-seen.json`) and runs `revoke` with `ids: []` for each such person who left.
+- **`revoke_all`** runs before every switch-on and every mode change of a companion (app-side scopes encode the mode, and a restore-as copy may hold old tokens; a failure is a `502` with the redacted stderr and AI stays off), when a companion is switched off (its entries removed after success), and after a same-instance restore (§11.6). Switching off also runs `on_change` with `enabled: false`; for `app_oauth` `revoke` runs for everyone recorded.
+- **Template updates.** After the final Discover of a source sync, and at start, a companion that disappeared from its template or whose identity mode changed is switched off (audited `ai.disable`, detail `template changed`), its entries marked `revoking`, and `revoke_all` runs while the hook still exists; otherwise the entries stay `revoking` and the doctor warns (`ai_credentials_revoking`, §14.5).
+- **No AI resource left.** When a person can use no AI resource at all any more (deleted, or in no population), the Hub also deletes their consents and offline sessions for every AI client (§8).
+
+### 15.6 Confirmations
+
+**What needs one:** class **D** tools of the Portcullis MCP (§15.10) and companion tools that `confirm` (or a destructive annotation) catches (§15.5). Calling such a tool without a matching approved confirmation never acts: it creates a confirmation and answers with a link to it.
+
+- **Id and binding.** 128 random bits, base32 (RFC 4648, no padding), shown uppercase in groups of four joined by `-` (`7Q2M-K9WX-…`); the Hub accepts it case-insensitively with or without the dashes. The id is not a credential: opening the URL signed out just leads to sign-in. A confirmation is bound to (person, resource, tool, `args_sha256`): the resource URL (a companion's own URL also when the call came through the aggregate), the tool's name as its server knows it, and the lowercase hex SHA-256 of the arguments' RFC 8785 canonical JSON (absent or `null` arguments are `{}`). Any argument change needs a new confirmation.
+- **Life.** `pending` → `approved` or `declined`; valid **10 minutes** from creation (then `expired`); single use: the first matching retry consumes an approved one (`consumed`). Creating one while a pending one with the same binding exists returns that one. Kept in the Hub's memory only (a Hub restart expires them).
+- **Limits** (Hub-side, over both creation paths): ≤ 10 created per person per hour, ≤ 20 pending per person, ≤ 1000 pending in total; over a limit the tool answers `isError` "Too many confirmations requested; try again later", audited `ai.confirm` `refused`. The gate applies its own `confirmations_per_hour` before asking.
+- **The page** is on the listener the tool belongs to: `https://hub.<d>/confirm/<id>` for admin tools, `https://people.<d>/confirm/<id>` for people tools and companions (§5.1; a confirmation is `404` on the other listener). It is a normal browser page behind forward-auth and:
+    1. refuses (`404`) every signed-in user but the person it was created for;
+    2. shows the action as the Hub renders it from the stored request, never text the model wrote: the tool, its target, the consequences (e.g. "Takes a backup, then permanently removes its containers, volumes, Keycloak client and groups users_x, admin_x"), the requesting AI client and time, and the arguments as JSON (clipped to 4 KiB, escaped);
+    3. asks for the typed check: the tool's existing one for admin tools (the instance id, the person's or group's name, the domain), the **instance label** for companion tools;
+    4. asks for a fresh passkey touch through `portcullis-fresh-auth` (the popup flow of §5.1; the proof of §8: `auth_time` ≤ 5 minutes old, `amr` `hwk` or `mtls`, never `file`) whose `auth_time` is no earlier than 60 s before the confirmation was created;
+    5. records approve or decline (`POST /api/me/confirmations/{id}`, §5.1); a decline needs no passkey.
+- **Answers to the AI.** Never HTTP `401`/`403` (a client would treat it as a sign-in problem) and never form-mode elicitation (a client or script can answer it without the person). A 2026-07-28 client that declared `elicitation.url` gets an `InputRequiredResult` with a URL-mode elicitation (`message` "<Tool> on <label> needs your confirmation in your browser.", the page's URL); the gate, which keeps per-person sessions, sends a 2025-11-25 client that declared it a URL-mode `elicitation/create` request; the Hub's MCP is stateless (§15.10) and gives 2025-06-18 and 2025-11-25 clients the text only. Every other case is a tool result with `isError: true` and exactly: `This needs your confirmation in your browser: open <url>, then ask me to try again.` A retry while pending answers "Still waiting for your confirmation in your browser"; after a decline "You declined this in your browser".
+- **Audit:** `ai.confirm` with `approved`, `declined`, `expired` (by the sweeper) or `refused` (a failed approval or a limit), the tool, the resource and `args_sha256`; never the arguments. The tool's own audit entry (§9.5) carries `confirmation <id>` in its detail.
+
+### 15.7 Gate ⇄ Hub internal API
+
+The Hub's third listener, **`HUB_MCP_ADDR`** (default `:8890`), serves only `GET /healthz`, `/mcp/admin`, `/mcp/people` and `/internal/*`. Every other request needs **`X-Portcullis-MCP-Secret`** equal to `HUB_MCP_GATE_SECRET` (the file of §15 intro, ≥ 32 characters), compared in constant time, else `401`; the header is removed before any handler runs. It listens on every Hub network (`portcullis`, `socket-proxy-hub`, `portcullis-domains`; binding per interface isn't portable): the secret is the protection, and no Traefik router targets it (§5). No CSRF guard (no browser reaches it); bodies are strict JSON (`DisallowUnknownFields`, no trailing data, ≤ 64 KiB, else `400` / `413`).
+
+- **Identity** for `/mcp/*`: the gate sends `X-Forwarded-User` (the token's lowercase `preferred_username`), `X-Portcullis-AI-Client` (`azp`) and `X-Portcullis-AI-Resource` (the resource URL), replacing anything the client sent. The Hub trusts them **only** on this listener; its Hub and people listeners never read `X-Portcullis-AI-*`.
+- **`POST /internal/credentials`** `{"resource": "<url>", "user": "<username>"}` → `200 {"id"}` (an active entry is in the file) | `409 {"code": "no_account", "app_url"}` (mint exit 3) | `403` (not in the population, re-checked against a fresh directory snapshot) | `404` (not a current `app_token` companion resource of the Hub's own configuration) | `502 {"code": "mint_failed"}` (the hook failed or its output was refused). Rate: the gate's `mints_per_minute` per person.
+- **`POST /internal/confirmations`** `{"user", "client", "resource", "tool", "args_sha256", "args_preview", "reason"}` → `201 {"id", "url", "expires_at"}` | `403` (not in the population) | `404` (not a current companion resource) | `400` (the tool isn't caught by the companion's `confirm` patterns and `reason` isn't `destructive`) | `429 {"code": "too_many"}` (§15.6). `reason` is `confirm` (a `confirm` pattern) or `destructive` (the upstream's annotation); `args_preview` ≤ 4 KiB of canonical JSON, clipped on a rune boundary; `url` is `https://people.<d>/confirm/<id>`.
+- **`POST /internal/confirmations/consume`** `{"user", "resource", "tool", "args_sha256"}` → `200 {"id"}` (an approved match, now consumed) | `404` (none: the gate creates a new one) | `409 {"state": "pending|declined"}`.
+- The `/internal` API serves **companion** resources only; it never creates, reads or consumes a confirmation of a Portcullis tool (those are the Hub's own, §15.10).
+- **Fail closed (gate side).** A transport error, a timeout, a `5xx` or any answer not listed above, on mint, create or consume, is an `isError` result "can't check this right now; try again", and the upstream is never called.
+- **`/mcp/admin`, `/mcp/people`**: the Portcullis MCP (§15.10), Streamable HTTP.
+- **Hub configuration:** `HUB_MCP_ADDR` (`:8890`), `HUB_MCP_GATE_SECRET_FILE`, `HUB_MCP_GATE_RECIPIENT_FILE`, `HUB_MCP_GATE_DATA_DIR` (`/mcp-gate-data`).
+
+### 15.8 Access log
+
+The gate appends one JSON line per MCP request (tool calls through the aggregate count once per upstream call) to `mcp_gate_data/access.jsonl`:
+
+```json
+{"time": "2026-11-05T10:16:02Z", "user": "alice", "client": "portcullis-ai-claude", "resource": "https://gitea.example.com/mcp", "instance": "gitea", "companion": "gitea", "via": "aggregate", "method": "tools/call", "tool": "list_issues", "args_sha256": "<64 hex>", "decision": "allow", "upstream_status": 200, "duration_ms": 184}
+```
+
+- Every key always present. `user` / `client` `""` when no valid token was presented; `instance` / `companion` `""` for non-companion resources; `via` `direct` or `aggregate`; `method` the JSON-RPC method; `tool` and `args_sha256` (§15.6) only for `tools/call` (else `""`); `upstream_status` the upstream's HTTP status, `0` when it wasn't called.
+- `decision`: `allow`, `deny:<reason>` (a fixed lowercase reason, e.g. `token`, `scope`, `population`, `loa`, `origin`, `protocol`, `never`, `read_only`, `url_elicitation`, `sampling`, `roots`, `too_large`, `no_account`, `mint_failed`, `hub_unavailable`, `declined`, `off`), `confirm:<id>` or `rate_limited`.
+- Never the arguments, a result, a token, a credential or a caller secret.
+- File mode 0640, group 10001 (the Hub reads it through its read-only mount), directory 0750; lines older than **90 days** are pruned by an atomic rewrite with the same mode. The Hub reads the last 4 MiB and skips a torn last line (AI tab, `GET /api/ai/activity`, the merged audit view, the person's own `GET /api/me/ai`).
+- **Unloggable calls are refused.** While the log writer has failed for more than 30 s, or its queue is full, every `tools/call` answers `503` "AI activity can't be logged right now"; `initialize` and the list methods still work.
+
+### 15.9 Rate limits and "all my apps"
+
+**Limits** (per person, not per IP: every hosted Claude user comes from Anthropic's range; defaults, `limits` of §15.4):
+
+- 120 requests per minute per person and resource (burst 30); 600 per minute per person across resources;
+- 60 `tools/call` per minute per person and resource;
+- 10 confirmations started per person per hour; 10 mints per person per minute;
+- the aggregate calls at most 4 upstreams in parallel per request;
+- request bodies ≤ 8 MiB (`413`), tool results ≤ 16 MiB (JSON-RPC error "result too large"), upstream timeout 120 s.
+
+Over a limit: `429` with `Retry-After`, never `401`/`403`. Core's `rate-limit@file` (per source IP) stays in front as the backstop; it is shared by every person whose client runs in Anthropic's cloud, which the admin guide says.
+
+**"All my apps"** (`https://mcp.<d>/mcp`, served by the gate itself):
+
+- `tools/list` for a person is the union, over companions with `aggregate: true` whose population includes them and whose `min_loa` their token meets, of what the per-app endpoint would show them (same filtering), plus the people resource's tools when it is listed with `aggregate: true` — never the delegate tools (`invite_person`, `update_person`, `delete_person`: only on `people.<d>/mcp`, §15.10), never admin tools, never `app_oauth` companions.
+- **Names** come from a per-person table: `<instance-id>__<tool>` for companions, `portcullis__<tool>` for the people tools (instance ids never contain `_` or start with `portcullis`, so the prefixes can't be confused); a name longer than 64 characters becomes its first 55 characters + `_` + the first 8 hex digits of sha256(the full name). Two tools whose names collide, literally or after shortening, are **both** dropped (and logged as a template warning). Calls, resource URIs and prompts are mapped through the same table; a name is never parsed back.
+- Descriptions are prefixed `[<label> · <host>] ` (`[Portcullis · people.<d>] ` for the people tools); resources and prompts get the same prefix.
+- Every call is routed to its upstream with the person's identity exactly as on the per-app route (lazy minting included), and every rule of §15.2–15.8 applies per upstream; its access-log line names the upstream's resource with `via: aggregate`.
+- The list is cached 60 s per person and invalidated on any population or configuration change; with `subscriptions/listen` the gate sends `notifications/tools/list_changed`. An upstream that is down drops out with the line "<label> is unavailable right now" in the server's `instructions`; it never fails the endpoint.
+
+### 15.10 The Portcullis MCP
+
+The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mcp/admin`, admins only) and `https://people.<d>/mcp` (`/mcp/people`, anyone signed in). Its scope is Portcullis and what Portcullis manages — never an action inside an app (those go only through the app's companion). The gate forwards to it through the same pipeline as a companion (§15.2–15.3, §15.8–15.9: token, population, `Origin`, protocol and header checks on the parsed body, limits including `tools/call`, body caps, one access-log line per request with the hub or people URL as `resource`).
+
+- **Same methods, same rules.** Each tool resolves the caller with `CallerFor` (`Via: "ai"`, `Client` = the gate's `X-Portcullis-AI-Client`) and calls the **same** Hub or directory method its HTTP twin calls (no HTTP loopback), so authorization, guardrails, locks, errors and audit (§9.5) are identical. `/mcp/admin` answers only admins (re-checked per mutation); `/mcp/people` gives exactly the people listener's view (`OverviewFor(caller)`, `/api/me/*`) and delegated operations only through the caller's permissions. Every Hub-listener route is some admin tool's twin or explicitly listed as having none (the page, `/static/`, `/healthz`, `GET /api/portal/apps`, `GET /api/directory/me`, the multipart CSV `import/review`, which has a JSON tool instead); the Hub's tests check it both ways.
+- **Stateless.** Streamable HTTP without sessions: 2026-07-28 URL elicitations go in an `InputRequiredResult`; 2025-06-18 and 2025-11-25 clients get the text form of §15.6 (a stateless server can't send `elicitation/create`).
+- **Classes.** **R** read; **W** write (audited); **D** destructive — needs a confirmation (§15.6); **U** needs a secret from the person — the tool has no argument for it and returns a URL elicitation (or the same link as text) to the Hub's existing form, pre-filled with the non-secret context (e.g. `https://hub.<d>/#settings/domains?enroll=<name>`). Annotations: R `readOnlyHint`; D `destructiveHint`; W and U `destructiveHint: false`; `idempotentHint` where the twin is a `PUT`.
+- **D** is every tool whose twin has a typed confirmation today, or deletes, restores over, revokes or runs code (`delete_instance`, `restore_instance`, `exec`, `save_env`, `save_custom_override`, `resolve_drift`, `remove_source`, `delete_domain`, `delete_person`, `delete_group`, `delete_field`, `require_passkey`, `remove_passkeys`, `revoke_ai_access`, `delete_model_provider`, `admin_revoke_credential`, `resume_user_sweep`, `remove_stale_keycloak_user`, `delete_folder`, `folder_undo_apply`; `doctor_apply_fix` when its plan `touches_data`, §14.6), **and every access-widening call**: `add_member` / `set_member_expiry` into an administrator, permission or guarding group; `set_permission`; `set_group_rule` on a guarding group; `set_public_access` turning it on; `set_policy` to a policy that isn't stricter than the current one; `set_sign_in_mode` to `native`; `add_source`; `save_hub_settings` changing the AI clients or allowed origins; `set_ai_mode` to `read_write`; `create_person` with groups. Destructive tools are never batched.
+- **Delegate tools** (`update_person` with `edit_details`, `invite_person` with `invite`, `delete_person` with `remove`) exist only on `people.<d>/mcp`, never in the aggregate or on the AI page; they are hidden from callers without the permission and refused if called anyway.
+- **Secrets never reach the model.**
+    - *Arguments:* a U tool takes no argument whose name matches `token`, `password`, `secret` or `key` (case-insensitive), and no tool accepts an argument its schema doesn't declare (`additionalProperties: false`): such a call is an `isError` "secrets are never passed through the AI; use <url>". A declared argument name may match that pattern only from a reviewed allowlist (e.g. `finding_token`, the doctor mute's digest; a settings entry's `key`); values of custom-field arguments are never judged by name.
+    - *Results:* the API's rules (secret settings as `{set, updated_at}`, credentials never echoed, env and logs redacted, then clipped) plus: no invite links, no fallback passwords and no server-invite internals in directory results (`create_person` says "run ./portcullis invite <user> on the server" when an invite must come from the server), no file-share passwords (`my_file_share_password` returns the People-page link only), no share tokens (listed tokens show as `•••` with their path), no `HUB_*` secret, no model provider secret. Every result goes through one redactor: the union of every instance's redaction set, the provider secrets, the Hub's file secrets (proxy, MCP gate, invite, domains) and the LLDAP credentials; redact, then clip (≤ 1 MiB). If the set can't be built the result is replaced by "result hidden: secrets couldn't be read".
+- **Long operations** return the twin's `202` body `{op_id, op, instance, poll}` at once (plus progress notifications on a stream when the client asked for one); `wait_for_op` / `get_op` show the outcome. A busy instance is an `isError` with the `409` reason, not a protocol error.
+- **`save_settings`** requires the preview's `plan_hash` (§13.12); `save_hub_settings` may turn the Portcullis admin MCP off, never on.
+- Read-only MCP resources: the docs pages the Hub ships (`portcullis://docs/…`), each loaded template's manifest (`portcullis://templates/<id>`, generated env values never included) and the doctor's check catalogue; prompts "Diagnose this app", "Set up an app for a team", "Why can't <person> open <app>?".
+
+### 15.11 Hub API, switches and audit
+
+Admin routes on the Hub listener only (`adminOnly`: no `X-Forwarded-User` `401`, delegates `403`), proxy-secret and CSRF guards, strict JSON bodies ≤ 64 KiB. Every answer shows secrets as `{set, updated_at}` only.
+
+| Route | Body | Does |
+|-------|------|------|
+| `GET /api/ai/settings` | — | Settings → AI: `{enabled, gate_present, clients: {claude, claude_code, generic}, portcullis_admin, portcullis_people, offline_idle_days, offline_max_days, limits: {resource_rpm, resource_burst, person_rpm, tool_calls_rpm, confirmations_per_hour, mints_per_minute, fanout}, allowed_origins}` |
+| `PUT /api/ai/settings` | the same fields but `gate_present` (only what changed) | Save; audited `settings.ai` with the changed keys. Defaults on a new install: `enabled` false, all three clients, both Portcullis MCPs on, 7 / 30 days, the limits of §15.9, no origins. Idle 1–30, max 1–90 days, idle ≤ max; origins `https://<host>[:port]`; else `400` |
+| `GET /api/ai/providers` · `POST /api/ai/providers` | provider (§15.12), no secret fields | List (`secrets` per field `{set, updated_at}`, `used_by` `[{instance, group, people}]`) · add (`ai.provider.add`) |
+| `PUT` · `DELETE /api/ai/providers/{name}` | provider · — | Update (`ai.provider.update`; selected instances re-delivered and restarted, listed in the answer) · delete (`ai.provider.delete`; `409` naming the instances while any selects it; its secrets removed) |
+| `PUT /api/ai/providers/{name}/secrets/{field}` | `{"value": "…"}` or `{"clear": true}` | Set or clear one secret field; answers `{set, updated_at}`; audited `ai.provider.secret` (`<field> replaced` / `cleared`) |
+| `GET /api/instances/{id}/ai` | — | The instance's AI tab: `{unsupported, alternative, master_off, refused, companions: [{name, label, url, kind, identity_mode, upstream, source, modes, mode, enabled, status, last_error, population, credentials, revoking, connections, confirm, never, own_rules}], providers}` (`refused` the reason a switch-on would be refused, e.g. LoA 3; `own_rules` for `app_oauth`; `providers` only for `ai.chat`) |
+| `PUT /api/instances/{id}/ai` | `{"companions": {"<name>": {"enabled": true, "mode": "read_write"}}, "providers": ["…"]}` (each part optional) | Switch companions on / off, change modes (`ai.enable`, `ai.disable`, `ai.mode` before → after) and, for `ai.chat` templates, the provider selection (`ai.providers`); answers the tab plus `restarts` (true when an enabled instance's project is recreated, §3.2) and `warnings` |
+| `POST /api/instances/{id}/ai/revoke` | `{"companion": "…", "user": "…"}` (`user` omitted = everyone) | Revoke one person's or everyone's AI credentials for a companion now (`revoke` / `revoke_all`); audited `ai.credential.revoke` |
+| `GET /api/ai/activity?instance=&user=&n=` | — | Access-log lines (§15.8), newest first, `n` ≤ 200 |
+| `GET /api/directory/audit?via=ai[&include=access]` | — | Audit entries with `via: ai`, merged with access-log lines when `include=access` |
+
+- **Switching on** (`PUT …/ai`, a companion `enabled: true`): refused `409` while the master switch is off, the instance is `deleting` / `restoring`, the template has `ai.unsupported`, the instance's effective policy reaches LoA 3 (`policy.LoA(…) == 3`: "needs a client certificate on every request; AI clients can't present one"), or another container answers the alias (§3.2); `404` unknown companion; `400` a mode outside `modes`. Steps: `revoke_all` (§15.5; failure `502`, nothing changed) → state saved → scope ensured and attached (§8) → gate files → override + `compose up` on an enabled instance (the app restarts) → `on_change`. A failure after the state save is an `OpError` (op `ai`); the same request re-applies every step. Switching off reverses it: router, alias and scope removed, `scale: 0`, `revoke_all`, entries removed, `on_change` `enabled: false`.
+- **Policy saves.** Saving an instance policy, or the Hub default policy (`/api/settings`) for every inheriting instance, that reaches LoA 3 first switches AI support off on those instances (audited `ai.disable`, detail `policy needs mTLS`); the preview lists them.
+- **Master switch.** On: the offered AI clients exist and follow Settings → AI (§8). Off: the gate refuses everything (`enabled: false`), per-app switches are greyed out, People cards are hidden; clients and scopes are kept.
+- State: `state.yaml` `ai` (the Settings → AI values and provider definitions; never a secret) and `ai_instances` (per instance id `{companions: {<name>: {enabled, mode}}, providers}`); per-instance AI state is in backups (§11.5).
+
+### 15.12 Model providers and the AI page
+
+An AI page is an instance of a template with `ai.chat` (the `ai-chat` template, LibreChat): an MCP client whose one MCP server is "all my apps" through its `ai_client` (§8, scope `mcp:all`). Its models come from the providers in Settings → AI.
+
+- **Provider:** `{name, label, kind, instance, base_url, region, instance_name, api_version, deployments, models: {fetch, list}, credentials}`. `name` `^[a-z][a-z0-9-]{0,30}$`, unique; `label` single line ≤ 64 (shown to people with the data-egress note "What people send on the AI page, and what their apps return to it, goes to <label>."); `credentials` `admin` (default) or `per_person`. Per kind:
+
+    | `kind` | Fields | Secret fields |
+    |--------|--------|---------------|
+    | `litellm` | `instance` (an installed LiteLLM instance; the Hub fills `base_url` from it) | `key` |
+    | `openai_compatible` | `base_url` (required) | `key` (optional: Ollama needs none) |
+    | `anthropic`, `openai`, `google` | `base_url` (optional) | `key` |
+    | `bedrock` | `region` | `access_key_id`, `secret_access_key` |
+    | `azure_openai` | `instance_name` or `base_url`, `api_version`, `deployments` | `key` |
+
+    `models.fetch` only for `litellm`, `openai_compatible`, `openai`. A kind is offered only while an installed `ai.chat` template declares it (`400` "no installed AI page supports kind <k>" otherwise).
+- **Secrets are write-only.** Entered in `type=password` inputs, cleared on submit, never rendered back. Stored only in `<data>/ai/provider-secrets.json` (0600, atomic; the Hub's secret store for providers) and in the `.env` of each AI page instance that selected the provider, single-quoted, as **`PORTCULLIS_AI_PROVIDER_<NAME>_<FIELD>`** (`<NAME>` and `<FIELD>` upper-cased, `-` → `_`). Never in `state.yaml`, `ai-providers.json`, logs, the audit, op records, errors, answers or tool results. A provider whose variable for any field would equal another provider's (`x` + `secret_access_key` vs `x-secret-access` + `key`) is a `409`.
+    - **Delivery to the app.** The Hub's override adds `environment: {<VAR>: ${<VAR>}}` for each selected provider variable to the `ai.chat.env.service` only (§3.2); templates never reference the variables.
+    - **Masked and blanked.** Expert Env shows a set provider variable as `[set]` and `SaveEnv` treats them as Hub-set (a changed value is `400`); backups blank them by name; a restore and a restore-as rewrite them from the store for that instance's own selection only; every provider secret value is in the redaction set (§15.10).
+- **Selection** per AI page instance: `PUT /api/instances/{id}/ai` `providers` (§15.11); default every provider whose kind the template supports; two providers of a `one` kind, or a kind the template doesn't declare, is a `400`. A change re-delivers `ai-providers.json` (§3.2) and the env and restarts that instance only. Everyone who can open an instance can use every provider selected for it; to give a group other providers, the admin adds another `ai-chat` instance with its own access group.
+- Hub Settings → AI shows, per provider, the instances using it with their access groups and population counts, and the reachability note "Claude desktop and claude.ai connect from Anthropic's servers (160.79.104.0/21): `auth.<domain>` and every app host must be reachable from the internet."

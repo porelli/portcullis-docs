@@ -83,3 +83,8 @@
 *[secrets epoch]: Random value the Hub keeps both in state.yaml and on the hub_secrets volume; a mismatch voids every file-share password
 *[share slot]: One of the Samba template's eight fixed shared-folder shares (share1–share8)
 *[share slots]: The Samba template's eight fixed shared-folder shares (share1–share8)
+*[MCP]: Model Context Protocol - how AI clients such as Claude call tools of an app
+*[mcp-gate]: Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person
+*[companion]: The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate
+*[companions]: The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate
+*[AI page]: An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are "all my apps"
