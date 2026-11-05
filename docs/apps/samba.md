@@ -34,8 +34,8 @@ Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-set
 
 | Setting | Type | Scope | Applies | Description |
 |---------|------|-------|---------|-------------|
-| **File-share password** | `person_secret` | instance | `live` | Each person's own password for their Home share and the shared folders they may use, created on My apps. The Hub keeps only its NT hash. |
-| **File owner id** | `person_id` | instance | `restart` |  |
+| **File-share password** | `person_secret` | per person | `live` | Each person's own password for their Home share and the shared folders they may use, created on My apps. The Hub keeps only its NT hash. |
+| **File owner id** | `person_id` | per person | `restart` |  |
 | **Home folders** | `path` | instance | `restart` | Host directory holding every person's home folder (&lt;username&gt;, owned by their uid, mode 0700), shared as Home. Empty = a Docker volume. Mounted at `/homes` (rw). [Shared folder](../operations/hub.md#shared-folders) ready: writes as uid each person's (`uid`), gid each person's (`uid`); joins the folder's group itself, from `PORTCULLIS_FOLDER_GID_HOMES`. [Doctor](../operations/hub.md#doctor) check: the filesystem needs `xattr` and not on `nfs`, `cifs`, `fuse` (macOS clients store metadata in extended attributes). |
 | **Share 1 folder** | `path` | instance | `restart` | The shared folder slot 1 serves (assign it under Settings → Shared folders). Files are written as each person's uid with the folder's group. Not served without a name and a reader or writer group. Mounted at `/shares/1` (rw). [Shared folder](../operations/hub.md#shared-folders) ready: writes as uid each person's (`uid`), gid ?; joins the folder's group itself, from `PORTCULLIS_FOLDER_GID_SHARE1_FOLDER`. [Doctor](../operations/hub.md#doctor) check: the filesystem needs `xattr`, `acl` and not on `nfs`, `cifs`, `fuse` (macOS clients store metadata in extended attributes; the folder's group needs ACLs). |
 | **Share 1 name** | `string` | instance | `live` | The name people see (smb://&lt;address&gt;/&lt;name&gt;). Not global, homes, printers, print$, ipc$ or home, and not another slot's name. |

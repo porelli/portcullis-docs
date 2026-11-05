@@ -7,4 +7,5 @@ nav:
   - Groups & Access Control: groups.md
   - Authentication Policies: auth-policies.md
   - Hub Management: hub.md
+  - File Sharing: file-sharing.md
   - Testing & CI: testing.md

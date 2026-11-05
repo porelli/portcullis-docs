@@ -142,9 +142,23 @@ SCOPE_LABEL = {
     "person_entered": "entered by each person",
 }
 
+def effective_scope(o: dict) -> str:
+    """The option's effective scope (contracts §13.2, §13.3).
+
+    person_secret and person_id have effective scope 'person' even though
+    they refuse the scope field in their declaration.
+    """
+    typ = o.get("type", "")
+    if typ in ("person_secret", "person_id"):
+        return "person"
+    return o.get("scope") or "instance"
+
 
 def effective_applies(o: dict) -> str:
-    """The option's applies, or the Hub's default (contracts §13.9)."""
+    """The option's applies, or the Hub's default (contracts §13.9, §13.2)."""
+    # person_secret applies is always "live" when given, else default "live"
+    if o.get("type") == "person_secret":
+        return o.get("applies") or "live"
     if o.get("applies"):
         return o["applies"]
     for d in o.get("delivery") or []:
@@ -519,7 +533,8 @@ def generate_app_page(app: dict, output_dir: Path):
             elif desc.endswith(")") and not desc.endswith(".)"):
                 desc += "."
             text = " ".join(x for x in [md_cell(html.escape(desc, quote=False))] + [md_cell(e) + "." for e in extra] if x)
-            lines.append(f"| **{md_cell(label)}** | {setting_type(o)} | {SCOPE_LABEL.get(o.get('scope') or 'instance', md_cell(o.get('scope')))} "
+            scope = effective_scope(o)
+            lines.append(f"| **{md_cell(label)}** | {setting_type(o)} | {SCOPE_LABEL.get(scope, md_cell(scope))} "
                          f"| `{effective_applies(o)}` | {text} |")
         lines.append("")
 

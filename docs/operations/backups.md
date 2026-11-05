@@ -30,6 +30,7 @@ storage. `./portcullis backup verify` proves that a backup can be restored, and
 | LLDAP (`lldap_data`) | Files, with every SQLite database copied through SQLite's online backup API → `lldap_data.tar.gz` | Consistent while LLDAP runs. Keeps `private_key` (password hashing) |
 | Hub state (`hub_data`), ACME account and certs (`traefik_acme`) | Same → `hub_data.tar.gz`, `traefik_acme.tar.gz` | |
 | `.env`, `certs/`, `secrets/`, `config/`, `keycloak/realm-export.json`, `headscale/config.yaml`, `docker-compose.override.yml` | Copied | |
+| **File-share credentials (`hub_secrets`)** | **Never backed up** | Hashes are voided by every restore ([File Sharing](file-sharing.md#restores)) |
 | `MANIFEST.json` | Format, time, core version, Hub image, sha256 of every file | `verify` and `restore` refuse a backup whose files changed |
 
 A backup is built in `backups/<timestamp>.partial/` and renamed to
@@ -44,6 +45,8 @@ Back those up per app instance in the Hub (**instance backups**): the Hub's
 
 - the instance's Docker volumes (via helper containers, with owner uid/gid preserved)
 - its state, settings, `.env` (including generated secrets), custom override and published policy
+
+**File-share credentials are never in instance backups:** the `hub_secrets` volume is external to the instance's project, so it is never archived, replaced or removed by a backup, restore or delete of the instance. An instance restore voids every active credential (`reason: restore`): people create new ones on My apps. See [File Sharing](file-sharing.md#restores).
 
 These are stored in `<hub data>/backups/<instance-id>/<UTC timestamp>.tar`
 (sha256-checksummed). The Hub also takes an automatic backup before every
@@ -198,10 +201,11 @@ The restore first checks the backup's checksums and saves the current `.env`,
 Portcullis and:
 
 1. Restores `.env`, `certs/` and the config files. An existing `config/` repo is left alone.
-2. Recreates the Postgres and Vault volumes, and `pg_restore`s the Keycloak database into the fresh Postgres.
-3. Initialises the fresh Vault with throwaway keys, then force-restores the raft snapshot, which brings back the original keyring. It installs the backed-up `secrets/` and recreates Vault, which auto-unseals with the **original** unseal key.
-4. Restores the LLDAP, Hub and ACME volumes.
-5. **Checks LLDAP before Keycloak starts.** Keycloak deletes its copy of an LDAP
+2. **Stops file-sharing apps and empties `hub_secrets`.** Every running app instance that mounts `hub_secrets` is stopped (`compose down`, volumes kept). The `hub_secrets` volume is then removed and re-created with its labels and ownership (`10001:10001 0700`). After the restore the Hub voids every file-share password (reason `restore`, audited `credential.void_restore` per instance with the count): people create new ones on [My apps](hub.md#my-apps). The Hub never starts the stopped apps again (drift shows them down); an admin re-enables them from the Hub. See [File Sharing](file-sharing.md#restores).
+3. Recreates the Postgres and Vault volumes, and `pg_restore`s the Keycloak database into the fresh Postgres.
+4. Initialises the fresh Vault with throwaway keys, then force-restores the raft snapshot, which brings back the original keyring. It installs the backed-up `secrets/` and recreates Vault, which auto-unseals with the **original** unseal key.
+5. Restores the LLDAP, Hub and ACME volumes.
+6. **Checks LLDAP before Keycloak starts.** Keycloak deletes its copy of an LDAP
    user — passkeys included — as soon as a lookup (a sign-in attempt, the Hub's
    cleanup) doesn't find the user in LLDAP. If LLDAP has no users besides
    `admin` and `portcullis-hub` (or no user database at all, e.g. a backup
@@ -209,7 +213,7 @@ Portcullis and:
    database has users, the restore **stops here**: Postgres and Vault are up,
    nothing else is started. Restore a backup that includes LLDAP, or, if the
    users really are gone, re-run with `--allow-empty-lldap`.
-6. Runs `vault init`, which refreshes the enroll AppRole secret and the metrics token. Then it starts everything and waits for Vault, Postgres, LLDAP and Keycloak.
+7. Runs `vault init`, which refreshes the enroll AppRole secret and the metrics token. Then it starts everything and waits for Vault, Postgres, LLDAP and Keycloak.
 
 Use `--yes` to skip the confirmation.
 

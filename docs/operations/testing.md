@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`, `e2e-folders`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
@@ -330,6 +330,19 @@ scenarios, every count exact:
 A scenario that builds on a failed one fails too. On failure the job
 uploads `e2e-folders-artifacts`: logs, API answers, the tree and
 `getfacl -R`, the Hub's folder data, snapshots and the doctor cache.
+
+### `e2e-filesharing` (file-share passwords, SMB3 hardening, revocation)
+
+`tests/e2e/e2e_filesharing.py` (Playwright, smbclient 4.19.5) provisions a stack with Samba and Time Machine instances, tests per-person credential creation (fresh passkey touch, the password shown once), SMB3 connections with encryption required, revocation latencies (hub-made removal, LLDAP-direct removal, writer demoted to reader), instance and core restores voiding credentials, that no hash appears in any backup or log, and the F58 capability ruling (smbd signals work without `CAP_KILL`). Scenarios:
+
+- Setup: connect_address, ports on 127.0.0.1, size_limit 500GiB / office_milan 10GiB, folder slot via assignment, readers / writers before enable, testparm hardening.
+- Sign-in via setup links (alice, bob, carol); fresh auth popup flow (COOP, the authorize parameters, the password once, replay refused).
+- SMB3 sessions: Time Machine and Samba list shares, carol writes as `21002:60000`, encryption required, SMB2/NTLMv1/guest/wrong password refused, outside-LAN client refused.
+- Revocation: hub-made ≤ 10 s, LLDAP-direct ≤ 75 s, writer demoted ≤ 4 s (session gone, login refused). Measured at 0.8–0.9 s, 3.4–9.1 s, and about 3.6 s (task 18 report).
+- Restore: instance restore → credential voided, card says "reset by a restore", re-create works. Core restore → no hash in 45 backup files, `hub_secrets` emptied, credentials voided, uid pool +1000, Samba restarted from Hub.
+- No hash visible: `docker inspect`, container logs, `hub_data`, audit, ops, archives, `state.yaml`.
+
+Built like `e2e-settings` (same-named Hub and templates branches, else `main`). Ubuntu 24.04 runners, smbclient pinned at `2:4.19.5+dfsg-4ubuntu9*`. On failure: policy/attributes files, data files, container logs, screenshots, no traces (DOM snapshots would carry the password).
 
 **Cross-repo branches.** `ci.yml` also runs on `workflow_dispatch`. On a
 branch whose name exists in porelli/portcullis-hub (not `main`, not a tag),

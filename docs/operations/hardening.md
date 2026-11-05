@@ -429,6 +429,49 @@ not by relying on the mount's read-only flag alone.
   bind mount) can still move an entry out in the instant between that
   check and the change.
 
+## File sharing
+
+The Samba and Time Machine templates enforce hardened SMB3 and trust only the Local networks (§ [File Sharing](file-sharing.md)).
+
+### Hardened SMB
+
+Both templates require exactly:
+
+- **`server min protocol = SMB3`**: SMB2, SMB1 and older are refused.
+- **`server smb encrypt = required`**: every session is AES-128-GCM encrypted. The client asking for no encryption still gets an encrypted session.
+- **`server signing = mandatory`**, **`ntlm auth = ntlmv2-only`**, **`lanman auth = no`**: NTLMv1 is refused.
+- **`map to guest = never`**, **`restrict anonymous = 2`**, **`guest ok = no`**: guest access is refused.
+- **`hosts allow = <PORTCULLIS_LOCAL_NETWORKS>`**, **`hosts deny = 0.0.0.0/0 ::/0`**: only the configured local networks may connect.
+- **`wide links = no`**: symlinks are confined to the share.
+- **`disable netbios = yes`**, **`smb ports = 445`**: only port 445 is published (no 137–139).
+
+The container exits 4 (restart loop) if `testparm -s` shows any other value. The templates' converge script (`portcullis-sync`) writes `smb.conf` and the images' own config switches are dead.
+
+### Container hardening
+
+- **Capabilities:** `CHOWN`, `SETUID`, `SETGID` and `NET_BIND_SERVICE` only (§ [Container hardening](#container-hardening)). Neither image needs `KILL` (root can signal per-user smbd processes without it) or `FOWNER`.
+- **Passdb and state on tmpfs:** `/var/lib/samba`, `/var/cache/samba`, `/run/samba`, `/run/portcullis` are tmpfs, so no hash reaches a Docker volume or an instance backup.
+- **Hash files:** on the `hub_secrets` volume (§ [Secrets volume](#secrets-volume) below), read-only to the container, owned by uid 10001, mode `0600`. The converge script drops to uid/gid 10001 (no `DAC_OVERRIDE` / `DAC_READ_SEARCH`) and imports hashes from a `0600` root-owned temp file on tmpfs, never from argv.
+
+### Hosts allow and the userland proxy
+
+**Residual:** A client whose connection Docker relays through its **userland proxy** (IPv6 to an IPv4-only container, or another container using the published port) arrives from the bridge gateway (inside `172.16.0.0/12`), so it passes `hosts allow` whatever its own address. To avoid it:
+
+- Disable the userland proxy: set `"userland-proxy": false` in `/etc/docker/daemon.json` and restart Docker, or
+- Publish only on a LAN address (rebind the port in the Hub), or
+- Narrow Local networks to your real LAN (removing `172.16.0.0/12` if your LAN doesn't use it).
+
+**To be verified on the test server (Task 20):** Whether source addresses are preserved for published IPv4 ports.
+
+### Secrets volume
+
+The `hub_secrets` volume holds NT hash files (contract § [Per-person credentials](../guides/integration-contracts.md#1316-per-person-credentials-and-ids-new-file-sharing)):
+
+- One `<username>.nt` per active credential: 32 uppercase hex characters and `\n`, mode `0600`.
+- Directories `0700`, all owned by uid 10001.
+- **Never in backups:** `./portcullis backup` never copies it. A core restore empties it (removes the volume and recreates it with its labels and ownership). See [Backups](backups.md).
+- The Hub checks at start that `HUB_SECRETS_DIR` (default `/secrets`) is owned by its own uid (10001) and is mode `0700`. Otherwise it fails closed: credential routes answer `503` and every instance with a `person_secret` option refuses to enable or start.
+
 ## LAN-only ports and host firewalls
 
 A template can mark a port **LAN only** (`lan_only: true`, Samba's SMB for

@@ -34,8 +34,8 @@ Options an admin sets in the Hub's [settings panel](../operations/hub.md#app-set
 
 | Setting | Type | Scope | Applies | Description |
 |---------|------|-------|---------|-------------|
-| **File-share password** | `person_secret` | instance | `live` | Each person's own password for their Time Machine share, created on My apps. The Hub keeps only its NT hash. |
-| **File owner id** | `person_id` | instance | `restart` |  |
+| **File-share password** | `person_secret` | per person | `live` | Each person's own password for their Time Machine share, created on My apps. The Hub keeps only its NT hash. |
+| **File owner id** | `person_id` | per person | `restart` |  |
 | **Backup size limit** | `size` | per person | `live` | Time Machine keeps backups within this size (not a hard quota). Default: `500GiB`. [Doctor](../operations/hub.md#doctor) check: a group row should set it (Most people should get a deliberate limit). |
 | **Backup storage** | `path` | instance | `restart` | Host directory holding every person's backup folder (&lt;username&gt;, owned by their uid, mode 0700). Empty = a Docker volume. Mounted at `/opt` (rw). [Shared folder](../operations/hub.md#shared-folders) ready: writes as uid each person's (`uid`), gid each person's (`uid`); joins the folder's group itself, from `PORTCULLIS_FOLDER_GID_STORAGE`. [Doctor](../operations/hub.md#doctor) check: the filesystem needs `xattr` and not on `nfs`, `cifs`, `fuse` (Time Machine stores metadata in extended attributes). [Doctor](../operations/hub.md#doctor) check: no other app may write the same folder (Backup bundles must not be written by other apps). |
 | **Share name prefix** | `string` | instance | `live` | Each person's share is &lt;prefix&gt;-&lt;username&gt;. Default: `TimeMachine`. |
