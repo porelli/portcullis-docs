@@ -145,7 +145,7 @@ Every template says in its manifest whether the AI can act in the app, and how (
     | `port` | 1–65535 | The container port of `service` (unused for `app_oauth`) |
     | `path` | absolute, clean, no `?` / `#`; default `/mcp` | The upstream's MCP path |
     | `router` | a host router of the template (§3.1) | The companion's endpoint is on this router's hostname: `https://<host><public_path>` |
-    | `public_path` | absolute, clean; default `/mcp` | The path people connect to. Not `/`, never at or under `/.well-known/` or `/oauth2/`, never at or under (or above) a path of `auth.public_access`, never overlapping (at, under or above) the `path` of an `app_oauth` companion on the same router, unique per router. Refused on `app_oauth` companions (the endpoint is then the app's own route `https://<host><path>`, which the Hub doesn't route) |
+    | `public_path` | absolute, clean; default `/mcp` | The path people connect to. Not `/`, never at or under `/.well-known/` or `/oauth2/`, never at or under (or above) a path of `auth.public_access`, never at, under or above another companion's endpoint path on the same router (its `public_path`, or an `app_oauth` companion's `path`). Refused on `app_oauth` companions (the endpoint is then the app's own route `https://<host><path>`, which the Hub doesn't route) |
     | `identity` | object, below | How the person's identity reaches the companion |
     | `modes` | non-empty subset of `read_only`, `read_write`, no repeats | What the admin may choose. `app_oauth`: exactly `[read_write]` |
     | `default_mode` | one of `modes` | Required when `modes` has two entries |
