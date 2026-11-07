@@ -1,0 +1,4316 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/testing/">
+      
+      
+      
+        <link rel="prev" href="../ai/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Testing & CI - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Testing & CI
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Core CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-no-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>unit-tests</code> (no containers)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-and-test-whole-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>build-and-test</code> (whole stack)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e</code> (browser)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-instances-app-instances-extra-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-instances</code> (app instances, extra domains)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-settings-app-settings-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-settings</code> (app settings panel)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-folders-shared-folders-and-the-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-folders</code> (shared folders and the doctor)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-filesharing-file-share-passwords-smb3-hardening-revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-filesharing</code> (file-share passwords, SMB3 hardening, revocation)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-ai-ai-support-through-mcp-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-ai</code> (AI support through mcp-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Caching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#releases-releaseyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Releases (<code>release.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependabot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dependabot
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dependabot">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auto-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auto-merge
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-core-tests-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running the core tests locally
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Templates CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Templates CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lintyml-every-push-and-pr-forks-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>lint.yml</code>: every push and PR, forks included
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-appsyml-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>test-apps.yml</code>: integration tests
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-app-sign-in-e2e" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-app sign-in e2e
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docs-dispatchyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>docs-dispatch.yml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#craft-releasesyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>craft-releases.yml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-helpers-testslibsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Test helpers (<code>tests/lib.sh</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-ci-buildyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hub CI (<code>build.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-support-manual-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support manual checklist
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-workflows-locally-with-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running workflows locally with act
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Core CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-no-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>unit-tests</code> (no containers)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-and-test-whole-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>build-and-test</code> (whole stack)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e</code> (browser)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-instances-app-instances-extra-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-instances</code> (app instances, extra domains)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-settings-app-settings-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-settings</code> (app settings panel)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-folders-shared-folders-and-the-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-folders</code> (shared folders and the doctor)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-filesharing-file-share-passwords-smb3-hardening-revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-filesharing</code> (file-share passwords, SMB3 hardening, revocation)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-ai-ai-support-through-mcp-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>e2e-ai</code> (AI support through mcp-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Caching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#releases-releaseyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Releases (<code>release.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependabot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dependabot
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dependabot">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auto-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auto-merge
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-core-tests-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running the core tests locally
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Templates CI
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Templates CI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lintyml-every-push-and-pr-forks-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>lint.yml</code>: every push and PR, forks included
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-appsyml-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>test-apps.yml</code>: integration tests
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-app-sign-in-e2e" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-app sign-in e2e
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docs-dispatchyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>docs-dispatch.yml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#craft-releasesyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>craft-releases.yml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-helpers-testslibsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Test helpers (<code>tests/lib.sh</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-ci-buildyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hub CI (<code>build.yml</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-support-manual-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support manual checklist
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-workflows-locally-with-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running workflows locally with act
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="testing-ci">Testing &amp; CI<a class="headerlink" href="#testing-ci" title="Permanent link">&para;</a></h1>
+<p>Each repository has its own GitHub Actions CI. Core tests the stack itself, the
+templates repo tests every template against a pinned core version, and the Hub
+tests and signs its image.</p>
+<table>
+<thead>
+<tr>
+<th>Repo</th>
+<th>Workflow</th>
+<th>Jobs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>core (<code>porelli/portcullis</code>)</td>
+<td><code>.github/workflows/ci.yml</code>, <code>release.yml</code></td>
+<td><code>unit-tests</code>, <code>build-and-test</code>, <code>e2e</code>, <code>e2e-instances</code>, <code>e2e-settings</code>, <code>e2e-folders</code>, <code>e2e-filesharing</code>, <code>e2e-ai</code>; release: <code>preflight</code> → <code>ci</code> (reusable <code>ci.yml</code>) → <code>release</code></td>
+</tr>
+<tr>
+<td>templates (<code>porelli/portcullis-templates</code>)</td>
+<td><code>lint.yml</code>, <code>test-apps.yml</code>, <code>docs-dispatch.yml</code></td>
+<td><code>lint</code>; <code>gate</code> → <code>changes</code> → <code>fetch-core</code> (+ <code>app-images</code> on push to <code>main</code>) → <code>test</code>; <code>dispatch</code></td>
+</tr>
+<tr>
+<td>Hub (<code>porelli/portcullis-hub</code>)</td>
+<td><code>build.yml</code></td>
+<td><code>test</code>, <code>build</code></td>
+</tr>
+<tr>
+<td>docs (<code>porelli/portcullis-docs</code>)</td>
+<td><code>deploy.yml</code></td>
+<td><code>deploy</code> (<code>zensical build --strict</code>, publish to <code>gh-pages</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="core-ci">Core CI<a class="headerlink" href="#core-ci" title="Permanent link">&para;</a></h2>
+<p>Runs on pushes to <code>main</code>, on pull requests, and as a reusable workflow (<code>workflow_call</code>) from <code>release.yml</code>. Secrets are not configured in
+the workflow: <code>./portcullis init --env-only</code> generates them into <code>.env</code>,
+exactly as on a real install. Every step drives the stack through
+<code>./portcullis</code>.</p>
+<h3 id="unit-tests-no-containers"><code>unit-tests</code> (no containers)<a class="headerlink" href="#unit-tests-no-containers" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>shellcheck</strong> of <code>portcullis</code>, <code>scripts/lib/*.sh</code>, <code>tests/*.sh</code> and <code>vault/entrypoint.sh</code>.</li>
+<li><strong>CLI help.</strong> Every command listed by <code>./portcullis help</code> must print a <code>Usage: portcullis &lt;cmd&gt;</code> line for <code>--help</code>.</li>
+<li><strong><code>tests/test_cli.sh</code>.</strong> Argument parsing, dispatch and <code>init --env-only</code>, with a stub <code>docker</code>.</li>
+<li><strong><code>tests/test_shell_libs.sh</code>.</strong> Shell-library tests against stub <code>docker</code>/<code>vault</code>:<ul>
+<li><code>.env</code> handling and secret generation</li>
+<li>network validation</li>
+<li><code>cert sync</code>, which must never empty the revoked list when Vault fails</li>
+<li><code>pki setup</code> idempotency, including resuming a partial run</li>
+<li><code>keycloak configure</code>'s <code>portcullis-forward-auth</code> patch: the main callback plus every <code>https://&lt;valid hostname&gt;/oauth2/callback</code> the Hub added (extra-domain hosts), nothing else, idempotent</li>
+<li>the realm export's invite post-broker flow <code>portcullis-invite-session</code>: client-scope check (<code>portcullis-invite-client</code>, not negated), deny unless admitted, then <abbr title="Level of Authentication: 1 = signed in with a passkey or client certificate, 2 = hardware-backed (hwk), 3 = client certificate (mtls)">LoA</abbr> 1 (<code>portcullis-invite-loa-1</code>) and <abbr title="Level of Authentication: 1 = signed in with a passkey or client certificate, 2 = hardware-backed (hwk), 3 = client certificate (mtls)">LoA</abbr> 2 (<code>portcullis-invite-loa</code>), <abbr title="Authentication Methods Reference - how the user authenticated (hwk, mtls)">amr</abbr> <code>hwk</code>; the marker scope is no default anywhere in the export</li>
+</ul>
+</li>
+<li><strong><code>tests/test_group_gate.py</code>.</strong> <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr> unit tests (run in a venv with <code>pip install --require-hashes -r group-gate/requirements.txt</code>):<ul>
+<li><abbr title="JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries">policy file</abbr> v5: maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, v4 and older deny, <code>extra_domains</code> (malformed or overlapping the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr>'s core hosts → deny), hosts outside the main and <abbr title="Extra domains served by Portcullis with their own wildcard certificates">enrolled domains</abbr> denied</li>
+<li>core hosts from the map file (<code>&lt;sub&gt;</code> → <code>&lt;sub&gt;.&lt;domain&gt;</code>, the apex included), never from the <abbr title="JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries">policy file</abbr>; merging the map file with the Hub's <code>groups</code></li>
+<li><abbr title="Prompting for additional authentication when current session is insufficient">step-up</abbr> URLs: <code>auth.&lt;domain&gt;</code> for main-domain and core hosts, the host itself with <code>rd=/</code> for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr> and the portal file's <code>domains</code></li>
+<li>fail-closed policies (version without <code>version</code> key → deny) and the reserved deny group</li>
+<li><code>path_groups</code>, including bypass variants</li>
+<li>the <abbr title="Mutual TLS authentication using client certificates">mTLS</abbr> binding</li>
+<li>revocation by serial list and by a real openssl-generated <abbr title="Certificate Revocation List - lists revoked client certificates">CRL</abbr></li>
+<li>the identity headers and attribute headers returned on allow</li>
+<li><code>expiring</code> array: membership treated as absent once <code>now &gt;= at</code>, token withholding (<code>Authorization</code> and <code>X-Forwarded-Access-Token</code> withheld when an expired membership is stripped)</li>
+</ul>
+</li>
+<li><strong>Compose validity and wiring</strong>, against a generated <code>.env</code>. <code>docker compose config -q</code> must pass for the core, apps and test compose files. It also checks:<ul>
+<li><code>HUB_PROXY_SECRET</code> is generated, and an empty one is rejected</li>
+<li>the public default <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr> secret is gone</li>
+<li>only the two <abbr title="Docker API gateways that expose only the endpoints services need">socket proxies</abbr> mount <code>docker.sock</code>; <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> and the Hub use their proxies, and each proxy network has exactly its two members</li>
+<li>the Hub router carries <code>hub-proxy-secret@docker</code> with the right secret, and the people router carries the same middleware</li>
+<li>every core image is pinned by digest, and <code>enroll/Dockerfile</code> + <code>group-gate/Dockerfile</code> bases too</li>
+<li>every service has <code>no-new-privileges</code>, <code>cap_drop: ALL</code> and memory/pid limits</li>
+<li><abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>'s <code>--proxy-trusted-addresses</code> is <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s <code>portcullis-auth</code> IP, and only <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> and <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> are on that network</li>
+<li><code>group-gate-map.conf</code> has <code>people=*</code></li>
+<li><code>forward-auth-ext</code> mirrors <code>forward-auth</code> (image, command, secrets, trusted proxies; <code>portcullis-auth-ext</code> has every <code>portcullis-auth</code> forwardauth setting), defines no router, uses the relative callback <code>/oauth2/callback</code> and the host-only cookie <code>__Host-portcullis_ext</code> (<code>Secure</code>, <code>Path=/</code>, no cookie domain, no whitelist); <code>oauth2-proxy/alpha.yaml</code> sends <abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr> S256</li>
+</ul>
+</li>
+<li><strong>Pin enforcement.</strong> Every image in every compose file, under every profile (<code>--profile '*'</code>), must be pinned <code>tag@sha256:…</code>, apart from the Hub, which comes from <code>HUB_IMAGE</code>. The same goes for the <code>enroll/Dockerfile</code> bases, the image constants the CLI runs itself (<code>*_IMAGE=</code> in <code>scripts/lib</code>, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a <code># vX.Y.Z</code> comment.</li>
+<li><strong>Monitoring config.</strong> It runs, in the pinned images:<ul>
+<li><code>promtool check config</code> and <code>check rules</code>, plus <code>promtool test rules</code> (the alert unit tests)</li>
+<li><code>amtool check-config</code> for a generated Alertmanager config with no receiver, a webhook, ntfy and SMTP</li>
+<li><code>blackbox_exporter --config.check</code></li>
+<li>a sanity check of the provisioned dashboard JSON</li>
+</ul>
+</li>
+<li><strong>enroll</strong> <code>go vet</code> + <code>go test</code> in the pinned Go image: CSR validation, admin requirement, content type, AppRole login and re-login, self-service renewal.</li>
+<li><strong><abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr></strong> (<code>mcp-gate/</code>): <code>go mod verify</code>, <code>go vet</code>, <code>gofmt</code>, <code>go test -race ./...</code>. The shared test vector of contract §15.4 (<code>internal/config/testdata/mcp-gate.json</code> and <code>mcp-credentials.json</code>, byte-identical to the Hub's <code>internal/aigate/testdata/</code>) is decoded strictly and re-encoded byte for byte. The tests cover the token rules (signature, issuer, audience, scope, client, <abbr title="Level of Authentication: 1 = signed in with a passkey or client certificate, 2 = hardware-backed (hwk), 3 = client certificate (mtls)">LoA</abbr>, population, <code>Origin</code>), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream rules) and the Portcullis proxy. The compose wiring check also asserts the gate's networks (exactly <code>portcullis-mcp</code> with the Hub and <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>, and <code>portcullis-proxy</code> at its fixed IP), its secret mounts, <code>mcp_gate_data</code> (read-only in the Hub) and that no router targets the Hub's port 8890.</li>
+</ul>
+<h3 id="build-and-test-whole-stack"><code>build-and-test</code> (whole stack)<a class="headerlink" href="#build-and-test-whole-stack" title="Permanent link">&para;</a></h3>
+<p>It boots the stack with a CI override (no <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr>; self-signed server cert from
+the internal PKI) and verifies:</p>
+<ul>
+<li><strong>Vault</strong><ul>
+<li>server-mode init and unseal, and the permissions on <code>secrets/</code></li>
+<li>after a restart it auto-unseals and the CA is unchanged</li>
+<li>the enroll AppRole can only sign, list and read certs</li>
+</ul>
+</li>
+<li><strong>PKI</strong><ul>
+<li>the CA chain is created and valid</li>
+<li>Vault issues client certificates</li>
+</ul>
+</li>
+<li><strong><abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr></strong><ul>
+<li>the <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> discovery and <abbr title="Security Assertion Markup Language - XML-based SSO protocol">SAML</abbr> descriptor endpoints</li>
+<li>the <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr> policy</li>
+<li>the <code>portcullis-forward-auth</code> client</li>
+<li><code>portcullis-forward-auth</code> requires <abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr> S256: an authorization request without a code challenge gets no code, the X.509 login with one does (<abbr title="Forward authentication service redirecting to Keycloak for sign-in">oauth2-proxy</abbr>'s <code>alpha.yaml</code> must keep <code>code_challenge_method: S256</code>)</li>
+<li>the invite post-broker flow admits only clients with the <code>portcullis-invite-client</code> scope (only <code>portcullis-forward-auth</code>, never a realm default), and a second <code>keycloak configure</code> keeps an extra-domain callback on <code>portcullis-forward-auth</code> while dropping a wildcard</li>
+<li><abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> users show up through the federation</li>
+<li>the <code>email-unverified</code> scope has exactly one mapper (<code>email</code>), also after a second <code>keycloak configure</code>; a throwaway direct-grant client with that scope instead of <code>email</code> gets <code>email</code> but no <code>email_verified</code> in the ID token, access token and userinfo, while the built-in <code>email</code> scope sends <code>email_verified: false</code></li>
+</ul>
+</li>
+<li><strong><abbr title="Mutual TLS authentication using client certificates">mTLS</abbr></strong><ul>
+<li>requests with no cert, or a cert from another CA, are rejected</li>
+<li>cert info, including the serial, reaches the backend</li>
+<li>requests arrive from <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s static IP</li>
+</ul>
+</li>
+<li><strong>X.509 login</strong><ul>
+<li>a login via <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> with a real cert succeeds</li>
+<li>the same cert as a forged header sent straight to <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> (from the
+  <code>portcullis</code> and <code>portcullis-auth</code> networks and from <code>127.0.0.1:8080</code>)
+  must <strong>not</strong> yield an authorization code</li>
+</ul>
+</li>
+<li><strong>Header spoofing.</strong> Client-supplied cert headers and their aliases are
+  dropped, and <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr>'s path rules see <code>X-Forwarded-Uri</code>.</li>
+<li><strong>Socket proxies.</strong> A real <code>docker compose</code> project runs through
+  <code>socket-proxy-hub</code>, and the denied sections (build, swarm, plugins, secrets,
+  system, ...) fail. <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s proxy is read-only.</li>
+<li><strong>Domains service (Pebble e2e).</strong> The image is built with <code>GO_TAGS=testprovider</code>
+  (adds provider <code>fake</code> with records in memory + a DNS server on <code>:8053</code>). CI
+  runs Pebble (<code>-dnsserver domains:8053</code>) and configures the service to use
+  <code>fake</code>, Pebble's minica root, and <code>DOMAINS_RESOLVERS=127.0.0.1:8053</code>. It checks:<ul>
+<li>enrolling a domain, the records check, <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> <abbr title="ACME challenge proving domain control via DNS TXT records">DNS-01</abbr> order, serving the certificate</li>
+<li><code>DELETE</code> stops serving it</li>
+<li>the served document contains only <code>tls.certificates</code> (no routers, services, middlewares)</li>
+<li>every served certificate's SANs are exactly <code>{&lt;d&gt;, *.&lt;d&gt;}</code> for an <abbr title="Extra domain served by Portcullis with its own wildcard certificate">enrolled domain</abbr></li>
+<li><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> picks up the certificate by SNI within ~25 s without restarting (<code>StartedAt</code> unchanged)</li>
+<li>core hosts still serve the main-domain certificate, never a certificate from the HTTP provider</li>
+<li><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s API lists no <code>@http</code> object (routers, services, middlewares, serverstransports)</li>
+<li><abbr title="Mutual TLS authentication using client certificates">mTLS</abbr> refusal: the endpoint refuses requests without the client certificate</li>
+<li>a kept domain survives backup/restore</li>
+</ul>
+</li>
+</ul>
+<p><strong>The production image is built without <code>testprovider</code></strong> (no fake provider).</p>
+<ul>
+<li>
+<p><strong>Live <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> <abbr title="Keycloak client role enforcing access group membership for native-OIDC apps">access role</abbr> test (opt-in).</strong> When <code>PORTCULLIS_KEYCLOAK_LIVE_URL</code>
+  (e.g. <code>http://keycloak:8080</code>) and <code>PORTCULLIS_KEYCLOAK_LIVE_WIPE=portcullis</code>
+  are set, the Hub runs <code>TestLiveClientAccess</code>: it <strong>wipes realm <code>portcullis</code></strong>,
+  rebuilds it from the export, creates an LDAP group and a test client with the
+  <abbr title="Keycloak client role enforcing access group membership for native-OIDC apps">access role</abbr> enforced, and drives the flow to verify the role is checked and
+  fails closed. This is the live proof of contract §8. It requires a running
+  <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> and is off by default.</p>
+</li>
+<li>
+<p><strong>Hub</strong></p>
+<ul>
+<li>runs as non-root</li>
+<li>talks to Docker only via its proxy</li>
+<li>answers 403 without the proxy secret</li>
+<li>on a fresh install publishes the built-in default auth policy <code>{factors: [mtls, webauthn], op: any}</code> (either YubiKey method), which <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr> applies (<abbr title="Prompting for additional authentication when current session is insufficient">step-up</abbr> for a session with neither) to an app without its own policy</li>
+<li>then gets a public default through <code>PUT /api/settings</code>, like an admin would; the revocation test checks that precondition, and every hand-written <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr> <abbr title="JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries">policy file</abbr> in CI states its default explicitly</li>
+</ul>
+</li>
+<li><strong>Enrollment UI and API.</strong> List users, sign a CSR with the AppRole token, list certs.</li>
+<li><strong>Passkey-only sign-in and <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr>.</strong><ul>
+<li>the browser flow has no password executor, has the identity-provider redirector, a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> step and <abbr title="Level of Authentication: 1 = signed in with a passkey or client certificate, 2 = hardware-backed (hwk), 3 = client certificate (mtls)">LoA</abbr> 2 = allow-access; it carries the <code>[sync &lt;hash&gt;]</code> marker and a second <code>keycloak configure</code> rebuilds nothing</li>
+<li>the LDAP federation has <code>cachePolicy</code> <code>NO_CACHE</code> (<code>tests/test_shell_libs.sh</code> also checks the realm export and that <code>keycloak configure</code>'s patch sets it idempotently)</li>
+<li>the invite identity provider is enabled, hidden, links existing users only (<code>idp-detect-existing-broker-user</code>, <code>idp-auto-link</code>), back-channel <code>http://enroll:8445</code>, <abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr>; the service account <code>portcullis-enroll</code> has exactly view-users + manage-users</li>
+<li><code>./portcullis invite</code>: link format, a new link revokes the older one, viewing doesn't consume it, a cross-site redeem is refused, <code>portcullis-hub</code> is refused, <code>admin</code> is allowed from the server</li>
+<li>the Hub's invite API (<code>enroll:8444</code>, contract §9.4): 201 for a user, 409 for <code>admin</code> / <code>portcullis-hub</code>, 404 for an unknown user, 401 with a wrong secret; the Hub's copy of the secret matches; the JWKS serves an ES256 key</li>
+</ul>
+</li>
+<li><strong><code>./portcullis up</code> and the Hub's <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> account.</strong> <code>portcullis-hub</code> is in <code>lldap_admin</code>, the 0640 / group 10001 password file logs in, a password changed in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> is reset from the file on the next <code>up</code>, and the Hub sees <code>/run/portcullis/lldap</code> and <code>/run/portcullis/invite</code>.</li>
+<li><strong>Revocation end to end</strong>, once through <code>./portcullis cert revoke</code> and once through Vault's <abbr title="Certificate Revocation List - lists revoked client certificates">CRL</abbr> alone.</li>
+<li><strong>CLI.</strong> <code>./portcullis status</code>.</li>
+<li><strong>Backup round-trip.</strong> It runs, in order:<ul>
+<li><code>./portcullis backup</code> with nothing stopped, then <code>backup verify --local</code>. A deliberately damaged backup must fail verification.</li>
+<li><code>status --textfile</code>.</li>
+<li><code>backup --offsite</code> twice to a local restic repository. The second run must be incremental, and retention must collapse same-day snapshots under <code>keep-daily</code>.</li>
+<li><code>backup verify</code> (off-host). A wrong <code>BACKUP_PASSWORD</code> must fail, and neither the root token nor the <code>.env</code> secrets may appear in the encrypted repository.</li>
+<li><strong>Restore into a fresh stack.</strong> Containers, volumes, <code>.env</code>, <code>secrets/</code>, <code>certs/</code> and local backups are all deleted, as on a new host. Then <code>restore --yes --from-offsite</code> must bring back an active Vault, the <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> realm, the <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr> client and the <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> user.</li>
+</ul>
+</li>
+</ul>
+<p>The step "Test the public guard (<abbr title="Unauthenticated paths for share links (off by default)">public exceptions</abbr>) through <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>" routes a test host through <code>portcullis-public-guard@docker</code> only and checks: no version-3 entry → 403; published prefix / static paths → 200; other paths, encoded <code>/</code> or <code>#</code>, dot-segment escapes → 403; <code>Authorization</code>, <code>Proxy-Authorization</code>, a credential header, credential cookies and query keys in PHP-mangled spellings → 403. The guard's unit tests are in <code>tests/test_group_gate.py</code> (<code>PublicGuardTest</code>, <code>PhpVarNameTest</code>).</p>
+<h3 id="e2e-browser"><code>e2e</code> (browser)<a class="headerlink" href="#e2e-browser" title="Permanent link">&para;</a></h3>
+<p><code>tests/e2e/e2e_login.py</code> runs Playwright Chromium (pinned in
+<code>tests/e2e/requirements.txt</code>) with a CDP virtual <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr> authenticator against
+the full chain: <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> → <abbr title="Forward authentication service redirecting to Keycloak for sign-in">oauth2-proxy</abbr> → <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> (<abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> users, <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr>, X.509)
+→ <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr>. A <code>whoami</code> test app has three hosts: <code>app.</code> (group <code>users_e2e</code>,
+<code>/admin</code> → <code>admin_e2e</code>), <code>hwk.</code> (<abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr> policy) and <code>mtls.</code> (<abbr title="Mutual TLS authentication using client certificates">mTLS</abbr> policy).</p>
+<p>Scenarios:</p>
+<p>No user has a password and nothing is pre-assigned in <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>: the job
+creates one-time <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr> with <code>./portcullis invite &lt;user&gt; --to &lt;landing&gt; --json</code>
+(for <code>e2e</code>, <code>e2e-other</code>, <code>e2e-bypass</code> and the bootstrap <code>admin</code>) and the test starts from
+them. Any password field fails the test.</p>
+<ol>
+<li>An unauthenticated request is redirected to a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>-only <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> sign-in page.</li>
+<li>The <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> → <strong>Register my key</strong> → <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> registration → the webauthn-policy app (<code>hwk.</code>), with no second prompt.</li>
+<li>The <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> works once.</li>
+<li>The session reaches the app.</li>
+<li>Apps get the <strong>username</strong> as <code>X-Forwarded-User</code>, and spoofed identity headers are dropped.</li>
+<li><code>path_groups</code>: <code>/admin</code> needs <code>admin_e2e</code>. <code>/%61dmin</code>, <code>//admin</code>, <code>/x/../admin</code> and <code>/ADMIN</code> are denied, while <code>/administrator</code> is allowed.</li>
+<li>A second login in a fresh browser with the same key is one <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> assertion.</li>
+<li>Group denial for a user not in <code>users_e2e</code> (also onboarded by <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr>).</li>
+<li>The bootstrap admin's link lands on the portal (<code>https://&lt;domain&gt;/</code>) with the Hub link.</li>
+<li>An unused <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr>, redeemed and then steered to another client's authorize endpoint with <code>kc_idp_hint=portcullis-invite</code> (client <code>e2e-invite-bypass</code>, created by the job), is denied by the invite post-broker flow: no code for the client, no <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> registered.</li>
+<li>X.509 login via <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> satisfies an <abbr title="Mutual TLS authentication using client certificates">mTLS</abbr> policy.</li>
+<li>An <abbr title="Mutual TLS authentication using client certificates">mTLS</abbr> session without the cert on the request is refused (<abbr title="Mutual TLS authentication using client certificates">mTLS</abbr> binding).</li>
+<li>A revoked client cert is rejected.</li>
+<li>A client cert from a foreign CA is rejected in the TLS handshake.</li>
+</ol>
+<p><code>tests/e2e/e2e_invite.py &lt;setup-link&gt; &lt;landing-url&gt;</code> runs the setup-link
+checks (registration, no password, <code>acr</code>/<code>amr</code> = <code>hwk</code>, single use, one-touch
+second login, the invite identity provider refuses browsers without a link)
+against any running install, e.g. a live server with a throwaway user
+(<code>E2E_IGNORE_HTTPS_ERRORS=1</code> for <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> staging). With
+<code>--reinvite-cmd "&lt;command printing portcullis invite &lt;same user&gt; --json&gt;"</code> it
+also registers a second, new authenticator through a second link and checks
+that both keys sign in — or, with <code>--replaced</code> (<code>--replace-keys</code>), that the
+old one no longer does. The <code>e2e</code> job runs both variants after the browser
+tests (users <code>e2e-spare</code>, <code>e2e-lost</code>). Dialogs are answered like a user
+pressing OK (the default value).</p>
+<p>After the browser tests, the job enables the <strong>monitoring profile</strong> and checks:</p>
+<ul>
+<li>all monitoring services become healthy, and every Prometheus target is up</li>
+<li>the Vault health probe and the enroll/<abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>/<abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> probes succeed</li>
+<li><abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr>, <abbr title="Certificate Revocation List - lists revoked client certificates">CRL</abbr>, backup (textfile), CA-expiry, <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> and Vault metrics are present</li>
+<li>the alert rules are loaded, and neither <code>VaultSealedOrDown</code> nor <code>CrlStale</code> is pending or firing</li>
+<li>Grafana at <code>metrics.&lt;domain&gt;</code> redirects unauthenticated users to sign in, and rejects a forged identity header that doesn't come from <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s IP</li>
+</ul>
+<p>On failure, screenshots, HTML, traces and service logs are uploaded as
+artifacts. The test needs a live stack and is not collected by pytest.</p>
+<h3 id="e2e-instances-app-instances-extra-domains"><code>e2e-instances</code> (app <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>, <abbr title="Additional domains served alongside the primary Portcullis domain">extra domains</abbr>)<a class="headerlink" href="#e2e-instances-app-instances-extra-domains" title="Permanent link">&para;</a></h3>
+<p>The whole stack plus the Hub, the domains service against Pebble with the fake
+DNS provider, and the <abbr title="Extra domain served by Portcullis with its own wildcard certificate">enrolled domain</abbr> <code>team-b.test</code> (enrolled on the domains
+API with the fake provider, which the Hub refuses; the Hub picks it up from the
+service's list). The Hub's only template source is the CI template
+<code>tests/e2e/apps/echo</code> (<code>traefik/whoami</code> behind Portcullis sign-in, plus a
+<code>hold</code> service that ignores SIGTERM so a backup can be made slow), seeded into
+<code>hub_data</code> as a local source. Through the Hub's API the job creates <code>echo-a</code>
+and <code>echo-c</code> on <code>team-b.test</code> and <code>echo-b</code> on the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr> (<code>echo-c</code> with
+policy <abbr title="Mutual TLS authentication using client certificates">mtls</abbr>), checks the published <abbr title="JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries">policy file</abbr> (v5, host keys, groups per
+<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>, <code>extra_domains</code>), the rendered labels (<code>portcullis-auth-ext</code> and the
+<code>/oauth2/</code> router to <code>forward-auth-ext</code> on extra-domain hosts only), the
+callbacks on <code>portcullis-forward-auth</code> and the SNI certificate. Then
+<code>tests/e2e/e2e_instances.py</code>:</p>
+<ul>
+<li>cross-domain SSO: signed in on the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr>, <code>echo-a</code> opens with no
+  further <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr> assertion, through the host's own callback, <abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr> S256 and a
+  host-only <code>__Host-portcullis_ext</code> cookie; a stale ext cookie signs in again
+  without a loop; <code>echo-c</code> steps up to <abbr title="Mutual TLS authentication using client certificates">mtls</abbr> exactly once (a returning user's
+  <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> session, the client certificate available);</li>
+<li>two <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>, two groups: each user reaches only their <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>;</li>
+<li>a backup longer than 60 s through <code>hub.&lt;domain&gt;</code>: <code>202</code>, a concurrent
+  request <code>409</code>, the op record ends ok (<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> keeps its default timeouts).</li>
+</ul>
+<p>Finally, on the real daemon: backup (the helper image pulled by digest,
+helpers removed), the typed-id delete (refusals first, then containers,
+volume and routing gone, the backup listed), restore into a new id (file and
+volume-root owners and modes kept, the new volume labelled for its project,
+the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> enables).</p>
+<h3 id="e2e-settings-app-settings-panel"><code>e2e-settings</code> (app settings panel)<a class="headerlink" href="#e2e-settings-app-settings-panel" title="Permanent link">&para;</a></h3>
+<p>The whole stack plus the Hub (built from the same-named Hub branch, like
+<code>e2e-instances</code>) with one local template source: the templates repo's
+<code>immich</code>, <code>grafana</code>, <code>nextcloud</code> and <code>firefox-sync</code> (from the same-named
+templates branch, else <code>main</code>) and two CI fixtures, <code>tests/e2e/apps/settings-echo</code>
+(<code>traefik/whoami</code> with a per-person option delivered as the header
+<code>X-Forwarded-Attr-Tier</code>) and <code>settings-file</code> (per-person options in a data
+file <code>people.json</code>, restart on membership changes, and a hook that stores
+every input it gets). A <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> alias override puts <code>auth.&lt;domain&gt;</code> and the
+app hosts on <code>portcullis-proxy</code>, so Immich and Nextcloud reach <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> as
+they would through public DNS. Users are created in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>; groups,
+memberships, enables and settings go through the Hub's API, the way an admin
+makes them. Then <code>tests/e2e/e2e_settings.py</code> runs 19 checks in a real
+browser with virtual passkeys:</p>
+<ul>
+<li><strong>Sign-in:</strong> alice, bob and carol follow their <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr>, register a
+  <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> and reach the portal.</li>
+<li><strong>Claims (Immich):</strong> alice (in <code>office_milan</code>, row 10 GiB) has
+  <code>quotaSizeInBytes</code> 10 GiB in <code>/api/users/me</code> and in Immich's UI; bob (in
+  <code>admin_immich</code>, the template's preset row) is an Immich admin with the
+  100 GiB default.</li>
+<li><strong>Headers:</strong> bob is a Grafana org Admin on his first and later requests,
+  alice a Viewer; settings-echo receives alice's <code>gold</code> and bob's <code>bronze</code>
+  tier, and never another host's header.</li>
+<li><strong>Data file:</strong> <code>people.json</code> inside the settings-file container lists only
+  the people with access.</li>
+<li><strong>Person-entered values (Firefox Sync):</strong> alice enters her Mozilla account
+  uid on <code>people.&lt;domain&gt;</code> (200); bob's identical uid is refused with 409
+  and the answer doesn't name alice; carol, outside the access group, gets</li>
+<li>After the debounce, <code>allowlist.json</code> in <code>firefox-sync-init</code> lists only
+  alice's uid, the init ran once, and on the real Postgres her uid gets a
+  tokenserver row while an unlisted one is refused.</li>
+<li><strong>Membership changes:</strong> one batch through the Hub (alice leaves
+  <code>office_milan</code> and joins <code>admin_immich</code>, bob leaves <code>admin_grafana</code>,
+  three people join <code>users_settings-file</code>). Both removals end the person's
+  <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> session (the Hub signs removed members out), so alice and bob
+  must sign in again, and any other sign-in prompt fails the test. Then:
+  alice's next Immich sign-in has the 100 GiB default and admin rights (a
+  role changed on an existing account), her tier is <code>bronze</code>, bob is a
+  Grafana Viewer, <code>people.json</code> lists four people, settings-file restarted
+  exactly once for the three joins (counted from a live <code>docker events</code>
+  stream), and the hook got the full state with trigger
+  <code>membership_change</code>.</li>
+<li><strong><abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr>:</strong> carol's <code>/api/me/apps</code> lists only settings-file with her
+  values and no other username; <code>/api/instances/immich/settings</code> on
+  <code>people.&lt;domain&gt;</code> is 404.</li>
+<li><strong>Leave and rejoin:</strong> alice leaves <code>users_firefox-sync</code>: the file no
+  longer lists her, her tokenserver rows are deleted and nobody can sync
+  (an empty allowlist lets nobody in); she rejoins and syncs again.</li>
+<li><strong>Custom fields with <code>_</code>:</strong> a field <code>cost_center</code> (<abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> attribute
+  <code>cost-center</code>) set on alice shows in the overview, fills a rule group
+  <code>cost_center = "CC-42"</code>, reaches settings-echo as
+  <code>X-Forwarded-Attr-Cost-Center</code> and <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>'s example access token for
+  Immich's client as <code>attr_cost_center</code>.</li>
+<li><strong>Hooks (Nextcloud):</strong> the first install applied the default quota through
+  the start hook (<code>occ config:app:get files default_quota</code> is <code>10 GB</code>).</li>
+</ul>
+<p>Timing bounds come from the Hub: a membership delivery arrives within one
+60 s debounce window plus the evaluator's minute and slack. Secrets reach
+the test only through the environment or <code>curl -H @&lt;(…)</code>, never on argv.
+Failure artifacts hold the settings panels (secrets are write-only), the
+policy and attributes files, the <abbr title="JSON (or tsv) files the Hub writes for an app's settings and bind-mounts read-only into the app">data files</abbr> (never <code>*.secrets.json</code>),
+container logs, screenshots and traces. The traces start after the
+setup-link sign-in; the setup pages' screenshots still show the (consumed)
+<abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr>, and traces carry session cookies of the throwaway stack.</p>
+<h3 id="e2e-folders-shared-folders-and-the-doctor"><code>e2e-folders</code> (shared folders and the doctor)<a class="headerlink" href="#e2e-folders-shared-folders-and-the-doctor" title="Permanent link">&para;</a></h3>
+<p>Built like <code>e2e-settings</code> (the same-named templates and Hub branches, else
+<code>main</code>; the <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> alias override; the Hub's data seeded with one local
+source): the templates repo's <code>jellyfin</code> (the step fails if it has no
+<code>folder</code> block) and the CI fixture <code>tests/e2e/apps/folder-writer</code> (alpine
+as <code>user: "2001:2001"</code> with umask <code>022</code>, a read-only root filesystem and no
+capabilities; its option <code>shared</code> has <code>folder: {access: write, runs_as:
+{uid: 2001, gid: 2001}}</code>; it writes a new file into <code>/shared</code> at every start
+and has a <code>lan_only</code> TCP port <code>WRITER_PORT</code>, default 18765). Before the
+stack starts, the job installs <code>acl</code>, checks that <code>/srv</code> is ext4 and takes
+ACLs, and builds <code>/srv/e2e-media</code>: 6 directories <code>0750</code> and 50 files
+<code>0640</code>, all <code>1000:1000</code>.</p>
+<p><code>tests/e2e/e2e_folders.py</code> (Python standard library only, no browser) drives
+the Hub's admin API, <code>sudo find</code> / <code>getfacl</code> and docker through 14
+scenarios, every count exact:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tree</td>
+<td>50 files and 6 directories as built, no ACLs</td>
+</tr>
+<tr>
+<td>enable</td>
+<td>jellyfin and folder-writer enable; the writer can't write yet and created no file</td>
+</tr>
+<tr>
+<td>check</td>
+<td>Check path's summary is exactly <code>exists · ext4 · ACLs and xattrs supported · 50 files · owners 1000:1000 (all)</code></td>
+</tr>
+<tr>
+<td>create</td>
+<td>folder <code>media</code> gets gid 60000, not adopted</td>
+</tr>
+<tr>
+<td>preview</td>
+<td>the preview's lines (gid allocated, "50 files and 6 folders change group 1000 → 60000", group 1000 keeps its access through an ACL on 56 entries, both apps stopped for under a minute); nothing changed on disk</td>
+</tr>
+<tr>
+<td>apply</td>
+<td>the operation succeeds: 56 entries, a snapshot, 2 uses added</td>
+</tr>
+<tr>
+<td>host verify</td>
+<td>every entry has gid 60000 and its old owner; directories <code>2770</code> with <code>group:1000:r-x</code> in the access ACL and a default ACL of <code>group::rwx</code>, <code>mask::rwx</code>, <code>other::---</code> and no entry for group 1000; files <code>0660</code> with <code>group:1000:r--</code></td>
+</tr>
+<tr>
+<td>writer file</td>
+<td>the writer's new file is <code>2001:60000</code>, mode <code>660</code> despite umask <code>022</code></td>
+</tr>
+<tr>
+<td>jellyfin</td>
+<td>its process has gid 60000, lists the library, and can't write (read-only file system)</td>
+</tr>
+<tr>
+<td>no drift</td>
+<td>a disk check newer than the request finds no <code>folder_owner</code> finding</td>
+</tr>
+<tr>
+<td>drift</td>
+<td>after a <code>chgrp 1000</code> of the writer's file, exactly one <code>folder_owner</code> Warning offering <code>reapply_folder</code> and <code>undo_folder</code></td>
+</tr>
+<tr>
+<td>undo</td>
+<td>the preview says 56 entries go back, 0 changed since; after the undo every original entry has its exact original owner, group and mode and no ACL, and the folder has nothing left to undo</td>
+</tr>
+<tr>
+<td>exposure</td>
+<td><code>WRITER_PORT</code> on <code>0.0.0.0</code> is one <code>lan_only_exposed</code> Warning; <strong>Rebind…</strong> to <code>127.0.0.1</code> leaves <code>docker port</code> showing only <code>127.0.0.1:18765</code>, and the finding is gone</td>
+</tr>
+<tr>
+<td>proxy</td>
+<td>the Hub's <abbr title="Docker API gateway that exposes only the endpoints a service needs">socket proxy</abbr> is unchanged from <code>main</code>, the Hub has no Docker socket, and no <abbr title="Short-lived container the Hub starts from its own image to scan or fix a shared folder's ownership (no network, only the mode's capabilities)">fixer helper</abbr> container is left</td>
+</tr>
+</tbody>
+</table>
+<p>A scenario that builds on a failed one fails too. On failure the job
+uploads <code>e2e-folders-artifacts</code>: logs, API answers, the tree and
+<code>getfacl -R</code>, the Hub's folder data, snapshots and the doctor cache.</p>
+<h3 id="e2e-filesharing-file-share-passwords-smb3-hardening-revocation"><code>e2e-filesharing</code> (<abbr title="Per-person SMB passwords each person creates on My apps after a fresh passkey sign-in; the Hub keeps only their NT hashes">file-share passwords</abbr>, SMB3 hardening, revocation)<a class="headerlink" href="#e2e-filesharing-file-share-passwords-smb3-hardening-revocation" title="Permanent link">&para;</a></h3>
+<p><code>tests/e2e/e2e_filesharing.py</code> (Playwright, smbclient 4.19.5) provisions a stack with Samba and Time Machine <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>, tests per-person credential creation (fresh <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> touch, the password shown once), SMB3 connections with encryption required, revocation latencies (hub-made removal, <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>-direct removal, writer demoted to reader), <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> and core restores voiding credentials, that no hash appears in any backup or log, and the F58 capability ruling (smbd signals work without <code>CAP_KILL</code>). Scenarios:</p>
+<ul>
+<li>Setup: connect_address, ports on 127.0.0.1, size_limit 500GiB / office_milan 10GiB, folder slot via assignment, readers / writers before enable, testparm hardening.</li>
+<li>Sign-in via <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr> (alice, bob, carol); <abbr title="A new hardware sign-in (passkey or hardware certificate) within the last 5 minutes, proven to the Hub with an ID token">fresh auth</abbr> popup flow (COOP, the authorize parameters, the password once, replay refused).</li>
+<li>SMB3 sessions: Time Machine and Samba list shares, carol writes as <code>21002:60000</code>, encryption required, SMB2/NTLMv1/guest/wrong password refused, outside-LAN client refused.</li>
+<li>Revocation: hub-made ≤ 10 s, <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>-direct ≤ 75 s, writer demoted ≤ 4 s (session gone, login refused). Measured at 0.8–0.9 s, 3.4–51.8 s, and about 3.6 s.</li>
+<li>Restore: <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> restore → credential voided, card says "reset by a restore", re-create works. Core restore → no hash in 45 backup files, <code>hub_secrets</code> emptied, credentials voided, uid pool +1000, Samba restarted from Hub.</li>
+<li>No hash visible: <code>docker inspect</code>, container logs, <code>hub_data</code>, audit, ops, archives, <code>state.yaml</code>.</li>
+</ul>
+<p>Built like <code>e2e-settings</code> (same-named Hub and templates branches, else <code>main</code>). Ubuntu 24.04 runners, smbclient pinned at <code>2:4.19.5+dfsg-4ubuntu9*</code>. On failure: policy/attributes files, <abbr title="JSON (or tsv) files the Hub writes for an app's settings and bind-mounts read-only into the app">data files</abbr>, container logs, screenshots, no traces (DOM snapshots would carry the password).</p>
+<h3 id="e2e-ai-ai-support-through-mcp-gate"><code>e2e-ai</code> (AI support through <abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr>)<a class="headerlink" href="#e2e-ai-ai-support-through-mcp-gate" title="Permanent link">&para;</a></h3>
+<p>The first run of the whole chain: an <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> client on the runner host →
+<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> → <abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr> → the Gitea <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> (the official <code>gitea-mcp</code>, from the
+templates repo) → Gitea, with <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>'s OAuth (<abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr> and <code>resource</code>, the Hub's
+<code>portcullis-ai-claude-code</code> client and its <code>mcp:*</code> scopes) and the Hub (AI
+settings, the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> switch, the gate files, lazy mint and revoke hooks).
+The Hub's template source is the same-named templates branch (else <code>main</code>)
+with gitea, grafana and the CI <code>echo</code> fixture; the CI fixtures declare
+<code>ai.unsupported</code>. Setup goes through the Hub's admin API as the CI admin
+<code>root</code>: <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> <code>gitea-b</code> and a throwaway <code>echo-del</code>, gitea, gitea-b and
+grafana enabled, alice / bob / carol in their groups, the master switch on
+with Claude Code offered (admin flag on), Gitea's <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> in read_write,
+Grafana's (identity headers) read-only.</p>
+<p><strong><code>tests/e2e/mcpclient</code></strong> is a stand-in for Claude Code on the official <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> Go
+SDK (pinned in its <code>go.mod</code>):</p>
+<ul>
+<li><code>mcpclient login --client-id &lt;id&gt; --callback-port 33418 --resource &lt;url&gt; [--scope "&lt;scopes&gt;"] --token-file &lt;f&gt; [--ca-file &lt;pem&gt;] [--timeout 5m]</code>
+  prints the authorize URL (Playwright opens it, signs in with a CDP virtual
+  authenticator and consents), serves the loopback callback and writes the
+  token to the file (0600; tokens are never printed or put on argv);</li>
+<li><code>mcpclient call --url &lt;url&gt; --token-file &lt;f&gt; --method tools/list|tools/call [--tool &lt;name&gt; --args &lt;json&gt;] [--protocol &lt;version&gt;] [--elicitation url [--elicit-answer accept|decline|cancel]] [--ca-file &lt;pem&gt;]</code>
+  prints one JSON document (the result, the negotiated protocol and any
+  <code>elicitation/create</code> requests, or the HTTP status and <code>WWW-Authenticate</code>).
+  <code>--elicitation url</code> declares URL-mode elicitation only and turns off the
+  SDK's automatic retry, so a 2026-07-28 <code>input_required</code> is printed as sent.</li>
+</ul>
+<p><code>tests/e2e/e2e_ai.py</code> scenarios:</p>
+<ol>
+<li><code>gitea_as_alice</code>: a token for <code>https://gitea.&lt;d&gt;/mcp</code>, <code>tools/list</code>, and a
+   repository listing that shows only alice's repositories.</li>
+<li><code>leaver_refused_and_revoked</code>: alice removed from <code>users_gitea</code> → <code>403</code>, and
+   her <code>portcullis-ai-*</code> Gitea token deleted.</li>
+<li><code>audience_separation</code>: her Gitea token at gitea-b, <code>mcp.&lt;d&gt;</code>, <code>hub.&lt;d&gt;</code>
+   and <code>people.&lt;d&gt;</code> → <code>401</code>; one token for two resources (both audiences asserted; <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> not minting it fails the scenario) → refused at both.</li>
+<li><code>no_token_crossing</code>: the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> token on Gitea's and the people pages → a
+   sign-in redirect or <code>401</code>, never a page; browser cookies on <code>/mcp</code> → <code>401</code>.
+   This proves the apps refuse the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> token; that the gate never forwards it
+   rests on <abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr>'s unit tests.</li>
+<li><code>destructive_confirmation</code>: root's <code>delete_instance</code> on <code>hub.&lt;d&gt;/mcp</code> →
+   the confirmation link; bob can't open it; root types the id and touches a
+   fresh <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> → approved; the retry runs, a second one needs a new
+   confirmation; audited <code>via: ai</code> with the client and the confirmation id.</li>
+<li><code>aggregate_lists</code>: on <code>mcp.&lt;d&gt;</code> carol sees <code>gitea__*</code>, <code>grafana__*</code> and
+   <code>portcullis__my_apps</code> and calls Grafana through the gate (identity
+   headers); bob sees no <code>grafana__*</code>; root sees no admin tool.</li>
+<li><code>ai_off</code>: the master switch off → every resource <code>503</code>. While the apps
+   restart, a <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> host answers <code>404</code> (its router is gone with the app),
+   which fails closed too.</li>
+<li><code>companion_confirmation</code>: alice's <code>label_write</code> <code>delete_repo_label</code> → a
+   <code>people.&lt;d&gt;</code> confirmation (typed check: the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> label); bob <code>404</code>;
+   approved → runs once with the canonical arguments; changed arguments → a
+   new one; the access log's <code>confirmation_id</code>.</li>
+<li><code>url_elicitation_2026</code>: with URL elicitation declared, a 2026-07-28 call
+   gets <code>input_required</code> (a Hub D tool and a <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> tool); a 2025-11-25
+   session gets the gate's <code>elicitation/create</code> (mode url) and the Hub's text.</li>
+<li><code>gitea_isolation</code>: the <code>gitea-internal</code> and <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> alias resolution, no
+    <code>portcullis-hook-*</code> token left after mint and revoke, the switch-on's
+    <code>revoke_all</code> succeeded.</li>
+<li><code>companion_alias_guard</code>: <code>./portcullis status</code> shows no name takeover
+    for the real Gitea and Grafana <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr>; a container outside the
+    <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s project answering to <code>portcullis-mcp-gitea--gitea</code> is
+    flagged, and the real one with it as sharing the name.</li>
+</ol>
+<p>Not covered: an approved 2026-07-28 round trip through <code>requestState</code>, the
+gate's continuation of a confirmed call the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> then asks input for, and
+token refresh. Built like <code>e2e-settings</code> (same-named Hub and templates
+branches, else <code>main</code>). Tokens live only in a temp directory outside the
+artifacts. On failure: logs, screenshots and traces.</p>
+<p><code>e2e-instances</code> runs on <code>ubuntu-latest</code>: the echo fixture's <code>hold</code> service has
+its own pinned <code>busybox</code> image, so the Hub's helper image isn't in use when
+the job removes it (Docker's containerd image store refuses to remove an image
+in use).</p>
+<p><strong>Cross-repo branches.</strong> <code>ci.yml</code> also runs on <code>workflow_dispatch</code>. On a
+branch whose name exists in porelli/portcullis-hub (not <code>main</code>, not a tag),
+<code>.github/actions/hub-image</code> builds the Hub from that branch instead of pulling
+<code>edge</code>; the Hub's <code>build.yml</code> likewise tests against the same-named branch of
+the templates and core repos, else <code>main</code>.</p>
+<h3 id="caching">Caching<a class="headerlink" href="#caching" title="Permanent link">&para;</a></h3>
+<p>Core CI caches what it safely can. Caches are written only on pushes to <code>main</code>.</p>
+<ul>
+<li><strong>Infra and monitoring images:</strong> cached by the local composite action <code>.github/actions/cached-images</code>.<ul>
+<li>The cache key is a hash of each job's pinned image list. Refs without a digest are refused.</li>
+<li>After <code>docker load</code>, every name set by the tarball is removed. Each ref is then re-pulled by its pinned digest (with retry and backoff), so the engine reuses a loaded image only if its content-addressed ID matches the registry's config digest.</li>
+</ul>
+</li>
+<li><strong>enroll and <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr> images:</strong> buildx layer cache (<code>type=gha</code>).</li>
+<li><strong>Go:</strong> module and build cache through <code>setup-go</code>, with <code>go mod verify</code>.</li>
+<li><strong>Python:</strong> pip and Playwright browsers, cached on the pinned requirements file (<code>group-gate/requirements.txt</code> has <code>--require-hashes</code>).</li>
+</ul>
+<p>The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most once a minute.</p>
+<h3 id="releases-releaseyml">Releases (<code>release.yml</code>)<a class="headerlink" href="#releases-releaseyml" title="Permanent link">&para;</a></h3>
+<p>Runs on <code>v*</code> tags:</p>
+<ol>
+<li><strong><code>preflight</code></strong> checks two things:<ul>
+<li>The tag is <code>vMAJOR.MINOR.PATCH</code> and <code>CHANGELOG.md</code> has its <code>## [X.Y.Z]</code> section.</li>
+<li>The <code>HUB_IMAGE</code> default in <code>docker-compose.yml</code> is <code>ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…</code>, where <code>vA.B.C</code> is a published (non-draft, non-prerelease) Hub release and the tag still resolves to that digest.</li>
+</ul>
+</li>
+<li><strong><code>ci</code></strong> runs the full <code>ci.yml</code> on the tagged commit.</li>
+<li><strong><code>release</code></strong> builds a reproducible <code>portcullis-X.Y.Z.tar.gz</code> (the checkout without <code>.git</code>, plus <code>VERSION</code>) and its <code>.sha256</code>. It then creates the GitHub release with the changelog section, the pinned Hub image and generated notes.</li>
+</ol>
+<p>See <a href="../upgrading/#core-releases">Upgrading &amp; Releases</a>.</p>
+<h3 id="dependabot">Dependabot<a class="headerlink" href="#dependabot" title="Permanent link">&para;</a></h3>
+<p><code>.github/dependabot.yml</code> proposes weekly, grouped updates for:</p>
+<ul>
+<li>the compose images</li>
+<li>the enroll Dockerfile and Go modules</li>
+<li>the GitHub Actions</li>
+<li>the e2e Python requirements</li>
+</ul>
+<p>Image constants in the CLI and inline images in workflows are not covered by
+Dependabot. They are still checked by the pin-enforcement step.</p>
+<h4 id="auto-merge">Auto-merge<a class="headerlink" href="#auto-merge" title="Permanent link">&para;</a></h4>
+<p>Core, the Hub and the templates share one auto-merge workflow,
+<code>.github/workflows/dependabot-automerge.yml</code>. Its logic lives in
+<code>.github/automerge/automerge.sh</code>, which is identical in all three repos and
+tested by <code>.github/automerge/test.sh</code>. The workflow runs after the required
+workflows finish on a Dependabot PR and never checks out PR code:</p>
+<ul>
+<li><strong>Patch, minor and digest-only</strong> updates are squash-merged once every
+  required workflow passed on the PR's head commit. The PR must be
+  Dependabot's own single, GitHub-signed commit.</li>
+<li><strong>Majors</strong> (or updates of unknown type) get the <code>major-update</code> label and stay
+  open.</li>
+<li><strong>Pre-releases</strong> are closed.</li>
+<li><strong>Red CI</strong> opens an <code>update-failed</code> issue.</li>
+</ul>
+<p><strong>A merge that fails although CI passed gets at most one re-attempt.</strong> Only
+GitHub's "Base branch was modified" error is re-attempted. It happens when
+another PR merged at the same moment. The workflow waits about 10 seconds,
+then tries the merge once more at the same tested commit. Anything else, such
+as an HTTP 5xx, is not retried. If the merge still fails, the run fails and
+its error names the cause and the command to retry by hand:</p>
+<div class="highlight"><pre><span></span><code>gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span>dependabot-automerge.yml<span class="w"> </span>-f<span class="w"> </span><span class="nv">pr</span><span class="o">=</span>&lt;n&gt;<span class="w"> </span>-f<span class="w"> </span><span class="nv">dry_run</span><span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
+<p>Run it from a checkout of the repo, or add <code>-R porelli/&lt;repo&gt;</code>. Check the PR
+first: a 5xx can still have merged it. Leave out <code>-f dry_run=false</code> to see
+the decision without acting on it.</p>
+<p>The workflow doesn't ask Dependabot to rebase. Dependabot ignores
+<code>@dependabot rebase</code> comments posted with the workflow's <code>GITHUB_TOKEN</code> (or by
+any GitHub App) and replies "only users with push access can use that
+command".</p>
+<h3 id="running-the-core-tests-locally">Running the core tests locally<a class="headerlink" href="#running-the-core-tests-locally" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>tests/test_group_gate.py
+bash<span class="w"> </span>tests/test_cli.sh
+bash<span class="w"> </span>tests/test_shell_libs.sh
+<span class="o">(</span><span class="nb">cd</span><span class="w"> </span>enroll<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./...<span class="o">)</span>
+shellcheck<span class="w"> </span>-S<span class="w"> </span>warning<span class="w"> </span>portcullis<span class="w"> </span>scripts/lib/*.sh<span class="w"> </span>tests/*.sh
+<span class="c1"># compose validity without Docker containers:</span>
+<span class="nv">PORTCULLIS_ROOT</span><span class="o">=</span>/tmp/x<span class="w"> </span>./portcullis<span class="w"> </span>init<span class="w"> </span>--env-only<span class="w"> </span>--non-interactive<span class="w"> </span>--domain<span class="w"> </span>ci.example.org<span class="w"> </span>--dns-provider<span class="w"> </span>none
+</code></pre></div>
+<h2 id="templates-ci">Templates CI<a class="headerlink" href="#templates-ci" title="Permanent link">&para;</a></h2>
+<h3 id="lintyml-every-push-and-pr-forks-included"><code>lint.yml</code>: every push and PR, forks included<a class="headerlink" href="#lintyml-every-push-and-pr-forks-included" title="Permanent link">&para;</a></h3>
+<p>No secrets, no core checkout, read-only token. Safe for fork pull requests, so
+every contributor gets this feedback:</p>
+<ul>
+<li><code>python tests/validate.py</code>: the manifest schema plus repo rules (networks,
+  volumes, middlewares, required vars, mounts, image pinning, header trust,
+  Dependabot coverage, <code>.core-ref</code>). See
+  <a href="../../guides/manifest-reference/#validation">Manifest Reference → Validation</a>.</li>
+<li><code>bash tests/compose-config.sh</code>: <code>docker compose config</code> for every template.</li>
+<li><code>shellcheck</code> of the test scripts and template scripts.</li>
+<li><code>actionlint</code> (pinned image).</li>
+<li><code>python -m unittest discover -s tests</code>: the validator's own tests, including
+  <code>AITests</code> (the <code>ai:</code> block rule for rule with the Hub's <code>ValidateAI</code>: both
+  forms, <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr>, identity modes, reserved names and variables, trust
+  networks, the <code>ai.chat</code> rules).</li>
+<li><code>tests/trust/test_grafana_trust.sh</code>: Grafana's <code>trust.sh</code> (the AI trust
+  network allowlist) against stubbed <code>ip</code> output, including the ambiguous
+  layouts it must refuse.</li>
+</ul>
+<h3 id="test-appsyml-integration-tests"><code>test-apps.yml</code>: integration tests<a class="headerlink" href="#test-appsyml-integration-tests" title="Permanent link">&para;</a></h3>
+<p>Triggers: push to <code>main</code>, pull requests to <code>main</code> (from forks too: core is
+public and no job uses a secret), and manual
+<code>workflow_dispatch</code> (inputs <code>pr</code>, <code>ref</code>, <code>apps</code>; <code>apps = all</code> tests every
+template). Dependabot's image bumps are pull requests, so each runs the tests of
+the app it touches. It boots core infrastructure and, for the affected
+templates, runs <code>tests/apps/&lt;app&gt;.sh</code> and then the <a href="#per-app-sign-in-e2e">sign-in
+e2e</a>. The trust boundary is
+per job:</p>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Secrets</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gate</code></td>
+<td>none</td>
+<td>Resolves what to test. Fork PRs run like any other PR (core is public; no job uses a secret), with <code>.core-ref</code> taken from the PR's base. For a manual run with <code>pr = &lt;n&gt;</code>, it resolves the PR head commit to test</td>
+</tr>
+<tr>
+<td><code>changes</code></td>
+<td>none</td>
+<td>Verifies the commit under test. Picks the apps: changed <code>&lt;app&gt;/</code> directories and changed <code>tests/apps/&lt;app&gt;.sh</code>. A change to <code>tests/lib.sh</code>, <code>tests/app-images.sh</code>, <code>tests/e2e/</code>, <code>.github/</code> or <code>.core-ref</code> tests <strong>all</strong> apps. With no usable base, all apps are tested</td>
+</tr>
+<tr>
+<td><code>fetch-core</code></td>
+<td>none</td>
+<td>Checks out nothing from the PR except <code>.core-ref</code>, read from a trusted commit (for PR runs: the PR's <em>base</em>, so a PR can't point CI at another core ref). Clones the public core repo anonymously at that ref, resolves the infra image list with <code>docker compose config --images</code> against a throwaway <code>.env</code> from <code>portcullis init --env-only</code> (failing on an empty list), packs core as an artifact, and writes the infra image cache</td>
+</tr>
+<tr>
+<td><code>app-images</code> (matrix per app, push to <code>main</code> only)</td>
+<td>none</td>
+<td>Never runs for PRs or manual runs. For each tested app whose test boots it, reads the image list from its <code>compose.yml</code> (<code>tests/app-images.sh</code>), pulls the pinned images and writes that app's image cache (key: hash of the list). Starts no container</td>
+</tr>
+<tr>
+<td><code>e2e-browser</code> (push to <code>main</code> only)</td>
+<td>none</td>
+<td>Installs the hash-pinned <code>tests/e2e/requirements.txt</code> and that Playwright version's Chromium and writes their cache (key: hash of the requirements). Runs no template code</td>
+</tr>
+<tr>
+<td><code>test</code> (matrix per app)</td>
+<td>none</td>
+<td>Downloads core by artifact ID with digest verification. Writes no cache. Loads the cached infra and app images as <strong>untrusted</strong>: removes every name a tarball sets, then binds each image (core's and the app's) with a <code>docker pull</code> of its <code>tag@sha256</code> pin. The pull checks the manifest against the pinned digest and reuses a loaded image only if its ID (the hash of its config, which pins every layer) is the one that manifest names; otherwise it downloads the image fresh. Boots infra like core's own CI: every secret generated by <code>portcullis init --env-only</code> (the workflow sets none, since the shell environment would override <code>.env</code>), <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> with its production <code>start</code> command, setup through the core CLI (<code>vault init</code>, <code>pki setup --with-server-cert</code>, <code>config apply --bundle-only</code>, <code>keycloak configure</code>, <code>oidc register</code>). Checks <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> got its static IP and that <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr> redirects an unauthenticated request to <code>auth.&lt;domain&gt;</code>, then runs the app's shell test and its sign-in e2e. Uploads <code>e2e-&lt;app&gt;</code> (screenshots, page HTML, traces, logs) on failure</td>
+</tr>
+</tbody>
+</table>
+<p>Every job has a read-only <code>contents: read</code> token. The workflow deliberately does
+<strong>not</strong> use <code>pull_request_target</code>, which would run fork code with a write token.</p>
+<p><strong>Fork PRs</strong> get the full integration tests automatically. A maintainer can re-run one with <strong>Actions → Test Apps → Run workflow</strong>, <code>pr = &lt;number&gt;</code>. That run tests exactly the PR's head commit, and aborts if the head moved.</p>
+<p><strong><code>.core-ref</code></strong> holds the core ref the templates are tested against: a tag such
+as <code>v1.4.0</code>, or <code>main</code> during development (today: <code>main</code>). Changing it
+re-tests every template.</p>
+<h3 id="per-app-sign-in-e2e">Per-app sign-in e2e<a class="headerlink" href="#per-app-sign-in-e2e" title="Permanent link">&para;</a></h3>
+<p><code>tests/e2e/app_signin.py</code> (Playwright with a CDP virtual <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr>
+authenticator, like core's <a href="#e2e-browser"><code>e2e</code> job</a>) proves a real person can
+sign in to each app through Portcullis and gets the right role. Driven by the
+manifest's <a href="../../guides/manifest-reference/#testssignin"><code>tests.signin</code></a>, per app:</p>
+<ol>
+<li><abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> users without passwords: <code>e2eadmin</code> (access + admin group),
+   <code>e2emember</code> (access group), <code>e2eoutsider</code> (no group);</li>
+<li>what the Hub would do: the template's <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> clients (secret = the app's
+   generated env, which the workflow creates once for the shell test and the
+   e2e), the <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr> <abbr title="JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries">policy file</abbr> (<code>access_group</code> per host,
+   <code>auth.admin_paths</code>; its version is read from core's <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr>);</li>
+<li>the app started with <code>tests/lib.sh compose_up</code>, containers ready;</li>
+<li>per user, <code>portcullis invite &lt;user&gt; --to https://&lt;host&gt;&lt;path&gt; --json</code> opened
+   in Chromium: <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> registration, then the app's own sign-in (its SSO
+   button, the <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> / <abbr title="Security Assertion Markup Language - XML-based SSO protocol">SAML</abbr> round trip, or <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>);</li>
+<li>results: <code>member</code> signed in with its username and not admin, <code>admin</code> has
+   admin rights, <code>outsider</code> refused (<abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr>'s 403 or the app's denial);
+   any password field fails unless the manifest documents it; an outsider
+   refusal when nobody could sign in is reported <code>inconclusive</code>.</li>
+</ol>
+<p><code>expected_fail</code> marks known failures: reported, not fatal, only when the
+failure matches the entry's <code>match</code> (and not its <code>not_match</code>) in that check's
+own evidence: its detail, the pages its flow saw, the app's logs since its
+flow started. A flow the test broke (password field, <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>/enroll or browser
+error, never on the app) or an exception fails, and a marked check that passes
+fails the run so the marker is removed. Where <abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr> decides (<abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>,
+<abbr title="Auth method where apps trust identity headers from Traefik">header-auth</abbr>, and the login-path gates of GitLab, LiteLLM and Vaultwarden) only
+<abbr title="Per-request authorization middleware checking groups, policies, and revocation">group-gate</abbr>'s own refusal counts for the outsider: its HTTP 403, its "not
+authorized" page and its <code>DENIED user=… host=…</code> log line. Each <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> must
+register exactly one <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>. Today: the outsider check of
+the <abbr title="Auth method where apps implement OpenID Connect directly">native-OIDC</abbr> apps with no group restriction of their own that let every
+test user in (Headscale/Headplane, Immich): with the Hub, its <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> access
+role (<code>keycloak_access_role</code>) refuses outsiders at <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>, but CI has no Hub
+(the test registers plain clients), so the role is not applied there; the
+member check of the apps that admit only their first user (the
+owner) and users the owner adds or approves (Actual Budget, NetBird); the
+member and admin checks of Nextcloud, whose HTTP client refuses a local TLD
+(<code>.local</code>) or private address for <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> (match: "violates local access
+rules"; its outsider check is then <code>inconclusive</code>) — the
+test never widens an app's access to make a check pass. <code>skip</code>: docs
+(public), Plex (custom, plex.tv). Each run starts the app
+from fresh volumes.</p>
+<p>CI stand-ins for public DNS: every app hostname is a network alias of <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>
+on <code>portcullis-proxy</code> (apps reach <code>auth.&lt;domain&gt;</code> for <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> discovery and the
+token exchange) and is in the runner's <code>/etc/hosts</code> (the browser). Chromium
+trusts core's root CA through an NSS database. Results go to the job summary;
+on failure the <code>e2e-&lt;app&gt;</code> artifact holds every step's screenshot and HTML, a
+Playwright trace per user (<code>playwright show-trace</code>), the app's container logs
+and core's logs.</p>
+<h3 id="docs-dispatchyml"><code>docs-dispatch.yml</code><a class="headerlink" href="#docs-dispatchyml" title="Permanent link">&para;</a></h3>
+<p>On push to <code>main</code> it sends a <code>templates-updated</code> <code>repository_dispatch</code> to this
+docs repo, which regenerates the <a href="../../apps/">App Catalog</a>. It needs the
+<code>DOCS_DISPATCH_TOKEN</code> secret. Without it the step is skipped with a notice, and
+the docs pick the change up on their daily rebuild.</p>
+<h3 id="craft-releasesyml"><code>craft-releases.yml</code><a class="headerlink" href="#craft-releasesyml" title="Permanent link">&para;</a></h3>
+<p>Weekly (and on dispatch), <code>tests/craft-releases.sh</code> bumps each Craft
+template's pinned web release (<code>${CRAFT_VERSION:-…}</code> / <code>${CRAFT_SHA256:-…}</code>)
+to the latest release of <code>storytold/&lt;app&gt;</code>, once the GitHub asset digest,
+<code>SHA256SUMS.txt</code> and the download agree, and opens one PR per app on
+<code>craft/&lt;app&gt;-&lt;ver&gt;</code>. It uses only <code>GITHUB_TOKEN</code> (<code>contents</code>, <code>pull-requests</code>,
+<code>actions: write</code>). PRs opened with that token start no <code>pull_request</code>
+workflows, so the script dispatches <strong>Test Apps</strong> (<code>pr=&lt;n&gt;</code>, <code>apps=&lt;app&gt;</code>,
+core ref from the PR's base) and <strong>Lint</strong> (on the branch) for each PR it
+opens; <code>workflow_dispatch</code> is the one event <code>GITHUB_TOKEN</code> may start. The
+Test Apps run is dispatched on the base branch, so its check attaches to the
+base commit, not the PR: the script links the run in the PR body.</p>
+<p><strong>AI support in the app tests.</strong> <code>gitea.sh</code>, <code>grafana.sh</code>, <code>nextcloud.sh</code> and
+<code>homeassistant.sh</code> run their mint / revoke / <code>on_change</code> hooks the way the Hub
+does (argv verbatim, JSON on stdin, split output) and check that a credential
+never reaches an argv or a log. <code>nextcloud.sh</code> starts the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> and
+checks per-person identity (one person's app password sees only their files;
+no credential, nothing; a bad one, <code>401</code>). <code>grafana.sh</code> checks the trust
+network (internal, exactly Grafana and the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>, Grafana's allowlist
+without the gateway, broadcast and its own address) and that a spoofed
+<code>X-Forwarded-User</code> from elsewhere on <code>portcullis-proxy</code> isn't signed in.
+<code>ai-chat.sh</code> renders <code>librechat.yaml</code> from <code>ai-providers.json</code> (secrets only
+as <code>${VAR}</code> references, a refused file fails closed), checks the access-group
+restriction and the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> OAuth callback. <code>write_ai_providers_override</code> (below)
+emulates the Hub's delivery to an <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>.</p>
+<h3 id="test-helpers-testslibsh">Test helpers (<code>tests/lib.sh</code>)<a class="headerlink" href="#test-helpers-testslibsh" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Output</td>
+<td><code>pass</code>, <code>fail</code>, <code>info</code>, <code>section</code>, <code>report</code></td>
+</tr>
+<tr>
+<td>Waiting</td>
+<td><code>wait_for_url URL TIMEOUT NAME</code>, <code>wait_for_container</code></td>
+</tr>
+<tr>
+<td><abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr></td>
+<td><code>keycloak_admin_token</code>, <code>keycloak_user_token</code>, <code>keycloak_enable_direct_grant</code>, <code>keycloak_register_client</code></td>
+</tr>
+<tr>
+<td><abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr></td>
+<td><code>lldap_token</code>, <code>lldap_graphql</code>, <code>lldap_create_user</code>, <code>lldap_create_group</code>, <code>lldap_add_to_group</code>, <code>lldap_sync_keycloak</code></td>
+</tr>
+<tr>
+<td>Compose</td>
+<td><code>compose_up APP</code>, <code>compose_down APP</code>, <code>app_container_ip APP</code>, <code>app_logs APP</code></td>
+</tr>
+<tr>
+<td>Assertions</td>
+<td><code>assert_http_code URL CODE</code>, <code>assert_redirect_to_keycloak URL</code>, <code>assert_redirect_contains URL STRING</code>, <code>assert_body_contains URL STRING</code>, <code>assert_container_can_reach CONTAINER URL</code></td>
+</tr>
+<tr>
+<td>Public exceptions</td>
+<td><code>public_routed_prefixes &lt;manifest&gt; &lt;all\|listed&gt; [token…]</code> prints what the Hub's public router opens; <code>write_public_override &lt;app&gt; &lt;service&gt; &lt;host-arg&gt; &lt;tier&gt; &lt;out&gt; &lt;entry…&gt;</code> writes the override labels the Hub would generate (tier for every router, public router behind <code>portcullis-public-guard@docker</code> with static-only supporting paths, exact paths, strip middleware); pass it to <code>compose_up</code> with <code>COMPOSE_OVERRIDE=&lt;file&gt;</code>. <code>write_public_policy &lt;sub&gt; &lt;manifest&gt; &lt;mode&gt;</code> writes the version-3 policy entry the Hub would publish into core's <code>hub_data</code> volume, so core's real public guard runs (<code>clear_public_policy</code> empties it). <code>assert_public_path &lt;host&gt; &lt;path&gt; [curl args]</code> / <code>assert_gated_path …</code> / <code>assert_public_refused …</code> send HTTPS requests through <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> on the runner (no client certificate) and check the app answers / the request is redirected to <code>auth.&lt;domain&gt;</code> / the guard answers 403. <code>grafana.sh</code> uses them: a listed dashboard token is public; an unlisted token, <code>/</code>, <code>/api/user</code> and <code>/public/build/</code> stay gated; Grafana login cookies (also PHP-mangled spellings), <code>Authorization</code>, <code>X-Access-Token</code> and <code>auth_token</code> query variants are refused by the guard. It needs a core with <code>/public-guard</code> (<code>.core-ref</code>). <code>nextcloud.sh</code> and <code>immich.sh</code> check their path lists statically</td>
+</tr>
+<tr>
+<td>Settings <abbr title="JSON (or tsv) files the Hub writes for an app's settings and bind-mounts read-only into the app">data files</abbr></td>
+<td><code>write_appfiles_override &lt;app&gt; &lt;name&gt; &lt;json&gt; &lt;out&gt;</code> writes <code>&lt;name&gt;.json</code> the way the Hub does (a directory per file, mode 0640 group 10001 where the runner can set it) and an override that bind-mounts that directory read-only at the <code>files[]</code> entry's mount; pass it with <code>COMPOSE_OVERRIDE=&lt;file&gt;</code>. <code>write_appfile &lt;app&gt; &lt;name&gt; &lt;json&gt;</code> rewrites the file atomically (restart the service after). <code>firefox-sync.sh</code> uses them to check that only the file's uids can sync and that a bad or missing file stops the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>. The public-exception override also strips the template's header deliveries, as the Hub's public router does</td>
+</tr>
+<tr>
+<td>Header trust</td>
+<td><code>assert_traefik_only_trust &lt;compose&gt; &lt;SETTING&gt;</code> checks statically that the trust setting uses <code>${PORTCULLIS_TRAEFIK_IP:-…}</code> and nothing trusts every peer. <code>assert_spoofed_identity_rejected &lt;url&gt; [expected]</code> sends a forged <code>X-Forwarded-User</code> from the CI host (never <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>) and expects a rejection. <strong>Required for <abbr title="Auth method where apps trust identity headers from Traefik">header-auth</abbr> templates</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>compose_up</code> mirrors the Hub: before each compose call it exports a random
+value for every manifest <code>env:</code> entry with <code>generate: random</code> that isn't set
+yet. Templates reference those as <code>${VAR:?}</code>, so a missing value fails loudly.</p>
+<p>Every template needs a <code>tests/apps/&lt;app-id&gt;.sh</code> (<code>validate.py</code> checks it). A
+static test is the minimum; copy <code>tests/apps/scrutiny.sh</code>. What the tests
+typically verify:</p>
+<table>
+<thead>
+<tr>
+<th>Auth method</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr></td>
+<td>Unauthenticated request redirects to <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>; container healthy; app endpoints respond</td>
+</tr>
+<tr>
+<td><abbr title="Auth method where apps trust identity headers from Traefik">header-auth</abbr></td>
+<td>The above, plus the <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>-only trust setting and a rejected spoofed identity</td>
+</tr>
+<tr>
+<td><abbr title="Auth method where apps implement OpenID Connect directly">native-oidc</abbr></td>
+<td>Container reaches <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>'s discovery endpoint; the app's SSO redirect points at <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>; gated login/admin paths redirect</td>
+</tr>
+<tr>
+<td>public / custom</td>
+<td>App responds without authentication; container healthy</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../../guides/adding-an-app/#step-6-add-a-test">Adding an App</a> for a
+template.</p>
+<h2 id="hub-ci-buildyml">Hub CI (<code>build.yml</code>)<a class="headerlink" href="#hub-ci-buildyml" title="Permanent link">&para;</a></h2>
+<p>Triggers: pushes to <code>main</code>, tags <code>v*</code>, and pull requests. Every action is
+pinned by commit SHA.</p>
+<ul>
+<li>
+<p><strong><code>test</code></strong>:</p>
+<ul>
+<li><code>gofmt -l .</code> must be empty</li>
+<li><code>go vet ./...</code></li>
+<li><code>go test -race -count=1 ./...</code> (after installing <code>acl</code>, so the ACL
+  codec is checked against the kernel's <code>setfacl</code> bytes)</li>
+<li><strong>folderfix root tests:</strong> <code>sudo go test -tags fixerroot
+  ./internal/folderfix/</code> runs the shared-folder fixer as root on real
+  files: ACLs, setgid, <code>must_own</code>, hard links, setid files, file
+  capabilities, other mounts, devices, unreadable entries, apply,
+  snapshot, restore and its dry run. Under CI these tests fail instead
+  of skipping when root, ACLs, <code>getfacl</code> or <code>mount</code> are missing.</li>
+<li><strong><abbr title="Short-lived container the Hub starts from its own image to scan or fix a shared folder's ownership (no network, only the mode's capabilities)">fixer helper</abbr> docker tests:</strong> <code>go test -tags docker -run TestDocker
+  ./internal/hub/</code> with a required Docker daemon builds a Hub-shaped
+  image and runs the real <abbr title="Short-lived container the Hub starts from its own image to scan or fix a shared folder's ownership (no network, only the mode's capabilities)">fixer helper</abbr>: scan, snapshot, apply, verify
+  and restore on a real volume; its capabilities, no-new-privileges,
+  uid, network, read-only root filesystem and process limit from inside;
+  every capability dropped in turn (each mode needs exactly its set);
+  and the Hub finding its own container ID from its mountinfo.</li>
+<li><code>go build ./cmd/hub</code></li>
+</ul>
+<p>The unit tests cover validation, strict route parsing, the policy-file
+writer (collisions, deny group, snapshots, <code>expiring</code> array, <code>user-attributes.json</code>), middleware (proxy secret, CSRF), per-app locking, reconcile/drift, the Engine API client, the <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> client (GraphQL + LDAP Password Modify), the <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> client (attribute mappers), the rule parser, and the directory service (users, groups, fields, rule evaluator, exceptions, expiries, CSV import, <abbr title="Permissions granted to non-admins to manage people (edit_details, invite, remove)">delegated permissions</abbr>, protected accounts parity).
+New packages: <code>internal/rules</code> (rule parser and evaluator), <code>internal/directory</code> (users, groups, fields, permissions, import, audit).
+<code>TestRealTemplates</code> loads a sibling <code>portcullis-templates</code> checkout if present.
+<code>TestPeopleListenerHasNoAppRoutes</code> checks that the people listener registers exactly the directory routes plus the nine caller-only <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr> routes (<code>GET /api/me/apps</code>, <code>PUT</code> and <code>DELETE /api/me/apps/{instance}/values/{key}</code>, <code>POST</code> and <code>DELETE /api/me/apps/{instance}/credentials/{key}</code>, <code>GET /api/me/ai</code>, <code>DELETE /api/me/ai/connections/{client}</code>, <code>GET /confirm/{id}</code>, <code>POST /api/me/confirmations/{id}</code>), and no app/policy/drift/compose/settings/Docker routes.
+<strong>AI support</strong> is tested per package: <code>internal/aigate</code> decodes and re-encodes the shared §15.4 vector byte for byte (the same files as <abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr>'s <code>internal/config/testdata/</code>); the gate files (populations, clients, fail-closed rebuilds), the credential store (<code>TestHubHoldsNoAgeIdentity</code>: no Hub code can decrypt), mint and revoke (single flight, exit 3, leavers, <code>app_oauth</code> records), the switches, the confirmations, the <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> AI clients against the <code>kctest</code> realm, and the <abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr>: every tool's twin both ways (<code>TestAdminToolsSameAsHTTP</code>, <code>TestPeopleToolParity</code>), no secret argument name (<code>TestNoSecretArgNames</code>), no token echoed by any tool (<code>TestTokenNotEchoed</code>), the per-call classes. <code>TestLiveAIObjects</code> runs the AI client checks against a real <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> when <code>PORTCULLIS_KEYCLOAK_LIVE_URL</code> and <code>PORTCULLIS_KEYCLOAK_LIVE_WIPE=portcullis</code> are set (not in CI; it wipes realm <code>portcullis</code>).
+<strong>Docs copies.</strong> The Hub ships some pages of this site as <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> resources (<code>portcullis://docs/&lt;name&gt;</code>), committed under <code>web/docs/</code> (<code>web/docs/sync.sh</code>: <code>integration-contracts.md</code>, <code>hub.md</code>, <code>auth-policies.md</code>, <code>groups.md</code>, <code>backups.md</code>, <code>file-sharing.md</code>). After changing one of them here, run <code>PORTCULLIS_DOCS_DIR=&lt;docs checkout&gt; go generate ./web</code> in the Hub and commit; <code>TestDocsCopiesInSync</code> fails on drift when <code>PORTCULLIS_DOCS_DIR</code> is set (CI doesn't set it). A new page goes into both <code>sync.sh</code> and <code>docsPages</code> in <code>web/web_test.go</code>.
+The harness also serves AI fixtures (the Hub listener has its own fake fresh-auth verifier at <code>/harness/authorize</code>, signing in as root, for the admin confirmation page): an app with token and identity-header <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr>, an <code>app_oauth</code> app, a fake connections store and access log, and the people <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> switched off for one user (no card).
+The settings code is tested per package: the template settings validator, the setting types (parsing, rendering, resolution), the delivery engine (<abbr title="JSON (or tsv) files the Hub writes for an app's settings and bind-mounts read-only into the app">data files</abbr>, claims, headers, hooks, reload, debounce, stale runs), <abbr title="A setting each person enters for themselves on My apps (scope person_entered)">person-entered</abbr> values (uniqueness, population, purges, the refused-save limit) and the settings API (admins only, secrets never returned).
+A build-tagged harness (<code>go test -tags harness -run TestHarness -timeout 0 ./internal/httpapi</code>) serves the UI on <code>127.0.0.1:18888</code> (and the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr> on <code>:18889</code>) against in-memory fakes, for checking the panels in a browser.
+<code>TestProtectedAccountsParity</code> reflects over <code>directory.Service</code> methods to check every user-targeting operation refuses <code>admin</code> and <code>portcullis-hub</code>.
+- <strong><code>build</code></strong> (after <code>test</code>):
+- Multi-arch image (<code>linux/amd64</code>, <code>linux/arm64</code>) with SBOM and provenance (<code>mode=max</code>) attestations.
+- Tags <code>X.Y.Z</code>/<code>X.Y</code>/<code>X</code>/<code>sha-&lt;short&gt;</code> for release tags and <code>edge</code> for <code>main</code>. <code>latest</code> is disabled.
+- Pushed to GHCR and <strong>signed with cosign</strong> (keyless, GitHub <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr>) by digest. Pull requests build but don't push or sign.</p>
+</li>
+</ul>
+<p>Verify a published image with the command in
+<a href="../hub/#image-tags-and-verification">Hub → Image tags</a>.</p>
+<h2 id="ai-support-manual-checklist">AI support manual checklist<a class="headerlink" href="#ai-support-manual-checklist" title="Permanent link">&para;</a></h2>
+<p>The checks CI can't make: real Claude clients, a hardware <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> and a live
+<abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>. Use throwaway users and <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> on the test server and clean them
+up afterwards.</p>
+<ol>
+<li><strong>Deploy.</strong> Merge in order docs → core → Hub → templates; deploy to the
+   test server (<code>./portcullis upgrade</code>); confirm <code>mcp-gate</code> healthy and
+   <code>./portcullis status</code> clean.</li>
+<li><strong>Live checks:</strong><ol>
+<li>Settings → AI on; Gitea AI support on (read_write); the People card
+   for a test user shows the URLs.</li>
+<li>Claude Code on the operator's machine: the card's <code>claude mcp add</code>
+   command, <code>/mcp</code> sign-in with the <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>; list the test user's
+   issues; create one (write) and ask to delete a repo → confirmation
+   page with <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>; remove the user from <code>users_gitea</code> → refused.</li>
+<li>claude.ai custom connector with "Use your own OAuth client"
+   (<code>portcullis-ai-claude</code>, no secret): connects (spec call 40; if it
+   demands a secret, apply call 40's fallback and note it).</li>
+<li><code>hub.&lt;d&gt;/mcp</code> as an admin: <code>get_instance</code>, <code>doctor_findings</code>, delete a
+   throwaway <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> through the confirmation.</li>
+<li>An <code>ai-chat</code> <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> with an OpenAI-compatible provider: a chat that
+   lists the person's Gitea repos through the aggregate.</li>
+<li>The access log and <code>audit.jsonl</code> show the calls with <code>via: ai</code>; no
+   secret in either (grep the markers used).</li>
+</ol>
+</li>
+<li><strong>Report</strong> what passed, the builder verifications' results, anything
+   deferred.</li>
+</ol>
+<p>Also check, from the builders' reports:</p>
+<ul>
+<li><strong>Claude desktop</strong> custom connector with "Use your own OAuth client"
+  (public client, <abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr>); <strong>Claude Code</strong> <code>claude mcp add</code> + <code>/mcp</code>; the
+  card's steps as written, for the aggregate and one app.</li>
+<li><strong>The <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr></strong> with an OpenAI-compatible Ollama and the Anthropic API,
+  and with a LiteLLM <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>:<ol>
+<li><code>getent hosts auth.&lt;d&gt; mcp.&lt;d&gt;</code> inside <code>&lt;instance&gt;-api-1</code> shows
+   <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s IP;</li>
+<li>a member connects "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>": consent on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s
+   <code>ai-chat-mcp</code> client, the callback, tools listed, a tool call as that
+   person; the access log's <code>client</code> is the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <code>ai_client</code>;</li>
+<li>a second <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (<code>ai-research</code>): its own client
+   <code>ai-research-ai-chat-mcp</code> and its own callback host;</li>
+<li>the refresh lifetime without <code>offline_access</code>: decide whether to add it;</li>
+<li>an outsider is refused by <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>'s <abbr title="Keycloak client role enforcing access group membership for native-OIDC apps">access role</abbr> on the real Hub, not
+   only by LibreChat (the <code>ai_client</code> keeps the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <abbr title="Keycloak client role enforcing access group membership for native-OIDC apps">access role</abbr> and
+   flow: <code>EnsureClientAccess</code> on an AI client hasn't run against a real
+   <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> yet);</li>
+<li>a provider change restarts the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> and the selector shows the new
+   labels; a cleared key drops that endpoint.</li>
+</ol>
+</li>
+<li><strong>Passkey sign-in</strong> on an AI client gives <code>acr</code> / <code>amr</code> <code>hwk</code>
+  (<code>TestLiveAIObjects</code> skips it: it needs a <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr> authenticator).</li>
+<li><strong>Fresh-auth popup on both hosts</strong>: a confirmation approved on
+  <code>people.&lt;d&gt;</code> and one on <code>hub.&lt;d&gt;</code> (the <code>https://hub.&lt;d&gt;/</code> redirect URI),
+  with the <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>'s <code>auth_time</code> and <code>amr</code> verified by the real <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr>.</li>
+<li><strong>Home Assistant</strong> (<code>app_oauth</code>): in claude.ai add a custom connector for
+  <code>https://&lt;host&gt;/api/mcp</code>; Claude discovers the protected-resource and
+  authorization-server metadata and uses its CIMD client id; the redirect
+  goes Home Assistant <code>/auth/authorize</code> → auth_oidc → <abbr title="Identity provider handling WebAuthn, X.509, and OIDC/SAML">Keycloak</abbr> (<abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>) →
+  "continue on this device" → Claude's callback; Assist tools appear
+  (<code>GetLiveContext</code>); a non-admin member turns an exposed light on. The same
+  with Claude Code (loopback, port 33418). Removing the person from the group
+  ends the connection after the next reconcile (at most 10 minutes for a
+  pending code). The host must be publicly reachable and not need <abbr title="Mutual TLS authentication using client certificates">mTLS</abbr>.</li>
+<li><strong>Nextcloud</strong>: AI on; alice uses claude.ai through
+  <code>https://&lt;nextcloud host&gt;/mcp</code>; leaving revokes the app password (up to
+  10 s of lag); a restore runs <code>revoke_all</code>.</li>
+</ul>
+<h2 id="running-workflows-locally-with-act">Running workflows locally with act<a class="headerlink" href="#running-workflows-locally-with-act" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/nektos/act">act</a> runs GitHub Actions workflows locally in
+Docker:</p>
+<div class="highlight"><pre><span></span><code>act<span class="w"> </span>-l<span class="w"> </span>-W<span class="w"> </span>.github/workflows/test-apps.yml<span class="w">                     </span><span class="c1"># list jobs (templates repo)</span>
+act<span class="w"> </span>-j<span class="w"> </span>lint<span class="w"> </span>-W<span class="w"> </span>.github/workflows/lint.yml<span class="w">                      </span><span class="c1"># static checks, no secrets</span>
+act<span class="w"> </span>-W<span class="w"> </span>.github/workflows/test-apps.yml<span class="w">                         </span><span class="c1"># integration (no secrets needed)</span>
+act<span class="w"> </span>-W<span class="w"> </span>.github/workflows/ci.yml<span class="w">                                </span><span class="c1"># core CI (core repo)</span>
+</code></pre></div>
+<p>The first run downloads the runner images, which can take a few minutes.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

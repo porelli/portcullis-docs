@@ -1,0 +1,3651 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/file-sharing/">
+      
+      
+      
+        <link rel="prev" href="../hub/">
+      
+      
+        <link rel="next" href="../ai/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>File Sharing - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              File Sharing
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  TLS & mTLS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentication Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How It Works
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-enable-users-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Enable Users &amp; Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-local-networks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Configure Local Networks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-create-an-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Create an Instance
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-configure-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Configure It
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-add-people" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Add People
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-bind-the-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. Bind the Port
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Connecting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        macOS
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Windows
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-people" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Managing People
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing People">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#measured-revocation-times" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Measured revocation times
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#password-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Password Storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardened-smb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hardened SMB
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hosts-allow-and-the-userland-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hosts Allow and the Userland Proxy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Credentials
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Credentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#viewing-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Viewing Them
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regenerating" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Regenerating
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revoking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revoking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restores" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Restores
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filesystems" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filesystems
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How It Works
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-enable-users-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Enable Users &amp; Groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-local-networks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Configure Local Networks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-create-an-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Create an Instance
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-configure-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Configure It
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-add-people" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Add People
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-bind-the-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. Bind the Port
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Connecting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        macOS
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Windows
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-people" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Managing People
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing People">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#measured-revocation-times" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Measured revocation times
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#password-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Password Storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardened-smb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hardened SMB
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hosts-allow-and-the-userland-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hosts Allow and the Userland Proxy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Credentials
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Credentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#viewing-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Viewing Them
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regenerating" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Regenerating
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revoking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revoking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restores" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Restores
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filesystems" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filesystems
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="file-sharing">File Sharing<a class="headerlink" href="#file-sharing" title="Permanent link">&para;</a></h1>
+<p>Portcullis provides SMB3 file sharing through the Samba and Time Machine templates. Each person creates their own <abbr title="Per-person SMB password each person creates on My apps after a fresh passkey sign-in; the Hub keeps only its NT hash">file-share password</abbr> after a fresh <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> sign-in, sees it once, and can regenerate or revoke it at any time.</p>
+<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Per-person passwords:</strong> Each person has their own password for file sharing, separate from their Portcullis sign-in. Admins list and revoke credentials but never create them (an admin who created one would have seen it).</li>
+<li><strong>Self-service:</strong> People create and regenerate their passwords on <a href="../hub/#my-apps"><abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr></a> (<code>https://people.&lt;domain&gt;</code>). A fresh hardware sign-in (<abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> touch) is required for each create or regenerate.</li>
+<li><strong>No web page:</strong> File-sharing apps serve only SMB3 (no HTTP), so they appear without hostnames in the app catalog.</li>
+<li><strong>Hub-allocated ids:</strong> Each person gets a stable Unix uid (20000–59999), allocated once and never reused. Files land as <code>&lt;person's uid&gt;:&lt;folder's gid&gt;</code>.</li>
+</ul>
+<h2 id="apps">Apps<a class="headerlink" href="#apps" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>What it serves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Samba</strong></td>
+<td>Eight configurable <abbr title="The Samba template's eight fixed shared-folder shares (share1–share8)">share slots</abbr> (readers/writers per slot, each pointing at a shared folder) plus a private Home share per person</td>
+</tr>
+<tr>
+<td><strong>Time Machine</strong></td>
+<td>One private backup share per person with a size limit</td>
+</tr>
+</tbody>
+</table>
+<p>Both use hardened SMB3 (encryption required, NTLMv2 only, SMB2 refused) and trust only the Local networks you configure.</p>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
+<h3 id="1-enable-users-groups">1. Enable Users &amp; Groups<a class="headerlink" href="#1-enable-users-groups" title="Permanent link">&para;</a></h3>
+<p>File sharing needs <a href="../../setup/quickstart/#step-5-create-users">Users &amp; Groups</a>: who may create a password is decided by the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s access group in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>, and every password belongs to an <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> account.</p>
+<h3 id="2-configure-local-networks">2. Configure Local Networks<a class="headerlink" href="#2-configure-local-networks" title="Permanent link">&para;</a></h3>
+<p>File sharing should only be reachable from your LAN or VPN. Go to <strong>Hub → Settings → Local networks</strong> and list the CIDRs that count as local:</p>
+<ul>
+<li><strong>Default:</strong> RFC 1918 (<code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>), IPv6 ULA (<code>fc00::/7</code>) and the Tailscale range (<code>100.64.0.0/10</code>).</li>
+<li><strong>Empty list</strong> (<code>[]</code>): loopback only. File sharing then refuses to start (the Hub writes <code>PORTCULLIS_LOCAL_NETWORKS</code> empty, and the templates fail closed).</li>
+</ul>
+<p>When you save a changed list, every enabled app that reads it (the file-sharing apps) restarts.</p>
+<h3 id="3-create-an-instance">3. Create an Instance<a class="headerlink" href="#3-create-an-instance" title="Permanent link">&para;</a></h3>
+<p>Create a Samba or Time Machine <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> from the catalog and give it an id (e.g. <code>samba-office</code>). File-sharing apps have no web page, so there is no hostname to choose.</p>
+<p>File-sharing apps have <code>instances: multi</code>, so you can run several Samba or Time Machine <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> for different groups.</p>
+<h3 id="4-configure-it">4. Configure It<a class="headerlink" href="#4-configure-it" title="Permanent link">&para;</a></h3>
+<p>Each app has settings:</p>
+<p><strong>Samba:</strong></p>
+<ul>
+<li><strong>Connect address</strong> (required): the hostname or IPv4 address people connect to (e.g. <code>nas.home.arpa</code> or <code>192.168.1.10</code>). IPv6 addresses and single-label names like <code>nas</code> are refused.</li>
+<li><strong>Home folders:</strong> the host directory holding each person's private folder (<code>&lt;username&gt;</code>, owned by their uid, mode <code>0700</code>), shared as <code>Home</code>. Empty = a Docker volume.</li>
+<li><strong>Eight <abbr title="The Samba template's eight fixed shared-folder shares (share1–share8)">share slots</abbr>:</strong> for each slot, a <a href="../hub/#shared-folders">shared folder</a> assignment (the host path), a share name (what people see in <code>smb://&lt;address&gt;/&lt;name&gt;</code>), and reader/writer groups (expanded to the members with access to the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>).</li>
+</ul>
+<p><strong>Time Machine:</strong></p>
+<ul>
+<li><strong>Connect address</strong> (required): as above.</li>
+<li><strong>Backup storage:</strong> the host directory holding each person's backup folder. Empty = a Docker volume.</li>
+<li><strong>Backup size limit:</strong> per person (cooperative: Time Machine prunes to fit).</li>
+<li><strong>Share name prefix:</strong> each person's share is <code>&lt;prefix&gt;-&lt;username&gt;</code> (default <code>TimeMachine</code>).</li>
+</ul>
+<p>Both apps also have:</p>
+<ul>
+<li><strong>Username rule:</strong> usernames the app can serve (a pattern plus reserved names). A person whose username fails sees "File sharing isn't available for your username: …" on <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr>, with no button.</li>
+<li><strong>Bonjour (optional):</strong> advertise shares to the local network. Off by default. Enable it by mounting your host's Avahi services directory (usually <code>/etc/avahi/services</code>) and ticking "Advertise". macOS and iOS clients then see the shares in Finder → Network. <strong>Warning:</strong> advertising shows every share name and username to the local network. Turn it off before clearing the Avahi directory.</li>
+</ul>
+<h3 id="5-add-people">5. Add People<a class="headerlink" href="#5-add-people" title="Permanent link">&para;</a></h3>
+<p>Add the people who should use the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> to its access group,
+<code>users_&lt;id&gt;</code> (e.g. <code>users_samba-office</code>), in <a href="../hub/#users-groups-tab">Users &amp; Groups</a>.
+Only members of that group see the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> on <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr> and can create a
+password. On Samba, put people in the reader and writer groups of the
+shares they should open too. To share a folder with everyone who has
+access, pick <code>users_&lt;id&gt;</code> as its reader group.</p>
+<h3 id="6-bind-the-port">6. Bind the Port<a class="headerlink" href="#6-bind-the-port" title="Permanent link">&para;</a></h3>
+<p>Each app publishes port 445/tcp, marked <code>lan_only: true</code>. The Hub's <a href="../hub/#doctor">doctor</a> warns if the bind makes it reachable from outside your local networks:</p>
+<ul>
+<li><strong>Bound to <code>0.0.0.0</code>:</strong> Warning. The doctor offers a one-click rebind to a LAN address you type.</li>
+<li><strong>Bound to a public address:</strong> Problem.</li>
+</ul>
+<p>Ports on <code>0.0.0.0</code> or <code>::</code> bypass host firewalls like ufw, so rebind to a LAN address or make sure your router blocks port 445 from the internet.</p>
+<h2 id="connecting">Connecting<a class="headerlink" href="#connecting" title="Permanent link">&para;</a></h2>
+<p>Once the app is enabled, people visit <a href="../hub/#my-apps"><abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr></a> (<code>https://people.&lt;domain&gt;</code>) and:</p>
+<ol>
+<li>Click [Create password] on the app's card.</li>
+<li>A popup asks them to touch their <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> (a <strong>fresh</strong> sign-in, even if they signed in seconds ago).</li>
+<li>The password is shown <strong>once</strong> as 6 groups of 4 characters joined by <code>-</code> (29 characters total, e.g. <code>a2bC-d3eF-g4hJ-…</code>). The dashes are part of the password.</li>
+<li>After "I've saved it", the password disappears from the DOM. It is never shown again and never logged.</li>
+</ol>
+<p>The card then shows two lines:</p>
+<ul>
+<li><strong>Connect:</strong> <code>smb://&lt;connect address&gt;/Home</code> on Samba, or <code>smb://&lt;connect address&gt;/&lt;prefix&gt;-&lt;username&gt;</code> on Time Machine (<code>TimeMachine-&lt;username&gt;</code> by default). A port other than 445 is part of the address.</li>
+<li><strong>Username:</strong> the person's username.</li>
+</ul>
+<p>The card doesn't list Samba's shared folders. A share's address is <code>smb://&lt;connect address&gt;/&lt;share name&gt;</code>: tell people the share names they may use.</p>
+<h3 id="macos">macOS<a class="headerlink" href="#macos" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open <strong>Finder → Go → Connect to Server</strong> (<code>⌘K</code>).</li>
+<li>Enter the server address: <code>smb://&lt;address&gt;</code>.</li>
+<li>Click <strong>Connect</strong>.</li>
+<li>Choose <strong>Registered User</strong>, enter your <strong>username</strong> (lowercase, the one shown on <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr>) and the <strong><abbr title="Per-person SMB password each person creates on My apps after a fresh passkey sign-in; the Hub keeps only its NT hash">file-share password</abbr></strong> (not your Portcullis <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>).</li>
+<li>Select the share (Home, or the share name).</li>
+</ol>
+<p>macOS then mounts it in <code>/Volumes/&lt;share name&gt;</code>.</p>
+<p><strong>Time Machine:</strong></p>
+<ol>
+<li>Connect to the server as above and mount your share (<code>TimeMachine-&lt;username&gt;</code>).</li>
+<li>Open <strong>System Settings → General → Time Machine</strong>.</li>
+<li>Click <strong>+</strong> (Add Backup Disk).</li>
+<li>Select your share.</li>
+<li>Time Machine keeps backups within the size limit you set in the Hub.</li>
+</ol>
+<h3 id="windows">Windows<a class="headerlink" href="#windows" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open <strong>File Explorer</strong>.</li>
+<li>In the address bar, type <code>\\&lt;address&gt;\&lt;share&gt;</code> (e.g. <code>\\nas.home.arpa\Home</code>).</li>
+<li>Press Enter.</li>
+<li>Enter your <strong>username</strong> (lowercase) and <strong><abbr title="Per-person SMB password each person creates on My apps after a fresh passkey sign-in; the Hub keeps only its NT hash">file-share password</abbr></strong>.</li>
+<li>Tick <strong>Remember my credentials</strong> if you want Windows to save it.</li>
+</ol>
+<p>Windows then shows the share in This PC → Network Locations.</p>
+<p><strong>Mapping a drive letter:</strong></p>
+<ol>
+<li>Right-click <strong>This PC</strong> → <strong>Map network drive</strong>.</li>
+<li>Choose a drive letter.</li>
+<li>Enter the folder: <code>\\&lt;address&gt;\&lt;share&gt;</code>.</li>
+<li>Tick <strong>Reconnect at sign-in</strong>.</li>
+<li>Click <strong>Finish</strong> and enter your credentials.</li>
+</ol>
+<h2 id="managing-people">Managing People<a class="headerlink" href="#managing-people" title="Permanent link">&para;</a></h2>
+<p><strong>People should be managed through the Hub's <a href="../hub/#users-groups-tab">Users &amp; Groups</a>, not directly in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>.</strong> Here's why:</p>
+<ul>
+<li><strong>Hub-made changes</strong> (removing a member, deleting a user or group) revoke <abbr title="Per-person SMB passwords each person creates on My apps after a fresh passkey sign-in; the Hub keeps only their NT hashes">file-share passwords</abbr> <strong>at once</strong>, with no delay.</li>
+<li><strong><abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>-direct changes</strong> (e.g. removing a user from a group in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>'s web UI) are caught by the evaluator's 60-second tick. The worst case is <strong>about 60 seconds plus the revocation hook</strong>; measured: 3.4–51.8 seconds. A changed <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> password doesn't touch the <abbr title="Per-person SMB password each person creates on My apps after a fresh passkey sign-in; the Hub keeps only its NT hash">file-share password</abbr>: they are separate.</li>
+<li><strong>Leaving a share's group:</strong> someone removed from a Samba share's reader or writer group loses <strong>that share only</strong>, not their password. Their sessions end, and their other shares and Home stay. A writer who is still a reader keeps the share read-only; measured: 3.5–3.6 seconds.</li>
+</ul>
+<p>Revocation always:</p>
+<ol>
+<li>Removes the hash file from the <code>hub_secrets</code> volume.</li>
+<li>If the app isn't running, that's the end of it: it starts without the account.</li>
+<li>Otherwise it runs the app's <code>credential_change</code> hook directly (at most 8 seconds), which removes the account and ends the person's open SMB sessions.</li>
+<li>If the hook can't run, fails or times out, the Hub stops the app (<code>compose down</code>) and starts it again in the background, so no old session survives. It does the same, without trying the hook, when the hash file could not be removed. Until the Hub's secrets volume is consistent again, it then refuses to start file-sharing apps.</li>
+</ol>
+<p>A regenerated password goes the same way: the old hash's removal is applied like a revocation. A backup, restore, delete, restart or disable of the app waits once, up to 10 seconds, for a revocation in flight to finish, then goes on.</p>
+<h3 id="measured-revocation-times">Measured revocation times<a class="headerlink" href="#measured-revocation-times" title="Permanent link">&para;</a></h3>
+<p>From the core <code>e2e-filesharing</code> CI job (three runs, plus one more; time from the change until the open session was gone and a new login refused):</p>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Measured</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Removal through the Hub (Users &amp; Groups)</td>
+<td>0.8–0.9 s</td>
+<td>applied at once by the hook</td>
+</tr>
+<tr>
+<td>Removal directly in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr></td>
+<td>3.4–51.8 s</td>
+<td>caught by the evaluator's 60 s tick: worst case about 60 s plus the hook</td>
+</tr>
+<tr>
+<td>Writer demoted to reader</td>
+<td>3.5–3.6 s</td>
+<td>the share's <code>write list</code> is applied and the person's sessions end</td>
+</tr>
+</tbody>
+</table>
+<h2 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h2>
+<h3 id="password-storage">Password Storage<a class="headerlink" href="#password-storage" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Never in clear text:</strong> The password is shown once, then zeroed in memory. The Hub stores only its <strong>NT hash</strong> (MD4 over the UTF-16LE encoding of the dashed password, as a 32-character hex file).</li>
+<li><strong>Never logged or backed up:</strong> Neither the password nor the hash appears in <code>state.yaml</code>, logs, the audit, hook output, or any backup (<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> or core).</li>
+<li><strong>Secrets volume:</strong> Hashes live on their own volume (<code>hub_secrets</code>), never on <code>hub_data</code>. It is <strong>not backed up</strong> and is <strong>emptied</strong> by a core restore (<code>./portcullis restore</code>).</li>
+</ul>
+<p>The passdb and Samba's state directories are on tmpfs (<code>/var/lib/samba</code>, <code>/var/cache/samba</code>, <code>/run/samba</code>, <code>/run/portcullis</code>), so no hash ever reaches a Docker volume or an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> backup.</p>
+<h3 id="hardened-smb">Hardened SMB<a class="headerlink" href="#hardened-smb" title="Permanent link">&para;</a></h3>
+<p>Both templates enforce exactly these settings in <code>smb.conf</code> (contracts §13.17):</p>
+<div class="highlight"><pre><span></span><code><span class="k">[global]</span>
+<span class="na">server min protocol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">SMB3</span>
+<span class="na">server smb encrypt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">required</span>
+<span class="na">server signing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">mandatory</span>
+<span class="na">ntlm auth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">ntlmv2-only</span>
+<span class="na">lanman auth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">no</span>
+<span class="na">map to guest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">never</span>
+<span class="na">restrict anonymous</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2</span>
+<span class="na">disable netbios</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">yes</span>
+<span class="na">smb ports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">445</span>
+<span class="na">wide links</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">no</span>
+<span class="na">follow symlinks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">no</span>
+<span class="na">smb3 unix extensions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">no</span>
+<span class="na">hosts allow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;Local networks, space-separated&gt;</span>
+<span class="na">hosts deny</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.0.0.0/0 ::/0</span>
+</code></pre></div>
+<p>And for every share:</p>
+<div class="highlight"><pre><span></span><code><span class="na">guest ok</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">no</span>
+</code></pre></div>
+<p><code>testparm -s</code> must show exactly these values. SMB2, NTLMv1, guest access and unencrypted sessions are all refused, and the images' own config switches do nothing (their entrypoints never run).</p>
+<p><strong>When the check fails (fail closed):</strong></p>
+<ul>
+<li><strong>At boot</strong>, the converge script exits 4 before smbd starts, so the container exits and Docker restarts it (a restart loop). Its logs say why.</li>
+<li><strong>At hook time</strong> (a setting, membership or password change), any failure after the script started changing things brings smbd down. The container stays up and turns unhealthy, and a down marker keeps smbd from starting again, whatever its supervisor does. The app's Deliveries strip shows the failed <code>sync</code> hook.</li>
+</ul>
+<p><strong>Bringing smbd back:</strong> fix the cause, then run the hook again: click <strong>Retry</strong> on the app's Deliveries strip, or make any change that runs it. smbd comes back with the first hook run that succeeds. A restart of the app also brings it back, because the boot starts with a fresh tmpfs, and its own checks still apply.</p>
+<p>See also <a href="../hardening/#file-sharing">Hardening</a> for the capabilities and container configuration.</p>
+<h3 id="hosts-allow-and-the-userland-proxy">Hosts Allow and the Userland Proxy<a class="headerlink" href="#hosts-allow-and-the-userland-proxy" title="Permanent link">&para;</a></h3>
+<p><strong>Measured on the test server</strong> (Docker 29.9.3, default settings: <code>userland-proxy</code> on): a connection to a published Samba / Time Machine port, even one bound to <code>127.0.0.1</code>, reached smbd from the <strong>bridge gateway of the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s own network</strong> (for example <code>192.168.64.1</code>), not from the client's address: Docker's <code>docker-proxy</code> relayed it. The gateway sits in Docker's default address pools (<code>172.17.0.0/16</code>–<code>172.31.0.0/16</code>, then <code>192.168.x.0/20</code> once those are used), which are inside the default Local networks (<code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>). So with the userland proxy on, <strong><code>hosts allow</code> can't tell clients apart</strong>: every client looks local.</p>
+<p>What actually limits who can connect:</p>
+<ul>
+<li><strong>Who can reach the published port.</strong> Publish on a LAN address only (rebind the port in the Hub), and keep the host firewall closed to anything outside your LAN. This is the real boundary.</li>
+<li><strong>Disabling the userland proxy</strong> (<code>"userland-proxy": false</code> in <code>/etc/docker/daemon.json</code>, then restart Docker) lets Docker forward with NAT, so smbd should see the real client address and <code>hosts allow</code> works as defence in depth. This was not measured for a LAN client here (the test server can't publish SMB beyond loopback).</li>
+<li>Narrowing Local networks does <strong>not</strong> help while the proxy is on: the gateway is still in a range you probably also use for the LAN.</li>
+</ul>
+<h2 id="credentials">Credentials<a class="headerlink" href="#credentials" title="Permanent link">&para;</a></h2>
+<h3 id="viewing-them">Viewing Them<a class="headerlink" href="#viewing-them" title="Permanent link">&para;</a></h3>
+<p><strong>Admins</strong> see every credential on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s File sharing tab (Hub Management):</p>
+<ul>
+<li><strong>Status:</strong> none, active (with the creation date), voided (by a restore), revoked (self / admin / leave / deleted), or unavailable: the username doesn't meet the template's rule (its pattern and reserved names) or the hard rules every file-sharing app applies: no <code>/</code>, no <code>..</code>, no leading <code>.</code> or <code>-</code>, and not <code>pfg&lt;digits&gt;</code>.</li>
+<li><strong>Person ids:</strong> each person's Unix uid.</li>
+<li><strong>Per-person values:</strong> their displayed person-scope settings (e.g. the Time Machine size limit).</li>
+<li><strong>Former members' folders:</strong> top-level directories in per-person trees (Home, Time Machine storage) whose owner isn't the person's current uid, with sizes (or "size unknown").</li>
+<li><strong>Last sync:</strong> when the app's <code>sync</code> hook last ran (ok / skipped / failed).</li>
+</ul>
+<h3 id="regenerating">Regenerating<a class="headerlink" href="#regenerating" title="Permanent link">&para;</a></h3>
+<p>A person regenerates their password by clicking [Regenerate] on <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr> (after a fresh sign-in, like a create). The old hash's removal is applied like a revocation: the hook runs within 8 seconds, or the Hub stops and restarts the app. So the old password stops working even when the hook is busy or fails, and the sessions that used it end. macOS prompts for the new password; running Time Machine backups stop.</p>
+<h3 id="revoking">Revoking<a class="headerlink" href="#revoking" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Self:</strong> A person clicks [Revoke] on their own card. No fresh sign-in needed. Their hash file and metadata go, and the hook ends their sessions.</li>
+<li><strong>Admin:</strong> An admin clicks [Revoke] on the File sharing tab. Same effect, audited with the admin as actor.</li>
+<li><strong>Automatic:</strong> The Hub revokes when the person leaves the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s access group or their account is deleted (reasons: <code>leave</code>, <code>deleted</code>). These are immediate (Hub-made) or caught within about 60 seconds (<abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>-direct). Leaving a share's reader or writer group is not a revocation: it drops that share only (see <a href="#managing-people">Managing People</a>).</li>
+</ul>
+<p>A revoked credential is <strong>destroyed</strong>, not paused. Coming back means creating a new password.</p>
+<h3 id="restores">Restores<a class="headerlink" href="#restores" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Instance restore</strong> (<code>POST /api/instances/{id}/restore</code>): Every active credential of the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> is voided (<code>reason: restore</code>, audited <code>credential.void_restore</code> with the count). <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr> then shows "Your password was reset by a restore on <date>; create a new one."</li>
+<li><strong>Core restore</strong> (<code>./portcullis restore</code>): The <code>hub_secrets</code> volume is <strong>emptied</strong> (removed and re-created with its labels and ownership). The Hub detects it at start via the <strong><abbr title="Random value the Hub keeps both in state.yaml and on the hub_secrets volume; a mismatch voids every file-share password">secrets epoch</abbr></strong> (a random 16-byte value in both <code>state.yaml</code> and <code>&lt;secrets&gt;/.epoch</code>). Every credential of every <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> is voided, every hash file deleted, and every person-id pool's next uid advances by 1000 (so a pool restored from an older <code>state.yaml</code> never hands out a uid that files may already carry). People create new passwords on <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr>.</li>
+</ul>
+<p>The two restores stop the apps differently:</p>
+<ul>
+<li><strong>Instance restore:</strong> the Hub stops that one <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> for the restore and voids its passwords before it starts it again. If the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> was enabled, it is enabled again; other <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> aren't touched.</li>
+<li><strong>Core restore:</strong> before anything changes, it stops the Hub, then takes down every app project with a container mounting <code>hub_secrets</code> (volumes kept). If that fails, or a container is left, the restore aborts with nothing restored and starts the Hub again, so the Hub is running; if starting it fails, the message says so. The Hub starts again with the core, but the apps stay down: the restore lists them, their drift shows them not running, and you start each one again from the Hub.</li>
+</ul>
+<h2 id="filesystems">Filesystems<a class="headerlink" href="#filesystems" title="Permanent link">&para;</a></h2>
+<p>Per-person trees (Home, Time Machine storage) and Samba share folders need:</p>
+<ul>
+<li><strong>Extended attributes:</strong> macOS clients store metadata (Finder tags, resource forks) in <code>com.apple.*</code> xattrs.</li>
+<li><strong>Not NFS, CIFS or FUSE:</strong> The Hub can't keep ownership consistent where a server or VM host decides it, or under virtiofs.</li>
+</ul>
+<p>The Hub's <a href="../hub/#doctor">doctor</a> checks these when you assign a shared folder or run Check path. For Samba shares, it also checks ACL support (needed for the folder's group ownership).</p>
+<p>If your folder is <strong>its own filesystem</strong> (a ZFS dataset or btrfs subvolume), the one-click fix can't touch it: the Hub refuses a different mount. <strong>Fix it on the host:</strong> <code>chown &lt;uid&gt;:&lt;uid&gt;</code> the folder, then <code>chmod 0700</code> it, where <code>&lt;uid&gt;</code> is the person's id from the File sharing tab (the one-click fix changes only the folder itself, not what is inside).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>
