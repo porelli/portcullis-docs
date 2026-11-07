@@ -45,7 +45,7 @@ instances get ids an admin chooses). Pick a default subdomain `<sub>` no other
 template uses: the default instance runs on `<sub>.<main domain>`, a new
 instance is pre-filled with `<sub>-<suffix>.<domain>` on the domain the admin
 picks, and every hostname can be edited in the Hub. Core subdomains (`auth`,
-`traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`) are off limits. A
+`traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp`) are off limits. A
 hostname belongs to at most one instance: the Hub refuses a second one.
 
 ```bash

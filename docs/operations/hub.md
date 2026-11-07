@@ -1655,7 +1655,7 @@ This is the same set core's invite API uses. An invite hands the account to whoe
 
 - `portcullis-hub` (the Hub's own account) and `admin` (the bootstrap LLDAP admin) are untouchable: no edits, passwords, invites, passkey actions, group changes or deletion. An invite for `admin` would hand over the root account, so recover it on the server: `./portcullis invite admin`.
 - [Administrators](#administrators) get no invites from the Hub. Resetting another administrator's passkeys or setting their password lets you take over their account: you must type their username to confirm, and the audit entry is flagged (`target_is_lldap_admin=true`).
-- `admin` and `portcullis-hub` can't be created. `lldap_*` group names are reserved. Built-in groups can't be deleted or made rule-based.
+- `admin` and every name starting with `portcullis-` are reserved: `portcullis-hub` is the Hub's protected service account, and apps use the prefix for their internal accounts. The Hub won't create such a user, import one from a CSV, invite one or set a password for one, even if the account was made in the LLDAP console. `lldap_*` group names are reserved. Built-in groups can't be deleted or made rule-based.
 - You can't delete yourself or remove yourself from `lldap_admin`.
 - The last human member of `lldap_admin` (every member except `portcullis-hub`) can't be deleted or removed from it.
 - Email addresses are unique (case-insensitive).

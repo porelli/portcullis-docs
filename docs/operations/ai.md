@@ -319,8 +319,10 @@ AI page per audience).
   instances that selected the provider, never shown again (`{set,
   updated_at}`), never in logs, the audit, answers or tool results.
 - **Credentials:** *the secrets here* (shared by everyone on the AI page) or
-  *each person's own key* (`per_person`: people enter it in LibreChat; not for
-  Azure). A provider whose key isn't set is left out until it is.
+  *each person's own key* (`per_person`: people enter it in LibreChat). Azure
+  OpenAI can't use per-person keys: the AI page can't take each person's own
+  Azure key, so the Hub refuses that choice (`400`); use *the secrets here*. A
+  provider whose key isn't set is left out until it is.
 - Each provider shows the data-egress note people see: "What people send on
   the AI page, and what their apps return to it, goes to <label>."
 - Selecting providers on the instance's AI support tab, changing a provider,

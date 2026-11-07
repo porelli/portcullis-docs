@@ -82,7 +82,7 @@ zensical build --strict   # what CI runs
 - Every operator action goes through `./portcullis <command>`; never document `docker compose` invocations where a CLI command exists, and never reference the removed `scripts/*.sh`.
 - Verify statements against the code in the other three repos (they are the source of truth); report inconsistencies instead of papering over them.
 - This site is authoritative for all documentation (backups, monitoring, hardening, certificates included). Core's `docs/*.md` only point here; verify against core's code, not its docs.
-- One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`.
+- One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `mcp`, `metrics`.
 - New Portcullis terms get a glossary entry in `includes/abbreviations.md` (hover tooltips via Python-Markdown abbr extension).
 
 ### Verify before committing
