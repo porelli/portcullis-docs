@@ -2742,7 +2742,7 @@ Both files live in `hub_data` next to the policy file (§4.2): mode 0640, group 
 | Action | stdin | stdout | Exit |
 |--------|-------|--------|------|
 | mint | `{"action": "mint", "user": "alice", "instance": "gitea", "companion": "gitea", "name": "portcullis-ai-k3x9q2m7w1ab", "mode": "read_write", "scopes": ["write:repository", "…"]}` | exactly one JSON document `{"credential": "…", "id": "…"}` (strict; `credential` 1–4096 printable ASCII characters other than `"` and `\` (so it is written without JSON escapes; the Hub refuses an escaped one), `id` as in §15.4) | `0` minted; `3` the person has no app account yet (they never signed in to the app; the hook never creates accounts); anything else failed |
-| revoke | `{"action": "revoke", "user": "alice", "ids": ["7"]}` (`ids` `[]` for `app_oauth`: every app-side token the person holds for MCP) | ignored | `0` revoked, else failed |
+| revoke | `{"action": "revoke", "user": "alice", "ids": ["7"]}` (`ids` `[]` for `app_oauth`: every app-side token the person holds for MCP; `app_oauth` adds `"sub": "<the person's Keycloak user id>"`, the `sub` the app received at sign-in — apps match the person by it, never by a name the person can change; the Hub looks it up and fails the revoke (retried) when it can't) | ignored | `0` revoked, else failed |
 | revoke_all | `{"action": "revoke_all", "prefix": "portcullis-ai-"}` (every credential whose name starts with the prefix, every person; for `app_oauth` every person's MCP tokens) | ignored | `0` done, else failed |
 | on_change | `{"action": "on_change", "enabled": true, "mode": "read_write", "companion": "gitea"}` | ignored | `0` applied, else failed |
 
