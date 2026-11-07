@@ -440,7 +440,10 @@ What the design does not cover, stated plainly:
   ([hardening](hardening.md#header-spoofing-protections)). Nextcloud is the
   exception ([Nextcloud](#ai-nextcloud)). An AI credential belongs to the
   LLDAP account it was minted for: a re-created name gets a new one, and the
-  former holder's is revoked, never reused.
+  former holder's is revoked, never reused. The Hub keeps that link in
+  `<data>/ai/credential-uuids.json`; if the file can't be read, every app_token
+  credential counts as unverifiable: the next pass revokes them all and mints
+  fail until the file is fixed or removed (no doctor entry names it yet).
 - **Local networks through the admin MCP.** `set_local_networks` is a plain
   write only when every network is inside the current list (narrowing);
   anything wider needs a confirmation, and so does going back to the defaults
