@@ -34,6 +34,12 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `paperless-headless` | `paperless.<domain>` | `/api/auth/headless/browser/v1/auth/provider`, `/api/auth/headless/app/v1/auth/provider` | `authaware@file` | :white_check_mark: |
 | `paperless-sso` | `paperless.<domain>` | `/accounts/oidc` | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No official MCP server; community servers are small and not vetted by Portcullis.
+
+An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: nloui/paperless-mcp (<https://github.com/nloui/paperless-mcp>) — community, 248★, last change Nov 2025, API token. Portcullis never installs it.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

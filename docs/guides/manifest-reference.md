@@ -1040,11 +1040,11 @@ of `mcp` and `unsupported`.
 | `name` | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, ≤ 31 chars, unique | Yes | Companion name: scope `mcp:<instance>.<name>`, router and alias `portcullis-mcp-<instance>--<name>`, variable `PORTCULLIS_AI_READONLY_<NAME>` |
 | `label` | single line, 1–64 chars | Yes | Shown to people and the admin |
 | `kind` | `companion` or `builtin` | Yes | `companion`: a compose service only for AI (the Hub scales it to 0 while AI is off); `builtin`: the app's own service serves MCP |
-| `service` | service whose name matches `^[a-z0-9]+(-[a-z0-9]+)*$` | Yes | The service that serves MCP. A `companion` service has no Traefik labels, doesn't join `portcullis-proxy` (the Hub adds it with the alias), has no `network_mode`, `container_name` or `hostname`, and backs one companion only |
+| `service` | service whose name matches `^[a-z0-9]+(-[a-z0-9]+)*$` | Yes | The service that serves MCP. A `companion` service has no Traefik labels, doesn't join `portcullis-proxy` (the Hub adds it with the alias), has no `network_mode`, `container_name`, `hostname` or host `ports` (the gate is its only way in), and backs one companion only. No other service may use `network_mode: service:<it>` (or `pid: service:<it>`) |
 | `port` | integer 1–65535 | Yes | Its container port (unused for `app_oauth`) |
 | `path` | absolute clean path | No (default `/mcp`) | The upstream MCP path |
 | `router` | host router name | Yes | The endpoint is `https://<that router's host><public_path>` |
-| `public_path` | absolute clean path | No (default `/mcp`) | Not `/`, not under `/.well-known/`, `/oauth2/` or a public-access path, unique per router. Not for `app_oauth` |
+| `public_path` | absolute clean path | No (default `/mcp`) | Not `/`, never at or under `/.well-known/` or `/oauth2/`, never at, under or above a public-access path, and never at, under or above another companion's endpoint path on the same router (its `public_path`, or an `app_oauth` companion's `path`). Not for `app_oauth` |
 | `identity` | object (below) | Yes | How the person's identity reaches the companion |
 | `modes` | list of `read_only`, `read_write` | Yes | What the admin may choose; `app_oauth`: exactly `[read_write]` |
 | `default_mode` | one of `modes` | When `modes` has two | |
@@ -1062,9 +1062,24 @@ of `mcp` and `unsupported`.
 | `identity_headers` | `caller_secret: {env, header, format}` (required; `env` a `generate: random` entry, `header` default `Authorization`, `format` default `"Bearer {secret}"`) |
 | `app_oauth` | `revoke` (hook name, required); only with `kind: builtin` |
 
-A `header` is an HTTP header name, never `Host`, `Cookie`, `Content-Type`,
-`Accept`, `Proxy-Authorization`, `Mcp-*`, `MCP-Protocol-Version`,
-`X-Forwarded-*`, `X-Auth-Request-*`, `Remote-*` or `X-Portcullis-*`.
+A `header` is `^[A-Za-z0-9-]{1,64}$`, never `Host`, `Cookie`, `Content-Type`,
+`Accept`, `Proxy-Authorization`, the hop-by-hop and framing headers
+(`Content-Length`, `Transfer-Encoding`, `Connection`, `Keep-Alive`, `TE`,
+`Trailer`, `Upgrade`, `Proxy-Connection`), `Mcp-*`, `MCP-Protocol-Version`,
+`Mcp-Session-Id`, `X-Forwarded-*`, `X-Auth-Request-*`, `Remote-*` or
+`X-Portcullis-*` (case-insensitive).
+
+An `identity_headers` companion of kind `companion` needs a **trust network**:
+it joins exactly one network, declared at the top level as exactly
+`{internal: true}`, whose only members are the companion and the service(s)
+of its `router` (the app that trusts the headers). No other service joins it
+or shares a member's network or pid namespace, no service of the template
+uses `network_mode: host` or `pid: host`, and the caller secret's variable is
+interpolated only in the companion's service. The app trusts identity
+headers only from that network's addresses (Grafana's `trust.sh` reads the
+prefix at start) and the companion reaches the app by a name ending in
+`-internal` on it
+([contracts §3.2](integration-contracts.md#32-ai-support-the-ai-block-new-ai-support)).
 
 **`chat`** (AI page templates):
 
@@ -1075,11 +1090,23 @@ A `header` is an HTTP header name, never `Host`, `Cookie`, `Content-Type`,
 | `env` | `{service}` | The service that receives the selected providers' `PORTCULLIS_AI_PROVIDER_*` variables (the Hub adds them; the template never references them) |
 
 A `chat` template has exactly one `keycloak_clients` entry with
-`ai_client: true`.
+`ai_client: true`, and that entry needs `secret_env` (the AI page's client is
+confidential). `chat.file.mount` may not collide with a [files](#files) mount
+on the same service.
 
 Hooks named by `ai` (`mint`, `revoke`, `on_change`) must have exactly
-`when: [ai]`. Templates may read `${PORTCULLIS_AI_ENABLED:-false}` and
-`${PORTCULLIS_AI_READONLY_<NAME>:-true}` (only in these forms).
+`when: [ai]` and never run on a `kind: companion` service (it is scaled to 0
+while off). Templates may read `${PORTCULLIS_AI_ENABLED:-false}`,
+`${PORTCULLIS_AI_READONLY_<NAME>:-true}` and
+`${PORTCULLIS_MCP_GATE_IP:-172.31.250.3}` (only in these forms), and never set
+or reference a `PORTCULLIS_AI_PROVIDER_*` variable (the Hub adds them to the
+`chat.env` service).
+
+A companion is never code written for Portcullis: vet the project before
+adding it (maintained, an open licence, a multi-user identity that fits an
+identity mode, no shared admin identity, a pinned release) and write down why
+in the template's notes; the [AI support](../operations/ai.md#app-notes) page
+keeps the reasons for the shipped templates.
 
 ```yaml
 ai:
@@ -1396,8 +1423,10 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - every hook the block names exists with exactly `when: [ai]`; no `ai` hook the block doesn't name; `ai` never next to another trigger
 - no `ai.mcp` with `auth.admin_paths`, `auth.method` `public` or `mtls`, or without an HTTP router
 - `ai_client` only in an `ai.chat` template, which has exactly one
-- the prefix `portcullis-mcp-` nowhere as a router, service or middleware name, compose service, `container_name`, `hostname` or network alias; no `keycloak_clients[].client_id` starting `portcullis-ai-`; `mcp` isn't a default subdomain
-- `PORTCULLIS_AI_*` and `PORTCULLIS_MCP_GATE_IP` never declared; `PORTCULLIS_AI_ENABLED` / `PORTCULLIS_AI_READONLY_<NAME>` only as `${…:-false}` / `${…:-true}`; `PORTCULLIS_AI_PROVIDER_*` never referenced; `ai-providers` not a `files[]` name
+- the prefix `portcullis-mcp-` nowhere in `compose.yml` (any key or value, case-insensitive: router, service or middleware names, compose services, `container_name`, `hostname`, network aliases included); no `keycloak_clients[].client_id` starting `portcullis-ai-`; `mcp` isn't a default subdomain; the core names `mcp-gate` (service), `mcp_gate_data` (volume) and the Traefik names `mcp`, `hub-mcp`, `people-mcp`, `mcp-gate` are reserved
+- a `companion` service publishes no host `ports`; no service uses `network_mode: service:<a companion service>`; an `identity_headers` companion has its trust network (above)
+- `PORTCULLIS_AI_*` and `PORTCULLIS_MCP_GATE_IP` never declared; `PORTCULLIS_AI_ENABLED` / `PORTCULLIS_AI_READONLY_<NAME>` only as `${…:-false}` / `${…:-true}`, `PORTCULLIS_MCP_GATE_IP` only as `${PORTCULLIS_MCP_GATE_IP:-172.31.250.3}`; `PORTCULLIS_AI_PROVIDER_*` never referenced, and no service sets one (an `environment` key or list item, any case); no `environment` variable name built by interpolation; no `PORTCULLIS_AI_` in a `${…}` default or alternate value; `ai-providers` not a `files[]` name
+- an `ai_client` entry has `secret_env`; `ai.chat.file.mount` doesn't collide with a `files[]` mount on that service; AI hooks don't run on a `kind: companion` service
 - companion images pinned `tag@sha256:digest` like every image
 
 **Cross-template**

@@ -294,6 +294,133 @@ def bool_badge(val) -> str:
     return ":white_check_mark:" if val else ":x:"
 
 
+
+# ── AI support (the ai: block, contract §3.2) ───────────────────────────
+
+AI_GUIDE = Path(__file__).parent.parent / "docs" / "operations" / "ai.md"
+
+IDENTITY_TEXT = {
+    "app_token": "per-person app credential (`app_token`): the Hub mints one for each person in the app; mcp-gate sends it with every call",
+    "identity_headers": "identity headers (`identity_headers`): mcp-gate tells the companion who the person is, with a caller secret only it holds",
+    "app_oauth": "the app's own sign-in (`app_oauth`): the app is its own OAuth server and signs people in through Portcullis; mcp-gate is not in the path",
+}
+
+MODE_TEXT = {"read_only": "read only", "read_write": "read and write"}
+
+KIND_TEXT = {
+    "litellm": "LiteLLM", "openai_compatible": "OpenAI-compatible", "anthropic": "Anthropic",
+    "openai": "OpenAI", "google": "Google", "bedrock": "AWS Bedrock", "azure_openai": "Azure OpenAI",
+}
+
+
+def ai_note_anchor(app_id: str) -> str:
+    """The anchor of the app's note in the AI admin guide, if it has one."""
+    try:
+        text = AI_GUIDE.read_text()
+    except OSError:
+        return ""
+    anchor = f"ai-{app_id}"
+    return anchor if "{#" + anchor + "}" in text else ""
+
+
+def ai_lines(app: dict) -> list[str]:
+    ai = app.get("ai")
+    if not isinstance(ai, dict):
+        return []
+    app_id = app["_id"]
+    lines = ["## AI support", ""]
+    anchor = ai_note_anchor(app_id)
+    mcp = ai.get("mcp") or []
+    if mcp:
+        routers = {r["name"]: r for r in compose_routers(app.get("_compose") or {})}
+        lines.append("People's AI assistants can use this app as themselves through these MCP servers, "
+                     "once an admin switches AI support on in the app's **AI support** tab "
+                     "(see [AI support](../operations/ai.md)).")
+        lines.append("")
+        for c in mcp:
+            ident = c.get("identity") or {}
+            mode = ident.get("mode", "")
+            r = routers.get(c.get("router", ""))
+            host = (r["hosts"][0] if r and r["hosts"] else "<host>")
+            path = c.get("path") or "/mcp" if mode == "app_oauth" else (c.get("public_path") or "/mcp")
+            upstream = c.get("upstream", "")
+            up_text = ("official (the app's own MCP server)" if c.get("kind") == "builtin"
+                       else "official companion (the app project's own MCP server)" if upstream == "official"
+                       else "community companion, vetted by the template's reviewers")
+            modes = c.get("modes") or []
+            mode_text = ", ".join(MODE_TEXT.get(m, m) for m in modes)
+            if c.get("default_mode"):
+                mode_text += f" (default {MODE_TEXT.get(c['default_mode'], c['default_mode'])})"
+            aggregate = c.get("aggregate", mode != "app_oauth")
+            lines.append(f"**{md_cell(c.get('label', c.get('name', '')))}** (`{c.get('name', '')}`)")
+            lines.append("")
+            lines.append("| Property | Value |")
+            lines.append("|----------|-------|")
+            lines.append(f"| **Endpoint** | `https://{host}{path}` |")
+            lines.append(f"| **Server** | {'built into the app' if c.get('kind') == 'builtin' else 'a companion container (`' + str(c.get('service', '')) + '`), scaled to 0 while AI support is off'} |")
+            lines.append(f"| **Upstream** | {up_text} |")
+            lines.append(f"| **Source** | <{c.get('source', '')}> |")
+            lines.append(f"| **Identity mode** | {IDENTITY_TEXT.get(mode, f'`{mode}`')} |")
+            lines.append(f"| **Modes** | {mode_text} |")
+            lines.append(f"| **In \"All my apps\"** | {bool_badge(aggregate)} |")
+            lines.append(f"| **MCP versions** | {', '.join(f'`{v}`' for v in c.get('protocol') or [])} |")
+            tools = c.get("tools") or {}
+            if tools.get("confirm"):
+                lines.append(f"| **Needs the person's confirmation** | {', '.join(f'`{md_cell(t)}`' for t in tools['confirm'])} |")
+            if tools.get("never"):
+                lines.append(f"| **Never offered** | {', '.join(f'`{md_cell(t)}`' for t in tools['never'])} |")
+            if tools.get("writes"):
+                lines.append(f"| **Hidden in read-only mode** | {', '.join(f'`{md_cell(t)}`' for t in tools['writes'])} |")
+            lines.append("")
+        if mode_of_any(mcp, "app_oauth"):
+            lines.append("!!! warning \"The app applies its own rules\"")
+            lines.append("    This app signs AI clients in itself. Portcullis doesn't log, confirm, rate-limit or filter "
+                         "its AI actions; leaving the app's access group revokes the person's AI tokens through the "
+                         "template's revoke hook.")
+            lines.append("")
+    elif ai.get("chat"):
+        chat = ai["chat"]
+        kinds = chat.get("provider_kinds") or {}
+        lines.append("This template is an **AI page**: an MCP client people chat in, connected to "
+                     "\"All my apps\" as each person. Its models come from the model providers in "
+                     "Hub Settings → AI (see [The AI page](../operations/ai.md#the-ai-page)).")
+        lines.append("")
+        lines.append("| Provider kind | Per instance |")
+        lines.append("|---------------|--------------|")
+        for k, v in kinds.items():
+            lines.append(f"| {KIND_TEXT.get(k, k)} (`{k}`) | {'one' if v == 'one' else 'several'} |")
+        lines.append("")
+        if ai.get("unsupported"):
+            lines.append(f"Not an app the AI acts in: {md_cell(html.escape(str(ai['unsupported']), quote=False))}.")
+            lines.append("")
+    else:
+        lines.append(f"**No AI support:** {md_cell(html.escape(str(ai.get('unsupported', '')), quote=False))}.")
+        lines.append("")
+        alt = ai.get("alternative")
+        if isinstance(alt, dict):
+            lines.append(f"An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: "
+                         f"{md_cell(html.escape(str(alt.get('name', '')), quote=False))} (<{alt.get('source', '')}>) — "
+                         f"{md_cell(html.escape(str(alt.get('note', '')), quote=False))}. Portcullis never installs it.")
+            lines.append("")
+    if anchor:
+        lines.append(f"Why this choice, and what to know: [AI support → {app.get('name', app_id)}](../operations/ai.md#{anchor}).")
+        lines.append("")
+    return lines
+
+
+def ai_badge(app: dict) -> str:
+    ai = app.get("ai") if isinstance(app.get("ai"), dict) else {}
+    if ai.get("mcp"):
+        return ":white_check_mark:"
+    if ai.get("chat"):
+        return "AI page"
+    return ":x:"
+
+
+def mode_of_any(mcp: list, mode: str) -> bool:
+    return any(((c.get("identity") or {}).get("mode")) == mode for c in mcp)
+
+
 def generate_index(apps: list[dict], output_dir: Path):
     """Generate the app catalog overview table."""
     lines = [
@@ -306,8 +433,8 @@ def generate_index(apps: list[dict], output_dir: Path):
         "[porelli/portcullis-templates](https://github.com/porelli/portcullis-templates);",
         "see the [Manifest Reference](../guides/manifest-reference.md) for the fields.",
         "",
-        "| App | Subdomain | Category | Auth Method | SSO | Group Access | Group Admin |",
-        "|-----|-----------|----------|-------------|-----|-------------|-------------|",
+        "| App | Subdomain | Category | Auth Method | SSO | Group Access | Group Admin | AI support |",
+        "|-----|-----------|----------|-------------|-----|-------------|-------------|------------|",
     ]
 
     for app in sorted(apps, key=lambda a: (a.get("category", ""), a.get("name", ""))):
@@ -323,7 +450,7 @@ def generate_index(apps: list[dict], output_dir: Path):
 
         subs = ", ".join(f"`{x}`" for x in subdomains(app)) or "—"
         lines.append(
-            f"| {icon} [{name}]({app_id}.md) | {subs} | {category} | `{method}` | {sso} | {group} | {admin} |"
+            f"| {icon} [{name}]({app_id}.md) | {subs} | {category} | `{method}` | {sso} | {group} | {admin} | {ai_badge(app)} |"
         )
 
     lines.append("")
@@ -487,6 +614,8 @@ def generate_app_page(app: dict, output_dir: Path):
             lines.append("As written in `compose.yml`. With the default [Sign-in](#sign-in) the Hub's override adds "
                          "`portcullis-auth@docker,portcullis-groups@docker` to every router.")
             lines.append("")
+
+    lines.extend(ai_lines(app))
 
     images = compose_images(app.get("_compose") or {})
     if images:

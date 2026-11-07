@@ -30,6 +30,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `soundcraft` | `soundcraft.<domain>` | all | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** Runs entirely in the browser; files stay on the person's device, so there is nothing on the server for an AI to reach.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

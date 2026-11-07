@@ -91,7 +91,7 @@ All options are in the [CLI Reference](../operations/cli.md#init).
    existing `.env` is kept; only empty or missing secrets are filled in.
 2. **Creates DNS records** for `<domain>` and `*.<domain>` pointing at this
    host's public IP (`dns setup`; skipped with `--skip-dns` or
-   `--dns-provider none`). The wildcard covers all app and core subdomains: `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, and each enabled app.
+   `--dns-provider none`). The wildcard covers all app and core subdomains: `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp` (the "All my apps" MCP endpoint, [AI support](../operations/ai.md)), and each enabled app.
 3. **Initialises Vault** in server mode with persistent raft storage. The root
    token and unseal key go to `secrets/` (see the warning below), and the
    enrollment service gets a least-privilege AppRole. Vault unseals itself on

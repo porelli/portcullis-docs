@@ -31,6 +31,12 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `gitlab` | `git.<domain>` | all | `authaware@file` | :x: |
 | `gitlab-login` | `git.<domain>` | `/users` | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** GitLab 19.5's MCP server accepts only GitLab's own OAuth tokens (no personal access tokens); that per-person OAuth path isn't verified with Portcullis yet (surveyed 2026-11-06).
+
+Why this choice, and what to know: [AI support → GitLab](../operations/ai.md#ai-gitlab).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

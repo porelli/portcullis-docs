@@ -33,6 +33,12 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `netbird-mgmt` | `netbird.<domain>` | `/management.ManagementService/` | `public@file` | :x: |
 | `netbird-signal` | `netbird.<domain>` | `/signalexchange.SignalExchange/` | `public@file` | :x: |
 
+## AI support
+
+**No AI support:** An official MCP server exists, but it acts as one shared service user rather than as each person; network control planes stay out of AI reach until one supports per-person access.
+
+Why this choice, and what to know: [AI support → NetBird](../operations/ai.md#ai-netbird).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

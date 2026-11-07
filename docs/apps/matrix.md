@@ -33,6 +33,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `matrix` | `matrix.<domain>` | all | `authaware@file` | :x: |
 | `matrix-admin` | `matrix.<domain>` | `/_synapse/admin` | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No official or vetted community MCP server known (surveyed 2026-11-05).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

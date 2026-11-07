@@ -30,13 +30,17 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `esphome` | `esphome.<domain>` | all | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No official or vetted community MCP server known (surveyed 2026-11-05).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `esphome` | `ghcr.io/esphome/esphome:2026.10.1` | `sha256:eab8cd6b4f51…` |
+| `esphome` | `ghcr.io/esphome/esphome:2026.10.2` | `sha256:4a918585150e…` |
 | `esphome-gate` | `nginx:1.31.8-alpine` | `sha256:785835ea65db…` |
 
 ## Settings

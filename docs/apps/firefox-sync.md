@@ -30,6 +30,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `firefox-sync` | `firefox-sync.<domain>` | all | `public@file` | :x: |
 | `firefox-sync-token` | `firefox-sync.<domain>` | `/1.0/` | `public@file` | :x: |
 
+## AI support
+
+**No AI support:** Signs people in with Mozilla accounts, not Portcullis identities; no MCP server known.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

@@ -29,6 +29,12 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `mattermost` | `chat.<domain>` | all | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** The Agents plugin's MCP endpoint for AI clients needs a Mattermost Enterprise licence (this template runs Team Edition), and Team Edition lets people rename their accounts.
+
+Why this choice, and what to know: [AI support → Mattermost](../operations/ai.md#ai-mattermost).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

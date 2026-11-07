@@ -127,7 +127,51 @@ config_files: []
 urls:
   - label: My App
     url: "https://{{HOST_MYAPP}}"   # the instance's hostname of router myapp
+
+ai:
+  unsupported: "No official MCP server; community servers are small and not vetted by Portcullis"
 ```
+
+### Declaring AI support
+
+Every manifest has an `ai:` block
+([reference](manifest-reference.md#ai), [contracts §3.2](integration-contracts.md#32-ai-support-the-ai-block-new-ai-support)),
+in exactly one of two forms:
+
+- **`unsupported`**: one sentence saying why the AI can't act in the app
+  (no MCP server, no per-person identity, a password vault, a public site, …).
+  Optionally an `alternative` `{name, source, note}`: a community server an
+  admin may evaluate on their own. The Hub shows it labelled "not vetted by
+  Portcullis" and never installs it.
+- **`mcp`**: the app's companions. A companion is the app's built-in MCP
+  server (`kind: builtin`) or a service running the upstream project's, or a
+  vetted community project's, published image (`kind: companion`), pinned by
+  digest. **Never MCP server, adapter or proxy code written for
+  Portcullis.** Vet a community project first: maintained, an open licence,
+  a multi-user identity that fits an identity mode, no shared admin identity
+  running tool calls, a pinned release; record why in the template's notes.
+
+Choose the identity mode by what the app offers:
+
+| The app has | Mode | You write |
+|-------------|------|-----------|
+| per-person API tokens or app passwords an admin CLI can create | `app_token` | `mint` and `revoke` hooks (`when: [ai]`) that create a `portcullis-ai-<random>` credential for the given user (exit 3 when the person has no account yet; never create accounts) and delete credentials by id, or every `portcullis-ai-*` one for `revoke_all` |
+| a server that trusts identity headers from one caller | `identity_headers` | a `caller_secret` (a `generate: random` env entry) the companion requires, and a trust network so the app trusts the headers only from the companion |
+| its own OAuth-protected MCP route that signs in through Keycloak | `app_oauth` | a `revoke` hook that ends a person's AI tokens by their Keycloak id (`sub`), or everyone's for `revoke_all` |
+
+Then classify the tools: `writes` (hidden in read-only mode), `confirm`
+(deletes and anything that sends data out: the person approves with a
+passkey) and `never` (tools that would put a secret in front of the model,
+or open access). The gate also confirms tools the companion marks
+destructive. Hooks get one JSON document on stdin, and their stdout is never
+stored ([§15.5](integration-contracts.md#155-identity-modes-tool-policy-and-hook-io)).
+
+The companion's alias and router are the Hub's: `portcullis-mcp-` appears
+nowhere in `compose.yml`, the companion service has no Traefik labels, no
+host ports and isn't on `portcullis-proxy`, and it reads
+`${PORTCULLIS_AI_READONLY_<NAME>:-true}` to start read-only. See `gitea/`
+(`app_token`), `grafana/` (`identity_headers`), `nextcloud/` (`app_token`
+with HTTP Basic) and `homeassistant/` (`app_oauth`).
 
 ### Declaring settings
 
@@ -659,6 +703,7 @@ docker compose logs group-gate | grep myapp   # DENIED / ALLOW-UNMAPPED / STEPUP
 - [ ] Every option has an explicit `applies` that matches how the app reads it; per-person roles are `privileged`; hooks are idempotent and fail on any error
 - [ ] Host folders: a `folder` block with the `runs_as` ids the process really has, `joins_group: gid_env` where the image drops supplementary groups; LAN-only ports marked `lan_only: true`
 - [ ] Header-auth: identity header trusted only from `PORTCULLIS_TRAEFIK_IP`
+- [ ] An `ai:` block: `unsupported` with the reason, or vetted companions with an identity mode, `writes` / `confirm` / `never` and `when: [ai]` hooks
 - [ ] Images pinned `tag@sha256:…`; directory added to `.github/dependabot.yml`
 - [ ] `tests/apps/<app-id>.sh` added
 - [ ] `tests.signin` in `manifest.yaml` (or `skip` with the reason for public / custom / mtls apps)

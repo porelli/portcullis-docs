@@ -63,6 +63,28 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `nextcloud` | `cloud.<domain>` | all | `authaware@file` | :x: |
 
+## AI support
+
+People's AI assistants can use this app as themselves through these MCP servers, once an admin switches AI support on in the app's **AI support** tab (see [AI support](../operations/ai.md)).
+
+**Nextcloud** (`nextcloud`)
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `https://cloud.<domain>/mcp` |
+| **Server** | a companion container (`nextcloud-mcp`), scaled to 0 while AI support is off |
+| **Upstream** | community companion, vetted by the template's reviewers |
+| **Source** | <https://github.com/cbcoutinho/nextcloud-mcp-server> |
+| **Identity mode** | per-person app credential (`app_token`): the Hub mints one for each person in the app; mcp-gate sends it with every call |
+| **Modes** | read only, read and write (default read and write) |
+| **In "All my apps"** | :white_check_mark: |
+| **MCP versions** | `2025-11-25`, `2025-06-18` |
+| **Needs the person's confirmation** | `*delete*`, `nc_calendar_bulk_operations`, `nc_calendar_manage_calendar`, `nc_calendar_create_event`, `nc_calendar_create_meeting`, `nc_calendar_update_event`, `nc_calendar_create_todo`, `nc_calendar_update_todo` |
+| **Never offered** | `nc_share_create`, `nc_share_create_public_link`, `nc_share_update`, `nc_share_list`, `nc_share_get` |
+| **Hidden in read-only mode** | `*_write_*`, `*_edit_*`, `*_create*`, `*_delete*`, `*_move_*`, `*_copy_*`, `*_restore_*`, `*_tag_file`, `*_untag_file`, `*_update*`, `*_complete_*`, `*_bulk_*`, `*_manage_*` |
+
+Why this choice, and what to know: [AI support → Nextcloud](../operations/ai.md#ai-nextcloud).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.
@@ -71,6 +93,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 |---------|-------|--------|
 | `nextcloud` | `nextcloud:34.0.5-apache` | `sha256:515c072ea1cf…` |
 | `nextcloud-cron` | `nextcloud:34.0.5-apache` | `sha256:515c072ea1cf…` |
+| `nextcloud-mcp` | `ghcr.io/cbcoutinho/nextcloud-mcp-server:0.205.3` | `sha256:c8b613f9f1c6…` |
 
 ## Settings
 

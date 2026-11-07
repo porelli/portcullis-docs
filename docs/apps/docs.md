@@ -28,6 +28,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `docs` | `docs.<domain>` | all | `public@file` | :x: |
 
+## AI support
+
+**No AI support:** A public site with no signed-in person to act as.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

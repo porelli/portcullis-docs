@@ -29,6 +29,10 @@ graph TB
             Enroll[Enrollment UI]
         end
 
+        subgraph AI
+            MCPGate[mcp-gate<br/>MCP requests]
+        end
+
         subgraph Management
             Hub[Hub<br/>App Catalog]
             SPH[socket-proxy-hub]
@@ -72,6 +76,11 @@ graph TB
     SPT --> Docker
     SPH --> Docker
     Hub -->|clients| Keycloak
+
+    Traefik -->|MCP, bearer token| MCPGate
+    MCPGate -.->|keys| Keycloak
+    MCPGate -->|as the person| AppFA
+    MCPGate -->|Portcullis MCP| Hub
 ```
 
 ### Component Roles
@@ -90,6 +99,7 @@ graph TB
 | **Domains service** | Manages enrolled extra domains: creates DNS records, obtains wildcard certificates via ACME DNS-01, serves them to Traefik over its HTTP provider. Credentials stored encrypted at rest (age). See [Security & Hardening](operations/hardening.md#domains-service). |
 | **forward-auth-ext** | Second oauth2-proxy for extra-domain hosts. Relative callback `/oauth2/callback`, host-only cookie `__Host-portcullis_ext`. Shares the Keycloak client with `forward-auth`. See [Hub Management](operations/hub.md#cross-domain-sign-in). |
 | **Monitoring** (optional) | Compose profile `monitoring`: Prometheus, Alertmanager, Grafana at `metrics.<domain>` (`lldap_admin`), blackbox and textfile exporters. See [Monitoring](operations/monitoring.md). |
+| **mcp-gate** | Terminates every MCP request of people's AI clients (`mcp.<domain>`, each app's `/mcp` endpoint, `hub.<domain>/mcp`, `people.<domain>/mcp`): checks the Keycloak token for exactly that resource, the person's population on every request, tool policy, limits and confirmations, logs every call, and forwards it to the app's companion as the person, never with their token. See [AI support](operations/ai.md#how-it-fits-together) and [AI support flow](#ai-support-flow). |
 | **Socket proxies** | `socket-proxy-traefik` (read-only) and `socket-proxy-hub` (what compose needs): the only containers that mount the Docker socket. See [Security & Hardening](operations/hardening.md#docker-socket-proxies). |
 
 ## Repository Structure
@@ -238,6 +248,7 @@ Traefik is the only service exposed to the internet (ports 80 and 443). It is at
 - **`portcullis`** -- Core services: Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub, enroll. Apps are not on it and cannot reach these services directly.
 - **`portcullis-proxy`** -- Traefik and app frontend services; Traefik's docker provider routes over it. Fixed subnet (`PORTCULLIS_PROXY_SUBNET`, default `172.31.250.0/24`), Traefik always at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`), other containers from `PORTCULLIS_PROXY_IP_RANGE` (which excludes Traefik's IP). Header-auth apps trust identity headers only from Traefik's address.
 - **`portcullis-auth`** -- Internal network with only Traefik (fixed `PORTCULLIS_AUTH_TRAEFIK_IP`, default `172.31.251.2`) and Keycloak. Keycloak accepts proxy headers -- including the forwarded client certificate for X.509 login -- only from that address.
+- **`portcullis-mcp`** -- Internal network with only `mcp-gate`, Keycloak and the Hub (fixed addresses): the gate fetches Keycloak's keys and calls the Hub's MCP listener here. The gate also sits on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP` (default `172.31.250.3`), where Traefik routes MCP requests to it and it reaches the app companions.
 - **`socket-proxy-traefik`, `socket-proxy-hub`** -- Internal networks, each shared by one client and its Docker socket proxy.
 - **Per-app networks** -- Each app's compose project (`portcullis-<app-id>`) has its own `default` network. Internal services (databases, caches, workers) live only there, isolated from all other apps.
 
@@ -651,6 +662,57 @@ their severity and the fix it offers: one-click fixes go through the same
 previewed operations, risky ones are explained, and it never changes
 anything by itself. It also judges ports templates mark LAN only against
 the admin's [local networks](operations/hub.md#local-networks).
+
+## AI Support Flow
+
+People's AI clients (Claude, Claude Code, an AI page) reach apps through
+`mcp-gate`, as the person ([AI support](operations/ai.md)):
+
+```mermaid
+sequenceDiagram
+    participant C as AI client
+    participant K as Keycloak
+    participant G as mcp-gate
+    participant H as Hub
+    participant A as App companion
+    C->>G: POST https://gitea.<d>/mcp (no token)
+    G-->>C: 401, resource metadata (RFC 9728)
+    C->>K: authorize (PKCE, scope mcp:gitea.gitea), passkey, consent
+    K-->>C: access token (aud = https://gitea.<d>/mcp)
+    C->>G: tools/call + Bearer token
+    G->>G: signature, issuer, audience, scope, client, LoA,<br/>population now, tool policy, limits
+    alt no app credential yet (app_token)
+        G->>H: POST /internal/credentials (gate secret)
+        H->>A: mint hook (in the app's container)
+        H-->>G: credential, encrypted to the gate
+    end
+    alt confirm tool
+        G->>H: POST /internal/confirmations
+        G-->>C: "needs your confirmation": people.<d>/confirm/<id>
+        Note over C,H: the person approves with a passkey, the AI retries
+    end
+    G->>A: the call, with the person's credential (never the token)
+    A-->>G: result
+    G->>G: one access-log line
+    G-->>C: result
+```
+
+- **One resource per token.** Each MCP endpoint is its own OAuth resource;
+  the Hub creates a Keycloak scope per resource whose audience mapper puts
+  exactly that URL in `aud`. A token for one app works at no other.
+- **The Hub** owns the Keycloak AI clients and `mcp:*` scopes, writes the
+  gate's files (`mcp-gate.json`: resources, populations, tool policy;
+  `mcp-credentials.json`: per-person credentials encrypted to the gate), runs
+  the companions' mint and revoke hooks, serves the confirmation pages and the
+  Portcullis MCP on its third listener (`:8890`, reachable only with the gate
+  secret).
+- **All my apps** (`mcp.<d>/mcp`) is served by the gate itself: it lists the
+  tools of every companion the person can use (`<instance>__<tool>`) plus the
+  people tools (`portcullis__<tool>`), and routes each call as if it came
+  directly, with every per-app rule.
+- **Leaving** an app's population refuses the person at their next request;
+  the Hub revokes their app credentials, and once they can use no AI resource
+  at all, their Keycloak consents and offline sessions.
 
 ## Expiry Flow
 

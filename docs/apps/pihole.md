@@ -30,6 +30,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `pihole` | `pihole.<domain>` | all | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No MCP server known, and every member of the access group is a full administrator of the app (no per-person rights to act with).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

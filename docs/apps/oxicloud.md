@@ -31,6 +31,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `oxicloud` | `drive.<domain>` | all | `authaware@file` | :x: |
 | `oxicloud-sso` | `drive.<domain>` | `/api/auth/oidc/authorize` | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No official or vetted community MCP server known (surveyed 2026-11-05).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

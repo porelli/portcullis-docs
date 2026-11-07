@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
@@ -57,6 +57,7 @@ exactly as on a real install. Every step drives the stack through
     - `blackbox_exporter --config.check`
     - a sanity check of the provisioned dashboard JSON
 - **enroll** `go vet` + `go test` in the pinned Go image: CSR validation, admin requirement, content type, AppRole login and re-login, self-service renewal.
+- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`) is decoded strictly and re-encoded byte for byte. The tests cover the token rules (signature, issuer, audience, scope, client, LoA, population, `Origin`), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream rules) and the Portcullis proxy. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890.
 
 ### `build-and-test` (whole stack)
 
@@ -344,6 +345,76 @@ uploads `e2e-folders-artifacts`: logs, API answers, the tree and
 
 Built like `e2e-settings` (same-named Hub and templates branches, else `main`). Ubuntu 24.04 runners, smbclient pinned at `2:4.19.5+dfsg-4ubuntu9*`. On failure: policy/attributes files, data files, container logs, screenshots, no traces (DOM snapshots would carry the password).
 
+### `e2e-ai` (AI support through mcp-gate)
+
+The first run of the whole chain: an MCP client on the runner host →
+Traefik → mcp-gate → the Gitea companion (the official `gitea-mcp`, from the
+templates repo) → Gitea, with Keycloak's OAuth (PKCE and `resource`, the Hub's
+`portcullis-ai-claude-code` client and its `mcp:*` scopes) and the Hub (AI
+settings, the companion switch, the gate files, lazy mint and revoke hooks).
+The Hub's template source is the same-named templates branch (else `main`)
+with gitea, grafana and the CI `echo` fixture; the CI fixtures declare
+`ai.unsupported`. Setup goes through the Hub's admin API as the CI admin
+`root`: instances `gitea-b` and a throwaway `echo-del`, gitea, gitea-b and
+grafana enabled, alice / bob / carol in their groups, the master switch on
+with Claude Code offered (admin flag on), Gitea's companion in read_write,
+Grafana's (identity headers) read-only.
+
+**`tests/e2e/mcpclient`** is a stand-in for Claude Code on the official MCP Go
+SDK (pinned in its `go.mod`):
+
+- `mcpclient login --client-id <id> --callback-port 33418 --resource <url> [--scope "<scopes>"] --token-file <f> [--ca-file <pem>] [--timeout 5m]`
+  prints the authorize URL (Playwright opens it, signs in with a CDP virtual
+  authenticator and consents), serves the loopback callback and writes the
+  token to the file (0600; tokens are never printed or put on argv);
+- `mcpclient call --url <url> --token-file <f> --method tools/list|tools/call [--tool <name> --args <json>] [--protocol <version>] [--elicitation url [--elicit-answer accept|decline|cancel]] [--ca-file <pem>]`
+  prints one JSON document (the result, the negotiated protocol and any
+  `elicitation/create` requests, or the HTTP status and `WWW-Authenticate`).
+  `--elicitation url` declares URL-mode elicitation only and turns off the
+  SDK's automatic retry, so a 2026-07-28 `input_required` is printed as sent.
+
+`tests/e2e/e2e_ai.py` scenarios:
+
+1. `gitea_as_alice`: a token for `https://gitea.<d>/mcp`, `tools/list`, and a
+   repository listing that shows only alice's repositories.
+2. `leaver_refused_and_revoked`: alice removed from `users_gitea` → `403`, and
+   her `portcullis-ai-*` Gitea token deleted.
+3. `audience_separation`: her Gitea token at gitea-b, `mcp.<d>`, `hub.<d>`
+   and `people.<d>` → `401`; one token for two resources → refused at both.
+4. `no_token_crossing`: the MCP token on Gitea's and the people pages → a
+   sign-in redirect or `401`, never a page; browser cookies on `/mcp` → `401`.
+5. `destructive_confirmation`: root's `delete_instance` on `hub.<d>/mcp` →
+   the confirmation link; bob can't open it; root types the id and touches a
+   fresh passkey → approved; the retry runs, a second one needs a new
+   confirmation; audited `via: ai` with the client and the confirmation id.
+6. `aggregate_lists`: on `mcp.<d>` carol sees `gitea__*`, `grafana__*` and
+   `portcullis__my_apps` and calls Grafana through the gate (identity
+   headers); bob sees no `grafana__*`; root sees no admin tool.
+7. `ai_off`: the master switch off → every resource `503`. While the apps
+   restart, a companion host answers `404` (its router is gone with the app),
+   which fails closed too.
+8. `companion_confirmation`: alice's `label_write` `delete_repo_label` → a
+   `people.<d>` confirmation (typed check: the instance label); bob `404`;
+   approved → runs once with the canonical arguments; changed arguments → a
+   new one; the access log's `confirmation_id`.
+9. `url_elicitation_2026`: with URL elicitation declared, a 2026-07-28 call
+   gets `input_required` (a Hub D tool and a companion tool); a 2025-11-25
+   session gets the gate's `elicitation/create` (mode url) and the Hub's text.
+10. `gitea_isolation`: the `gitea-internal` and companion alias resolution, no
+    `portcullis-hook-*` token left after mint and revoke, the switch-on's
+    `revoke_all` succeeded.
+
+Not covered: an approved 2026-07-28 round trip through `requestState`, the
+gate's continuation of a confirmed call the companion then asks input for, and
+token refresh. Built like `e2e-settings` (same-named Hub and templates
+branches, else `main`). Tokens live only in a temp directory outside the
+artifacts. On failure: logs, screenshots and traces.
+
+`e2e-instances` runs on `ubuntu-latest`: the echo fixture's `hold` service has
+its own pinned `busybox` image, so the Hub's helper image isn't in use when
+the job removes it (Docker's containerd image store refuses to remove an image
+in use).
+
 **Cross-repo branches.** `ci.yml` also runs on `workflow_dispatch`. On a
 branch whose name exists in porelli/portcullis-hub (not `main`, not a tag),
 `.github/actions/hub-image` builds the Hub from that branch instead of pulling
@@ -413,6 +484,13 @@ every contributor gets this feedback:
 - `bash tests/compose-config.sh`: `docker compose config` for every template.
 - `shellcheck` of the test scripts and template scripts.
 - `actionlint` (pinned image).
+- `python -m unittest discover -s tests`: the validator's own tests, including
+  `AITests` (the `ai:` block rule for rule with the Hub's `ValidateAI`: both
+  forms, companions, identity modes, reserved names and variables, trust
+  networks, the `ai.chat` rules).
+- `tests/trust/test_grafana_trust.sh`: Grafana's `trust.sh` (the AI trust
+  network allowlist) against stubbed `ip` output, including the ambiguous
+  layouts it must refuse.
 
 ### `test-apps.yml`: integration tests
 
@@ -517,6 +595,20 @@ opens; `workflow_dispatch` is the one event `GITHUB_TOKEN` may start. The
 Test Apps run is dispatched on the base branch, so its check attaches to the
 base commit, not the PR: the script links the run in the PR body.
 
+**AI support in the app tests.** `gitea.sh`, `grafana.sh`, `nextcloud.sh` and
+`homeassistant.sh` run their mint / revoke / `on_change` hooks the way the Hub
+does (argv verbatim, JSON on stdin, split output) and check that a credential
+never reaches an argv or a log. `nextcloud.sh` starts the companion and
+checks per-person identity (one person's app password sees only their files;
+no credential, nothing; a bad one, `401`). `grafana.sh` checks the trust
+network (internal, exactly Grafana and the companion, Grafana's allowlist
+without the gateway, broadcast and its own address) and that a spoofed
+`X-Forwarded-User` from elsewhere on `portcullis-proxy` isn't signed in.
+`ai-chat.sh` renders `librechat.yaml` from `ai-providers.json` (secrets only
+as `${VAR}` references, a refused file fails closed), checks the access-group
+restriction and the MCP OAuth callback. `write_ai_providers_override` (below)
+emulates the Hub's delivery to an AI page.
+
 ### Test helpers (`tests/lib.sh`)
 
 | Area | Functions |
@@ -578,7 +670,10 @@ pinned by commit SHA.
     writer (collisions, deny group, snapshots, `expiring` array, `user-attributes.json`), middleware (proxy secret, CSRF), per-app locking, reconcile/drift, the Engine API client, the LLDAP client (GraphQL + LDAP Password Modify), the Keycloak client (attribute mappers), the rule parser, and the directory service (users, groups, fields, rule evaluator, exceptions, expiries, CSV import, delegated permissions, protected accounts parity).
     New packages: `internal/rules` (rule parser and evaluator), `internal/directory` (users, groups, fields, permissions, import, audit).
     `TestRealTemplates` loads a sibling `portcullis-templates` checkout if present.
-    `TestPeopleListenerHasNoAppRoutes` checks that the people listener registers exactly the directory routes plus the five caller-only My apps routes (`GET /api/me/apps`, `PUT` and `DELETE /api/me/apps/{instance}/values/{key}`, `POST` and `DELETE /api/me/apps/{instance}/credentials/{key}`), and no app/policy/drift/compose/settings/Docker routes.
+    `TestPeopleListenerHasNoAppRoutes` checks that the people listener registers exactly the directory routes plus the nine caller-only My apps routes (`GET /api/me/apps`, `PUT` and `DELETE /api/me/apps/{instance}/values/{key}`, `POST` and `DELETE /api/me/apps/{instance}/credentials/{key}`, `GET /api/me/ai`, `DELETE /api/me/ai/connections/{client}`, `GET /confirm/{id}`, `POST /api/me/confirmations/{id}`), and no app/policy/drift/compose/settings/Docker routes.
+    **AI support** is tested per package: `internal/aigate` decodes and re-encodes the shared §15.4 vector byte for byte (the same files as mcp-gate's `internal/config/testdata/`); the gate files (populations, clients, fail-closed rebuilds), the credential store (`TestHubHoldsNoAgeIdentity`: no Hub code can decrypt), mint and revoke (single flight, exit 3, leavers, `app_oauth` records), the switches, the confirmations, the Keycloak AI clients against the `kctest` realm, and the Portcullis MCP: every tool's twin both ways (`TestAdminToolsSameAsHTTP`, `TestPeopleToolParity`), no secret argument name (`TestNoSecretArgNames`), no token echoed by any tool (`TestTokenNotEchoed`), the per-call classes. `TestLiveAIObjects` runs the AI client checks against a real Keycloak when `PORTCULLIS_KEYCLOAK_LIVE_URL` and `PORTCULLIS_KEYCLOAK_LIVE_WIPE=portcullis` are set (not in CI; it wipes realm `portcullis`).
+    **Docs copies.** The Hub ships some pages of this site as MCP resources (`portcullis://docs/<name>`), committed under `web/docs/` (`web/docs/sync.sh`: `integration-contracts.md`, `hub.md`, `auth-policies.md`, `groups.md`, `backups.md`, `file-sharing.md`). After changing one of them here, run `PORTCULLIS_DOCS_DIR=<docs checkout> go generate ./web` in the Hub and commit; `TestDocsCopiesInSync` fails on drift when `PORTCULLIS_DOCS_DIR` is set (CI doesn't set it). A new page goes into both `sync.sh` and `docsPages` in `web/web_test.go`.
+    The harness also serves AI fixtures (the Hub listener has its own fake fresh-auth verifier at `/harness/authorize`, signing in as root, for the admin confirmation page): an app with token and identity-header companions, an `app_oauth` app, a fake connections store and access log, and the people MCP switched off for one user (no card).
     The settings code is tested per package: the template settings validator, the setting types (parsing, rendering, resolution), the delivery engine (data files, claims, headers, hooks, reload, debounce, stale runs), person-entered values (uniqueness, population, purges, the refused-save limit) and the settings API (admins only, secrets never returned).
     A build-tagged harness (`go test -tags harness -run TestHarness -timeout 0 ./internal/httpapi`) serves the UI on `127.0.0.1:18888` (and the people page on `:18889`) against in-memory fakes, for checking the panels in a browser.
     `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
@@ -589,6 +684,73 @@ pinned by commit SHA.
 
 Verify a published image with the command in
 [Hub → Image tags](hub.md#image-tags-and-verification).
+
+## AI support manual checklist
+
+The checks CI can't make: real Claude clients, a hardware passkey and a live
+Keycloak. Use throwaway users and instances on the test server and clean them
+up afterwards.
+
+1. **Deploy.** Merge in order docs → core → Hub → templates; deploy to the
+   test server (`./portcullis upgrade`); confirm `mcp-gate` healthy and
+   `./portcullis status` clean.
+2. **Live checks:**
+    1. Settings → AI on; Gitea AI support on (read_write); the People card
+       for a test user shows the URLs.
+    2. Claude Code on the operator's machine: the card's `claude mcp add`
+       command, `/mcp` sign-in with the passkey; list the test user's
+       issues; create one (write) and ask to delete a repo → confirmation
+       page with passkey; remove the user from `users_gitea` → refused.
+    3. claude.ai custom connector with "Use your own OAuth client"
+       (`portcullis-ai-claude`, no secret): connects (spec call 40; if it
+       demands a secret, apply call 40's fallback and note it).
+    4. `hub.<d>/mcp` as an admin: `get_instance`, `doctor_findings`, delete a
+       throwaway instance through the confirmation.
+    5. An `ai-chat` instance with an OpenAI-compatible provider: a chat that
+       lists the person's Gitea repos through the aggregate.
+    6. The access log and `audit.jsonl` show the calls with `via: ai`; no
+       secret in either (grep the markers used).
+3. **Report** what passed, the builder verifications' results, anything
+   deferred.
+
+Also check, from the builders' reports:
+
+- **Claude desktop** custom connector with "Use your own OAuth client"
+  (public client, PKCE); **Claude Code** `claude mcp add` + `/mcp`; the
+  card's steps as written, for the aggregate and one app.
+- **The AI page** with an OpenAI-compatible Ollama and the Anthropic API,
+  and with a LiteLLM instance:
+    1. `getent hosts auth.<d> mcp.<d>` inside `<instance>-api-1` shows
+       Traefik's IP;
+    2. a member connects "All my apps": consent on the instance's
+       `ai-chat-mcp` client, the callback, tools listed, a tool call as that
+       person; the access log's `client` is the instance's `ai_client`;
+    3. a second instance (`ai-research`): its own client
+       `ai-research-ai-chat-mcp` and its own callback host;
+    4. the refresh lifetime without `offline_access`: decide whether to add it;
+    5. an outsider is refused by Keycloak's access role on the real Hub, not
+       only by LibreChat (the `ai_client` keeps the instance's access role and
+       flow: `EnsureClientAccess` on an AI client hasn't run against a real
+       Keycloak yet);
+    6. a provider change restarts the instance and the selector shows the new
+       labels; a cleared key drops that endpoint.
+- **Passkey sign-in** on an AI client gives `acr` / `amr` `hwk`
+  (`TestLiveAIObjects` skips it: it needs a WebAuthn authenticator).
+- **Fresh-auth popup on both hosts**: a confirmation approved on
+  `people.<d>` and one on `hub.<d>` (the `https://hub.<d>/` redirect URI),
+  with the passkey's `auth_time` and `amr` verified by the real Keycloak.
+- **Home Assistant** (`app_oauth`): in claude.ai add a custom connector for
+  `https://<host>/api/mcp`; Claude discovers the protected-resource and
+  authorization-server metadata and uses its CIMD client id; the redirect
+  goes Home Assistant `/auth/authorize` → auth_oidc → Keycloak (passkey) →
+  "continue on this device" → Claude's callback; Assist tools appear
+  (`GetLiveContext`); a non-admin member turns an exposed light on. The same
+  with Claude Code (loopback, port 33418). Removing the person from the group
+  ends the connection after the next reconcile (at most 10 minutes for a
+  pending code). The host must be publicly reachable and not need mTLS.
+- **Nextcloud**: AI on; alice uses claude.ai through
+  `https://<nextcloud host>/mcp`; leaving revokes the app password (up to
+  10 s of lag); a restore runs `revoke_all`.
 
 ## Running workflows locally with act
 

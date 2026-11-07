@@ -23,6 +23,8 @@ ports, and header trust.
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
 | Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses hostname collisions and core hosts, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets |
 | Public exceptions (share links, off unless an admin turns them on) | Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps | Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; `rate-limit@file`; see [Public exceptions](#public-exceptions) |
+| AI clients (MCP, [AI support](ai.md)) | A token replayed at another app, an AI acting beyond the person, injected instructions in app content, a secret leaking into the model | `mcp-gate` checks every request: signature, issuer, the exact audience and scope of that one resource (a token for two resources works nowhere), the client, the LoA and the person's population **on every request**. It never forwards the person's token; destructive tools need a confirmation in the person's browser; no tool takes or returns a secret. See [AI support](#ai-support-mcp-gate) |
+| An LLDAP account deleted and re-created under the same name | The newcomer inherits the previous holder's Keycloak user (passkeys, sessions, consents, AI connections) | Keycloak links LLDAP accounts by LLDAP's immutable `entryUUID`: the newcomer is a new Keycloak user (new `sub`); the old copy and its passkeys, sessions and consents are removed at the next lookup |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
 
@@ -131,6 +133,11 @@ graph LR
     PG[(PostgreSQL)] --- NC
     Hub --- NC
     Hub --- NSH
+    NM{{portcullis-mcp<br/>internal, fixed IPAM}}
+    MG[mcp-gate] --- NM
+    MG --- NP
+    KC --- NM
+    Hub --- NM
     SPT[socket-proxy-traefik] --- NST
     SPH[socket-proxy-hub] --- NSH
     SPT -->|read-only API| Sock[(docker.sock)]
@@ -142,6 +149,7 @@ graph LR
 | `portcullis` | Traefik and all core services | Docker default | Core service traffic: forward-auth, Vault, LLDAP, PostgreSQL |
 | `portcullis-proxy` | Traefik and app frontends | `PORTCULLIS_PROXY_SUBNET` (default `172.31.250.0/24`). Dynamic range `PORTCULLIS_PROXY_IP_RANGE` (`172.31.250.128/25`). Traefik pinned at `PORTCULLIS_TRAEFIK_IP` (`172.31.250.2`), outside the range | Routing plane. Traefik's docker provider uses this network. No app container can ever get Traefik's address |
 | `portcullis-auth` | Traefik and Keycloak only (`internal: true`) | `PORTCULLIS_AUTH_SUBNET` (`172.31.251.0/28`), range `PORTCULLIS_AUTH_IP_RANGE` (`172.31.251.8/29`), Traefik at `PORTCULLIS_AUTH_TRAEFIK_IP` (`172.31.251.2`) | The only path from which Keycloak accepts proxy headers, including the forwarded client cert for X.509 login |
+| `portcullis-mcp` | `mcp-gate`, Keycloak and the Hub only (`internal: true`) | `PORTCULLIS_MCP_SUBNET` (`172.31.253.0/28`), range `PORTCULLIS_MCP_IP_RANGE` (`172.31.253.8/29`), Keycloak at `PORTCULLIS_MCP_KEYCLOAK_IP` (`.2`), the Hub at `PORTCULLIS_MCP_HUB_IP` (`.3`) | The gate's only path to Keycloak's keys and the Hub's MCP listener; the gate pins both names to these addresses in `extra_hosts`, so no container can shadow them. The gate itself is on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP` (`172.31.250.3`, outside the dynamic range) |
 | `socket-proxy-traefik` | Traefik + its socket proxy (`internal: true`) | Docker default | Read-only Docker API for Traefik |
 | `socket-proxy-hub` | Hub + its socket proxy (`internal: true`) | Docker default | Docker API for the Hub |
 | `monitoring` (profile `monitoring`, `internal: true`) | Prometheus, Alertmanager, Grafana, blackbox, textfile exporter | Docker default | Scraping and dashboards. Prometheus and blackbox also join `portcullis`, Grafana joins `portcullis-proxy` (routed at `metrics.<domain>`) |
@@ -226,6 +234,7 @@ CI fails if any of these is missing.
 | group-gate | 10003:10003 (`USER` in Dockerfile) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL parsing) and `PyJWT` (token claims) + the script. Only world-readable mounts |
 | hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002 |
+| mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 256m, `pids_limit` 256 |
 | prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
 | grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
 
@@ -265,6 +274,8 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/hub/core.env` | 10001 | 0640 (dir 0750) | Hub (as `/project/.env`) |
 | `secrets/hub/lldap/{username,password}` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/lldap`, LLDAP account `portcullis-hub`, `lldap_admin`) |
 | `secrets/hub/invite/secret` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/invite/secret`, same value as enroll's `invite-api-secret`) |
+| `secrets/mcp-gate/age.key` | 10005 | 0640 (dir 0700) | mcp-gate (decrypts the AI credentials the Hub wrote) |
+| `secrets/mcp-gate/{age.pub,hub-secret}` | 10001 | 0640 | Hub (encrypts to `age.pub`; holds no identity) and mcp-gate (`hub-secret`, through group 10001) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
 | `secrets/monitoring/alertmanager/alertmanager.yml` | 65534 | 0640 (dir 0750) | Alertmanager (receivers incl. SMTP password / webhook URLs) |
 | `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
@@ -522,7 +533,8 @@ and your router or host firewall.
     - Every identity header is in the forward-auth middlewares' `authResponseHeaders`, which is what strips client-supplied copies.
     - Apps also get `X-Auth-Request-Groups`. All of these headers are `authResponseHeaders` of the forward-auth middlewares, so Traefik deletes client-supplied copies (the e2e test sends spoofed ones). Header-auth apps must log users in by `X-Forwarded-User` as a username and take the email from `X-Forwarded-Email`.
     - enroll and the Hub use `X-Forwarded-User` as-is (no email → username lookup). group-gate's mTLS binding compares the cert CN with that same username and requires the token's `preferred_username` to match it.
-    - Native-OIDC apps must key accounts on `sub` / `preferred_username` and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option.
+    - Keycloak links the LLDAP account by its immutable `entryUUID` (`uuidLDAPAttribute`, in the realm export and re-asserted by `./portcullis keycloak configure`), so a re-created name never inherits the previous holder's Keycloak user: it gets a new `sub`.
+    - Native-OIDC apps must key accounts on `sub` (a re-created username has a new one: an app that links by `preferred_username` alone would hand the newcomer the old app account) and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option.
     - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (`INVITATIONS_ALLOWED=false`, `SIGNUPS_ALLOWED=false`) and gates the SSO login paths with group-gate (`users_vaultwarden`).
 
     **Rule: email is never an identity or account-linking key.**
@@ -705,6 +717,56 @@ forward-auth.
 - **Logs.** The guard's logs (like group-gate's path denials) show the path
   with token-like segments masked as `<token>` and query parameter names only.
   Never share tokens, query values, cookies or credentials.
+
+## AI support (mcp-gate)
+
+Every MCP request goes through core's `mcp-gate`
+([AI support](ai.md), [contracts §15](../guides/integration-contracts.md#15-ai-support-mcp-new-ai-support)).
+
+- **Token rules.** The gate reads the resource from the request's host and
+  path only (never `X-Forwarded-*`), accepts only `Authorization: Bearer`,
+  RS256/ES256 tokens of the realm's keys (fetched from the internal Keycloak
+  URL only), the exact issuer, an audience that is this resource's URL and no
+  other URL, the resource's scope, an AI client this resource allows (never
+  `portcullis-forward-auth`, `portcullis-fresh-auth` or an app client), an
+  `acr` that meets the resource's LoA, and a username that is in the
+  resource's population right now. An `Origin` header must be on the allowed
+  list (empty by default).
+- **No token passthrough.** The gate never forwards the person's token, a
+  cookie, `Proxy-Authorization` or any `X-Forwarded-*`, `X-Auth-Request-*`,
+  `Remote-*` or `X-Portcullis-*` header the client sent. It sends only what
+  the companion's identity mode defines: the person's own app credential
+  (encrypted at rest to the gate's age key; the Hub can replace one, never
+  read it back) or identity headers plus a caller secret. MCP tokens and
+  browser sessions never cross: an MCP token on an app page or the people
+  page gets a sign-in redirect or `401`, and a browser session's cookies on
+  an MCP route get `401`.
+- **Secrets never reach the model.** No Portcullis tool takes a secret as an
+  argument (the person types it on the Hub's own form); results never carry
+  invite links, passwords, share tokens, provider keys or Hub secrets, and go
+  through one redactor that fails closed. Templates mark tools that would
+  take a secret `never` (Gitea's Actions secrets).
+- **What companions may do.** Sampling and roots requests are declined; URL
+  elicitations may point only at the app's own hosts and `people.<domain>`.
+  Every companion is reachable by its alias on `portcullis-proxy`, so it must
+  serve nothing without its credential or caller secret.
+- **The Hub's MCP listener** (`HUB_MCP_ADDR`, `:8890`) is bound on all of the
+  Hub's interfaces; every request but `GET /healthz` needs
+  `X-Portcullis-MCP-Secret` (`secrets/mcp-gate/hub-secret`, compared in
+  constant time), and no Traefik router targets the port (core CI checks it).
+  The Hub trusts the gate's identity headers only on that listener.
+- **Files.** The gate files in `hub_data` are 0640, group 10001; at start the
+  Hub sets every other file in its data directory that has a group or other
+  bit to 0600 (the policy, portal and attribute files keep 0644 without write
+  bits). The access log is 0640 in `mcp_gate_data`.
+- **Trust networks.** An identity-header companion and its app share a
+  private `internal: true` network nothing else may join; the app trusts
+  identity headers only from it. Residual: a container on the host network
+  with `NET_RAW` (Docker grants it by default) can forge traffic onto that
+  bridge from the host side. Templates with such a companion may not use host
+  networking themselves; run other host-network apps you trust only.
+- More residuals (disconnect, `app_oauth` apps, the AI page) are listed in
+  [AI support → Residuals](ai.md#residuals).
 
 ## Hub proxy secret
 
