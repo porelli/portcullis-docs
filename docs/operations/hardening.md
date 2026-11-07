@@ -234,7 +234,7 @@ CI fails if any of these is missing.
 | group-gate | 10003:10003 (`USER` in Dockerfile) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL parsing) and `PyJWT` (token claims) + the script. Only world-readable mounts |
 | hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002 |
-| mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 256m, `pids_limit` 256 |
+| mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps requests in flight and body memory, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps)), `pids_limit` 256 |
 | prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
 | grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
 
@@ -534,7 +534,7 @@ and your router or host firewall.
     - Apps also get `X-Auth-Request-Groups`. All of these headers are `authResponseHeaders` of the forward-auth middlewares, so Traefik deletes client-supplied copies (the e2e test sends spoofed ones). Header-auth apps must log users in by `X-Forwarded-User` as a username and take the email from `X-Forwarded-Email`.
     - enroll and the Hub use `X-Forwarded-User` as-is (no email → username lookup). group-gate's mTLS binding compares the cert CN with that same username and requires the token's `preferred_username` to match it.
     - Keycloak links the LLDAP account by its immutable `entryUUID` (`uuidLDAPAttribute`, in the realm export and re-asserted by `./portcullis keycloak configure`), so a re-created name never inherits the previous holder's Keycloak user: it gets a new `sub`.
-    - Native-OIDC apps must key accounts on `sub` (a re-created username has a new one: an app that links by `preferred_username` alone would hand the newcomer the old app account) and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option.
+    - Native-OIDC apps must key accounts on `sub` (a re-created username has a new one: an app that links by `preferred_username` alone would hand the newcomer the old app account) and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option. Residual: Gitea's AI credential mint finds the Gitea account by username, so delete or rename a former person's Gitea account before re-using their username ([AI support → Gitea](ai.md#ai-gitea)).
     - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (`INVITATIONS_ALLOWED=false`, `SIGNUPS_ALLOWED=false`) and gates the SSO login paths with group-gate (`users_vaultwarden`).
 
     **Rule: email is never an identity or account-linking key.**
@@ -726,7 +726,9 @@ Every MCP request goes through core's `mcp-gate`
 - **Token rules.** The gate reads the resource from the request's host and
   path only (never `X-Forwarded-*`), accepts only `Authorization: Bearer`,
   RS256/ES256 tokens of the realm's keys (fetched from the internal Keycloak
-  URL only), the exact issuer, an audience that is this resource's URL and no
+  URL only, and re-fetched when the set is over 10 minutes old, so a key
+  removed from the realm stops verifying within about 11 minutes), the exact
+  issuer, an audience that is this resource's URL and no
   other URL, the resource's scope, an AI client this resource allows (never
   `portcullis-forward-auth`, `portcullis-fresh-auth` or an app client), an
   `acr` that meets the resource's LoA, and a username that is in the
@@ -752,6 +754,20 @@ Every MCP request goes through core's `mcp-gate`
   elicitations may point only at the app's own hosts and `people.<domain>`.
   Every companion is reachable by its alias on `portcullis-proxy`, so it must
   serve nothing without its credential or caller secret.
+- **Companion names can't be taken over.** The gate reaches a companion by
+  its alias `portcullis-mcp-<instance>--<companion>` through Docker DNS and
+  sends it app credentials or a caller secret. `./portcullis init`, `up`,
+  `upgrade` and `restore` refuse to run, and `./portcullis status` fails,
+  while any container on `portcullis-proxy` answers to such a name (or to a
+  core service name) without being that companion: the alias must belong to
+  exactly one container, listed by the instance's own compose project
+  (`portcullis-<instance>`), created from the Hub's override for that
+  instance and running the service that override gives the alias to.
+  A Docker error fails the check closed. Residual: the check reads the
+  labels and project membership Docker reports, which anyone with Docker
+  access can forge (and could do far worse); apps can't, because the Hub
+  refuses `com.docker.compose.*` labels in templates and custom overrides
+  and names the projects itself.
 - **The Hub's MCP listener** (`HUB_MCP_ADDR`, `:8890`) is bound on all of the
   Hub's interfaces; every request but `GET /healthz` needs
   `X-Portcullis-MCP-Secret` (`secrets/mcp-gate/hub-secret`, compared in

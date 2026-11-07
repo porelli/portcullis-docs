@@ -380,9 +380,11 @@ SDK (pinned in its `go.mod`):
 2. `leaver_refused_and_revoked`: alice removed from `users_gitea` → `403`, and
    her `portcullis-ai-*` Gitea token deleted.
 3. `audience_separation`: her Gitea token at gitea-b, `mcp.<d>`, `hub.<d>`
-   and `people.<d>` → `401`; one token for two resources → refused at both.
+   and `people.<d>` → `401`; one token for two resources (both audiences asserted; Keycloak not minting it fails the scenario) → refused at both.
 4. `no_token_crossing`: the MCP token on Gitea's and the people pages → a
    sign-in redirect or `401`, never a page; browser cookies on `/mcp` → `401`.
+   This proves the apps refuse the MCP token; that the gate never forwards it
+   rests on mcp-gate's unit tests.
 5. `destructive_confirmation`: root's `delete_instance` on `hub.<d>/mcp` →
    the confirmation link; bob can't open it; root types the id and touches a
    fresh passkey → approved; the retry runs, a second one needs a new
@@ -403,6 +405,10 @@ SDK (pinned in its `go.mod`):
 10. `gitea_isolation`: the `gitea-internal` and companion alias resolution, no
     `portcullis-hook-*` token left after mint and revoke, the switch-on's
     `revoke_all` succeeded.
+11. `companion_alias_guard`: `./portcullis status` shows no name takeover
+    for the real Gitea and Grafana companions; a container outside the
+    instance's project answering to `portcullis-mcp-gitea--gitea` is
+    flagged, and the real one with it as sharing the name.
 
 Not covered: an approved 2026-07-28 round trip through `requestState`, the
 gate's continuation of a confirmed call the companion then asks input for, and

@@ -152,13 +152,19 @@ Prints a health overview:
 - Vault: sealed/active, CA expiry, issued certs, and client certs expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days
 - Keycloak: realm, users, forward-auth client
 - LLDAP and Traefik
+- containers on `portcullis-proxy` answering to a core service name or an AI
+  companion name they don't own ([hardening](hardening.md#ai-support-mcp-gate))
+- mcp-gate refusing every AI request (`503`) and why, for example AI
+  credentials it can't decrypt with `secrets/mcp-gate/age.key`
+  ([AI support → Residuals](ai.md#residuals))
 
-Exits 1 if a core service is down or unhealthy, or if Vault is not active.
+Exits 1 if a core service is down or unhealthy, if Vault is not active, if
+such a container exists, or if mcp-gate refuses every AI request.
 Otherwise it exits 0.
 
 | Option | Meaning |
 |--------|---------|
-| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` |
+| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring`, name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves) |
 | `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, CA and per-user client-cert expiry. Run it after every scheduled backup (the systemd unit does) |
 
 ### version

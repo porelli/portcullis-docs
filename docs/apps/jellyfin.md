@@ -34,7 +34,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 **No AI support:** No official MCP server; community servers are small and not vetted by Portcullis.
 
-An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: jaredtrent/jellyfin-mcp (<https://github.com/jaredtrent/jellyfin-mcp>) — community, 46★, API key. Portcullis never installs it.
+An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: jaredtrent/jellyfin-mcp (<https://github.com/jaredtrent/jellyfin-mcp>) — community, 45★, API key (surveyed 2026-11-06). Portcullis never installs it.
 
 ## Images
 

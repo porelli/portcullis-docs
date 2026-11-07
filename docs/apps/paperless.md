@@ -38,7 +38,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 **No AI support:** No official MCP server; community servers are small and not vetted by Portcullis.
 
-An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: nloui/paperless-mcp (<https://github.com/nloui/paperless-mcp>) — community, 248★, last change Nov 2025, API token. Portcullis never installs it.
+An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: nloui/paperless-mcp (<https://github.com/nloui/paperless-mcp>) — community, 247★, last change Nov 2025, no licence file, API token (surveyed 2026-11-06). Portcullis never installs it.
 
 ## Images
 
