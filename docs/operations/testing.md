@@ -387,6 +387,40 @@ See [Upgrading & Releases](upgrading.md#core-releases).
 Image constants in the CLI and inline images in workflows are not covered by
 Dependabot. They are still checked by the pin-enforcement step.
 
+#### Auto-merge
+
+Core, the Hub and the templates share one auto-merge workflow,
+`.github/workflows/dependabot-automerge.yml`. Its logic lives in
+`.github/automerge/automerge.sh`, which is identical in all three repos and
+tested by `.github/automerge/test.sh`. The workflow runs after the required
+workflows finish on a Dependabot PR and never checks out PR code:
+
+- **Patch, minor and digest-only** updates are squash-merged once every
+  required workflow passed on the PR's head commit. The PR must be
+  Dependabot's own single, GitHub-signed commit.
+- **Majors** (or updates of unknown type) get the `major-update` label and stay
+  open.
+- **Pre-releases** are closed.
+- **Red CI** opens an `update-failed` issue.
+
+**A merge that fails although CI passed is not retried.** That includes
+GitHub's "Base branch was modified" error, which happens when another PR
+merged at the same moment, as well as HTTP 5xx errors. The run fails and its
+error names the cause and the command to retry by hand:
+
+```bash
+gh workflow run dependabot-automerge.yml -f pr=<n> -f dry_run=false
+```
+
+Run it from a checkout of the repo, or add `-R porelli/<repo>`. Check the PR
+first: a 5xx can still have merged it. Leave out `-f dry_run=false` to see
+the decision without acting on it.
+
+The workflow doesn't ask Dependabot to rebase. Dependabot ignores
+`@dependabot rebase` comments posted with the workflow's `GITHUB_TOKEN` (or by
+any GitHub App) and replies "only users with push access can use that
+command".
+
 ### Running the core tests locally
 
 ```bash
