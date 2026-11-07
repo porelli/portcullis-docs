@@ -403,10 +403,12 @@ workflows finish on a Dependabot PR and never checks out PR code:
 - **Pre-releases** are closed.
 - **Red CI** opens an `update-failed` issue.
 
-**A merge that fails although CI passed is not retried.** That includes
-GitHub's "Base branch was modified" error, which happens when another PR
-merged at the same moment, as well as HTTP 5xx errors. The run fails and its
-error names the cause and the command to retry by hand:
+**A merge that fails although CI passed gets at most one re-attempt.** Only
+GitHub's "Base branch was modified" error is re-attempted. It happens when
+another PR merged at the same moment. The workflow waits about 10 seconds,
+then tries the merge once more at the same tested commit. Anything else, such
+as an HTTP 5xx, is not retried. If the merge still fails, the run fails and
+its error names the cause and the command to retry by hand:
 
 ```bash
 gh workflow run dependabot-automerge.yml -f pr=<n> -f dry_run=false
