@@ -746,7 +746,9 @@ Every MCP request goes through core's `mcp-gate`
   invite links, passwords, share tokens, provider keys or Hub secrets, and go
   through one redactor that fails closed. Templates mark tools that would
   take a secret `never` (Gitea's Actions secrets).
-- **What companions may do.** Sampling and roots requests are declined; URL
+- **What companions may do.** A sampling or roots request from a companion
+  ends the tool call with an error (logged `deny:sampling` / `deny:roots`);
+  nothing is answered to the companion. URL
   elicitations may point only at the app's own hosts and `people.<domain>`.
   Every companion is reachable by its alias on `portcullis-proxy`, so it must
   serve nothing without its credential or caller secret.

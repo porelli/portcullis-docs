@@ -106,8 +106,10 @@ Each app's detail panel has an **AI support** tab (deep link
   tool patterns.
 - **AI support** and the **mode**: *read and write* or *read only*, where the
   template offers both. Read-only hides and refuses the template's write tools
-  at the gate, and the companion is started read-only too
-  (`PORTCULLIS_AI_READONLY_<NAME>`, read-only credential scopes).
+  at the gate, and, where the app supports it, the companion is started
+  read-only too (`PORTCULLIS_AI_READONLY_<NAME>`, read-only credential
+  scopes). Nextcloud supports neither: there the gate alone enforces
+  read-only (see [Residuals](#residuals)).
 - **Switching on or off, or changing the mode, restarts a running app**
   (its router labels change); the tab says so before you save. On a disabled
   app the switch only saves the state.
@@ -358,9 +360,30 @@ What the design does not cover, stated plainly:
       the LAN included), not loopback;
     - backups of its `/config` carry the hook user's token, rotated at the next
       container start after a restore.
-- **Read-only is enforced by the gate** where the app can't scope a
-  credential (Nextcloud app passwords): the gate hides and refuses write
-  tools; the credential itself could write.
+- **Read-only is enforced by the gate alone** where the app can't scope a
+  credential or start its companion read-only (Nextcloud: its app passwords
+  are full-scope): the gate hides and refuses write tools; the credential
+  itself could write.
+- **Losing `secrets/mcp-gate/age.key` takes all AI support down.** The AI
+  credentials the Hub stores are encrypted to that key. `./portcullis up`
+  (or `init`, `upgrade`, `restore`) generates a new key when it is missing,
+  and from then on the gate can't decrypt the stored credentials, so it
+  refuses the whole credentials file: every AI resource answers `503`
+  (every app's MCP, the Portcullis MCP and "All my apps"). Restore the key
+  from a backup of `secrets/` if you can. Otherwise:
+    - the Hub re-encrypts the identity-header companions' caller secrets to
+      the new key at its next configuration write, with nothing to do;
+    - app credentials can't be re-encrypted (the Hub never holds them in
+      clear): on each app's **AI support** tab, switch each companion that
+      uses app credentials (`app_token`) off, save, then on again. Switching
+      off revokes its credentials in the app and drops them, and each
+      person's credential is minted again on their next request. Switching
+      the master switch off and on doesn't drop them.
+- **A settings change through the admin MCP can race a membership change.**
+  `save_settings` recomputes the preview (`plan_hash`) just before it saves,
+  which catches a directory change up to then; one landing in the short
+  moment between that recompute and the save isn't caught (the save
+  re-checks the stored inputs, not the directory).
 - **Nextcloud**: its companion answers a few routes without a credential to
   any container on `portcullis-proxy` (`GET /api/v1/status` with the version,
   `/app/` and its sub-pages, `/health/live`, `/health/ready`); they show no
