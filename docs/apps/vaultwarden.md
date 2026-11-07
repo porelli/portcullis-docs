@@ -33,6 +33,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `vaultwarden-admin` | `passwords.<domain>` | `/admin` | `authaware@file` | :white_check_mark: |
 | `vaultwarden-sso` | `passwords.<domain>` | `/identity/connect/authorize`, `/identity/connect/oidc-signin` | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** A password vault: Portcullis never puts passwords or secrets in front of an AI model.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

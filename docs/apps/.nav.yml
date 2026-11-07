@@ -1,5 +1,6 @@
 nav:
   - Overview: index.md
+  - 💬 AI Chat: ai-chat.md
   - 🤖 LiteLLM: litellm.md
   - 💬 Matrix (Synapse + Element): matrix.md
   - 📏 CADCraft: cadcraft.md

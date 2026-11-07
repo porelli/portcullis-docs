@@ -31,6 +31,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `headplane` | `vpn-admin.<domain>` | all | `authaware@file` | :x: |
 | `headscale` | `vpn.<domain>` | all | `public@file` | :x: |
 
+## AI support
+
+**No AI support:** No official MCP server; network control planes stay out of AI reach until one exists.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

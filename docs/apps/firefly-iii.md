@@ -30,6 +30,12 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `firefly` | `finance.<domain>` | all | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No official MCP server; community servers are not vetted by Portcullis.
+
+An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: etnperlong/firefly-iii-mcp (<https://github.com/etnperlong/firefly-iii-mcp>) — community, 91★, last change Jun 2025, PAT or OAuth (surveyed 2026-11-06). Portcullis never installs it.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

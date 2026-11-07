@@ -40,6 +40,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 As written in `compose.yml`. With the default [Sign-in](#sign-in) the Hub's override adds `portcullis-auth@docker,portcullis-groups@docker` to every router.
 
+## AI support
+
+**No AI support:** Signs people in with Plex accounts, not Portcullis identities; no MCP server known.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.

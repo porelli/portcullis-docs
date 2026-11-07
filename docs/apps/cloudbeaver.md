@@ -30,13 +30,17 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `cloudbeaver` | `db.<domain>` | all | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** No official or vetted community MCP server known (surveyed 2026-11-05).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `cloudbeaver` | `dbeaver/cloudbeaver:26.2.3` | `sha256:0c875296f85f…` |
+| `cloudbeaver` | `dbeaver/cloudbeaver:26.2.4` | `sha256:1b9e645bbbf4…` |
 | `cloudbeaver-config` | `python:3.15.2-alpine` | `sha256:20a82dbc2783…` |
 | `cloudbeaver-gate` | `nginx:1.31.8-alpine` | `sha256:785835ea65db…` |
 

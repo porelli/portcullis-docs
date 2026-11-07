@@ -31,13 +31,17 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 | `litellm` | `llm.<domain>` | all | `authaware@file` | :x: |
 | `litellm-ui` | `llm.<domain>` | `/ui`, `/sso`, `/login`, `/v2/login`, `/fallback/login`, `/onboarding` | `authaware@file` | :white_check_mark: |
 
+## AI support
+
+**No AI support:** A model gateway: add it as a model provider in Hub Settings → AI instead.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `litellm` | `ghcr.io/berriai/litellm:1.106.6` | `sha256:37e2dafb088a…` |
+| `litellm` | `ghcr.io/berriai/litellm:v1.108.0` | `sha256:c560d3171368…` |
 | `litellm-db` | `postgres:16.15-alpine` | `sha256:0cefaabd882e…` |
 
 ## Environment Variables

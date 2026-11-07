@@ -83,3 +83,17 @@
 *[secrets epoch]: Random value the Hub keeps both in state.yaml and on the hub_secrets volume; a mismatch voids every file-share password
 *[share slot]: One of the Samba template's eight fixed shared-folder shares (share1–share8)
 *[share slots]: The Samba template's eight fixed shared-folder shares (share1–share8)
+*[MCP]: Model Context Protocol - how AI clients such as Claude call tools of an app
+*[mcp-gate]: Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person
+*[companion]: The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate
+*[companions]: The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate
+*[AI page]: An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are "all my apps"
+*[All my apps]: The one MCP endpoint (https://mcp.<domain>/mcp) that merges every app a person can use with AI, plus their Portcullis account
+*[Portcullis MCP]: The Hub's own MCP server: hub.<domain>/mcp for administrators, people.<domain>/mcp for everyone
+*[identity mode]: How a person's identity reaches an app's MCP companion: app_token, identity_headers or app_oauth
+*[app_token]: AI identity mode: the Hub mints a per-person app credential that mcp-gate injects on every call
+*[identity_headers]: AI identity mode: mcp-gate sends the person's identity headers plus a caller secret only the companion knows
+*[app_oauth]: AI identity mode: the app is its own MCP OAuth server; mcp-gate is not in the path
+*[revoke_all]: AI hook action revoking every Portcullis-minted AI credential of a companion, for every person
+*[model provider]: An LLM endpoint (LiteLLM, OpenAI-compatible, Anthropic, OpenAI, Google, Azure OpenAI) an AI page sends chats to
+*[PKCE]: Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it

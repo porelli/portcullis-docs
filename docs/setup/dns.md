@@ -252,7 +252,7 @@ wildcard certificate, and app instances on it use the cross-domain sign-in flow
 (see [Hub Management](../operations/hub.md#cross-domain-sign-in)).
 
 **Core services stay on the main domain**: the portal, Hub, people, auth,
-directory, enroll, traefik and metrics pages are never served on extra domains.
+directory, enroll, traefik, metrics and `mcp` endpoints are never served on extra domains (an app's own MCP endpoint is on the app's host, wherever it is).
 
 **Removing an enrolled domain** is allowed only when no app instance has a
 hostname on it. The domains service removes the DNS records it created (and

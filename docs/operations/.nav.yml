@@ -8,4 +8,5 @@ nav:
   - Authentication Policies: auth-policies.md
   - Hub Management: hub.md
   - File Sharing: file-sharing.md
+  - AI Support: ai.md
   - Testing & CI: testing.md

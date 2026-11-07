@@ -56,6 +56,7 @@ field.
 | `tests` | object | Yes, for templates in the default catalog (`tests.signin`; validate.py) | CI only, the Hub ignores it. See [tests.signin](#testssignin) |
 | `instances` | `multi` or `single` | No (default `single`) | **NEW (contract v2).** Whether the Hub may run more than the default instance. See [instances](#instances) |
 | `hosts` | object | No | Per-host properties by host router name; today only `immutable`. See [hosts.immutable](#hostsimmutable) |
+| `ai` | object | Yes | **NEW (AI support).** `mcp` (companions) or `unsupported` (the reason). See [ai](#ai) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
 `networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
@@ -874,7 +875,7 @@ settings on standard input
 | `service` | service | Yes | Where it runs (a running container of this instance) |
 | `command` | non-empty list of non-empty strings, no control characters | Yes | argv, run directly (never through `sh -c`) |
 | `user` | string | No | User to run as (default: the container's) |
-| `when` | list of `start`, `settings_change`, `membership_change`, `credential_change` (at least one) | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input; `credential_change`: right after a file-share password was created, regenerated, revoked or voided (also how a revocation is applied live: within 8 s). A hook whose last run failed runs again at its next trigger |
+| `when` | list of `start`, `settings_change`, `membership_change`, `credential_change` (at least one), or exactly `[ai]` | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input; `credential_change`: right after a file-share password was created, regenerated, revoked or voided (also how a revocation is applied live: within 8 s). A hook whose last run failed runs again at its next trigger. **NEW (AI support)** `ai`: run only by AI support (`mint`, `revoke`, `on_change` of the [ai](#ai) block), never by settings deliveries or a retry; it gets the AI stdin instead of the settings and its stdout is never stored ([contracts §15.5](integration-contracts.md#155-identity-modes-tool-policy-and-hook-io)). `ai` can't be combined with another trigger, and no delivery `{hook}` or `reload: {hook}` may name such a hook |
 | `timeout` | Go duration, e.g. `60s` | No (default `30s`) | At most `10m` |
 
 A hook of a template with `person_secret` options also gets `credentials` on
@@ -967,12 +968,13 @@ OIDC clients the Hub registers in Keycloak when the app is enabled. Required
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `client_id` | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | Yes | Keycloak client ID of the default instance. Other instances get `<instance-id>` (first entry) and `<instance-id>-<client_id>` (further entries); compose reads the id from `PORTCULLIS_OIDC_CLIENT_ID` / `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`. Core clients such as `portcullis-forward-auth` are reserved |
+| `client_id` | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | Yes | Keycloak client ID of the default instance. Other instances get `<instance-id>` (first entry) and `<instance-id>-<client_id>` (further entries); compose reads the id from `PORTCULLIS_OIDC_CLIENT_ID` / `PORTCULLIS_OIDC_CLIENT_ID_<KEY>`. Core clients such as `portcullis-forward-auth` are reserved, and so is the prefix `portcullis-ai-` |
 | `secret_env` | env key | Yes | The `env` entry (with `generate: random`) holding the client secret |
 | `name` | single line, non-empty | Yes | Display name in Keycloak |
 | `redirect_uri` | URI | Exactly one of the two | A single redirect URI |
 | `redirect_uris` | list of URIs (at least one) | Exactly one of the two | Several redirect URIs |
 | `backchannel_logout_url` | `https://{{HOST_<ROUTER>}}/<path>` | No | The app's OIDC back-channel logout endpoint on one of its own hosts (`single` templates may use `https://<sub>.{{DOMAIN}}/<path>`). The Hub sets it as the client's back-channel logout URL with "session required" (logout tokens carry `sid`), so a Keycloak sign-out — the Hub signs users out when they leave a group — ends the app's session too. It follows hostname changes. The path must be routed without forward-auth (Keycloak posts to it server-to-server). Nextcloud uses it |
+| `ai_client` | boolean | No (default `false`) | **NEW (AI support).** Only in an `ai.chat` template (exactly one such entry): the AI page's MCP client. The Hub registers it as an AI client — confidential, consent required, ACR `hwk`, default scopes `basic` + `acr` only, optional scope `mcp:all` only — keeping the instance's access role ([contracts §8](integration-contracts.md#8-keycloak-clients-core-hub-templates)) |
 | `email_verified_claim` | boolean | No (default `true`) | `false`: the client gets the `email-unverified` scope instead of `email`, so tokens carry `email` but no `email_verified` claim. For apps that refuse `email_verified=false` but accept the claim being absent (Vaultwarden). The app must then not request the `email` scope |
 
 Redirect URIs must match `^[a-z][a-z0-9+.-]*://\S+$`, so custom schemes such
@@ -1013,6 +1015,130 @@ keycloak_clients:
       - "https://{{HOST_IMMICH}}/user-settings"
       - "app.immich:///oauth-callback"
     name: Immich
+```
+
+## ai
+
+**NEW (AI support), required in every template.** Whether the AI can act in
+the app through MCP, and how
+([contracts §3.2](integration-contracts.md#32-ai-support-the-ai-block-new-ai-support),
+[§15](integration-contracts.md#15-ai-support-mcp-new-ai-support)). Exactly one
+of `mcp` and `unsupported`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `mcp` | non-empty list of companions (below) | One of the two | The app has AI support through these MCP servers: the app's built-in one or an upstream / vetted community image, pinned by digest. Never code written for Portcullis |
+| `unsupported` | single line, 1–200 chars | One of the two | Why there is no AI support, shown to the admin, e.g. `"No official MCP server; community servers are small and not vetted by Portcullis"` |
+| `alternative` | `{name, source, note}` | No; only with `unsupported` | A community server the admin may evaluate on their own (displayed only, labelled "not vetted by Portcullis"). `name` single line ≤ 64, `source` `https://` URL, `note` single line ≤ 200 |
+| `on_change` | hook name | No; only with `mcp` | Hook run when a companion is switched on or off or its mode changes (stdin in [§15.5](integration-contracts.md#155-identity-modes-tool-policy-and-hook-io)) |
+| `chat` | `{provider_kinds, file, env}` | No; only with `unsupported` | The template is an AI page (an MCP client), see below |
+
+**Companion** (`ai.mcp[]`):
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, ≤ 31 chars, unique | Yes | Companion name: scope `mcp:<instance>.<name>`, router and alias `portcullis-mcp-<instance>--<name>`, variable `PORTCULLIS_AI_READONLY_<NAME>` |
+| `label` | single line, 1–64 chars | Yes | Shown to people and the admin |
+| `kind` | `companion` or `builtin` | Yes | `companion`: a compose service only for AI (the Hub scales it to 0 while AI is off); `builtin`: the app's own service serves MCP |
+| `service` | service whose name matches `^[a-z0-9]+(-[a-z0-9]+)*$` | Yes | The service that serves MCP. A `companion` service has no Traefik labels, doesn't join `portcullis-proxy` (the Hub adds it with the alias), has no `network_mode`, `container_name`, `hostname` or host `ports` (the gate is its only way in), and backs one companion only. No other service may use `network_mode: service:<it>` (or `pid: service:<it>`) |
+| `port` | integer 1–65535 | Yes | Its container port (unused for `app_oauth`) |
+| `path` | absolute clean path | No (default `/mcp`) | The upstream MCP path |
+| `router` | host router name | Yes | The endpoint is `https://<that router's host><public_path>` |
+| `public_path` | absolute clean path | No (default `/mcp`) | Not `/`, never at or under `/.well-known/` or `/oauth2/`, never at, under or above a public-access path, and never at, under or above another companion's endpoint path on the same router (its `public_path`, or an `app_oauth` companion's `path`). Not for `app_oauth` |
+| `identity` | object (below) | Yes | How the person's identity reaches the companion |
+| `modes` | list of `read_only`, `read_write` | Yes | What the admin may choose; `app_oauth`: exactly `[read_write]` |
+| `default_mode` | one of `modes` | When `modes` has two | |
+| `tools` | `{writes, confirm, never}` lists of patterns | No | Tool names with `*` globs, or `tool:method` for consolidated tools (`^[A-Za-z0-9_.*-]{1,128}(:[A-Za-z0-9_.*-]{1,128})?$`, case-insensitive): `writes` are hidden in read-only mode, `confirm` need the person's passkey in their browser, `never` are hidden and refused |
+| `aggregate` | boolean | No (default `true`; `app_oauth`: `false`, `true` refused) | Whether its tools are in "all my apps" |
+| `upstream` | `official` or `community` | Yes | `builtin` companions are `official` |
+| `source` | `https://` URL | Yes | The companion project |
+| `protocol` | list of `2025-06-18`, `2025-11-25`, `2026-07-28` | Yes | The MCP versions it speaks |
+
+**`identity`**, by `mode` (only that mode's fields):
+
+| `mode` | Fields |
+|--------|--------|
+| `app_token` | `header` (default `Authorization`); exactly one of `format` (`"<Scheme> {credential}"`, e.g. `"token {credential}"`) and `basic: {user, password}` (`user` `{username}` or a literal without `:`, `{`, `}`; `password` exactly `{credential}`); `mint`, `revoke` (hook names, required); `scopes: {read_only: [...], read_write: [...]}` (optional, passed to `mint`) |
+| `identity_headers` | `caller_secret: {env, header, format}` (required; `env` a `generate: random` entry, `header` default `Authorization`, `format` default `"Bearer {secret}"`) |
+| `app_oauth` | `revoke` (hook name, required); only with `kind: builtin` |
+
+A `header` is `^[A-Za-z0-9-]{1,64}$`, never `Host`, `Cookie`, `Content-Type`,
+`Accept`, `Proxy-Authorization`, the hop-by-hop and framing headers
+(`Content-Length`, `Transfer-Encoding`, `Connection`, `Keep-Alive`, `TE`,
+`Trailer`, `Upgrade`, `Proxy-Connection`), `Mcp-*`, `MCP-Protocol-Version`,
+`Mcp-Session-Id`, `X-Forwarded-*`, `X-Auth-Request-*`, `Remote-*` or
+`X-Portcullis-*` (case-insensitive).
+
+An `identity_headers` companion of kind `companion` needs a **trust network**:
+it joins exactly one network, declared at the top level as exactly
+`{internal: true}`, whose only members are the companion and the service(s)
+of its `router` (the app that trusts the headers). No other service joins it
+or shares a member's network or pid namespace, no service of the template
+uses `network_mode: host` or `pid: host`, and the caller secret's variable is
+interpolated only in the companion's service. The app trusts identity
+headers only from that network's addresses (Grafana's `trust.sh` reads the
+prefix at start) and the companion reaches the app by a name ending in
+`-internal` on it
+([contracts §3.2](integration-contracts.md#32-ai-support-the-ai-block-new-ai-support)).
+
+**`chat`** (AI page templates):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `provider_kinds` | map of kind → `one` or `many` | Model provider kinds the template renders: `litellm`, `openai_compatible`, `anthropic`, `openai`, `google`, `bedrock`, `azure_openai` |
+| `file` | `{service, mount}` | The service that reads `ai-providers.json` and the directory it is mounted at (read-only; a [files](#files) mount's rules) |
+| `env` | `{service}` | The service that receives the selected providers' `PORTCULLIS_AI_PROVIDER_*` variables (the Hub adds them; the template never references them) |
+
+A `chat` template has exactly one `keycloak_clients` entry with
+`ai_client: true`, and that entry needs `secret_env` (the AI page's client is
+confidential). `chat.file.mount` may not collide with a [files](#files) mount
+on the same service.
+
+Hooks named by `ai` (`mint`, `revoke`, `on_change`) must have exactly
+`when: [ai]` and never run on a `kind: companion` service (it is scaled to 0
+while off). Templates may read `${PORTCULLIS_AI_ENABLED:-false}`,
+`${PORTCULLIS_AI_READONLY_<NAME>:-true}` and
+`${PORTCULLIS_MCP_GATE_IP:-172.31.250.3}` (only in these forms), and never set
+or reference a `PORTCULLIS_AI_PROVIDER_*` variable (the Hub adds them to the
+`chat.env` service).
+
+A companion is never code written for Portcullis: vet the project before
+adding it (maintained, an open licence, a multi-user identity that fits an
+identity mode, no shared admin identity, a pinned release) and write down why
+in the template's notes; the [AI support](../operations/ai.md#app-notes) page
+keeps the reasons for the shipped templates.
+
+```yaml
+ai:
+  mcp:
+    - name: gitea
+      label: Gitea
+      kind: companion
+      service: gitea-mcp
+      port: 8080
+      router: gitea
+      upstream: official
+      source: https://gitea.com/gitea/gitea-mcp
+      protocol: ["2026-07-28", "2025-11-25"]
+      modes: [read_only, read_write]
+      default_mode: read_write
+      identity:
+        mode: app_token
+        format: "token {credential}"
+        mint: mcp-mint
+        revoke: mcp-revoke
+      tools:
+        writes: ["*_write", "create_*", "update_*", "delete_*"]
+        confirm: ["delete_*", "repo_write:delete"]
+```
+
+```yaml
+ai:
+  unsupported: "No official MCP server; community servers are small and not vetted by Portcullis"
+  alternative:
+    name: paperless-mcp
+    source: https://github.com/nloui/paperless-mcp
+    note: "community, 248★, last change Nov 2025, API token per person"
 ```
 
 ## config_files
@@ -1289,6 +1415,20 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - no router, service or middleware name starting with `portcullis-`, and no own paths under `/oauth2/`
 - bind mounts of support files are read-only (`:ro`)
 
+**AI support** (`check_ai`, the Hub's `ValidateAI` rule for rule; **NEW**)
+
+- an `ai:` block with exactly one of `mcp` and `unsupported` (non-empty, ≤ 200 characters); `alternative` and `chat` only with `unsupported`, `on_change` only with `mcp`
+- the alias `portcullis-mcp-<id>--<companion>` is one DNS label: `15 + len(<id>) + 2 + len(<companion>) ≤ 63`, checked with the template id (the default instance; the Hub also checks it for every other instance at create and at AI switch-on)
+- companions: the field rules of [ai](#ai); `source` set; `service` in `compose.yml` with a name matching `^[a-z0-9]+(-[a-z0-9]+)*$`; a `companion` service without Traefik labels, off `portcullis-proxy`, without `network_mode` / `container_name` / `hostname`, used by one companion; `router` a host router; `public_path` rules; `builtin` with `upstream: official`; `app_oauth` only `builtin`, with `revoke` and `modes: [read_write]`; `app_token` with `mint` and `revoke`; `identity_headers` with a `caller_secret` whose `env` is a `generate: random` entry; `default_mode` in `modes`
+- every hook the block names exists with exactly `when: [ai]`; no `ai` hook the block doesn't name; `ai` never next to another trigger
+- no `ai.mcp` with `auth.admin_paths`, `auth.method` `public` or `mtls`, or without an HTTP router
+- `ai_client` only in an `ai.chat` template, which has exactly one
+- the prefix `portcullis-mcp-` nowhere in `compose.yml` (any key or value, case-insensitive: router, service or middleware names, compose services, `container_name`, `hostname`, network aliases included); no `keycloak_clients[].client_id` starting `portcullis-ai-`; `mcp` isn't a default subdomain; the core names `mcp-gate` (service), `mcp_gate_data` (volume) and the Traefik names `mcp`, `hub-mcp`, `people-mcp`, `mcp-gate` are reserved
+- a `companion` service publishes no host `ports`; no service uses `network_mode: service:<a companion service>`; an `identity_headers` companion has its trust network (above)
+- `PORTCULLIS_AI_*` and `PORTCULLIS_MCP_GATE_IP` never declared; `PORTCULLIS_AI_ENABLED` / `PORTCULLIS_AI_READONLY_<NAME>` only as `${…:-false}` / `${…:-true}`, `PORTCULLIS_MCP_GATE_IP` only as `${PORTCULLIS_MCP_GATE_IP:-172.31.250.3}`; `PORTCULLIS_AI_PROVIDER_*` never referenced, and no service sets one (an `environment` key or list item, any case); no `environment` variable name built by interpolation; no `PORTCULLIS_AI_` in a `${…}` default or alternate value; `ai-providers` not a `files[]` name
+- an `ai_client` entry has `secret_env`; `ai.chat.file.mount` doesn't collide with a `files[]` mount on that service; AI hooks don't run on a `kind: companion` service
+- companion images pinned `tag@sha256:digest` like every image
+
 **Cross-template**
 
 - no default subdomain or volume name is used by two templates
@@ -1446,6 +1586,9 @@ config_files: []
 urls:
   - label: Jellyfin
     url: "https://media.{{DOMAIN}}"
+
+ai:
+  unsupported: "No official MCP server; community servers are small and not vetted by Portcullis"
 ```
 
 A forward-auth app with host ports:
@@ -1496,6 +1639,9 @@ config_files: []
 urls:
   - label: Dashboard
     url: "https://pihole.{{DOMAIN}}/admin"
+
+ai:
+  unsupported: "No MCP server known, and every member of the access group is a full administrator of the app (no per-person rights to act with)"
 ```
 
 The real manifests of every built-in template are rendered in the [App Catalog](../apps/index.md).

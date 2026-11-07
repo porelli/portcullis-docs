@@ -30,13 +30,17 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `actual` | `budget.<domain>` | all | `authaware@file` | :x: |
 
+## AI support
+
+**No AI support:** No official or vetted community MCP server known (surveyed 2026-11-05).
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `actual-budget` | `actualbudget/actual-server:26.10.0` | `sha256:24645e971da6…` |
+| `actual-budget` | `actualbudget/actual-server:26.11.0` | `sha256:06cf186569cf…` |
 
 ## Environment Variables
 

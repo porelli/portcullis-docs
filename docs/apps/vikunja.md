@@ -29,6 +29,12 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 |--------|------|-------|----------|---------------------------|
 | `vikunja` | `tasks.<domain>` | all | `authaware@file` | :x: |
 
+## AI support
+
+**No AI support:** No official MCP server; community servers are not vetted by Portcullis.
+
+An alternative **not vetted by Portcullis**, for an admin to evaluate on their own: democratize-technology/vikunja-mcp (<https://github.com/democratize-technology/vikunja-mcp>) — community, 113★, API token (surveyed 2026-11-06). Portcullis never installs it.
+
 ## Images
 
 Pinned by version tag and digest; Dependabot proposes updates.
