@@ -91,15 +91,17 @@ same button. API: `GET /api/instances/missing-groups`,
 
 Enable, disable, restart, AI support switches, create, back up, restore and
 delete run in the background. Clicking the button opens a **progress panel**
-headed "Enabling Gitea" (or the operation's equivalent) and "Started by
-<user> at <time>". It lists the operation's steps:
+(a modal dialog) headed "Enabling Gitea" (or the operation's equivalent) and
+"Started by <user> at <time> · you can close this, it keeps going". It lists
+the operation's steps:
 
 - ✓ done, with how long the step took
-- ◐ running, with a percentage, a bar and one detail line wherever there is
-  something to measure (e.g. per image "gitea/gitea:1.25 — 312 of 690 MB"
-  while images download, "2 of 3" while services start)
+- ◐ running, with a percentage (0–100), a bar and one detail line wherever
+  there is something to measure (e.g. per image "gitea/gitea:1.25 — 312 of
+  690 MB" while images download, "2 of 3" while services start)
 - ○ waiting
-- ■ stopped
+- ■ stopped (at n %)
+- ↺ undone (struck through: a forward step whose effect the undo reversed)
 - ✗ failed, with the error and hint (see
   [When an operation fails](#when-an-operation-fails))
 
@@ -108,42 +110,67 @@ An enable, for example, goes through: groups (`users_<id>` / `admin_<id>`,
 images, starting services (n of m), waiting until healthy (n of m), and
 applying settings (start hooks, data files).
 
-You can close the panel at any time; the operation keeps going. The app's
-card shows "Enabling… show progress" while it runs. Refreshing the page,
-opening a second tab, or another admin opening the app shows the same
-running operation with its progress. Only one operation runs per app at a
-time: a second Enable (or any other operation) while one runs answers HTTP
-409 with the running operation, and the UI opens its panel instead.
+**You can close the panel at any time**; the operation keeps going. The
+app's card shows "Enabling… show progress" while it runs, and clicking that
+or the app's name reopens the panel. Refreshing the page, opening a second
+tab, or another admin opening the app shows the same running operation with
+its progress. Only one operation runs per app at a time: a second Enable (or
+any other operation) while one runs answers HTTP 409 with the running
+operation, and the UI opens its panel instead.
+
+#### Stop
 
 **Stop** (with the confirmation "Stop enabling Gitea and undo what it did?")
-undoes what the operation did, and the panel shows the undo steps ticking off.
-It ends with "Gitea was not enabled · everything is back as before" (or the
-operation's equivalent) and "Stopped by <user> at <time>". What Stop puts
-back:
+undoes what the operation did. While stopping, the panel's header reads
+"Stopping Gitea — undoing" and the undo steps tick off under an "Undo"
+separator. It ends with "Gitea was not enabled · everything is back as
+before" (or the operation's equivalent) and "Stopped by <user> at <time>".
+What Stop puts back:
 
-| Operation | Stop does |
-|-----------|-----------|
-| Enable | Containers removed; volumes this enable created removed (volumes that existed before are kept); the Keycloak client and groups deleted **only if this enable created them**; downloaded images kept |
-| Disable | The app turned back on |
-| Restart | The app back running as before |
-| AI support on/off, mode | The switch back as it was; AI credentials are minted again on next use |
-| Back up | The partial archive deleted; the app restarted if it was running |
-| Restore | Rolled back from the pre-restore backup |
-| Create, restore as new | The new instance removed completely |
-| Delete | The delete cancelled and the app back as before, until the first volume is removed; after that the panel shows "past the point of no return — finishing" and Stop is unavailable |
+| Operation | Stop does | Stop unavailable |
+|-----------|-----------|------------------|
+| Enable | Containers removed; volumes this enable created removed (volumes that existed before are kept); the Keycloak client and groups deleted **only if this enable created them**; downloaded images kept, so a later enable resumes the download; **only what this enable created is removed** (pre-existing groups, clients and volumes are kept) | never |
+| Disable | The app turned back on | never |
+| Restart | The app back running as before | never |
+| AI support on/off, mode | The switch back as it was; AI credentials are minted again on next use | never |
+| Back up | The partial archive deleted; the app restarted if it was running | never |
+| Restore | Rolled back from the pre-restore backup | never |
+| Create, restore as new | The new instance removed completely | never |
+| Delete | The delete cancelled and the app back as before | once data removal starts (the first volume): the panel shows "past the point of no return — finishing" and Stop is unavailable |
 
 Stop works at every step until the operation ends, the last one included:
-an app that has already started is taken down and undone. If the undo itself
-fails, the panel shows the error and what is left to undo; press **Stop**
-again to retry, which skips the undo steps already done. Every Stop is
-audited as `<op>.stop` (e.g. `enable.stop`) with the step it was pressed at.
+an app that has already started is taken down and undone. **Images already
+downloaded are kept** (they don't carry instance data), so a stopped enable
+followed by a new enable resumes the download where it left off.
+
+#### Failed undo and "Stop again"
+
+If the undo itself fails, the panel shows the error, what is left to undo
+("Not undone yet: <undo steps>. Stop again retries what is left"), and the
+**Stop** button changes to **Stop again**. Press it to retry the undo, which
+skips the undo steps already done. Every Stop is audited as `<op>.stop`
+(e.g. `enable.stop`) with the step it was pressed at.
+
+#### Interrupted
 
 If the Hub restarts while an operation runs, the panel shows it as
-**interrupted**, with Stop to clean up what it left (an interrupted restore
-is rolled back, and an unfinished restore as new is removed, at the next Hub
-start on their own). The Portcullis MCP sees the same progress (`get_op`,
-`wait_for_op`) and can stop an operation with `stop_op`. API:
-`GET /api/instances/<id>/op`, `POST /api/instances/<id>/op/stop`
+**interrupted**, with Stop to clean up what it left. The note reads
+"interrupted: the Hub stopped while this ran. Stop undoes what it did." An
+interrupted restore is rolled back, and an unfinished restore as new is
+removed, at the next Hub start on their own (the Stop is automatic).
+
+#### AI support and stop_op
+
+The Portcullis MCP sees the same progress (`get_op`, `wait_for_op`) and can
+stop an operation with `stop_op`. When the undo re-enables or switches
+something on (a disable, a delete of an enabled app, a same-instance restore,
+an AI switch-off), `stop_op` needs a **confirmation** that names the
+operation (its `op_id`), and the Hub refuses any other operation under that
+lock. A stopped enable or an AI switch that went back on are audited
+`refused` for the lifecycle action (`instance.enable`, `ai.enable`) and `ok`
+for the Stop (`enable.stop`, `ai.stop`).
+
+API: `GET /api/instances/<id>/op`, `POST /api/instances/<id>/op/stop`
 ([contract §11.7](../guides/integration-contracts.md#117-hub-api-and-audit)).
 
 ### When an operation fails

@@ -15,8 +15,8 @@
 | **SSO** | :warning: Partial |
 | **Group Access** | :white_check_mark: |
 | **Group Admin** | :x: |
-| **Access Group** | `users_firefly` |
-| **Admin Group** | `admin_firefly` |
+| **Access Group** | `users_firefly-iii` |
+| **Admin Group** | `admin_firefly-iii` |
 | **Subdomain** | `finance` |
 
 !!! info "Auth Notes"

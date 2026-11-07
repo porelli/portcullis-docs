@@ -224,7 +224,16 @@ Finally, on the real daemon: backup (the helper image pulled by digest,
 helpers removed), the typed-id delete (refusals first, then containers,
 volume and routing gone, the backup listed), restore into a new id (file and
 volume-root owners and modes kept, the new volume labelled for its project,
-the instance enables).
+the instance enables), and **`stop_enable_mid_pull`**: the CI template
+`tests/e2e/apps/slowpull` (GitLab CE's ~1.5 GB image, never cached on the
+runner) is enabled through the API, the test waits for step `images` to be
+running and POSTs the Stop (202), then waits for the record to end stopped.
+Assertions: no containers or volumes left, no Keycloak client `slowpull`, no
+groups `users_slowpull` / `admin_slowpull`, the instance disabled, and
+`enable.stop` in the audit. Poll helpers: Python e2e scripts use the shared
+module `tests/e2e/e2e_ops.py`; CI shell steps source `tests/e2e/hubop.sh`
+(shellchecked by the unit-tests job). Both poll the op record every 2 s and
+print the record's error, hint, output and steps on failure.
 
 ### `e2e-settings` (app settings panel)
 

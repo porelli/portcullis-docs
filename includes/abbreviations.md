@@ -97,3 +97,5 @@
 *[revoke_all]: AI hook action revoking every Portcullis-minted AI credential of a companion, for every person
 *[model provider]: An LLM endpoint (LiteLLM, OpenAI-compatible, Anthropic, OpenAI, Google, Azure OpenAI) an AI page sends chats to
 *[PKCE]: Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it
+*[op record]: Operation record stored per instance (ops/<id>.json) with progress steps, what was created, and the outcome
+*[point of no return]: The step after which an operation can no longer be stopped (only delete has one: the first volume removal)
