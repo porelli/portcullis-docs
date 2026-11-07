@@ -57,7 +57,8 @@ alone. A group with any other name (a group the template shares with other
 apps) is never created for you: the enable answers a warning and you create it
 in Users & Groups. If creating a group fails, the app isn't enabled; a group
 created before a later failure stays (empty — the app needs it anyway). The
-toast lists the groups it created.
+progress panel's groups step lists the groups it created and the ones that
+already existed.
 
 It then generates the per-app `.env` and compose override, copies the template
 directory to `<core>/templates/<app-id>/`, registers the template's Keycloak
@@ -86,10 +87,69 @@ access. The Hub log's warning `group … not found in keycloak` points to the
 same button. API: `GET /api/instances/missing-groups`,
 `POST /api/instances/missing-groups` with `{}` (all) or `{"ids": ["<id>"]}`.
 
+### Progress and Stop
+
+Enable, disable, restart, AI support switches, create, back up, restore and
+delete run in the background. Clicking the button opens a **progress panel**
+headed "Enabling Gitea" (or the operation's equivalent) and "Started by
+<user> at <time>". It lists the operation's steps:
+
+- ✓ done, with how long the step took
+- ◐ running, with a percentage, a bar and one detail line wherever there is
+  something to measure (e.g. per image "gitea/gitea:1.25 — 312 of 690 MB"
+  while images download, "2 of 3" while services start)
+- ○ waiting
+- ■ stopped
+- ✗ failed, with the error and hint (see
+  [When an operation fails](#when-an-operation-fails))
+
+An enable, for example, goes through: groups (`users_<id>` / `admin_<id>`,
+"created" or "already exist"), the sign-in client in Keycloak, downloading
+images, starting services (n of m), waiting until healthy (n of m), and
+applying settings (start hooks, data files).
+
+You can close the panel at any time; the operation keeps going. The app's
+card shows "Enabling… show progress" while it runs. Refreshing the page,
+opening a second tab, or another admin opening the app shows the same
+running operation with its progress. Only one operation runs per app at a
+time: a second Enable (or any other operation) while one runs answers HTTP
+409 with the running operation, and the UI opens its panel instead.
+
+**Stop** (with the confirmation "Stop enabling Gitea and undo what it did?")
+undoes what the operation did, and the panel shows the undo steps ticking off.
+It ends with "Gitea was not enabled · everything is back as before" (or the
+operation's equivalent) and "Stopped by <user> at <time>". What Stop puts
+back:
+
+| Operation | Stop does |
+|-----------|-----------|
+| Enable | Containers removed; volumes this enable created removed (volumes that existed before are kept); the Keycloak client and groups deleted **only if this enable created them**; downloaded images kept |
+| Disable | The app turned back on |
+| Restart | The app back running as before |
+| AI support on/off, mode | The switch back as it was; AI credentials are minted again on next use |
+| Back up | The partial archive deleted; the app restarted if it was running |
+| Restore | Rolled back from the pre-restore backup |
+| Create, restore as new | The new instance removed completely |
+| Delete | The delete cancelled and the app back as before, until the first volume is removed; after that the panel shows "past the point of no return — finishing" and Stop is unavailable |
+
+Stop works at every step until the operation ends, the last one included:
+an app that has already started is taken down and undone. If the undo itself
+fails, the panel shows the error and what is left to undo; press **Stop**
+again to retry, which skips the undo steps already done. Every Stop is
+audited as `<op>.stop` (e.g. `enable.stop`) with the step it was pressed at.
+
+If the Hub restarts while an operation runs, the panel shows it as
+**interrupted**, with Stop to clean up what it left (an interrupted restore
+is rolled back, and an unfinished restore as new is removed, at the next Hub
+start on their own). The Portcullis MCP sees the same progress (`get_op`,
+`wait_for_op`) and can stop an operation with `stop_op`. API:
+`GET /api/instances/<id>/op`, `POST /api/instances/<id>/op/stop`
+([contract §11.7](../guides/integration-contracts.md#117-hub-api-and-audit)).
+
 ### When an operation fails
 
-If enable, disable, restart or a drift action fails, the UI opens a dialog
-with the error, a hint where one is known, and the last 8 KiB of
+If enable, disable, restart or a drift action fails, the UI shows the error
+(in the progress panel's failed step, or a dialog for a drift action), a hint where one is known, and the last 8 KiB of
 `docker compose`'s output (scrollable). Values of secret-looking variables
 (names containing `SECRET`, `PASSWORD`, `TOKEN`, `KEY`, …, and generated ones)
 from the app's and core's env are replaced with `[redacted]`. For
@@ -105,21 +165,23 @@ neither the fail-closed deny entry nor a `stopped_not_enabled` drift item is
 left over. If the rollback fails too, the error says so and the leftovers show
 up in [Drift detection](#drift-detection) (**Stop & remove**).
 
-Every operation's outcome is stored per app in `${HUB_DATA_DIR}/ops/<app>.json`
-(operation, time, ok/failed, error, hint, output tail; mode 0600), and kept
+Every operation's progress and outcome is stored per app in
+`${HUB_DATA_DIR}/ops/<app>.json` (operation, who started it, time, steps,
+what it created, ok/failed, error, hint, output tail; mode 0600), and kept
 until the next operation on that app. A card whose last operation failed shows
 "last enable failed" (or restart, …); its detail panel shows a banner, and the
 **Logs** tab, also for an app that is not enabled, shows the record above the
 container logs. The API:
 
 ```text
-GET  /api/templates/lastop/<app>   {op, at, ok, error?, output?, hint?, rolled_back?} or null
+GET  /api/templates/lastop/<app>   {op, op_id, at, actor, running, steps, created, ok, error?, output?, hint?, rolled_back?, …} or null
 ```
 
-A failed lifecycle request (`POST /api/templates/enable`, `/disable`,
-`/restart/<app>`, `/api/drift/resolve`) answers with its HTTP status and a
-JSON body `{error, op, output, hint, rolled_back}`; other errors stay plain
-text.
+Enable, disable and restart answer `202` at once and their outcome is the op
+record above (fields:
+[contract §11.7](../guides/integration-contracts.md#117-hub-api-and-audit)).
+A failed `/api/drift/resolve` answers with its HTTP status and a JSON body
+`{error, op, output, hint, rolled_back}`; other errors stay plain text.
 
 ### Disabling an app
 
@@ -132,9 +194,10 @@ template is gone or its compose file is broken, the Hub falls back to
 
 Keycloak clients are not deleted when you disable an app. Volumes are kept.
 
-Only one lifecycle operation (enable, disable, restart) runs per app at a time.
-A second request while one is in progress is rejected with a "try again
-shortly" message.
+Only one operation (enable, disable, restart, backup, …) runs per app at a
+time. A second request while one is in progress answers HTTP 409 with the
+running operation, whose progress panel the UI shows
+([Progress and Stop](#progress-and-stop)).
 
 ## App detail panel
 
@@ -939,13 +1002,17 @@ A running instance is **stopped** (`docker compose down`) during the backup for
 database consistency, then started again. The backup is listed with its timestamp,
 size and result. A failed backup shows the error.
 
-Backups, restores and deletes run in the background: the Hub accepts the
-request at once and the dialog follows the operation until it finishes, then
-shows its result and warnings (also under **Last operation**). Closing the
-dialog doesn't stop it; another operation on the same instance is refused
+Backups, restores and deletes run in the background with a
+[progress panel](#progress-and-stop): the Hub accepts the request at once and
+the panel follows the operation step by step until it finishes, then shows its
+result and warnings (also under **Last operation**). Closing the panel doesn't
+stop it (**Stop** does); another operation on the same instance is refused
 (busy) until it ends. On shutdown the Hub waits up to about 50 s for a running
-operation; one it couldn't finish is recorded as failed ("interrupted") at the
-next start. A running operation never shows as a failure.
+operation; one it couldn't finish is shown as "interrupted" at the next start,
+with Stop to clean it up. A running operation never shows as a failure.
+
+**Stop** during a backup deletes the partial archive and starts the instance
+again if it was running.
 
 **Free space**: a backup needs at least 64 MiB free on the Hub's data volume
 before it starts, and the copied size plus 64 MiB before the archive is
@@ -976,6 +1043,9 @@ The Hub:
 
 While `restoring`, if the Hub or the process crashes, the next `Init` or
 `RestoreInstance` call **rolls back** from the pre-restore backup automatically.
+**Stop** during a restore rolls back from the pre-restore backup the same way
+(before that backup was taken, nothing has changed yet); during a restore as
+new it removes the new instance completely.
 A failed restore leaves an `OpError` with `op: restore` and `rolled_back: true`.
 
 **New instance**:
@@ -1024,7 +1094,12 @@ the archive path.
 
 1. Takes an automatic backup (stored in `backups/<id>/`)
 2. Marks the instance `deleting` (other operations refused with HTTP 409)
-3. Runs `docker compose down` and removes volumes
+3. Runs `docker compose down`, then removes the per-person passwords, the AI
+   credentials and the volumes. The first volume removal is the **point of no
+   return**: until then **Stop** cancels the delete and puts the app back as
+   it was (enabled again if it was enabled; the delete's backup stays listed);
+   from then on the delete finishes ("past the point of no return —
+   finishing")
 4. Removes the Keycloak clients (only those owned by this instance), the access
    role (if any), and extra-domain sign-in callback URIs for this instance's hosts
 5. Deletes the groups named exactly `users_<id>` / `admin_<id>`, through the
