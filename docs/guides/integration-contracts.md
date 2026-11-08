@@ -928,7 +928,7 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
 
 #### New read-only routes — **NEW (people & groups)**
 
-The following two routes exist on **both listeners** (Hub at `:8080` and people at `:8889`). They are part of the directory route set (§5.1) and are **administrators only**: delegates and every other signed-in user get `403`. Both answer `503` while the directory (or the Hub side) is unavailable, `400` for a malformed name and `404` for an unknown person or group (group names are exact). Every list is always present (`[]`, never `null`).
+The following two routes exist on **both listeners** (Hub at `:8080` and people at `:8889`). They are part of the directory route set (§5.1) and are **administrators only**: a request without an identity gets `401`, delegates and every other signed-in user `403`. Both answer `503` while the directory (or the Hub side) is unavailable, `400` for a malformed name and `404` for an unknown person or group (group names are exact). Every list is always present (`[]`, never `null`).
 
 - **`GET /api/directory/users/{u}/apps`**: returns the apps and values for one user.
     ```json
@@ -953,8 +953,8 @@ The following two routes exist on **both listeners** (Hub at `:8080` and people 
       ]
     }
     ```
-    - **`apps`:** enabled instances whose population includes this user (also those that give them no value), and those where they have a person-entered value. `via` lists the person's groups that grant access (the app's access group; `[]` when every signed-in person has access), each with its membership's end (`null` = no end). `until` is when access ends: `null` when `via` is empty or some membership has no end, else the latest end.
-    - **`values`:** the user's resolved per-person setting values (the same ones My apps shows them, never secrets or credentials) and person-entered values, in display form. `from` is the value's source: the winning group's name (a combined value's groups, `", "`-joined), `"default"`, `"fail-closed"`, or for a person-entered value `"own entry"` / `"set by <admin>"`.
+    - **`apps`:** enabled instances whose population includes this user (also those that give them no value), and those where they have a person-entered value. `via` lists the person's groups that grant access (the app's access group — for an app listed only for a person-entered value, the access group its entry population comes from; `[]` when every signed-in person has access), each with its membership's end (`null` = no end). `until` is when access ends: `null` when `via` is empty or some membership has no end, else the latest end.
+    - **`values`:** the user's resolved per-person setting values (an admin view: options with `self_visible: false` too; never secrets, `person_secret` or `person_id` values, never credentials) and person-entered values, in display form. `from` is the value's source: the winning group's name (a combined value's groups, `", "`-joined), `"default"`, `"fail-closed"`, or for a person-entered value `"own entry"` / `"set by <admin>"`.
 
 - **`GET /api/directory/groups/{g}/uses`**: returns what uses a group: the apps it grants access to, the settings that reference it, and the permissions it holds.
     ```json
@@ -980,7 +980,7 @@ The following two routes exist on **both listeners** (Hub at `:8080` and people 
     }
     ```
     - **`apps`:** instances (enabled or not) that use this group as their `access_group` (`access`) or `admin_group` (`admin`), or whose privileged per-person option has a row naming it (`privileged`: the group guards, §9.6).
-    - **`settings`:** every setting row and group record that names this group, in every instance — exactly the rows deleting the group would drop (the exact name; another case only when bound to the group's LLDAP id): per-person rows (`person`), group records (`group`) and instance group / groups values (`instance`, `value` is the group's name). Values in display form.
+    - **`settings`:** every setting row and group record that names this group, in every instance — exactly the rows deleting the group would drop (the exact name; another case only when bound to the group's LLDAP id): per-person rows (`person`), group records (`group`) and instance group / groups values (`instance`, `value` is the group's name). Values in display form; a row of an instance whose template is missing shows `"(template missing)"`, never the stored value.
     - **`permissions`:** delegated permissions granted to this group (§9.6).
 
 ## 10. Landing portal app list (Hub → core)
