@@ -881,7 +881,7 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
 - **`POST /api/directory/groups/{g}/members`** with `{"username": "<user>", "reason"?: "<text>", "until"?: "<RFC 3339>"}`: adds a person to a group.
     - **Manual group:** creates a membership, optionally with an expiry date/time when `until` is given. The `reason` field is optional and ignored for manual groups.
     - **Rule-based group:** creates an "added by hand" entry (an include exception). The `reason` field is **required** and the request is refused `400` with the text "a reason is required: <g> is rule-based" when `reason` is absent or empty. The entry is created whether or not the person already matches the rule; when they match, the entry is stored but does not change their current membership state. An optional `until` sets the entry's expiry.
-    - **Evaluator run:** the evaluator runs synchronously (≤ 5 s timeout). The response merges `{"applied": bool, "why"?: string}` into its body: `applied: true` when the membership or entry was applied to LLDAP; `applied: false` with a `why` explanation when it was stored but not applied (LLDAP unavailable, evaluator timeout). The HTTP status is `200` either way.
+    - **Evaluator run:** after a successful change the evaluator runs synchronously, once (≤ 5 s timeout). The response merges `{"applied": bool, "why"?: string}` into its JSON body (a route that would answer `204` answers `200` with `{"applied", "why"?}`): `applied: true` when the evaluation ran, so the membership or entry is in LLDAP when the answer comes back (a `why` is added when the run reported per-change errors, naming them); `applied: false` with a `why` explanation when it was stored but not applied (LLDAP unavailable, the directory store not configured, an evaluation error, the timeout) — the background evaluator applies it later. `why` is a short text (≤ 200 characters) and never holds a secret. The HTTP status is `200` either way. A refused change runs no evaluation and has no `applied`. The Portcullis MCP tools of these routes (`add_member`, `remove_member`, `set_member_expiry`, `add_exception`, `remove_exception`, `set_group_rule`, `convert_group`) answer the same fields (§15.10).
     - **Refusals:** `400` for a missing required reason on a rule-based group; `404` for an unknown user or group; `403` / `409` per §9.5 guardrails.
 
 - **`PUT /api/directory/groups/{g}/members/{u}/expiry`** with `{"until": "<RFC 3339>"}` or `{"until": null}`: sets or clears the expiry of a membership or an "added by hand" entry.
@@ -898,6 +898,8 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
 
 - **`PUT /api/directory/groups/{g}/rule`** with the rule definition: sets a rule-based group's rule. Evaluator run, `applied` / `why`, and refusals as above.
 
+- **`POST /api/directory/groups/{g}/convert`** (a reviewed conversion of a manual group into a rule-based group): evaluator run and `applied` / `why` as above.
+
 #### Group views
 
 - **`GET /api/directory/groups/{g}`** (or `GET /api/directory` with a group filter): returns `GroupView` objects. **NEW (people & groups):** each `GroupView` of a rule-based group includes a `"matches": ["<username>", ...]` array listing the usernames that match the rule **right now**, before the evaluator has run. This field is present only on rule-based groups and only in responses to administrators (§9.5). Delegates and non-admins do not see it.
@@ -908,6 +910,7 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
     - **`groups`:** an optional array of group names the new person should be added to. It may name both manual groups and rule-based groups.
     - **`reasons`:** an optional object mapping group names to reasons. For each **rule-based group** in `groups` that the new person will **not** match (judged by the preview evaluator against the invite's details), a reason is **required**. The Hub evaluates the rule against the new person's `username`, `email` and `display_name` (no custom fields set yet), and refuses the request `400` naming the rule-based group when its reason is missing. Each such group gets an "added by hand" entry with the given reason.
     - **Manual groups** in `groups` do not need a reason; a `reasons` key that is not a rule group in `groups` is refused (`400`, naming it).
+    - **Evaluator run:** when `groups` is given, a successful create runs the evaluator as the membership routes do and its answer carries `applied` / `why` (above); without `groups` it has neither.
     - **Invite:** the HTTP route creates the user with no password and requests a one-time invite link, as today (§9.4). The MCP tool `create_person` is class **U** and returns the form link.
 
 #### Audit log filtering
