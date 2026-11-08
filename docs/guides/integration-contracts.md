@@ -907,7 +907,7 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
 - **`POST /api/directory/users`** with `{"username", "email", "display_name", "groups"?: ["<g>", ...], "reasons"?: {"<g>": "<reason>"}}`: creates a new user.
     - **`groups`:** an optional array of group names the new person should be added to. It may name both manual groups and rule-based groups.
     - **`reasons`:** an optional object mapping group names to reasons. For each **rule-based group** in `groups` that the new person will **not** match (judged by the preview evaluator against the invite's details), a reason is **required**. The Hub evaluates the rule against the new person's `username`, `email` and `display_name` (no custom fields set yet), and refuses the request `400` naming the rule-based group when its reason is missing. Each such group gets an "added by hand" entry with the given reason.
-    - **Manual groups** in `groups` do not need a reason; any reason given for them is ignored.
+    - **Manual groups** in `groups` do not need a reason; a `reasons` key that is not a rule group in `groups` is refused (`400`, naming it).
     - **Invite:** the HTTP route creates the user with no password and requests a one-time invite link, as today (§9.4). The MCP tool `create_person` is class **U** and returns the form link.
 
 #### Audit log filtering
