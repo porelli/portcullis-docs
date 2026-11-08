@@ -489,6 +489,7 @@ Next to the policy file, in the same `hub_data` directory, the Hub writes **`mcp
 - **group-gate-map.conf.** The map file uses the special value **`*`** (asterisk) for the `people` subdomain, meaning "any signed-in user". This value is valid **only** in `group-gate-map.conf`, never in the policy file.
 - **Redirect.** The existing `directory.<domain>` subdomain redirects to `https://people.<domain>/` (previously it redirected to `https://hub.<domain>/#users`).
 - **My apps route.** The people listener registers exactly **nine** app routes (all caller-only, read or write the caller's own data; none takes a username): the three below, the two credential routes after them, and the four AI routes (**NEW**, AI support): `GET /api/me/ai`, `DELETE /api/me/ai/connections/{client}`, `GET /confirm/{id}` and `POST /api/me/confirmations/{id}`. The two AI routes `/api/me/ai*` exist only on the people listener (`404` on the Hub listener). The two confirmation routes are also registered on the Hub listener, for confirmations of admin tools (§15.6); each listener answers only for confirmations created for it.
+- **Directory read routes** (**NEW (people & groups)**): the people listener also registers the two new admin read routes `GET /api/directory/users/{u}/apps` and `GET /api/directory/groups/{g}/uses` (§9.7), which are part of the directory route set on both listeners. The people listener still has **no app routes** beyond `/api/me/*`.
   - `GET /api/me/apps`: answers for `X-Forwarded-User` (lowercase) with `{"apps": [...], "fresh_auth": {...}}` — `apps` are the enabled instances whose population includes them. Each entry has: instance id, name, link (`url`, empty for a router-less instance, §3), the caller's per-person values (label, displayed value, reason — only the caller's own groups —, when it applies; see §13), the caller's own person-entered `entries` (key, label, description, applies, input constraints, `unique`, the value only when stored under the caller's current LLDAP account, `set_by_admin` — never the admin's name —, `updated_at`) and the caller's own `credentials` (one per `person_secret` option, §13.16: `{key, label, status, since, reason, info}`; `status` is `none`, `active` (`since` = created), `voided` (`reason: "restore"`, `since` = when it was voided) or `unavailable` (`reason` = the template's username reason); `info` = the option's `info` lines rendered for the caller). An app with values, entries, a `person_secret` option or AI support on for the caller is listed; apps with none of them are left out. Options marked `self_visible: false` are left out; `person_id` values are never shown. Instance options, secrets, hashes and other people are never included. `fresh_auth` (**NEW**, file sharing) is present only when some listed app has a `person_secret` option: `{authorize_url, client_id, redirect_uri}` of the fresh-auth client (§8).
     - **NEW (AI support), per app:** an app with a companion that is on, whose population includes the caller, carries `"ai": {"companions": [{"name", "label", "url", "identity_mode", "mode", "official", "aggregate"}]}`: `aggregate` whether the companion is in "all my apps" (§15.9; always `false` for `app_oauth`); `label` the companion label (§15), `url` the companion's resource URL (§15.1) or, for `app_oauth`, the app's own MCP route; `official` = `upstream: official`.
     - **NEW (AI support), top level:** `"ai": {"aggregate_url": "https://mcp.<domain>/mcp", "clients": {"claude": {"client_id", "admin"}, "claude_code": {"client_id", "callback_port": 33418, "admin"}, "generic": {"client_id", "redirect_uris": [...], "admin"}}, "admin_url": "https://hub.<domain>/mcp"}`.
@@ -870,6 +871,108 @@ permissions:
 
 - **Native-OIDC apps:** The Hub creates a Keycloak client scope `portcullis-attributes` with LDAP attribute mappers and protocol mappers for each shared field. Each field becomes a claim `attr_<field>` (e.g., `attr_department`) in **access tokens, ID tokens and userinfo**. The scope is a **default client scope** on Hub-registered clients (always included).
 - **Forward-auth and header-auth apps:** The Hub writes `user-attributes.json` (§4.1); group-gate returns `X-Forwarded-Attr-<Header-Name>` headers (§5); the `portcullis-groups` middleware forwards them.
+
+### 9.7 HTTP API for groups and users — **NEW (people & groups)**
+
+The Hub's directory API routes (on both the Hub listener at `:8080` and the people listener at `:8889`, §5.1) serve users and groups with per-request permission checks. The following endpoints support rule-based groups, exceptions and expiries:
+
+#### Group membership
+
+- **`POST /api/directory/groups/{g}/members`** with `{"username": "<user>", "reason"?: "<text>", "until"?: "<RFC 3339>"}`: adds a person to a group.
+    - **Manual group:** creates a membership, optionally with an expiry date/time when `until` is given. The `reason` field is optional and ignored for manual groups.
+    - **Rule-based group:** creates an "added by hand" entry (an include exception). The `reason` field is **required** and the request is refused `400` with the text "a reason is required: <g> is rule-based" when `reason` is absent or empty. The entry is created whether or not the person already matches the rule; when they match, the entry is stored but does not change their current membership state. An optional `until` sets the entry's expiry.
+    - **Evaluator run:** the evaluator runs synchronously (≤ 5 s timeout). The response merges `{"applied": bool, "why"?: string}` into its body: `applied: true` when the membership or entry was applied to LLDAP; `applied: false` with a `why` explanation when it was stored but not applied (LLDAP unavailable, evaluator timeout). The HTTP status is `200` either way.
+    - **Refusals:** `400` for a missing required reason on a rule-based group; `404` for an unknown user or group; `403` / `409` per §9.5 guardrails.
+
+- **`PUT /api/directory/groups/{g}/members/{u}/expiry`** with `{"until": "<RFC 3339>"}` or `{"until": null}`: sets or clears the expiry of a membership or an "added by hand" entry.
+    - **Manual group:** sets or clears the member's expiry.
+    - **Rule-based group:** sets or clears the expiry of the person's "added by hand" entry. The request is refused `409` when the person has no such entry.
+    - **Evaluator run and `applied` / `why`:** as for the `POST` above.
+    - **Refusals:** `409` when the target has no membership (manual group) or no "added by hand" entry (rule-based group); `404` for an unknown user or group.
+
+- **`DELETE /api/directory/groups/{g}/members/{u}`**: removes a membership (manual group) or an "added by hand" entry (rule-based group). Evaluator run, `applied` / `why`, and refusals as above.
+
+- **`POST /api/directory/groups/{g}/exceptions`** with `{"username": "<user>", "mode": "kept_out", "reason": "<text>", "until"?: "<RFC 3339>"}`: creates a "kept out" entry (an exclude exception) on a rule-based group. The `reason` field is required. `until` is optional. Refused on manual groups. Evaluator run, `applied` / `why`, and refusals as above.
+
+- **`DELETE /api/directory/groups/{g}/exceptions/{u}`**: removes a "kept out" entry. Evaluator run, `applied` / `why`, and refusals as above.
+
+- **`PUT /api/directory/groups/{g}/rule`** with the rule definition: sets a rule-based group's rule. Evaluator run, `applied` / `why`, and refusals as above.
+
+#### Group views
+
+- **`GET /api/directory/groups/{g}`** (or `GET /api/directory` with a group filter): returns `GroupView` objects. **NEW (people & groups):** each `GroupView` of a rule-based group includes a `"matches": ["<username>", ...]` array listing the usernames that match the rule **right now**, before the evaluator has run. This field is present only on rule-based groups and only in responses to administrators (§9.5). Delegates and non-admins do not see it.
+
+#### User creation
+
+- **`POST /api/directory/users`** with `{"username", "email", "display_name", "groups"?: ["<g>", ...], "reasons"?: {"<g>": "<reason>"}}`: creates a new user.
+    - **`groups`:** an optional array of group names the new person should be added to. It may name both manual groups and rule-based groups.
+    - **`reasons`:** an optional object mapping group names to reasons. For each **rule-based group** in `groups` that the new person will **not** match (judged by the preview evaluator against the invite's details), a reason is **required**. The Hub evaluates the rule against the new person's `username`, `email` and `display_name` (no custom fields set yet), and refuses the request `400` naming the rule-based group when its reason is missing. Each such group gets an "added by hand" entry with the given reason.
+    - **Manual groups** in `groups` do not need a reason; any reason given for them is ignored.
+    - **Invite:** the HTTP route creates the user with no password and requests a one-time invite link, as today (§9.4). The MCP tool `create_person` is class **U** and returns the form link.
+
+#### Audit log filtering
+
+- **`GET /api/directory/audit`**: lists audit entries (§9.5), newest first, ≤ 100 entries, scanning ≤ 8 MiB of the tail.
+    - **`?via=ai`:** returns only entries with `"via": "ai"` (made through the Portcullis MCP, §15.10).
+    - **`?group=<g>`** (**NEW (people & groups)**): returns only entries for that group. An entry is "for that group" when its `target` is exactly `<g>` or starts with `<g>:` (e.g., `office_milan:alice`).
+    - **`?user=<u>`** (**NEW (people & groups)**): returns only entries for that user. An entry is "for that user" when its `target` ends with the username (e.g., `office_milan:alice` or `alice`) or when the entry's `detail` contains `user=<u>`.
+    - **Filters may be combined:** `?via=ai&group=<g>` or `?user=<u>&via=ai`, etc.
+
+#### New read-only routes — **NEW (people & groups)**
+
+The following two routes exist on **both listeners** (Hub at `:8080` and people at `:8889`). They are part of the directory route set (§5.1) and follow the same permission model: administrators see everything; delegates and other signed-in users have restricted views per §9.6.
+
+- **`GET /api/directory/users/{u}/apps`**: returns the apps and values for one user.
+    ```json
+    {
+      "apps": [
+        {
+          "instance": "<id>",
+          "name": "<display name>",
+          "via": ["<group>", "<group>"],
+          "until": "<RFC 3339 or null>"
+        }
+      ],
+      "values": [
+        {
+          "instance": "<id>",
+          "app": "<name>",
+          "key": "<option key>",
+          "label": "<option label>",
+          "value": "<resolved value>",
+          "from": "<source description>"
+        }
+      ]
+    }
+    ```
+    - **`apps`:** enabled instances whose population includes this user, with the groups that grant them access and an optional `until` expiry (the earliest expiry among those groups).
+    - **`values`:** the user's resolved per-person setting values for each app, with the value's source (e.g., "from office_milan" for a per-group value, "own entry" for a person-entered value).
+
+- **`GET /api/directory/groups/{g}/uses`**: returns what uses a group: the apps it grants access to, the settings that reference it, and the permissions it holds.
+    ```json
+    {
+      "apps": [
+        {
+          "instance": "<id>",
+          "name": "<display name>",
+          "role": "access" | "admin"
+        }
+      ],
+      "settings": [
+        {
+          "instance": "<id>",
+          "app": "<name>",
+          "key": "<option key>",
+          "label": "<option label>",
+          "value": "<setting value>"
+        }
+      ],
+      "permissions": ["edit_details", "invite", "remove"]
+    }
+    ```
+    - **`apps`:** instances that use this group as their `access_group` or `admin_group`.
+    - **`settings`:** per-group setting values that reference this group.
+    - **`permissions`:** delegated permissions granted to this group (§9.6).
 
 ## 10. Landing portal app list (Hub → core)
 
@@ -3053,6 +3156,9 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `convert_group_preview` | R | `POST /api/directory/groups/{group}/convert-preview` |
     | `import_review` | R | `POST /api/directory/import/apply` |
     | `audit_recent` | R | `GET /api/directory/audit` |
+    | `get_audit` (**NEW (people & groups)**) | R | `GET /api/directory/audit` |
+    | `get_person_apps` (**NEW (people & groups)**) | R | `GET /api/directory/users/{u}/apps` |
+    | `get_group_uses` (**NEW (people & groups)**) | R | `GET /api/directory/groups/{g}/uses` |
     | `create_person` | U | `POST /api/directory/users` |
     | `update_person` | W | `PUT /api/directory/users/{username}` |
     | `set_details` | D or W per call | `PUT /api/directory/users/{username}/details` |
@@ -3064,13 +3170,13 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `delete_person` | D | `DELETE /api/directory/users/{username}` |
     | `create_group` | W | `POST /api/directory/groups` |
     | `delete_group` | D | `DELETE /api/directory/groups/{group}` |
-    | `add_member` | D or W per call | `POST /api/directory/groups/{group}/members` |
+    | `add_member` (**NEW (people & groups):** takes `reason` and `until`) | D or W per call | `POST /api/directory/groups/{group}/members` |
     | `remove_member` | D or W per call | `DELETE /api/directory/groups/{group}/members/{username}` |
     | `set_member_expiry` | D or W per call | `PUT /api/directory/groups/{group}/members/{username}/expiry` |
     | `set_group_rule` | D or W per call | `PUT /api/directory/groups/{group}/rule` |
     | `convert_group` | D or W per call | `POST /api/directory/groups/{group}/convert` |
-    | `add_exception` | D or W per call | `POST /api/directory/groups/{group}/exceptions` |
-    | `remove_exception` | D or W per call | `DELETE /api/directory/groups/{group}/exceptions/{username}` |
+    | `add_exception` (**NEW (people & groups):** separate tool) | D or W per call | `POST /api/directory/groups/{group}/exceptions` |
+    | `remove_exception` (**NEW (people & groups):** separate tool) | D or W per call | `DELETE /api/directory/groups/{group}/exceptions/{username}` |
     | `set_permission` | D | `PUT /api/directory/permissions/{perm}` |
     | `create_field` | W | `POST /api/directory/fields` |
     | `update_field` | D or W per call | `PUT /api/directory/fields/{name}` |
@@ -3109,6 +3215,13 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `update_person` | W (needs `edit_details`) | `PUT /api/directory/users/{username}` |
     | `invite_person` | U (needs `invite`) | `POST /api/directory/users` |
     | `delete_person` | D (needs `remove`) | `DELETE /api/directory/users/{username}` |
+
+- **New tools and arguments** (**NEW (people & groups)**):
+    - **`add_member`** now takes optional `reason` and `until` arguments. When the target group is rule-based and the person does not already match its rule, `reason` is required (the tool is refused without it, as the HTTP route is). The tool's class remains **D or W per call** (unchanged).
+    - **`get_audit`** (class **R**) is a new tool that twins `GET /api/directory/audit` with optional `group` and `user` filter arguments, in addition to the existing `via` argument. It returns `{entries, offset, next_offset}` as `audit_recent` does, but with the given filters applied (§9.7).
+    - **`get_person_apps`** (class **R**) twins `GET /api/directory/users/{u}/apps` (§9.7). It takes a `username` argument and returns `{apps, values}`.
+    - **`get_group_uses`** (class **R**) twins `GET /api/directory/groups/{g}/uses` (§9.7). It takes a `group` argument and returns `{apps, settings, permissions}`.
+    - **`add_exception`** and **`remove_exception`** are now documented explicitly (they already existed in the tool list above).
 
 - **Never tools.** The confirmation routes (`GET /confirm/{id}`, `POST /api/me/confirmations/{id}`: an AI must never approve its own confirmation), credential create and revoke (`/api/me/apps/{instance}/credentials/{key}`: `my_file_share_password` only returns the People-page link), the multipart CSV `import/review` (`import_review` takes JSON and calls what the route's JSON branch calls; its twin is `import/apply`'s), and the page, `/static/` and `/healthz`. There is no `my_certificates` (certificates self-service adds it).
 - **Answers.** Tool errors are `isError` results prefixed `<status>: ` (an `OpError` as its JSON record, redacted and clipped); a people tool refused for a missing permission is `403: not allowed: needs <perm>` and, like every W, D and U refusal before `Run`, audited `refused` under the twin's action; a non-admin on `/mcp/admin` gets empty lists and the JSON-RPC error "admins only" for reads and prompts; while the caller can't be resolved (the directory is down) a `tools/call` still gets a tool result (`isError`), never a protocol error; a request without an identity on the MCP listener is `403` (§15.7). `wait_for_op` answers `{done, record}` and `get_op` the record, both with the record's `steps` and `created` (**NEW (operation progress)**); `stop_op` the record (`stopping: true`); `get_instance` mirrors the last-operation route; `audit_recent` `{entries, offset, next_offset}` (limit 1–200, default 50, offset ≤ 10000, optional `via=ai`); `create_person` / `send_invite` state `{created, expires_at, note}` (never the link); `invite_person` `{exists, created_by, last_invite, expires_at, pending}` (the caller's own invite; `pending` is evidence, not proof); `my_file_share_password` `{link, note}`; `revoke_ai_access` `{status, instance, companion, user}`; `ai_activity` `{lines}` (default 50); `replace_domain_token` reports `last_replaced` from the audit log; `preview_settings` carries the `plan_hash` `save_settings` needs; `doctor_preview_fix` the `FixPlan` with `touches_data` always present; `check_folder_path` creates nothing. A Hub method an AI actor reaches without a confirmation where one is required answers `409` (defence in depth: a data fix, a widening assignment, an undo, a folder delete, a re-check of a different directory).
