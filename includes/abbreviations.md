@@ -49,6 +49,9 @@
 *[edit_details]: Delegated permission to update user profile fields
 *[rule-based group]: Group whose membership is computed from user attributes
 *[rule-based groups]: Groups whose membership is computed from user attributes
+*[added by hand]: In a rule-based group whatever the rule says, through an entry with a reason (and an optional end) set on the group's page
+*[kept out]: Left out of a rule-based group although the rule matches, through an entry with a reason (and an optional end) set on the group's page
+*[group page]: A group's page on people.<domain> (#groups/<group>), the only place its membership changes
 *[tombstone]: Deleted user record preventing name reuse
 *[tombstones]: Deleted user records preventing name reuse
 *[extra domain]: Additional domain served alongside the primary Portcullis domain
