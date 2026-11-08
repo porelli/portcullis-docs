@@ -921,13 +921,14 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
     - **`?user=<u>`** (**NEW (people & groups)**): returns only entries for that user. An entry is "for that user" when:
         - its `target` is exactly `<u>`, or
         - its `target` is `<group>:<u>` (the part after the last `:` equals `<u>`), or
-        - its `detail` contains the token `user=<u>` followed by a space or the end of the text.
+        - its `detail` contains the token `user=<u>` (at the start of the text or after a space) followed by a space or the end of the text.
         - Usernames are compared lowercased. `group.sync` targets carry the LLDAP user id, which is the username.
     - **Filters may be combined:** `?via=ai&group=<g>` or `?user=<u>&via=ai`, etc.
+    - `?group=` and `?user=` are administrators only, like the whole route (`403` otherwise); a malformed (or empty) group name or username is `400`.
 
 #### New read-only routes — **NEW (people & groups)**
 
-The following two routes exist on **both listeners** (Hub at `:8080` and people at `:8889`). They are part of the directory route set (§5.1) and follow the same permission model: administrators see everything; delegates and other signed-in users have restricted views per §9.6.
+The following two routes exist on **both listeners** (Hub at `:8080` and people at `:8889`). They are part of the directory route set (§5.1) and are **administrators only**: delegates and every other signed-in user get `403`. Both answer `503` while the directory (or the Hub side) is unavailable, `400` for a malformed name and `404` for an unknown person or group (group names are exact). Every list is always present (`[]`, never `null`).
 
 - **`GET /api/directory/users/{u}/apps`**: returns the apps and values for one user.
     ```json
@@ -936,7 +937,7 @@ The following two routes exist on **both listeners** (Hub at `:8080` and people 
         {
           "instance": "<id>",
           "name": "<display name>",
-          "via": ["<group>", "<group>"],
+          "via": [{"group": "<group>", "until": "<RFC 3339 or null>"}],
           "until": "<RFC 3339 or null>"
         }
       ],
@@ -952,8 +953,8 @@ The following two routes exist on **both listeners** (Hub at `:8080` and people 
       ]
     }
     ```
-    - **`apps`:** enabled instances whose population includes this user, with the groups that grant them access and an optional `until` expiry (the earliest expiry among those groups).
-    - **`values`:** the user's resolved per-person setting values for each app, with the value's source (e.g., "from office_milan" for a per-group value, "own entry" for a person-entered value).
+    - **`apps`:** enabled instances whose population includes this user (also those that give them no value), and those where they have a person-entered value. `via` lists the person's groups that grant access (the app's access group; `[]` when every signed-in person has access), each with its membership's end (`null` = no end). `until` is when access ends: `null` when `via` is empty or some membership has no end, else the latest end.
+    - **`values`:** the user's resolved per-person setting values (the same ones My apps shows them, never secrets or credentials) and person-entered values, in display form. `from` is the value's source: the winning group's name (a combined value's groups, `", "`-joined), `"default"`, `"fail-closed"`, or for a person-entered value `"own entry"` / `"set by <admin>"`.
 
 - **`GET /api/directory/groups/{g}/uses`**: returns what uses a group: the apps it grants access to, the settings that reference it, and the permissions it holds.
     ```json
@@ -962,7 +963,7 @@ The following two routes exist on **both listeners** (Hub at `:8080` and people 
         {
           "instance": "<id>",
           "name": "<display name>",
-          "role": "access" | "admin"
+          "role": "access" | "admin" | "privileged"
         }
       ],
       "settings": [
@@ -971,14 +972,15 @@ The following two routes exist on **both listeners** (Hub at `:8080` and people 
           "app": "<name>",
           "key": "<option key>",
           "label": "<option label>",
+          "scope": "person" | "group" | "instance",
           "value": "<setting value>"
         }
       ],
       "permissions": ["edit_details", "invite", "remove"]
     }
     ```
-    - **`apps`:** instances that use this group as their `access_group` or `admin_group`.
-    - **`settings`:** per-group setting values that reference this group.
+    - **`apps`:** instances (enabled or not) that use this group as their `access_group` (`access`) or `admin_group` (`admin`), or whose privileged per-person option has a row naming it (`privileged`: the group guards, §9.6).
+    - **`settings`:** every setting row and group record that names this group, in every instance — exactly the rows deleting the group would drop (the exact name; another case only when bound to the group's LLDAP id): per-person rows (`person`), group records (`group`) and instance group / groups values (`instance`, `value` is the group's name). Values in display form.
     - **`permissions`:** delegated permissions granted to this group (§9.6).
 
 ## 10. Landing portal app list (Hub → core)
@@ -3163,8 +3165,8 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `convert_group_preview` | R | `POST /api/directory/groups/{group}/convert-preview` |
     | `import_review` | R | `POST /api/directory/import/apply` |
     | `audit_recent` (**NEW (people & groups):** takes optional `group` and `user` filters) | R | `GET /api/directory/audit` |
-    | `get_person_apps` (**NEW (people & groups)**) | R | `GET /api/directory/users/{u}/apps` |
-    | `get_group_uses` (**NEW (people & groups)**) | R | `GET /api/directory/groups/{g}/uses` |
+    | `get_person_apps` (**NEW (people & groups)**) | R | `GET /api/directory/users/{username}/apps` |
+    | `get_group_uses` (**NEW (people & groups)**) | R | `GET /api/directory/groups/{group}/uses` |
     | `create_person` | U | `POST /api/directory/users` |
     | `update_person` | W | `PUT /api/directory/users/{username}` |
     | `set_details` | D or W per call | `PUT /api/directory/users/{username}/details` |
