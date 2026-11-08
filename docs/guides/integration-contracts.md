@@ -892,9 +892,9 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
 
 - **`DELETE /api/directory/groups/{g}/members/{u}`**: removes a membership (manual group) or an "added by hand" entry (rule-based group). Evaluator run, `applied` / `why`, and refusals as above.
 
-- **`POST /api/directory/groups/{g}/exceptions`** with `{"username": "<user>", "mode": "kept_out", "reason": "<text>", "until"?: "<RFC 3339>"}`: creates a "kept out" entry (an exclude exception) on a rule-based group. The `reason` field is required. `until` is optional. Refused on manual groups. Evaluator run, `applied` / `why`, and refusals as above.
+- **`POST /api/directory/groups/{g}/exceptions`** with `{"user": "<user>", "include": false, "reason": "<text>", "until"?: "<RFC 3339>"}` (the existing body): `include: false` creates a "kept out" entry (an exclude exception), `include: true` an "added by hand" entry, on a rule-based group. The `reason` field is required. `until` is optional. Refused on manual groups. Evaluator run, `applied` / `why`, and refusals as above.
 
-- **`DELETE /api/directory/groups/{g}/exceptions/{u}`**: removes a "kept out" entry. Evaluator run, `applied` / `why`, and refusals as above.
+- **`DELETE /api/directory/groups/{g}/exceptions/{u}`**: removes the person's entry (added by hand or kept out). Evaluator run, `applied` / `why`, and refusals as above.
 
 - **`PUT /api/directory/groups/{g}/rule`** with the rule definition: sets a rule-based group's rule. Evaluator run, `applied` / `why`, and refusals as above.
 
@@ -3220,7 +3220,7 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `delete_person` | D (needs `remove`) | `DELETE /api/directory/users/{username}` |
 
 - **New tools and arguments** (**NEW (people & groups)**):
-    - **`add_member`** now takes optional `reason` and `until` arguments. When the target group is rule-based and the person does not already match its rule, `reason` is required (the tool is refused without it, as the HTTP route is). The tool's class remains **D or W per call** (unchanged).
+    - **`add_member`** now takes optional `reason` and `until` arguments. When the target group is rule-based, `reason` is required (also when the person already matches its rule: the entry is stored and flagged "also matches the rule") (the tool is refused without it, as the HTTP route is). The tool's class remains **D or W per call** (unchanged).
     - **`audit_recent`** (class **R**) now takes optional `group` and `user` filter arguments, in addition to the existing `via` argument. It returns `{entries, offset, next_offset}` with the given filters applied (§9.7).
     - **`get_person_apps`** (class **R**) is a new tool that twins `GET /api/directory/users/{u}/apps` (§9.7). It takes a `username` argument and returns `{apps, values}`.
     - **`get_group_uses`** (class **R**) is a new tool that twins `GET /api/directory/groups/{g}/uses` (§9.7). It takes a `group` argument and returns `{apps, settings, permissions}`.
