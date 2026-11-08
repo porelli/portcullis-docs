@@ -840,6 +840,9 @@ option):
 - A compose service's `profiles:` is a list of literal names of that form,
   and every service with `profiles:` is started by some value of some
   option's `profiles` — otherwise the Hub would never start it.
+- A service without `profiles:` may not name a profiled service in
+  `depends_on`, `network_mode: service:<x>` or `volumes_from`: compose
+  couldn't start it for a choice that leaves that service off.
 - `COMPOSE_PROFILES` is the Hub's: a manifest may not declare it.
 
 ### Deliveries
@@ -1328,8 +1331,9 @@ job without being listed; list the others here.
 jobs: [migrate]
 ```
 
-Each entry is a service of `compose.yml`, listed once, with no Traefik
-router (a job serves nothing).
+Each entry is a service of `compose.yml`, listed once. No job — listed
+or found through `depends_on` — may have a Traefik router (a job serves
+nothing).
 
 ## instances
 
