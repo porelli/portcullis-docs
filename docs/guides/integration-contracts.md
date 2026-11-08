@@ -1457,7 +1457,7 @@ The first instance is created through the same `POST /api/instances` with `id` =
 
 - **Status.** The rows of `GET /api/templates/status/{id}` (`{name, service, state, status}`) gain, for a job's container (§3 "One-off jobs"), `"job": true` and `"job_state"`: `done` (exited 0), `failed` (exited non-zero), `running` (running or restarting) or `pending` (created, never started). Other rows carry neither key.
 - **Fine.** An instance is all running when every service of its project (with its profiles, §13.18) that isn't a job has a running container and every job is `done`. A `failed` job, and a job with no container at all (it never ran), is not fine: the instance is flagged. Counts "n of m" (the Apps list, the start's `start` / `healthy` steps): `m` is the project's services, `n` the running ones, a job counting when `done` ("setup job done").
-- **Drift and readiness.** Drift never reports an exited job as a stopped service; the start's `healthy` step counts a `done` job ready (§11.7).
+- **Drift and readiness.** Drift never reports an exited-0 job as a stopped service; a failed job (exited non-zero, dead, or ContainerState error) creates drift kind **`job_failed`** (NEW, apps); a job with no container creates **`job_missing`** (NEW, apps), unless the service has compose `profiles:` (profiled services are skipped). The start's `healthy` step counts a `done` job ready; a failed job ends the wait early with warning (§11.7).
 
 #### Logs per container
 
