@@ -902,7 +902,7 @@ The Hub's directory API routes (on both the Hub listener at `:8080` and the peop
 
 #### Group views
 
-- **`GET /api/directory/groups/{g}`** (or `GET /api/directory` with a group filter): returns `GroupView` objects. **NEW (people & groups):** each `GroupView` of a rule-based group includes a `"matches": ["<username>", ...]` array listing the usernames that match the rule **right now**, before the evaluator has run. This field is present only on rule-based groups and only in responses to administrators (§9.5). Delegates and non-admins do not see it.
+- **`GET /api/directory/groups/{g}`** (or `GET /api/directory` with a group filter): returns `GroupView` objects. **NEW (people & groups):** each `GroupView` of a rule-based group includes a `"matches": ["<username>", ...]` array listing the usernames that match the rule **right now**, before the evaluator has run. This field is present only on rule-based groups and only in responses to administrators (§9.5). Delegates and non-admins do not see it. The same holds for the entries' `reason`, `by` and `at` (each `exceptions` item) and a user's `memberships[].reason`: only administrators get them (reasons can be sensitive); everyone else gets each entry as `{user, include, until, expired?}` and a membership's `how` / `until` without its reason.
 
 #### User creation
 
