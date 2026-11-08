@@ -1522,10 +1522,21 @@ answers administrators only, on both listeners (403 for everyone else).
 ## Users & Groups
 
 People and groups live in **one place**: the people page,
-`https://people.<domain>/`. The Hub's **Users & Groups** tab is a link there
-(it opens in the same tab). Administrators get every admin operation on the
-people page (see [Access levels](#access-levels)); the Hub itself keeps only
+`https://people.<domain>/`. The Hub page and the people page share one top
+navigation: **Portal** (`https://<domain>/`), **Hub** (`https://hub.<domain>/`,
+shown to administrators only) and **People** (`https://people.<domain>/`), with
+the current site highlighted; each page's own tabs sit below it. The Hub has no
+Users & Groups tab any more: use **People** in the navigation (old `#users…`
+links still redirect, see below). Administrators get every admin operation on
+the people page (see [Access levels](#access-levels)); the Hub itself keeps only
 the [Audit log](#audit-log) tab, which covers the whole Hub.
+
+Every field that takes a person or a group (a group's **Add people**, a
+person's **Add to group…**, person fields, rule values, CSV import cells, the
+settings panel's group rows and group / people lists, the AI tab's **Revoke
+for**) suggests matches as you type: by username, display name or email for
+people, by name for groups, at most 8, with ↑ / ↓, Enter and Esc. It only
+suggests people and groups you can already see on the people page.
 
 LLDAP has no single sign-on, so its own web UI isn't published:
 `directory.<domain>` redirects to `people.<domain>`, and the LLDAP UI is
@@ -1533,8 +1544,22 @@ reachable only from the server for recovery
 ([`portcullis lldap-ui`](cli.md#lldap-ui)). The Hub uses its own LLDAP service
 account, `portcullis-hub`, which core creates and mounts as files (see
 [Integration Contracts §9](../guides/integration-contracts.md#9-hub-lldap-users-groups)).
-If core doesn't provide it, the people page says user management is disabled
-and everything else keeps working.
+Nobody can use it, so it is never listed: not among people, in the org chart,
+in group members or in any suggestion. **Setup** names it in one line ("Service
+account: portcullis-hub — used by the Hub to manage users and groups; it can't
+sign in."). If core doesn't provide it, the people page says user management
+is disabled and everything else keeps working.
+
+**The built-in `admin` account** (LLDAP's bootstrap admin) manages Portcullis
+(apps, people, settings) but can't be added to any group, so it can't use the
+apps it installs. Its person page says so and its **Add to group…** is
+disabled; it is never suggested where an app's people are picked (**Revoke
+for**, the settings panel's people lists). Signed in to the Hub as `admin`, the
+App Catalog shows "You're signed in as the built-in admin, which can't use
+apps. Invite yourself as a person to use them." (linking to the invite form on
+the people page), and enabling an app adds "admin can't open it — invite
+yourself to use it". To use apps, invite yourself as a regular person and add
+that account to the apps' groups.
 
 The people page has the tabs **People**, **Groups**, **Org chart**, **My
 apps** (each person's own app settings, see [My apps](#my-apps)) and
