@@ -56,6 +56,7 @@ field.
 | `tests` | object | Yes, for templates in the default catalog (`tests.signin`; validate.py) | CI only, the Hub ignores it. See [tests.signin](#testssignin) |
 | `instances` | `multi` or `single` | No (default `single`) | **NEW (contract v2).** Whether the Hub may run more than the default instance. See [instances](#instances) |
 | `hosts` | object | No | Per-host properties by host router name; today only `immutable`. See [hosts.immutable](#hostsimmutable) |
+| `jobs` | list of compose service names | No | **NEW (apps).** One-off setup services that exit when done. See [jobs](#jobs) |
 | `ai` | object | Yes | **NEW (AI support).** `mcp` (companions) or `unsupported` (the reason). See [ai](#ai) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
@@ -451,6 +452,9 @@ settings:
 | `self_visible` | boolean (default `true`) | `person` (and `person_id`, which requires `false`); on an instance option only `true` | `false` hides the person's value from My apps. An instance option with `self_visible: true` may be shown in a `person_secret` `info` line (`{value:<key>}`) |
 | `unique` | boolean | `list`, or `person_entered` `string` / `int` | No two items (list) or no two people (person-entered) hold the same value |
 | `admin_override` | boolean | `person_entered` only | Admins may enter a value for someone (they can always clear one) |
+| `setup` | boolean | `instance` scope, not `secret` | **NEW (apps).** A setup choice: asked in the setup form before the first start. See [Setup options](#setup-options-setup-fixed_after_start-profiles) |
+| `fixed_after_start` | boolean | with `setup` only | **NEW (apps).** The value can't change after the instance's first successful start |
+| `profiles` | map: option value → list of compose profiles | `setup` `enum` options only | **NEW (apps).** The compose profiles each value starts (`[]` for none); every value has an entry |
 
 Type constraints (`pattern`, `min`, `options`, …) are in [Types](#types). A
 constraint the type doesn't take (`min` on an `enum`) is refused.
@@ -781,6 +785,62 @@ settings:
 
 The data file `people.tsv` then holds lines such as `person	alice	uid	20000`,
 `person	alice	size_limit	10240` and `value	share_prefix	TimeMachine`.
+
+### Setup options (`setup`, `fixed_after_start`, `profiles`)
+
+**NEW (apps).** The Hub asks for an instance's setup choices before its
+first start (Install… / + Add instance), with their defaults
+([contracts §13.18](integration-contracts.md#1318-setup-options-and-compose-profiles-new-apps)). After the first start they are ordinary
+settings, except those with `fixed_after_start: true`: changing one would
+mean moving the data, so a save that changes it is refused (`409`); the way
+to another choice is a new instance and a restore of a backup.
+
+A setup `enum` may switch which compose services run: `profiles` maps each
+value to the compose profiles it starts, and the Hub writes the instance's
+`COMPOSE_PROFILES` from the current values.
+
+```yaml
+settings:
+  options:
+    - key: database
+      label: Database
+      type: enum
+      options:
+        - {value: mysql, label: MySQL / MariaDB}
+        - {value: postgres, label: PostgreSQL}
+      default: mysql
+      setup: true
+      fixed_after_start: true
+      profiles:
+        mysql: [db-mysql]
+        postgres: [db-postgres]
+```
+
+```yaml
+# compose.yml
+services:
+  db-mysql:
+    profiles: [db-mysql]
+    # …
+  db-postgres:
+    profiles: [db-postgres]
+    # …
+```
+
+Rules (the Hub and `tests/validate.py` refuse anything else, naming the
+option):
+
+- `setup` only on `scope: instance` options that aren't `secret`;
+  `fixed_after_start` only with `setup`.
+- `profiles` only on `setup` `enum` options of scope instance, with a
+  `default`; its keys are exactly the option's values (write `value: []`
+  for a value that starts no profile); each profile matches
+  `^[A-Za-z0-9][A-Za-z0-9_.-]*$` and is listed by at least one compose
+  service.
+- A compose service's `profiles:` is a list of literal names of that form,
+  and every service with `profiles:` is started by some value of some
+  option's `profiles` — otherwise the Hub would never start it.
+- `COMPOSE_PROFILES` is the Hub's: a manifest may not declare it.
 
 ### Deliveries
 
@@ -1254,6 +1314,23 @@ tests:
         match: "e2eoutsider signed in"
 ```
 
+## jobs
+
+**NEW (apps).** Compose services that run once and exit (a setup or
+migration container). The Hub counts a job's container as done when it
+exited 0 and as failed when it exited non-zero, whatever its `restart:`
+policy, so a finished job never makes the app "not all running"
+([contracts §11.9](integration-contracts.md#119-labels-groups-setup-choices-env-overrides-and-jobs-new-apps)). A service another service waits for with
+`depends_on: {<job>: {condition: service_completed_successfully}}` is a
+job without being listed; list the others here.
+
+```yaml
+jobs: [migrate]
+```
+
+Each entry is a service of `compose.yml`, listed once, with no Traefik
+router (a job serves nothing).
+
 ## instances
 
 **NEW (contract v2).** `instances: multi` lets the Hub run several fully
@@ -1499,6 +1576,11 @@ green Lint means the Hub lists the template. Besides the field rules above:
   where a reference is exactly `$NAME`, `${NAME}`, `${NAME:-n}` or
   `${NAME-n}` naming an instance `int` option (no mixed text, nesting or
   `+` forms); YAML `!!binary` is refused anywhere.
+
+- **Setup options and jobs** (**NEW (apps)**): the rules of
+  [Setup options](#setup-options-setup-fixed_after_start-profiles) and
+  [jobs](#jobs), with the Hub's messages (`setting <key>: …`,
+  `jobs: <service> …`, `service <s>: …`).
 
 - **File sharing** ([Per-person credentials and ids](#per-person-credentials-and-ids-person_secret-person_id)):
   `person_secret` / `person_id` only on a router-less `custom` template with
