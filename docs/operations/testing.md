@@ -40,6 +40,13 @@ exactly as on a real install. Every step drives the stack through
     - revocation by serial list and by a real openssl-generated CRL
     - the identity headers and attribute headers returned on allow
     - `expiring` array: membership treated as absent once `now >= at`, token withholding (`Authorization` and `X-Forwarded-Access-Token` withheld when an expired membership is stripped)
+- **`tests/test_e2e_fsops.py`** (step "e2e helper unit tests"). It runs with the same venv's interpreter, and needs nothing but the standard library. It tests `run_op` from `tests/e2e/e2e_fsops.py`, the module `e2e_filesharing.py` takes it from, against a fake Hub API. No stack, network or Playwright is involved:
+    - a busy `409` whose record is the Hub's own running `restart` is waited for, polled by that restart's `op_id`. If the restart ends ok, the operation is sent exactly once more; if it ends failed, the test fails with its record.
+    - any other `409` fails at once: another op, a restart that is no longer running, plain text, or a second `409` after the resend.
+    - a `202` whose `poll` isn't the op's own `?op_id=` record fails, and so does a poll that answers another op.
+    - every failure message is scrubbed: a password or NT hash in a record never reaches the output.
+
+    The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
 - **Compose validity and wiring**, against a generated `.env`. `docker compose config -q` must pass for the core, apps and test compose files. It also checks:
     - `HUB_PROXY_SECRET` is generated, and an empty one is rejected
     - the public default forward-auth secret is gone
@@ -57,7 +64,7 @@ exactly as on a real install. Every step drives the stack through
     - `blackbox_exporter --config.check`
     - a sanity check of the provisioned dashboard JSON
 - **enroll** `go vet` + `go test` in the pinned Go image: CSR validation, admin requirement, content type, AppRole login and re-login, self-service renewal.
-- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`) is decoded strictly and re-encoded byte for byte. The tests cover the token rules (signature, issuer, audience, scope, client, LoA, population, `Origin`), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream rules) and the Portcullis proxy. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890.
+- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`) is decoded strictly and re-encoded byte for byte. The tests cover the token rules (signature, issuer, audience, scope, client, LoA, population, `Origin`), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream rules) and the Portcullis proxy. The gate writes a request's access-log line after the response has gone out. Before reading the log, the end-to-end tests therefore wait until every request they sent (except the open `GET` stream) has finished being handled, then flush the log's queue. A test never reads a line that is still on its way. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890.
 
 ### `build-and-test` (whole stack)
 
@@ -232,8 +239,14 @@ Assertions: no containers or volumes left, no Keycloak client `slowpull`, no
 groups `users_slowpull` / `admin_slowpull`, the instance disabled, and
 `enable.stop` in the audit. Poll helpers: Python e2e scripts use the shared
 module `tests/e2e/e2e_ops.py`; CI shell steps source `tests/e2e/hubop.sh`
-(shellchecked by the unit-tests job). Both poll the op record every 2 s and
-print the record's error, hint, output and steps on failure.
+(shellchecked by the unit-tests job). Both poll each operation's own record
+every 2 s: the 202's `poll`, `/api/instances/<id>/op?op_id=<op_id>`, which
+the Hub keeps after a newer op (such as its own queued restart) has replaced
+the instance's current record. A `poll` that isn't of that form, or a record
+of another op, fails at once. On failure both print the record's error,
+hint, output and steps. Stop is sent with the enable's `op_id`. Folder and
+doctor ops poll their own records (`/api/folders/<id>/op`, `/api/doctor/op`),
+which have no history.
 
 ### `e2e-settings` (app settings panel)
 
@@ -512,11 +525,13 @@ command".
 ### Running the core tests locally
 
 ```bash
-python3 tests/test_group_gate.py
+python3 tests/test_group_gate.py   # in a venv with group-gate/requirements.txt
+python3 tests/test_e2e_fsops.py
 bash tests/test_cli.sh
 bash tests/test_shell_libs.sh
 (cd enroll && go test ./...)
-shellcheck -S warning portcullis scripts/lib/*.sh tests/*.sh
+(cd mcp-gate && go vet ./... && go test -race ./...)
+shellcheck -S warning portcullis scripts/lib/*.sh tests/*.sh tests/e2e/*.sh
 # compose validity without Docker containers:
 PORTCULLIS_ROOT=/tmp/x ./portcullis init --env-only --non-interactive --domain ci.example.org --dns-provider none
 ```
