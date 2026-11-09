@@ -26,7 +26,8 @@ up first.
    `--skip-backup`.
 4. **Pulls images.** Core images are pinned by digest in `docker-compose.yml`,
    so the pull only changes something when the pins changed in the commit you
-   pulled. The Hub image comes from `HUB_IMAGE` (see below).
+   pulled. The Hub image comes from `HUB_IMAGE` and the Keycloak image from
+   `KEYCLOAK_IMAGE` (see below).
 5. **Re-runs the setup steps.**
     - `vault init`: unseal, enroll AppRole and policy.
     - `pki setup`: rewrites the `client-cert` role, so a changed
@@ -88,14 +89,15 @@ backup:
 
 ## Versions and releases
 
-How the four repositories are versioned is defined in
+How the five repositories are versioned is defined in
 [Integration Contracts §1](../guides/integration-contracts.md#1-versions-and-releases):
 
 - **Tags.** Every repo uses semver tags `vMAJOR.MINOR.PATCH`. A breaking change
   to an integration contract bumps MAJOR in every repo it affects.
 - **Core images** are pinned `tag@sha256:digest` in every compose file and
-  profile, so a core commit fully determines which Traefik, Keycloak, Vault,
-  LLDAP, oauth2-proxy, PostgreSQL, socket-proxy and monitoring versions run.
+  profile, so a core commit fully determines which Traefik, Vault, LLDAP,
+  oauth2-proxy, PostgreSQL, socket-proxy and monitoring versions run. The Hub
+  and Keycloak images are the exception on core `main` (`edge`, below).
   Dependabot proposes updates weekly; CI fails on anything unpinned.
 - **Templates.** The Hub tracks the default branch of each template source;
   it pulls updates at every start, during `./portcullis upgrade` and with
@@ -121,12 +123,14 @@ only if all of the following holds:
    **released** Hub tag pinned by digest
    (`ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…`). That tag must be a
    published, non-prerelease Hub release that still resolves to that digest.
+   The `KEYCLOAK_IMAGE` default is pinned the same way, to a released
+   `ghcr.io/porelli/portcullis-keycloak` tag and its digest.
 3. **CI.** The full core CI (`ci.yml`, called as a reusable workflow) passes on
    the tagged commit.
 
 Then it publishes:
 
-- release notes: the changelog section, the pinned Hub image, and GitHub's
+- release notes: the changelog section, the pinned Hub and Keycloak images, and GitHub's
   generated notes
 - `portcullis-X.Y.Z.tar.gz`: the checkout without `.git`, plus a `VERSION`
   file. The tarball is reproducible: sorted, numeric owner, commit time
@@ -166,9 +170,30 @@ cosign verify ghcr.io/porelli/portcullis-hub:1.2.3 \
 docker buildx imagetools inspect ghcr.io/porelli/portcullis-hub:1.2.3   # top-level Digest:
 ```
 
+### Keycloak image
+
+`KEYCLOAK_IMAGE` selects Keycloak. It follows the Hub's pattern exactly: the
+image `ghcr.io/porelli/portcullis-keycloak` (repository
+[porelli/portcullis-keycloak](https://github.com/porelli/portcullis-keycloak))
+is the official Keycloak, pinned by digest, plus Portcullis's sign-in extension
+([Sign-in methods](auth-policies.md)).
+
+- **On core `main`** the default is `ghcr.io/porelli/portcullis-keycloak:edge`,
+  the latest build of that repository's `main`.
+- **A core release** pins a released tag by digest, like `HUB_IMAGE`.
+- **Overriding it in `.env`?** Use a released tag **and** its digest:
+
+    ```bash
+    KEYCLOAK_IMAGE=ghcr.io/porelli/portcullis-keycloak:1.2.3@sha256:<digest>
+    ```
+
+Releases are published as `X.Y.Z`, `X.Y`, `X` and `sha-<short>`, with no
+`latest` tag. The Keycloak image, the Hub and core must match: group-gate,
+the Hub and the extension read the same sign-in files.
+
 !!! note "No releases yet"
     No repository has been tagged yet. Core `main` therefore runs the Hub's
-    `edge`, and the templates CI tests against core `main`. `CHANGELOG.md`
+    and the Keycloak image's `edge`, and the templates CI tests against core `main`. `CHANGELOG.md`
     collects everything under `[Unreleased]`.
 
 ## Upgrade notes
@@ -231,9 +256,9 @@ the same notes in its `CHANGELOG.md`.
 
 | You changed | Run |
 |-------------|-----|
-| `ACME_STAGING` or `MTLS_ENABLED` | `./portcullis config apply && ./portcullis up` |
+| `ACME_STAGING` | `./portcullis config apply && ./portcullis up` |
 | `CLIENT_CERT_TTL` | `./portcullis upgrade` (or `./portcullis pki setup`); only new certificates are affected |
 | `FORWARD_AUTH_CLIENT_SECRET` | `./portcullis oidc register && ./portcullis up` |
 | An empty rotatable secret (to rotate it) | `./portcullis upgrade` generates a new one |
-| `HUB_IMAGE` | `./portcullis up` |
+| `HUB_IMAGE` or `KEYCLOAK_IMAGE` | `./portcullis up` |
 | Network ranges | See [Security & Hardening → Networks](hardening.md#networks). Docker can't change an existing network in place |

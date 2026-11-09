@@ -39,7 +39,7 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`backup verify`](#backup-verify) | `restic check` + restore + sanity checks (or `--local`) |
 | | [`backup schedule`](#backup-schedule) | systemd timer for daily backups |
 | | [`restore`](#restore) | Restore a local or off-host (`--from-offsite`) backup |
-| Configuration | [`config apply`](#config-apply) | Apply `ACME_STAGING` / `MTLS_ENABLED`, rebuild the CA bundle |
+| Configuration | [`config apply`](#config-apply) | Apply `ACME_STAGING`, rebuild the CA bundle |
 | | [`config init`](#config-init) | Keep your settings in `config/`, a separate git repo |
 | | [`dns setup`](#dns-setup) | Create A/AAAA records for the domain and its wildcard |
 | Vault and PKI | [`vault init`](#vault-init) | Initialise and unseal Vault, set up the enroll AppRole |
@@ -50,6 +50,7 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`oidc register`](#oidc-register) | Create the core OIDC clients and push their secrets from `.env` |
 | | [`invite`](#invite) | One-time setup link: register a passkey, signed in (no password) |
 | | [`lldap-ui`](#lldap-ui) | Break-glass SSH tunnel to LLDAP's own web UI (server only) |
+| | [`signin reset-core`](#signin-reset-core) | Locked out of the Hub: put the Hub and people pages back on Standard |
 | Client certificates (YubiKey PIV) | [`cert enroll`](#cert-enroll) | New key and certificate on a YubiKey |
 | | [`cert renew`](#cert-renew) | New certificate for the key already on the YubiKey |
 | | [`cert revoke`](#cert-revoke) | Revoke a certificate (enforced by group-gate) |
@@ -299,12 +300,15 @@ the backup.
 portcullis config apply [--bundle-only]
 ```
 
-Applies the TLS toggles in `.env` and rebuilds `certs/ca-bundle.crt`:
+Applies the ACME toggle in `.env` and rebuilds `certs/ca-bundle.crt`:
 
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it clears Traefik's `acme.json` so Traefik registers again |
-| `MTLS_ENABLED=true\|false` | `true` | Rewrites `traefik/dynamic/tls.yml`. With `false` no tier requests client certs, and routers that rely only on the protected tier become unauthenticated |
+
+It never writes `traefik/dynamic/tls.yml`: that file is static, and which apps
+ask for a client certificate follows the sign-in methods and templates in the
+Hub ([TLS tier](auth-policies.md#traefik-tls-tier)).
 
 Run `portcullis up` afterwards. It restarts Traefik and, when the bundle
 changed, the two forward-auth services, which read it only at start-up (the
@@ -508,6 +512,35 @@ reachable only from the server. The command prints the SSH tunnel to run on
 your machine; then open `http://localhost:17170` and sign in as the LLDAP
 admin (`LLDAP_ADMIN_PASSWORD` in `.env`). Use it for recovery only:
 day-to-day, people and groups are managed in the Hub at `hub.<domain>` (admins) or `people.<domain>` (everyone, with per-request permission checks). Manual changes to rule-based groups in LLDAP are reverted by the Hub's evaluator and audited.
+
+---
+
+### signin reset-core
+
+```
+portcullis signin reset-core [--yes]
+```
+
+Recovery when no administrator can sign in to the Hub any more (a method
+switched off, a template edited, or the Hub moved to a template nobody meets;
+the Hub refuses such saves, but this covers the rest). It stops the Hub, runs
+the Hub's own `hub signin reset-core` against its data, and starts the Hub
+again. The reset:
+
+- puts the Hub and people.&lt;domain&gt; core pages on **Standard**;
+- restores the built-in Standard rule (any passkey or any certificate) and
+  enables it;
+- switches Standard's methods back on (the passkey kinds and the YubiKey
+  certificate);
+- is audited `signin.reset_core` (actor `cli`) and prints what it changed.
+
+Without `--yes` it asks you to type `reset`; with no terminal and no `--yes`
+it refuses. See
+[Sign-in methods → Locked out of the Hub](auth-policies.md#locked-out-of-the-hub).
+
+| Option | Meaning |
+|--------|---------|
+| `--yes` | Don't ask (for scripts and CI) |
 
 ---
 

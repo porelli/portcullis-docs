@@ -5,7 +5,7 @@ nav:
   - Monitoring: monitoring.md
   - Security & Hardening: hardening.md
   - Groups & Access Control: groups.md
-  - Authentication Policies: auth-policies.md
+  - Sign-in Methods & Templates: auth-policies.md
   - Hub Management: hub.md
   - File Sharing: file-sharing.md
   - AI Support: ai.md

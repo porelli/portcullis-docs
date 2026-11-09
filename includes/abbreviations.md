@@ -18,8 +18,8 @@
 *[mTLS]: Mutual TLS authentication using client certificates
 *[LoA]: Level of Authentication: 1 = signed in with a passkey or client certificate, 2 = hardware-backed (hwk), 3 = client certificate (mtls)
 *[acr]: The requested/achieved LoA in OIDC (hwk, mtls)
-*[amr]: Authentication Methods Reference - how the user authenticated (hwk, mtls)
-*[hwk]: Hardware key authentication method (passkey/FIDO2)
+*[amr]: Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)
+*[hwk]: amr of a security key passkey (a YubiKey touch)
 *[group-gate]: Per-request authorization middleware checking groups, policies, and revocation
 *[LLDAP]: Light LDAP directory server storing users and groups
 *[Keycloak]: Identity provider handling WebAuthn, X.509, and OIDC/SAML
@@ -36,12 +36,12 @@
 *[DNS-01]: ACME challenge proving domain control via DNS TXT records
 *[ACME]: Automated Certificate Management Environment - protocol for issuing certificates
 *[wildcard certificate]: TLS certificate valid for all subdomains (*.domain)
-*[policy file]: JSON file (version 5) mapping full hostnames to groups, auth policies, and expiries
+*[policy file]: JSON file (version 6) with the sign-in methods and templates, and full hostnames mapped to templates, groups and expiries
 *[public exception]: Unauthenticated paths for share links (off by default)
 *[public exceptions]: Unauthenticated paths for share links (off by default)
 *[share token]: URL token granting anonymous access to a specific resource
 *[share tokens]: URL tokens granting anonymous access to specific resources
-*[step-up]: Prompting for additional authentication when current session is insufficient
+*[step-up]: Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template
 *[setup link]: One-time invite URL for enrolling a user's first passkey
 *[setup links]: One-time invite URLs for enrolling users' first passkeys
 *[delegated permission]: Permission granted to non-admins to manage people (edit_details, invite, remove)
@@ -102,3 +102,9 @@
 *[PKCE]: Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it
 *[op record]: Operation record stored per instance (ops/<id>.json) with progress steps, what was created, and the outcome
 *[point of no return]: The step after which an operation can no longer be stopped (only delete has one: the first volume removal)
+*[sign-in method]: One of six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), switched on or off for the whole server
+*[sign-in methods]: The six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), each switched on or off for the whole server
+*[sign-in template]: A named rule over sign-in methods (all of / any of, nested), with a score out of 5
+*[sign-in templates]: Named rules over sign-in methods (all of / any of, nested), each with a score out of 5
+*[pc_method]: Step-up parameter naming the one sign-in method Keycloak should ask for
+*[add-stronger]: Settings switch allowing a person to add a stronger sign-in method than the one they signed in with

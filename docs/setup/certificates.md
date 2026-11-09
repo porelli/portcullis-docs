@@ -1,22 +1,24 @@
 # TLS Certificates & mTLS
 
-Portcullis has two TLS toggles in `.env`. They are independent of each other:
+Portcullis has one TLS toggle in `.env`:
 
 | Setting | `.env` variable | Default | What it controls |
 |---------|----------------|---------|------------------|
 | **Certificate source** | `ACME_STAGING` | `false` | Staging (test) vs production (trusted) Let's Encrypt certs |
-| **Client certificates** | `MTLS_ENABLED` | `true` | Whether Traefik requests mTLS client certs (PIV/YubiKey) |
 
-After changing either one, run:
+After changing it, run:
 
 ```bash
 ./portcullis config apply
 ./portcullis up
 ```
 
-`config apply` rewrites `traefik/dynamic/tls.yml` (Traefik hot-reloads it),
-sets `ACME_CA_SERVER` in `.env`, and rebuilds `certs/ca-bundle.crt`. `up`
-recreates Traefik when its environment changed.
+`config apply` sets `ACME_CA_SERVER` in `.env` and rebuilds
+`certs/ca-bundle.crt`. `up` recreates Traefik when its environment changed.
+
+Whether browsers are asked for a **client certificate** is not an `.env`
+setting: it follows the sign-in methods switched on in the Hub and each app's
+template ([TLS tiers](#tls-tiers)).
 
 ---
 
@@ -61,20 +63,32 @@ Browser workarounds for staging certs: start Chrome with
 
 ### TLS tiers
 
-With `MTLS_ENABLED=true`, Traefik offers three TLS option sets
-(`traefik/dynamic/tls.yml`):
+Core's `traefik/dynamic/tls.yml` is static (`config apply` never writes it)
+and defines three TLS option sets:
 
 | Tier | Traefik option | Behavior |
 |------|---------------|----------|
 | **protected** | `RequireAndVerifyClientCert` | Client cert **required**. Without one, the TLS handshake fails |
 | **authaware** | `VerifyClientCertIfGiven` | Client cert **optional**. Verified against `certs/ca-chain.crt` if present |
-| **public** | `NoClientCert` | No client cert requested |
+| **public** | no `clientAuth` | No client cert requested |
 
-All core routers (`auth`, `hub`, `enroll`, `traefik`, `directory`) use
-`authaware`. For apps, the Hub derives the tier from the app's
-[access policy](../operations/auth-policies.md#traefik-tls-tier) and writes it
-into a per-app compose override. You change it by editing the policy in the Hub,
-not the template's `compose.yml`.
+**Client-certificate requests follow the switches.** All core routers (`auth`,
+`hub`, `people`, the portal, `enroll`, `traefik`, `directory`, `metrics`,
+`mcp`) always use `authaware`: core pages always offer an optional
+certificate, and a browser without one shows nothing. For apps, the Hub picks
+the tier from the app's
+[sign-in template](../operations/auth-policies.md#traefik-tls-tier) and the
+certificate methods that are switched on, and writes it into a per-app
+compose override:
+
+- every alternative of the template needs a certificate → `protected`;
+- some alternative has one → `authaware`;
+- none has one (for example the YubiKey certificate method is off), or the app
+  has no Portcullis sign-in → `public`, so the browser is never asked;
+- an `mtls` app always gets `protected`.
+
+You change it in the Hub (Settings → Sign-in, or the app's template), not in
+the template's `compose.yml`.
 
 ### Issuing certificates
 
@@ -175,44 +189,43 @@ in front of Keycloak could log in as that user. Three things prevent it:
 
 See [Security & Hardening](../operations/hardening.md#header-spoofing-protections).
 
-### Sign-in levels (Keycloak browser flow)
+### Sign-in methods (Keycloak browser flow)
 
 The realm's browser flow `portcullis-universal` (kept equal to
-`keycloak/realm-export.json` by `./portcullis keycloak configure`) has **no
-password**:
+`keycloak/realm-export.json` by `./portcullis keycloak configure`) offers
+exactly the [sign-in methods](../operations/auth-policies.md#methods) that are
+switched on: the YubiKey certificate (automatic when the browser presents
+one), a passkey of any kind, or a password. Each records its own `amr` value:
 
-| acr (LoA) | Satisfied by | amr |
-|-----------|--------------|-----|
-| `pwd` (1) | the client cert (automatic when the browser presents one) or a passkey | `mtls` / `hwk` |
-| `hwk` (2) | reaching LoA 1: every LoA 1 factor is hardware-backed, so no second touch | (same) |
-| `mtls` (3) | the client cert | `mtls` |
+| Method | amr |
+|--------|-----|
+| YubiKey certificate | `mtls` |
+| Security key passkey | `hwk` |
+| Device-bound passkey | `dpk` |
+| Synced passkey | `spk` |
+| Password | `pwd` |
+| Browser certificate (not available yet) | `file` |
 
-oauth2-proxy asks for `hwk` by default; group-gate asks for `mtls` when a policy
-needs the cert. Keycloak's step-up on an existing session asks only for the
-levels it has not reached (no `prompt=login`).
+`mtls` is emitted **only** for a YubiKey (`pki_int`) certificate; a browser
+certificate would emit `file`. A step-up asks Keycloak for one method
+(`pc_method`), and Keycloak asks only for that method. The flow ends with a
+check of the app's template for apps that sign in with OIDC themselves.
 
 A user's first passkey comes from a one-time setup link
-(`./portcullis invite <user>`, or the Hub): Keycloak 26.8 cannot enrol a
-passkey from inside the flow
-(`WebAuthnPasswordlessAuthenticatorFactory.isUserSetupAllowed()` is false).
-The setup link signs the user in through the hidden identity provider
-`portcullis-invite` (enroll) with LoA 2 / amr `hwk`, after the passkey
-registration it requires. Details:
-[Security & Hardening](../operations/hardening.md#setup-links-enroll) and
-[Authentication Policies](../operations/auth-policies.md).
+(`./portcullis invite <user>`, or the Hub). The setup link signs the user in
+through the hidden identity provider `portcullis-invite` (enroll) after the
+passkey registration it requires, with `amr` `inv`: a session that meets no
+template, so the person touches their new passkey once more to open apps.
+Details: [Security & Hardening](../operations/hardening.md#setup-links-enroll)
+and [Sign-in Methods and Templates](../operations/auth-policies.md).
 
 ### mTLS binding (group-gate)
 
-A token with `amr=mtls` proves that a cert was used **at login**. Sometimes an
-app's policy is satisfied **only** through the `mtls` factor:
-
-- `mtls` alone
-- `all` including `mtls`
-- `any` where `mtls` is the only factor present in the token
-
-Then group-gate also requires the **current request** to carry a client cert
-that is not revoked and whose CN equals the session's `preferred_username`.
-Otherwise the user gets the step-up page (`acr_values=mtls`).
+A token with `amr=mtls` proves that a cert was used **at login**. group-gate
+counts the YubiKey certificate method only while the **current request**
+carries a client cert that is not revoked and whose CN equals the session's
+`preferred_username`. A template that needs the certificate then shows the
+step-up page (`pc_method=yubikey_cert`) or the needs-stronger page.
 
 So a session opened with a cert that is revoked later stops working
 immediately. So does a session replayed from another browser without the key.
@@ -330,44 +343,31 @@ with `BACKUP_PASSWORD` (see [Backups](../operations/backups.md)).
 
 ---
 
-## Disabling mTLS (`MTLS_ENABLED=false`)
+## Without client certificates
 
-All three tiers then behave like `public`: no client certificates are requested
-anywhere. Authentication is purely Keycloak passkeys (WebAuthn); there is no
-password sign-in. You don't need `ykman` or PIV setup. This is a good choice if you only want YubiKey
-tap-to-authenticate.
+Switch the **YubiKey certificate** method off in Hub → Settings → Sign-in
+(once no enabled template needs it: Standard, for instance, still accepts any
+passkey). Then no app asks for a client certificate any more: every app whose
+template has no certificate method left gets the `public` tier, and sign-in is
+passkeys only (plus passwords, if you switch them on). Core pages keep the
+optional certificate request; a browser without a certificate shows nothing.
+You don't need `ykman` or PIV setup.
 
-!!! danger "Routers that rely on mTLS alone become unauthenticated"
-    WebAuthn only protects routers that also run forward-auth
-    (`portcullis-auth@docker`). A router on the `protected` tier with no
-    forward-auth middleware (an `mtls`-method app) relied on the
-    client certificate *as* its authentication. With `MTLS_ENABLED=false`,
-    that router becomes **open**: there is no WebAuthn fallback. Before you
-    disable mTLS, add `portcullis-auth@docker,portcullis-groups@docker` to such
-    routers, or disable them.
-
-Also note:
-
-- App policies that require the `mtls` factor can no longer be satisfied, so
-  users get the step-up page.
-- X.509 login in Keycloak never fires.
-
-```bash
-# .env: MTLS_ENABLED=false
-./portcullis config apply
-./portcullis up
-```
+!!! danger "`mtls` apps rely on the certificate alone"
+    An app with `auth.method: mtls` has no forward-auth: the client
+    certificate at the TLS handshake **is** its sign-in, and it always keeps
+    the `protected` tier. Without issued certificates nobody reaches it.
 
 ---
 
 ## Common scenarios
 
-| Scenario | `ACME_STAGING` | `MTLS_ENABLED` | Notes |
-|----------|----------------|----------------|-------|
-| First DNS/ACME experiments | `true` | `false` | Untrusted certs, WebAuthn only |
-| Production, WebAuthn only | `false` | `false` | Trusted certs, no certificate management |
-| Production, full mTLS | `false` | `true` | PIV certs for browsers and CLI/API, WebAuthn fallback |
-| Development / CI | `true` | `true` | Everything, including mTLS flows |
+| Scenario | `ACME_STAGING` | YubiKey certificate method | Notes |
+|----------|----------------|----------------------------|-------|
+| First DNS/ACME experiments | `true` | off | Untrusted certs, passkeys only |
+| Production, passkeys only | `false` | off | Trusted certs, no certificate management |
+| Production, with YubiKey certificates | `false` | on | PIV certs for browsers and CLI/API, passkeys too |
+| Development / CI | `true` | on | Everything, including certificate flows |
 
 ---
 
@@ -391,7 +391,8 @@ an admin re-enrolls it.
 
 ### mTLS: `ERR_SSL_CLIENT_AUTH_CERT_NEEDED`
 The router is on the `protected` tier and requires a client cert. Enroll a PIV
-cert, or change the app's access policy in the Hub.
+cert, or move the app to a template that doesn't need a certificate in
+every alternative (Hub → the app's Settings).
 
 ### 403 "Your client certificate has been revoked"
 group-gate found the cert's serial in the revoked list or the CRL. Remove the

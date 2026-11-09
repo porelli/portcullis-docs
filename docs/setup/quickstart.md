@@ -130,7 +130,6 @@ image pull), fix it and run `./portcullis init` again.
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `ACME_STAGING` | `false` | `true` uses Let's Encrypt staging (untrusted certs, no rate limits). Apply with `./portcullis config apply && ./portcullis up` |
-| `MTLS_ENABLED` | `true` | Request YubiKey client certificates. See [TLS & mTLS](certificates.md) |
 | `CLIENT_CERT_TTL` | `720h` | Client certificate lifetime (30 days) |
 | `HUB_PROXY_SECRET` | generated | Shared secret Traefik adds to every request to the Hub. The Hub refuses to start without it (at least 32 characters) |
 | `HUB_IMAGE` | `ghcr.io/porelli/portcullis-hub:edge` on core `main` | Hub image. `edge` is the latest build of the Hub's `main`; a core release pins a released tag by digest. If you override it, use a released tag with its digest, e.g. `ghcr.io/porelli/portcullis-hub:1.2.3@sha256:…` (see [Upgrading & Releases](../operations/upgrading.md#hub-image)) |

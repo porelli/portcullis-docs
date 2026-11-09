@@ -25,12 +25,13 @@ Apps choose their auth method: forward-auth for apps without SSO support, native
 
 ## Repositories
 
-Portcullis is split across four repositories. This site is the documentation for all of them; each repository keeps only a README (and the templates repo its [CONTRIBUTING.md](https://github.com/porelli/portcullis-templates/blob/main/CONTRIBUTING.md)).
+Portcullis is split across five repositories. This site is the documentation for all of them; each repository keeps only a README (and the templates repo its [CONTRIBUTING.md](https://github.com/porelli/portcullis-templates/blob/main/CONTRIBUTING.md)).
 
 | Repository | Purpose | Link |
 |-----------|---------|------|
 | **portcullis** | Core stack: Traefik, Keycloak, LLDAP, Vault, oauth2-proxy, group-gate, enrollment UI and the `./portcullis` admin CLI | [porelli/portcullis](https://github.com/porelli/portcullis) |
 | **portcullis-hub** | Management UI for enabling apps, viewing logs, and configuring settings. Published as `ghcr.io/porelli/portcullis-hub`. | [porelli/portcullis-hub](https://github.com/porelli/portcullis-hub) |
+| **portcullis-keycloak** | The Keycloak image: the pinned official Keycloak plus Portcullis's sign-in extension (sign-in methods, passkey kinds, templates). Published as `ghcr.io/porelli/portcullis-keycloak`. | [porelli/portcullis-keycloak](https://github.com/porelli/portcullis-keycloak) |
 | **portcullis-templates** | 22 app templates (manifest + compose) that serve as the default Hub marketplace | [porelli/portcullis-templates](https://github.com/porelli/portcullis-templates) |
 | **portcullis-docs** | This documentation site | [porelli/portcullis-docs](https://github.com/porelli/portcullis-docs) |
 
