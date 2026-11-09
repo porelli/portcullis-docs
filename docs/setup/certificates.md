@@ -37,7 +37,10 @@ recreates Traefik when its environment changed.
 - App containers that call Keycloak over HTTPS mount `certs/ca-bundle.crt`.
   `config apply` builds it from the system CAs, the internal Portcullis PKI
   chain, and the Let's Encrypt staging root (only when `ACME_STAGING=true`).
-  `init`, `up` and `upgrade` rebuild it too.
+  `init`, `up` and `upgrade` rebuild it too, and restart the two forward-auth
+  services when it changed: they read it only at start-up, and with a stale
+  bundle every sign-in callback fails (`x509: certificate signed by unknown
+  authority`).
 
 Browser workarounds for staging certs: start Chrome with
 `--ignore-certificate-errors`, accept the risk in Firefox, or use `curl -k`.
@@ -47,7 +50,8 @@ Browser workarounds for staging certs: start Chrome with
 1. Set `ACME_STAGING=true` or `false` in `.env`.
 2. Run `./portcullis config apply && ./portcullis up`. `config apply` notices
    the flip and clears Traefik's `acme.json`, so Traefik requests a new
-   certificate.
+   certificate; `up` restarts the forward-auth services, which now trust the
+   new bundle.
 3. Wait about 2 minutes for the DNS-01 challenge:
    `docker compose logs -f traefik 2>&1 | grep -i acme`.
 

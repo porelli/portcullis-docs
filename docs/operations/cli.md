@@ -306,7 +306,9 @@ Applies the TLS toggles in `.env` and rebuilds `certs/ca-bundle.crt`:
 | `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it clears Traefik's `acme.json` so Traefik registers again |
 | `MTLS_ENABLED=true\|false` | `true` | Rewrites `traefik/dynamic/tls.yml`. With `false` no tier requests client certs, and routers that rely only on the protected tier become unauthenticated |
 
-Run `portcullis up` afterwards to restart Traefik. See
+Run `portcullis up` afterwards. It restarts Traefik and, when the bundle
+changed, the two forward-auth services, which read it only at start-up (the
+sha256 they last started with is kept in `certs/.ca-bundle.loaded`). See
 [TLS & mTLS](../setup/certificates.md).
 
 | Option | Meaning |
