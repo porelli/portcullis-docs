@@ -202,7 +202,7 @@ the same notes in its `CHANGELOG.md`.
   `users_<id>` / `admin_<id>` groups as the enabling admin. Apps enabled
   earlier whose groups don't exist (e.g. `users_headscale`,
   `users_vaultwarden`, `users_actual-budget` deleted in LLDAP) let nobody sign
-  in: the App Catalog shows them in a **Missing groups** banner — click
+  in: the Apps page shows them in a **Missing groups** banner — click
   **Create missing groups**, then add the people who need access
   ([Missing groups](hub.md#missing-groups)).
 - **Keycloak forgets users and groups deleted in LLDAP.** `keycloak configure`

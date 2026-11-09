@@ -214,7 +214,7 @@ Keycloak reads users and groups from LLDAP through its LDAP federation.
 
 In the Hub:
 
-1. Browse the **App Catalog** and open an app (e.g. Grafana).
+1. Browse the **Marketplace** and open an app (e.g. Grafana).
 2. Fill in any required settings (media paths, etc.).
 3. Click **Enable**. The Hub starts the app as its own compose project,
    registers its Keycloak client if it has one, and publishes its group and

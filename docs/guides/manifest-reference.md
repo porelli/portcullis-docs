@@ -39,7 +39,7 @@ field.
 |-------|------|----------|-------------|
 | `name` | single line, 1–64 chars | Yes | Display name shown in the Hub |
 | `description` | single line, 1–200 chars | Yes | One-line description of what the app does |
-| `icon` | single line, 1–16 chars | Yes | Unicode emoji for the app card, e.g. `"\U0001F4CA"` |
+| `icon` | single line, 1–16 chars | Yes | Unicode emoji for the Marketplace card and Apps list, e.g. `"\U0001F4CA"` |
 | `category` | `^[a-z][a-z0-9-]{0,31}$` | Yes | Catalog category |
 | `tags` | list of unique strings `^[a-z0-9][a-z0-9.+-]{0,31}$` | Yes | Searchable tags (lowercase) |
 | `links` | object | Yes | The app's own website and source repository. See [links](#links) |
