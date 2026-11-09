@@ -215,7 +215,15 @@ and `echo-c` on `team-b.test` and `echo-b` on the main domain (`echo-c` with
 policy mtls), checks the published policy file (v5, host keys, groups per
 instance, `extra_domains`), the rendered labels (`portcullis-auth-ext` and the
 `/oauth2/` router to `forward-auth-ext` on extra-domain hosts only), the
-callbacks on `portcullis-forward-auth` and the SNI certificate. Then
+callbacks on `portcullis-forward-auth` and the SNI certificate. Every create
+carries a `label` ("Team A", …); a create without one is `400`, and so is a
+host on a domain that isn't enrolled. On `echo-b` the job checks the env
+overrides ([contracts §11.9](../guides/integration-contracts.md#119-labels-groups-setup-choices-env-overrides-and-jobs-new-apps)):
+a variable of the admin's own (`PUT /api/instances/echo-b/env/CI_MARKER`) is
+stored and listed as a `custom` row, a Hub variable (`PORTCULLIS_INSTANCE`) and
+a setting's variable (`ECHO_STOP_GRACE`) are refused with `400`, the reset
+(`DELETE`) answers `row: null`, and the removed whole-file route
+`/api/templates/env/<id>` answers `404` / `405`. Then
 `tests/e2e/e2e_instances.py`:
 
 - cross-domain SSO: signed in on the main domain, `echo-a` opens with no
@@ -600,7 +608,11 @@ manifest's [`tests.signin`](../guides/manifest-reference.md#testssignin), per ap
    generated env, which the workflow creates once for the shell test and the
    e2e), the group-gate policy file (`access_group` per host,
    `auth.admin_paths`; its version is read from core's group-gate);
-3. the app started with `tests/lib.sh compose_up`, containers ready;
+3. the app started with `tests/lib.sh compose_up`, containers ready: every
+   service without compose `profiles:` and those of the selected profiles
+   (`COMPOSE_PROFILES` when set — `*` = every profile —, else the profiles the
+   setup choices' defaults start, as the Hub does; `compose_up` starts the
+   same);
 4. per user, `portcullis invite <user> --to https://<host><path> --json` opened
    in Chromium: passkey registration, then the app's own sign-in (its SSO
    button, the OIDC / SAML round trip, or forward-auth);
@@ -670,6 +682,16 @@ no credential, nothing; a bad one, `401`). `grafana.sh` checks the trust
 network (internal, exactly Grafana and the companion, Grafana's allowlist
 without the gateway, broadcast and its own address) and that a spoofed
 `X-Forwarded-User` from elsewhere on `portcullis-proxy` isn't signed in.
+
+**Setup choices in the app tests.** `tests/lib.sh` `compose_up` selects the
+compose profiles the setup choices' defaults start (`COMPOSE_PROFILES`, as the
+Hub writes it; a test picks another choice by exporting `COMPOSE_PROFILES` and
+the option's variable itself), and `compose_down` takes down every profile
+(`--profile '*'`). `nextcloud.sh` runs its full suite on the default database,
+PostgreSQL, then installs once more on MySQL / MariaDB and on SQLite: each
+engine is the one Nextcloud uses (`dbtype`, `dbhost`, a `user_oidc` row it
+reads back), only that engine's database server runs, and a marker written
+before the whole project goes down is read back after it comes up again.
 `ai-chat.sh` renders `librechat.yaml` from `ai-providers.json` (secrets only
 as `${VAR}` references, a refused file fails closed), checks the access-group
 restriction and the MCP OAuth callback. `write_ai_providers_override` (below)
