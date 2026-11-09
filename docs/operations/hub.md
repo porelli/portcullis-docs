@@ -364,9 +364,10 @@ docker compose -p portcullis-<app> \
   variable** adds a new one (Remove takes it away again). Your values are
   written single-quoted after everything else in the `.env`, so they win; a
   value may not contain `'`, `\`, a line break or another control character.
-  Variables the Hub or a setting sets, secrets, and variables that choose
-  what the app mounts or shares (volume sources, `env_file`, `build`,
-  `network_mode`, `pid`, `ipc`) can't be overridden. An
+  Variables the Hub or a setting sets, secrets, and any variable the
+  template's compose file uses outside a service's `environment:` (an
+  image tag, a label, a volume source, …) can't be overridden: change those
+  through Settings or the custom compose override. An
   enabled app restarts after each change; a disabled one gets the value at
   its next start. If a template update makes one of your variables
   Hub-set or a secret, it is no longer written (the Deliveries strip's
