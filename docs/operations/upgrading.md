@@ -50,7 +50,7 @@ up first.
    enabled app's template away is reset to the previous one — nothing is
    opened. Apps still without a valid template are named, with the fix. An
    older Hub image (one that doesn't report syncs) gets a warning instead:
-   press **Sync All Sources** in the Hub's Template Sources tab. See
+   press **Sync All Sources** in the Template sources section at the bottom of the Hub's Marketplace. See
    [Template sources](hub.md#template-sources).
 
 It also checks the Hub image: before the upgrade it warns when `HUB_IMAGE` is

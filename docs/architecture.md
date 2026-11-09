@@ -34,7 +34,7 @@ graph TB
         end
 
         subgraph Management
-            Hub[Hub<br/>App Catalog]
+            Hub[Hub<br/>Apps and Marketplace]
             SPH[socket-proxy-hub]
             SPT[socket-proxy-traefik]
             Docker[(Docker Engine)]
