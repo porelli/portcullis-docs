@@ -23,7 +23,7 @@ ports, and header trust.
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
 | Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses hostname collisions and core hosts, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets |
 | Public exceptions (share links, off unless an admin turns them on) | Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps | Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; `rate-limit@file`; see [Public exceptions](#public-exceptions) |
-| AI clients (MCP, [AI support](ai.md)) | A token replayed at another app, an AI acting beyond the person, injected instructions in app content, a secret leaking into the model | `mcp-gate` checks every request: signature, issuer, the exact audience and scope of that one resource (a token for two resources works nowhere), the client, the LoA and the person's population **on every request**. It never forwards the person's token; destructive tools need a confirmation in the person's browser; no tool takes or returns a secret. See [AI support](#ai-support-mcp-gate) |
+| AI clients (MCP, [AI support](ai.md)) | A token replayed at another app, an AI acting beyond the person, injected instructions in app content, a secret leaking into the model | `mcp-gate` checks every request: signature, issuer, the exact audience and scope of that one resource (a token for two resources works nowhere), the client, the resource's sign-in rule (certificate methods never count) and the person's population **on every request**. It never forwards the person's token; destructive tools need a confirmation in the person's browser; no tool takes or returns a secret. See [AI support](#ai-support-mcp-gate) |
 | An LLDAP account deleted and re-created under the same name | The newcomer inherits the previous holder's Keycloak user (passkeys, sessions, consents, AI connections) | Keycloak links LLDAP accounts by LLDAP's immutable `entryUUID`: the newcomer is a new Keycloak user (new `sub`); the old copy and its passkeys, sessions and consents are removed at the next lookup |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
@@ -95,7 +95,7 @@ What it can't do:
 
 Trade-off: an app user signed in with a remember-me cookie gets the
 guard's 403 on a public link in the same browser (open it in a private
-window). The guard serves only version 5 of the policy file (keyed by full
+window). The guard serves only version 6 of the policy file (keyed by full
 hostname), so the Hub and core are upgraded together.
 
 Not everything with a share feature can be scoped: Vaultwarden Send needs the
@@ -611,7 +611,7 @@ backends must never trust those headers (none of them reads them).
 
 ### Sessions, temporary memberships and the people directory
 
-- **Temporary memberships.** The policy file (version 5, the only version
+- **Temporary memberships.** The policy file (version 6, the only version
   group-gate serves; keyed by full hostname) lists `expiring` `{user, group, at}` entries. group-gate
   treats a membership as absent once `now >= at` (for the host and
   path-group checks and in the `X-Auth-Request-Groups` it returns), whatever
@@ -646,7 +646,7 @@ backends must never trust those headers (none of them reads them).
   `/oauth2/sign_out`) are routed only on `auth.<domain>`. A host-less
   `PathPrefix(/oauth2/)` router cannot carry the tiers' TLS options, and
   Traefik answers 421 on it. group-gate's step-up page therefore sends the
-  browser to `https://auth.<domain>/oauth2/start?acr_values=…&rd=<app>`. CI
+  browser to `https://auth.<domain>/oauth2/start?pc_method=…&rd=<app>`. CI
   rejects router rules without `Host(`.
 - **Keycloak's `/admin` and `/realms/master` router** uses
   `portcullis-auth-console`: the same forward-auth, minus `Authorization` in
@@ -679,7 +679,8 @@ forward-auth.
   check is repeated for API-made invites at redeem, at the authorization code
   and at the token exchange: a user promoted to `lldap_admin` after the invite
   was made is refused, and their pending API invites are cancelled.
-- **Passkey required.** The invite session is LoA 2 / amr `hwk` and cannot
+- **Passkey required.** The invite session (amr `inv`, which meets no
+  sign-in template: the person touches the new passkey once more to open apps) cannot
   finish without the passkey registration (`webauthn-register-passwordless`,
   added when the link is redeemed by enroll's service account
   `portcullis-enroll`, realm-management view-users + manage-users). enroll
@@ -702,7 +703,7 @@ forward-auth.
   routers) have no forward-auth: nothing is signed in and no identity header is
   passed (the Hub's strip middleware deletes client copies). Their first
   middleware, `portcullis-public-guard@docker` (group-gate `/public-guard`),
-  returns 403 unless the policy file (version 5) publishes the request's full
+  returns 403 unless the policy file (version 6) publishes the request's full
   hostname in `public_paths`, the normalised path is inside one of its patterns (prefix /
   exact / static files; encoded `/`, `\`, NUL or `#` denied, and so is any `#`
   in `X-Forwarded-Uri`: browsers never send fragments), and the request carries
@@ -731,7 +732,8 @@ Every MCP request goes through core's `mcp-gate`
   issuer, an audience that is this resource's URL and no
   other URL, the resource's scope, an AI client this resource allows (never
   `portcullis-forward-auth`, `portcullis-fresh-auth` or an app client), an
-  `acr` that meets the resource's LoA, and a username that is in the
+  `amr` that meets the resource's sign-in rule (YubiKey and browser
+  certificates never count: AI clients present none), and a username that is in the
   resource's population right now. An `Origin` header must be on the allowed
   list (empty by default).
 - **No token passthrough.** The gate never forwards the person's token, a

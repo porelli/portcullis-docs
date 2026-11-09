@@ -88,14 +88,14 @@ graph TB
 | Component | Role |
 |-----------|------|
 | **Traefik** | Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests client certificates. Reads Docker labels through its read-only socket proxy. |
-| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with per-request `acr_values` for step-up), and returns identity headers and the access token on success. |
+| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with a per-request `pc_method` for a one-method step-up), and returns identity headers and the access token on success. |
 | **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the app's auth policy (`acr`/`amr`, mTLS binding), the subdomain's required group and `path_groups`. Returns 403 or a step-up page. |
 | **Keycloak** | Identity provider. WebAuthn (FIDO2), X.509 (YubiKey PIV) login with CRL checks, password, Level-of-Authentication step-up, OIDC/SAML for apps. Federates users from LLDAP. |
 | **LLDAP** | Lightweight LDAP directory. Stores users and groups (custom user fields are LLDAP attributes). They are managed in the Hub; `directory.<domain>` redirects to `people.<domain>` (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
 | **PostgreSQL** | Database backend for Keycloak. |
 | **Vault PKI** | Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL. |
 | **Enrollment UI** | `enroll.<domain>`: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at `/self`. Signs CSRs through a least-privilege Vault AppRole. |
-| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled app instance as its own compose project, registers Keycloak clients, writes the policy file v5 (keyed by full hostname) and `user-attributes.json`, delivers app settings ([Settings Delivery](#settings-delivery)), reports drift, manages enrolled domains. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import) with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` permissions), and My apps (each person's own app settings). |
+| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled app instance as its own compose project, registers Keycloak clients, writes the policy file v6 (sign-in methods and templates, keyed by full hostname), `signin-keycloak.json` and `user-attributes.json`, delivers app settings ([Settings Delivery](#settings-delivery)), reports drift, manages enrolled domains. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import) with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` permissions), and My apps (each person's own app settings). |
 | **Domains service** | Manages enrolled extra domains: creates DNS records, obtains wildcard certificates via ACME DNS-01, serves them to Traefik over its HTTP provider. Credentials stored encrypted at rest (age). See [Security & Hardening](operations/hardening.md#domains-service). |
 | **forward-auth-ext** | Second oauth2-proxy for extra-domain hosts. Relative callback `/oauth2/callback`, host-only cookie `__Host-portcullis_ext`. Shares the Keycloak client with `forward-auth`. See [Hub Management](operations/hub.md#cross-domain-sign-in). |
 | **Monitoring** (optional) | Compose profile `monitoring`: Prometheus, Alertmanager, Grafana at `metrics.<domain>` (`lldap_admin`), blackbox and textfile exporters. See [Monitoring](operations/monitoring.md). |
@@ -122,7 +122,7 @@ Portcullis supports four authentication methods. Each app declares its method in
 
 Used by apps that have no native SSO support (Pi-hole, DokuWiki, Scrutiny, etc.). Traefik delegates authentication to oauth2-proxy and authorization to group-gate before the request reaches the app. The router's middleware chain is `client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file`; `client-headers@file` must come first so group-gate sees the client certificate (for revocation and the mTLS binding).
 
-If the session does not satisfy the app's [access policy](operations/auth-policies.md), group-gate answers with a 403 step-up page that redirects to `https://auth.<domain>/oauth2/start?acr_values=<needed>&prompt=login&rd=https://<app>/`, and Keycloak prompts for the missing factor. (oauth2-proxy only serves `/oauth2/*` on `auth.<domain>`: a host-less router would get Traefik's default TLS options and be refused with 421 on every app host.)
+If the session does not meet the app's [sign-in template](operations/auth-policies.md), group-gate answers with a 403 page: a step-up page whose **Continue** opens `https://auth.<domain>/oauth2/start?pc_method=<method>&rd=https://<app>/` (Keycloak then asks for that one method only), a "present your YubiKey certificate" page, or a needs-stronger page. (oauth2-proxy only serves `/oauth2/*` on `auth.<domain>`: a host-less router would get Traefik's default TLS options and be refused with 421 on every app host.)
 
 ```mermaid
 sequenceDiagram
@@ -202,7 +202,7 @@ sequenceDiagram
 
 ### mTLS (Client Certificate)
 
-When mTLS is enabled, the browser presents the X.509 certificate stored in the YubiKey's PIV slot during the TLS handshake. Traefik verifies it against the Portcullis CA chain, but **does not check revocation**; that happens in group-gate and Keycloak.
+When the YubiKey certificate method is on, the browser presents the X.509 certificate stored in the YubiKey's PIV slot during the TLS handshake. Traefik verifies it against the Portcullis CA chain, but **does not check revocation**; that happens in group-gate and Keycloak.
 
 ```mermaid
 sequenceDiagram
@@ -217,10 +217,10 @@ sequenceDiagram
     U->>T: GET https://auth.example.com/... (login)
     T->>K: via portcullis-auth, X-Forwarded-Tls-Client-Cert (PEM)
     Note over K: trusts the header only from Traefik's IP,<br/>re-validates chain + EKU, checks Vault CRL (fail closed)
-    K-->>U: Session with amr=mtls (LoA 3)
+    K-->>U: Session with amr=mtls (YubiKey certificate)
     U->>T: GET https://app.example.com (cookie + client cert)
     T->>G: forward-auth with X-Forwarded-Tls-Client-Cert-Info
-    Note over G: serial not revoked? policy needs mtls only?<br/>then cert CN must equal preferred_username
+    Note over G: serial not revoked? counting yubikey_cert?<br/>then cert CN must equal preferred_username
     G-->>T: 200 OK
     T->>A: Forward request
 ```
@@ -229,17 +229,15 @@ Routers on the `protected` tier without forward-auth (`mtls`-method apps) rely o
 
 ## TLS Tiers
 
-Traefik is configured with three TLS option sets. Each app chooses its tier based on its security requirements.
+Traefik's static `traefik/dynamic/tls.yml` defines three TLS option sets. The Hub picks each app's tier from its sign-in template and the certificate methods that are switched on.
 
 | Tier | Traefik TLS Option | Client Cert Behavior | Use Case |
 |------|-------------------|---------------------|----------|
-| **protected** | `RequireAndVerifyClientCert` | Required -- TLS handshake fails without a valid cert | Highest security apps (`mtls`-method apps) |
-| **authaware** | `VerifyClientCertIfGiven` | Optional -- verified if present, WebAuthn fallback if not | Most apps (default for forward-auth and OIDC apps) |
-| **public** | `NoClientCert` | Not requested | Public-facing apps, apps that manage their own auth |
+| **protected** | `RequireAndVerifyClientCert` | Required -- TLS handshake fails without a valid cert | Templates that need a certificate in every alternative; `mtls`-method apps |
+| **authaware** | `VerifyClientCertIfGiven` | Optional -- verified if present, passkeys otherwise | Apps whose template has a certificate in some alternative (Standard, Strong); every core page |
+| **public** | no `clientAuth` | Not requested | Templates with no certificate method on, apps that manage their own auth |
 
-When `MTLS_ENABLED=false` in `.env`, all three tiers behave like `public` -- no client certificates are requested for any app. Routers that relied on `protected` alone become unauthenticated.
-
-For apps the Hub sets the tier from the app's access policy, not from the template (see [Authentication Policies](operations/auth-policies.md#traefik-tls-tier)).
+With the YubiKey certificate method off, no app asks for a client certificate (except `mtls`-method apps, whose certificate is their sign-in); core pages always offer an optional one. See [Sign-in Methods and Templates](operations/auth-policies.md#traefik-tls-tier).
 
 ## Network Topology
 
@@ -484,12 +482,13 @@ flowchart TB
 
 1. On [My apps](operations/hub.md#my-apps) the person clicks **Create
    password**. The page opens Keycloak's `portcullis-fresh-auth` client in
-   a popup (PKCE S256, `prompt=login`, `max_age=0`, `acr_values=hwk`), so
-   they sign in again with their hardware key.
+   a popup (PKCE S256, `prompt=login`, `max_age=0`), so
+   they sign in again with a passkey or their YubiKey certificate.
 2. The popup hands the code back to the page, which posts the code, the
    PKCE verifier and the nonce to the Hub. The Hub exchanges the code with
    Keycloak itself and checks the ID token: the sign-in is at most 300 s
-   old, `amr` contains `hwk` or `mtls` (never `file`), the nonce matches,
+   old, its `pc_fresh` claim (the method that ran in that sign-in; never `amr`)
+   is a passkey kind or the YubiKey certificate, switched on, the nonce matches,
    `aud` / `azp` is the client, and `preferred_username` is the caller.
 3. The Hub draws 24 characters from a 54-character alphabet with
    `crypto/rand`. It shows them as 6 groups of 4 joined by `-`: 29
@@ -680,7 +679,7 @@ sequenceDiagram
     C->>K: authorize (PKCE, scope mcp:gitea.gitea), passkey, consent
     K-->>C: access token (aud = https://gitea.<d>/mcp)
     C->>G: tools/call + Bearer token
-    G->>G: signature, issuer, audience, scope, client, LoA,<br/>population now, tool policy, limits
+    G->>G: signature, issuer, audience, scope, client, sign-in rule,<br/>population now, tool policy, limits
     alt no app credential yet (app_token)
         G->>H: POST /internal/credentials (gate secret)
         H->>A: mint hook (in the app's container)

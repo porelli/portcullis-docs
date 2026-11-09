@@ -254,7 +254,7 @@ and both are re-read on every request:
     `PORTCULLIS_DOMAIN`). Edits take effect on the next request; no restart is
     needed.
 
-2. **The Hub's `group-gate-policy.json`** (version 5, on the `hub_data` volume)
+2. **The Hub's `group-gate-policy.json`** (version 6, on the `hub_data` volume)
    has a `groups` map keyed by **full lowercase hostname**. The Hub rewrites it
    whenever an instance is enabled, disabled or reconfigured. For every
    **enabled** instance with `auth.group_access: true`, each hostname it

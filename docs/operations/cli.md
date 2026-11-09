@@ -450,7 +450,7 @@ admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 
 - imports `keycloak/realm-export.json` if the realm does not exist
 - points the LDAP federation at LLDAP (`LLDAP_BASE_DN`, `LLDAP_ADMIN_PASSWORD`)
-- sets the ACR→LoA map and `browserFlow=portcullis-universal`
+- keeps the realm's `acr.loa.map` empty (sign-in is decided by [templates](auth-policies.md), not levels) and `browserFlow=portcullis-universal`
 - pushes the X.509 authenticator settings from the file to the realm: CRL check against Vault's `pki_int` CRL, trust re-validation, `clientAuth` EKU
 - checks the AMR reference values, and ensures the `amr` mapper and the `groups` scope
 - ensures the `email-unverified` scope (`email` claim, no `email_verified`) that Hub templates opt into with `keycloak_clients[].email_verified_claim: false`

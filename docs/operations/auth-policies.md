@@ -184,7 +184,8 @@ allowing the own-login-only mode, the Hub falls back to Portcullis sign-in.
 
 Settings → Sign-in → *Add a stronger method from a weaker sign-in* is **off**
 at the start. While it is off, a person can add only methods as strong as the
-one they signed in with: someone who signed in with a synced passkey can add
+one they signed in with: a password-only session can't register any passkey,
+and someone who signed in with a synced passkey can add
 another synced passkey, but registering a security key needs help from an admin
 (a setup link). The needs-stronger page then
 says "ask your admin" instead of "Set up …". A passkey added this way can't be
@@ -227,7 +228,18 @@ they have set up, or one the Hub doesn't know about), group-gate shows
 "&lt;App&gt; needs &lt;method&gt;" with a **Continue** button. It leads to Keycloak with
 `pc_method=<method>`, and Keycloak asks for that method only: a security-key
 step-up offers only security keys, a certificate step-up only the
-certificate. The page never redirects on its own.
+certificate. The page never redirects on its own. When the Hub doesn't know
+which passkeys the person has and several passkey kinds would do, it asks for
+any passkey. Apps that sign in with OIDC themselves do the same inside
+Keycloak: an *all of* template is met step by step.
+
+### Present your YubiKey certificate
+
+When the session already holds the YubiKey certificate but the browser didn't
+present it on this request (the key isn't inserted, or the browser offered no
+certificate), signing in again can't help: group-gate shows "&lt;App&gt; needs
+your YubiKey certificate — insert your YubiKey and reload this page", with no
+Continue button. A revoked certificate or another person's doesn't count.
 
 ### Needs a stronger sign-in
 
@@ -245,14 +257,16 @@ reachable.
 
 A setup link signs the person in with a session that meets **no** template.
 Right after it they touch their new passkey once more to open apps (the
-step-up asks for a passkey).
+step-up asks for a passkey kind they have, or any passkey).
 
 ### Fresh sign-in for sensitive actions
 
 Creating a file-share password and approving an AI confirmation need a fresh
 sign-in in a popup. It accepts any passkey kind or a YubiKey certificate,
 each only while its method is on; never a password, a browser certificate or
-a setup link.
+a setup link. What counts is the method that actually ran in that popup sign-in
+(Keycloak records it in the token's `pc_fresh` claim), never the methods the
+session used earlier.
 
 ## Traefik TLS tier
 

@@ -16,8 +16,8 @@
 *[native-OIDC]: Auth method where apps implement OpenID Connect directly
 *[mtls]: Mutual TLS authentication using client certificates
 *[mTLS]: Mutual TLS authentication using client certificates
-*[LoA]: Level of Authentication: 1 = signed in with a passkey or client certificate, 2 = hardware-backed (hwk), 3 = client certificate (mtls)
-*[acr]: The requested/achieved LoA in OIDC (hwk, mtls)
+*[LoA]: Keycloak's Level of Authentication; Portcullis doesn't use levels (sign-in templates decide)
+*[acr]: OIDC Authentication Context Class Reference; Portcullis doesn't use it (amr and sign-in templates decide)
 *[amr]: Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)
 *[hwk]: amr of a security key passkey (a YubiKey touch)
 *[group-gate]: Per-request authorization middleware checking groups, policies, and revocation
