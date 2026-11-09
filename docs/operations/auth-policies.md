@@ -29,8 +29,9 @@ The exact formats are in
 Settings → Sign-in shows each method with its strength and how many people
 have it set up. A method that is off is never offered and never accepted, and
 people can't set it up. You can't switch off a method an enabled template
-needs: the dialog lists the templates and what uses them (the default, apps,
-core pages). Change those first.
+needs, i.e. one without which the template would have no way in left: the
+dialog lists the templates and what uses them (the default, apps, core
+pages). Change those first.
 
 Some template entries name a **family** of methods: *Passkey (any kind)*,
 *YubiKey (touch or certificate)* and *Certificate (YubiKey or browser)*. A
@@ -86,20 +87,25 @@ not delete them, and you can add your own (**+ New template**):
 
 | Template | Rule | Score | Starts |
 |----------|------|-------|--------|
-| **Basic** | any passkey, any certificate, or a password | 1.0 / 5 | disabled (password starts off) |
+| **Basic** | any passkey, any certificate, or a password | 1.0 / 5 (2.5 while password is off) | disabled |
 | **Standard** | any passkey or any certificate | 2.5 / 5 | enabled, the default |
 | **Strong** | a security key or a YubiKey certificate | 3.5 / 5 | enabled; the Hub and people pages |
 | **YubiKey + certificate** | a YubiKey certificate and a security key | 4.4 / 5 | disabled |
 
 Only enabled templates appear in the drop-downs. A template in use (by the
-default, an app or a core page) can't be switched off or deleted, and a
-template that can't be met with the methods that are on (it names a method
-that is off, or a family with none on) can't be enabled.
+default, an app or a core page) can't be switched off or deleted.
+
+A part of a template that names a method that is off (or a family with none
+on) can't be met. In an **any of** group that part is simply dropped: Basic
+with the password off works like Standard, and the editor greys the dropped
+part out. In an **all of** group it makes the whole group impossible. A
+template left with no way in at all can't be enabled.
 
 ### Score
 
 Each template shows a score out of 5, such as `2.9 / 5`, with a one-line
-reason. It is computed over the tree:
+reason. It is computed over the tree, leaving out the parts the switches
+drop:
 
 - a method scores its strength;
 - a family scores its weakest method that is on;
@@ -111,8 +117,8 @@ Example, with the browser certificate off:
 `all of [any of [all of [password, security key], all of [YubiKey, passkey]], certificate]`
 scores **4.4 / 5**. The two inner *all of* groups score 3.5 + 0.4 = 3.9 each,
 their *any of* 3.9; *certificate* (only the YubiKey certificate is on) 4.0;
-the top *all of* 4.0 + 0.4. That rule names the password, so it can be
-enabled only while the password method is on.
+the top *all of* 4.0 + 0.4. With the password off, its *password and security
+key* alternative is dropped and the rest still scores 4.4.
 
 ## Default, per app and core pages
 
