@@ -357,9 +357,18 @@ docker compose -p portcullis-<app> \
    app, outside the template clone, so template syncs and updates keep it.
    See [Custom override](#custom-override).
 
-- **Environment variables.** Edit the app's own `.env` (stored in the Hub data
-  directory), or add a variable. Names must match `[A-Za-z_][A-Za-z0-9_]*`, and
-  values may not contain newlines.
+- **Environment variables.** One row per variable of the instance's `.env`
+  with its default (what the template, the Hub or a setting writes; a
+  secret's only as `[set]`), its source and your value. **Override** sets one
+  variable, **Reset** puts it back to its default, and **+ Add your own
+  variable** adds a new one (Remove takes it away again). Your values are
+  written single-quoted after everything else in the `.env`, so they win; a
+  value may not contain `'`, `\`, a line break or another control character.
+  Variables the Hub or a setting sets and secrets can't be overridden. An
+  enabled app restarts after each change; a disabled one gets the value at
+  its next start. If a template update makes one of your variables
+  Hub-set or a secret, it is no longer written (the Deliveries strip's
+  Environment values unit names it) and the next sync removes it.
 - **Container shell.** Runs one command with `/bin/sh -c` in a chosen container
   through the Engine API and shows its output. The Hub stops waiting after
   15 minutes, or when the browser request is cancelled. A process that keeps
@@ -691,7 +700,8 @@ The Hub keeps secrets in `${HUB_DATA_DIR}/settings/<id>/secrets.json`
 secrets file (mode 0600, see
 [Security & Hardening](hardening.md#settings-data-files-and-secrets)) or a hook's
 standard input. **Expert → Environment variables** shows them as `[set]`
-and refuses to change a variable an option owns ("set it under Settings").
+and refuses to override a variable an option owns ("change it under
+Settings") or a secret ("use Settings").
 Backups carry them; a restore into a new id generates new values for the
 generated ones.
 
@@ -708,7 +718,7 @@ The **Deliveries** strip lists each part of the last delivery:
 | Unit | What it is |
 |------|------------|
 | Environment | The option values in the app's `.env`, read when the app starts |
-| Environment values (`env:values`) | Shown only while some stored value can't go in the `.env`: those variables are written empty (named, without the value) |
+| Environment values (`env:values`) | Shown only while some stored value can't go in the `.env`: those variables are written empty (named, without the value), and env overrides the template now refuses are skipped |
 | Data file `<name>` | A JSON file the Hub writes for the app (mounted read-only) |
 | Hook `<name>` | A command the Hub ran in the app's container, with the settings on its standard input |
 | Sign-in claim `<attribute>` | Per-person values in Keycloak tokens |
