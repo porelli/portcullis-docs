@@ -293,6 +293,107 @@ The fields are in
 the full rule set and every refusal are in
 [contracts §13.15](integration-contracts.md#1315-shared-folders-checks-and-lan-only-ports).
 
+### One-off jobs
+
+If the app has a setup or migration container that runs once and exits (e.g., `guacamole-init`, `nextcloud-db-init`), declare it in the manifest's `jobs:` list. The Hub treats job containers differently:
+
+- A job that exited 0 is **done** (green) and counts as running
+- A job that exited non-zero is **failed** (red) and triggers drift
+- A job with no container is **missing** (red) and triggers drift
+- A finished job never makes the app "not all running"
+
+Most jobs are detected automatically: any service another service waits for with `depends_on: {<job>: {condition: service_completed_successfully}}` is a job. List the others explicitly:
+
+```yaml
+# manifest.yaml
+jobs:
+  - jellyfin-setup
+  - immich-lock-local-users
+```
+
+Jobs show on the instance page's Overview tab as "setup job done", "setup job failed", "setup job running", or "setup job pending".
+
+See [Manifest Reference → jobs](manifest-reference.md#jobs) for the complete rules.
+
+### Setup options and compose profiles
+
+Some apps need a choice made **before the first start** that can't change later (e.g., which database engine to use). Declare these as **setup options** with `setup: true` and `fixed_after_start: true`:
+
+```yaml
+# manifest.yaml (Nextcloud example)
+settings:
+  sections: [Database]
+  options:
+    - key: database
+      label: Database engine
+      section: Database
+      type: enum
+      options: [sqlite, mysql, postgres]
+      default: postgres
+      scope: instance
+      setup: true
+      fixed_after_start: true
+      profiles:
+        sqlite: []
+        mysql: [db-mysql]
+        postgres: [db-postgres]
+      delivery:
+        - env: NEXTCLOUD_DATABASE
+      applies: restart
+```
+
+Setup options:
+
+- Are asked in the setup form (Install… / + Add instance) before anything starts
+- Show whether they're fixed or changeable after the first start (🔒 indicator)
+- Can switch which compose services run using `profiles:` (one entry per option value)
+- Are stored at creation and can't change after the instance's first successful start (for fixed ones)
+
+**How `profiles` works:**
+
+- Map each enum value to the compose profiles it starts: `{postgres: [db-postgres], mysql: [db-mysql], sqlite: []}`
+- The Hub writes `COMPOSE_PROFILES='db-postgres,db-mysql'` (or `''` for none) into the instance's `.env`
+- Compose starts only services with matching profiles (or no `profiles:` key)
+- Every value must have an entry; use `[]` for values that start no additional profiles
+
+**compose.yml structure:**
+
+```yaml
+# compose.yml (Nextcloud example)
+services:
+  nextcloud:
+    # No profiles: always runs
+    depends_on:
+      nextcloud-mariadb:
+        condition: service_healthy
+        required: false    # Optional dependency
+      nextcloud-postgres:
+        condition: service_healthy
+        required: false
+    environment:
+      # The entrypoint wrapper checks $NEXTCLOUD_DATABASE and exports only
+      # the chosen database's variables, then waits for its TCP port
+      NEXTCLOUD_DATABASE: ${NEXTCLOUD_DATABASE:-postgres}
+
+  nextcloud-mariadb:
+    image: mariadb:11.8.9@sha256:...
+    profiles: [db-mysql]
+    # ... rest of service definition
+
+  nextcloud-postgres:
+    image: postgres:17.11-alpine@sha256:...
+    profiles: [db-postgres]
+    # ... rest of service definition
+```
+
+**Validation rules:**
+
+- Every profile name used in `profiles:` must appear in the manifest's `profiles` map
+- Every service with `profiles:` must be started by at least one setup choice value
+- A service without `profiles:` (unprofiled) may not depend on a profiled service (Compose can't start it when the profile is off)
+
+See [Manifest Reference → Setup options](manifest-reference.md#setup-options-setup-fixed_after_start-profiles) and [contracts §13.18](integration-contracts.md#1318-setup-options-and-compose-profiles-new-apps) for the complete rules and the Hub's enforcement.
+
 ### Data files, hooks and reload
 
 When the app reads a configuration file, or needs per-person values without
