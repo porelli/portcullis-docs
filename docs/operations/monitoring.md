@@ -53,7 +53,7 @@ All images:
 |-----|--------|-------|
 | `traefik` | `traefik:8082/metrics` | Internal `metrics` entrypoint, not published, no routers |
 | `vault` | `vault:8200/v1/sys/metrics?format=prometheus` | Uses a token with policy `portcullis-metrics` (`vault/policies/metrics.hcl`, read `sys/metrics` only); details below |
-| `group-gate` | `group-gate:8080/metrics` | Decisions by endpoint/result, denials and step-ups by reason, policy load errors, CRL last fetch and `nextUpdate`, revoked-serial counts |
+| `group-gate` | `group-gate:8080/metrics` | Decisions by endpoint/result (`allow`, `deny`, and the sign-in pages `stepup`, `needs_stronger`, `present_certificate`), denials and sign-in pages by reason, policy load errors, CRL last fetch and `nextUpdate`, revoked-serial counts |
 | `keycloak` | `keycloak:9000/metrics` | Management port (`--metrics-enabled`), not routed |
 | `prometheus`, `alertmanager`, `grafana` | self | |
 | `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry, newest client cert per user) |

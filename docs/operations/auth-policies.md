@@ -135,7 +135,8 @@ key* alternative is dropped and the rest still scores 4.4.
   **Strong**: they control everything else. `auth.<domain>` (Keycloak itself)
   and `mcp.<domain>` take no template of their own: the Keycloak admin
   console's router (`auth.<domain>/admin`, which also runs group-gate) follows
-  the default template, and `mcp.<domain>` never reaches group-gate (mcp-gate
+  the Hub's template (the console is as powerful as the Hub; without one it is
+  denied), and `mcp.<domain>` never reaches group-gate (mcp-gate
   checks it). The portal checks its own template (its router has no group
   check). A core page the policy file doesn't list is denied.
 
@@ -231,6 +232,12 @@ A person who signed in with a security key opens an app on Standard. The
 Keycloak session already holds a method Standard accepts, so the app opens
 with no prompt. Keycloak remembers every method used in the session (for 10
 hours), so templates with *all of* can be met step by step.
+
+### Not in the app's groups
+
+group-gate checks the app's groups (and its admin paths' groups) before its
+template. Someone who isn't in them gets a plain "not authorized" page, never
+a step-up or needs-stronger page that would name the app's rule.
 
 ### Step-up for one method
 
