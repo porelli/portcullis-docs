@@ -56,7 +56,9 @@ cd portcullis
 ```
 
 That is all you need to clone. The Hub image is pulled from
-`ghcr.io/porelli/portcullis-hub` (no build step), and the Hub clones the app
+`ghcr.io/porelli/portcullis-hub` and the Keycloak image (Keycloak with
+Portcullis's sign-in extension) from `ghcr.io/porelli/portcullis-keycloak`
+(no build step), and the Hub clones the app
 templates from `porelli/portcullis-templates` on first start.
 
 ## Step 2: Run `portcullis init`
@@ -133,6 +135,7 @@ image pull), fix it and run `./portcullis init` again.
 | `CLIENT_CERT_TTL` | `720h` | Client certificate lifetime (30 days) |
 | `HUB_PROXY_SECRET` | generated | Shared secret Traefik adds to every request to the Hub. The Hub refuses to start without it (at least 32 characters) |
 | `HUB_IMAGE` | `ghcr.io/porelli/portcullis-hub:edge` on core `main` | Hub image. `edge` is the latest build of the Hub's `main`; a core release pins a released tag by digest. If you override it, use a released tag with its digest, e.g. `ghcr.io/porelli/portcullis-hub:1.2.3@sha256:…` (see [Upgrading & Releases](../operations/upgrading.md#hub-image)) |
+| `KEYCLOAK_IMAGE` | `ghcr.io/porelli/portcullis-keycloak:edge` on core `main` | Keycloak image (the official Keycloak plus the sign-in extension). Same rules as `HUB_IMAGE`: `edge` is the latest build of its `main`; pin a released tag with its digest if you override it |
 | `BACKUP_PASSWORD` | generated | restic repository password for `./portcullis backup --offsite`. Keep an offline copy; never rotate it |
 | `BACKUP_REPOSITORY` | unset | restic repository for off-host backups (`s3:`, `b2:`, `rest:`, …). See [Backups](../operations/backups.md) |
 | `COMPOSE_PROFILES` | unset | `monitoring` enables Prometheus, Alertmanager and Grafana at `metrics.<domain>`. See [Monitoring](../operations/monitoring.md) |
@@ -177,8 +180,9 @@ No certificate after a few minutes? Check, in this order:
 
 ## Step 4: First sign-in (setup link)
 
-Sign-in is **passkey-only**: there is no password anywhere in the browser
-flow. `./portcullis init` ends with a one-time **setup link** for the LLDAP
+The `admin` account never signs in with a password (and the password method
+starts switched off for everyone, see
+[Sign-in Methods](../operations/auth-policies.md)). `./portcullis init` ends with a one-time **setup link** for the LLDAP
 `admin`:
 
 1. Open the link, click **Register my key** and touch your YubiKey (set or
@@ -241,7 +245,7 @@ Certificates last 30 days. Users renew their own at
 ./portcullis up / down             # start / stop the core stack
 git pull && ./portcullis upgrade   # update (backs up first)
 ./portcullis backup --offsite      # backup, also to restic (schedule it: backup schedule --systemd)
-./portcullis version               # core version + Hub image
+./portcullis version               # core version + Hub and Keycloak images
 ```
 
 ## Next steps

@@ -55,7 +55,9 @@ up first.
    [Template sources](hub.md#template-sources).
 
 It also checks the Hub image: before the upgrade it warns when `HUB_IMAGE` is
-pinned (in `.env` or the environment: a pinned Hub doesn't move with core), and after the start it
+pinned (in `.env` or the environment: a pinned Hub doesn't move with core),
+and likewise when `KEYCLOAK_IMAGE` is pinned (this core's realm needs the
+sign-in extension of a matching Keycloak image), and after the start it
 compares the Hub's policy file version with the one group-gate serves (and
 looks for group-gate's "is not supported" log line). On a mismatch it prints
 the fix — drop or align `HUB_IMAGE`, then `./portcullis up` — and never fails
@@ -107,7 +109,7 @@ How the five repositories are versioned is defined in
 Check what you run:
 
 ```bash
-./portcullis version          # core version (VERSION file or git describe) + Hub image
+./portcullis version          # core version (VERSION file or git describe) + Hub and Keycloak images
 ./portcullis version --json
 ```
 

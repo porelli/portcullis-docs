@@ -34,7 +34,7 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`down`](#down) | Stop the core stack. Volumes and secrets are kept |
 | | [`upgrade`](#upgrade) | Back up, pull, re-run the idempotent setup steps, restart |
 | | [`status`](#status) | Health overview (`--json` for machines, `--textfile` for Prometheus) |
-| | [`version`](#version) | Core version and the Hub image in use |
+| | [`version`](#version) | Core version and the Hub and Keycloak images in use |
 | Backups | [`backup`](#backup) | Consistent backup to `backups/` (`--offsite`: also restic, encrypted) |
 | | [`backup verify`](#backup-verify) | `restic check` + restore + sanity checks (or `--local`) |
 | | [`backup schedule`](#backup-schedule) | systemd timer for daily backups |
@@ -174,10 +174,13 @@ Otherwise it exits 0.
 portcullis version [--json]
 ```
 
-Prints the core version and the Hub image in use:
+Prints the core version and the Hub and Keycloak images in use:
 
 - **Core version.** The `VERSION` file of a release tarball, else `git describe` of the checkout.
-- **Hub image.** `HUB_IMAGE` from `.env` or the environment, else the default pinned in `docker-compose.yml`, plus the image of the running Hub container if there is one.
+- **Hub image.** `HUB_IMAGE` from `.env` or the environment, else the default in `docker-compose.yml`, plus the image of the running Hub container if there is one.
+- **Keycloak image.** `KEYCLOAK_IMAGE` from `.env` or the environment, else the default in `docker-compose.yml`, plus the image of the running Keycloak container if there is one.
+
+`--json` prints `version`, `hub_image`, `hub_image_source` (`HUB_IMAGE` or `default`), `hub_running`, `keycloak_image`, `keycloak_image_source` (`KEYCLOAK_IMAGE` or `default`) and `keycloak_running` (`null` when the container isn't running).
 
 | Option | Meaning |
 |--------|---------|
@@ -449,17 +452,23 @@ Idempotent configuration of the `portcullis` realm after start, through the
 admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 
 - imports `keycloak/realm-export.json` if the realm does not exist
-- points the LDAP federation at LLDAP (`LLDAP_BASE_DN`, `LLDAP_ADMIN_PASSWORD`)
-- keeps the realm's `acr.loa.map` empty (sign-in is decided by [templates](auth-policies.md), not levels) and `browserFlow=portcullis-universal`
-- pushes the X.509 authenticator settings from the file to the realm: CRL check against Vault's `pki_int` CRL, trust re-validation, `clientAuth` EKU
-- checks the AMR reference values, and ensures the `amr` mapper and the `groups` scope
+- points the LDAP federation at LLDAP (`LLDAP_BASE_DN`, `LLDAP_ADMIN_PASSWORD`); users and groups deleted in LLDAP are removed from Keycloak (hourly sync, `removeInvalidUsersEnabled`, the group mapper drops missing groups)
+- sets `sslRequired=external`, `browserFlow=portcullis-universal`, an empty `acr.loa.map` (sign-in is decided by [templates](auth-policies.md), not levels), brute-force protection (10 failures, then 60 s more per failure up to 15 min, never permanent) and the passkey policy (direct attestation, any attachment, resident key and user verification required)
+- offline sessions at most 30 days idle / 90 days total (the Hub sets shorter values on its AI clients); refresh-token rotation off
+- rebuilds every top-level flow of the file whose tree changed: the browser flow with the sign-in extension's methods and template check ([Sign-in flows](auth-policies.md#sign-in-flows-in-keycloak)), the invite identity provider's first-login and post-login flows
+- keeps `webauthn-register-passwordless` enabled and the two-factor `webauthn-register` disabled
+- the invite identity provider `portcullis-invite` (enroll; URLs and client secret from `secrets/enroll/invite-client-secret`) and the service-account client `portcullis-enroll` (view-users, manage-users)
+- `lldap_admin` = realm-admin of the `portcullis` realm (realm console)
+- pushes the X.509 authenticator settings from the file onto the `portcullis-x509` execution: CRL check against Vault's `pki_int` CRL, trust re-validation, `clientAuth` EKU
+- checks the sign-in executions' AMR reference values (max age 10 h), and ensures the `amr` mapper and the `groups` scope
 - ensures the `email-unverified` scope (`email` claim, no `email_verified`) that Hub templates opt into with `keycloak_clients[].email_verified_claim: false`
-- `portcullis-forward-auth`: the `acr`/`groups` scopes, requires PKCE S256, the `auth.<domain>` callback (keeps the Hub's extra-domain callbacks), and the `portcullis-invite-client` scope (setup links work only through it; removed from every other client)
+- `portcullis-forward-auth`: the `acr`/`groups` scopes, no default acr, requires PKCE S256, the `auth.<domain>` callback (keeps the Hub's extra-domain callbacks), and the `portcullis-invite-client` scope (setup links work only through it; removed from every other client)
 - creates a credential-less `testuser` and applies the `PORTAL_DISPLAY_NAME` branding
+- never touches the Hub's AI clients (`portcullis.hub.template` = `portcullis-ai`) or its `mcp:*` client scopes
 
 | Option | Meaning |
 |--------|---------|
-| `--wipe-realm` | Delete the realm first and re-import it from the file. Needed to apply auth-flow changes; clients must then be re-registered with `portcullis oidc register` |
+| `--wipe-realm` | Delete the realm first and re-import it from the file (users' passkeys are lost; clients must then be re-registered with `portcullis oidc register`). Flow changes don't need it: they are rebuilt on every run |
 
 ### oidc register
 

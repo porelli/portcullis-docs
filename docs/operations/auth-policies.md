@@ -362,6 +362,48 @@ publishes it three times, rewritten after every change:
 - **mcp-gate**: `mcp-gate.json` (version 2), each AI resource with its rule
   ([AI support](ai.md)).
 
+## Sign-in flows in Keycloak
+
+Keycloak runs Portcullis's own image, `ghcr.io/porelli/portcullis-keycloak`
+(`KEYCLOAK_IMAGE`, see [Upgrading](upgrading.md)): the official Keycloak plus
+the sign-in extension that enforces the methods and templates. It reads the
+Hub's `signin-keycloak.json` from the `hub_data` volume, mounted read-only at
+`/hub-data`. The realm's flows (`keycloak/realm-export.json`, rebuilt by
+[`./portcullis keycloak configure`](cli.md#keycloak-configure) whenever they
+change) have no Level-of-Authentication steps any more:
+
+- **Browser flow `portcullis-universal`**: the SSO cookie, the hidden setup-link
+  identity provider, or one sign-in method, then the **template check**
+  (`portcullis-template`) for the app that asked. The methods, tried in this
+  order:
+    - the **YubiKey certificate** (automatic when the browser presents one;
+      amr `mtls`),
+    - a **passkey**: Keycloak offers only the kinds that are on, and the kind
+      that signed in gives the amr (`hwk` security key, `dpk` device-bound,
+      `spk` synced),
+    - a **password** (amr `pwd`), only while the method is on, never for
+      `admin` and `portcullis-hub`.
+
+    Each method stays in the session's amr for 10 hours. A step-up
+    (`pc_method=<method>`) makes the other methods step aside, and the SSO
+    cookie hands a session that lacks the method back to the sign-in.
+- **Setup links** (`portcullis-invite-session`, the setup-link identity
+  provider's post-login flow): only for `portcullis-forward-auth`, then the
+  session gets amr `inv` (not a method, it meets no template) and the
+  template check.
+- **Brute-force protection** is on for the realm: after 10 failed sign-ins an
+  account waits 60 s more per further failure, at most 15 minutes, and is
+  never locked for good. Refused passwords of `admin` / `portcullis-hub` don't
+  count.
+- **Passkey registration** asks the authenticator for a direct attestation
+  (the extension decides the kind from it; a passkey without one registers as
+  synced), allows any authenticator attachment and requires a resident key and
+  user verification. The browser is given hints in the extension's order: the
+  security key first for `lldap_admin` members, the device first for everyone
+  else. Keycloak's stock two-factor WebAuthn registration is disabled.
+- `portcullis-forward-auth` has no default acr: group-gate asks for a method
+  with `pc_method`, never with `acr_values`.
+
 ## Identity
 
 Templates decide *how* a person signed in; *who* they are always comes from

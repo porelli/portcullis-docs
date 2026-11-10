@@ -149,15 +149,18 @@ YubiKey cert to Keycloak:
 2. Traefik forwards it PEM-encoded in `X-Forwarded-Tls-Client-Cert` (middleware `client-cert-pem@file`).
 3. Keycloak reads the header with its built-in **`traefik` x509 lookup provider** (`--spi-x509cert-lookup--provider=traefik`). The provider understands Traefik's `passTLSClientCert` `pem: true` format.
 
-The realm's X.509 authenticator (`x509-config`) then:
+The realm's X.509 authenticator (the sign-in extension's `portcullis-x509`,
+which runs Keycloak's stock X.509 code only while the YubiKey certificate
+method is on; config `x509-config`) then:
 
-- maps the Subject CN to the LLDAP username
+- maps the Subject CN to the LLDAP username, without a confirmation page
+  (`x509-cert-auth.confirmation-page-disallowed`)
 - **re-validates** the chain against `certs/truststore/` (written by `pki setup`, mounted as Keycloak's truststore), and checks the validity period and the `clientAuth` EKU
 - **checks the CRLs** at `http://vault:8200/v1/pki_int/crl` and `.../crl/delta` (`##`-separated in `crl-relative-path`). Keycloak caches each for at most 60 s. pki_int has `auto_rebuild=true` (keeps the full CRL from going stale) and therefore `enable_delta=true`: Vault does **not** rebuild the full CRL on revoke. New revocations land in the delta CRL, rebuilt every minute, until the next full rebuild. `./portcullis cert revoke` also rotates the full CRL immediately
 - **fails closed on the CRL**: if the CRL cannot be fetched, the X.509 login fails. `x509-cert-auth-crl-abort-if-non-updated=true` (Keycloak's actual key, with a dash) also rejects a CRL past its `nextUpdate`. Vault never lets it get that stale: `pki setup` sets `pki_int/config/crl` to `expiry=72h auto_rebuild=true auto_rebuild_grace_period=12h`
 
 `./portcullis keycloak configure` pushes the `x509-config` settings from
-`keycloak/realm-export.json` to an existing realm.
+`keycloak/realm-export.json` onto the realm's `portcullis-x509` execution.
 
 #### Trusted proxy address
 
@@ -182,7 +185,7 @@ in front of Keycloak could log in as that user. Three things prevent it:
   for requests without a TLS client cert, and drops their `_`/`.` aliases
   (`aliasHeadersStrategy=delete`).
 - **CI tests it.** The `build-and-test` job logs in through Traefik with a real
-  cert, which must succeed. Then it sends the same cert as a forged header
+  cert (`pc_method=yubikey_cert`), which must succeed. Then it sends the same cert as a forged header
   straight to Keycloak from the `portcullis` and `portcullis-auth` networks and
   from `127.0.0.1:8080`, with the realm's HTTPS requirement temporarily off so
   only the proxy gate can stop it. None may yield an authorization code.
@@ -410,3 +413,6 @@ Check the Keycloak logs:
   did not come from Traefik's `portcullis-auth` address. Check
   `PORTCULLIS_AUTH_TRAEFIK_IP` and that Traefik is attached to `portcullis-auth`.
 - A CRL error means Vault is sealed or unreachable (`./portcullis status`).
+- No X.509 attempt at all: the YubiKey certificate method is off (Settings →
+  Sign-in), or Keycloak has no valid `signin-keycloak.json` from the Hub
+  (every method off, see [Sign-in flows in Keycloak](../operations/auth-policies.md#sign-in-flows-in-keycloak)).

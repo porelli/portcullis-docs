@@ -22,14 +22,19 @@ exactly as on a real install. Every step drives the stack through
 
 - **shellcheck** of `portcullis`, `scripts/lib/*.sh`, `tests/*.sh` and `vault/entrypoint.sh`.
 - **CLI help.** Every command listed by `./portcullis help` must print a `Usage: portcullis <cmd>` line for `--help`.
-- **`tests/test_cli.sh`.** Argument parsing, dispatch and `init --env-only`, with a stub `docker`.
+- **`tests/test_cli.sh`.** Argument parsing, dispatch and `init --env-only`, with a stub `docker`. Also:
+    - `keycloak configure` against a stub admin API: the realm PUT carries brute force and an empty `acr.loa.map`, the forward-auth client loses `default.acr.values`, the two-factor `webauthn-register` is disabled, the AMR check walks `portcullis-universal`, the X.509 settings go onto the `portcullis-x509` execution; it never writes the Hub's AI clients or `mcp:*` scopes
+    - the realm export's sign-in flows (contract §8.1): `portcullis-universal` = REQUIRED `portcullis-authenticate` + REQUIRED `portcullis-template`, `portcullis-signin` (x509 · passkey sub-flow · password form), one conditional sub-flow per passkey kind with its `kind` and `method` configs, no `conditional-level-of-authentication` anywhere, `acr.loa.map` `{}`, every reference config `maxAge` 36000, the invite configs `inv`, brute force, the passwordless policy, every config used once
+    - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
+    - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
 - **`tests/test_shell_libs.sh`.** Shell-library tests against stub `docker`/`vault`:
     - `.env` handling and secret generation
     - network validation
     - `cert sync`, which must never empty the revoked list when Vault fails
     - `pki setup` idempotency, including resuming a partial run
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
-    - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then LoA 1 (`portcullis-invite-loa-1`) and LoA 2 (`portcullis-invite-loa`), amr `hwk`; the marker scope is no default anywhere in the export
+    - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
+    - backups' `MANIFEST.json` names the Hub and Keycloak images; `upgrade` warns about a pinned `HUB_IMAGE` or `KEYCLOAK_IMAGE`
 - **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
     - policy file v5: maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, v4 and older deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and enrolled domains denied
     - core hosts from the map file (`<sub>` → `<sub>.<domain>`, the apex included), never from the policy file; merging the map file with the Hub's `groups`
@@ -55,9 +60,10 @@ exactly as on a real install. Every step drives the stack through
     - every core image is pinned by digest, and `enroll/Dockerfile` + `group-gate/Dockerfile` bases too
     - every service has `no-new-privileges`, `cap_drop: ALL` and memory/pid limits
     - Keycloak's `--proxy-trusted-addresses` is Traefik's `portcullis-auth` IP, and only Keycloak and Traefik are on that network
+    - Keycloak's image is `ghcr.io/porelli/portcullis-keycloak:…` and its only volume is `hub_data:/hub-data` read-only; `hub_data` is mounted by exactly the Hub, group-gate, mcp-gate and Keycloak
     - `group-gate-map.conf` has `people=*`
     - `forward-auth-ext` mirrors `forward-auth` (image, command, secrets, trusted proxies; `portcullis-auth-ext` has every `portcullis-auth` forwardauth setting), defines no router, uses the relative callback `/oauth2/callback` and the host-only cookie `__Host-portcullis_ext` (`Secure`, `Path=/`, no cookie domain, no whitelist); `oauth2-proxy/alpha.yaml` sends PKCE S256
-- **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub, which comes from `HUB_IMAGE`. The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
+- **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
     - `amtool check-config` for a generated Alertmanager config with no receiver, a webhook, ntfy and SMTP
@@ -91,7 +97,7 @@ the internal PKI) and verifies:
     - cert info, including the serial, reaches the backend
     - requests arrive from Traefik's static IP
 - **X.509 login**
-    - a login via Traefik with a real cert succeeds
+    - a login via Traefik with a real cert (`pc_method=yubikey_cert`) succeeds; the Hub isn't running yet, so the step writes a minimal `signin-keycloak.json` (the starting methods) into `hub_data` first, or the sign-in extension would refuse everyone
     - the same cert as a forged header sent straight to Keycloak (from the
       `portcullis` and `portcullis-auth` networks and from `127.0.0.1:8080`)
       must **not** yield an authorization code
@@ -131,8 +137,10 @@ the internal PKI) and verifies:
     - on a fresh install publishes the built-in default auth policy `{factors: [mtls, webauthn], op: any}` (either YubiKey method), which group-gate applies (step-up for a session with neither) to an app without its own policy
     - then gets a public default through `PUT /api/settings`, like an admin would; the revocation test checks that precondition, and every hand-written group-gate policy file in CI states its default explicitly
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
-- **Passkey-only sign-in and setup links.**
-    - the browser flow has no password executor, has the identity-provider redirector, a passkey step and LoA 2 = allow-access; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
+- **Sign-in flows and setup links.**
+    - the browser flow is exactly the sign-in extension's tree (contract §8.1: cookie · invite redirector · {`portcullis-x509` · passkey with one conditional sub-flow per kind · `portcullis-password-form`}, then `portcullis-template`), every reference config has a known amr and `maxAge` 36000; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
+    - `webauthn-register-passwordless` enabled, the two-factor `webauthn-register` disabled; the realm has `acr.loa.map` `{}`, brute force (10 / 60 s / 900 s, not permanent) and direct passkey attestation
+    - the invite post-broker flow: admit / deny sub-flows, then amr `inv` and `portcullis-template`
     - the LDAP federation has `cachePolicy` `NO_CACHE` (`tests/test_shell_libs.sh` also checks the realm export and that `keycloak configure`'s patch sets it idempotently)
     - the invite identity provider is enabled, hidden, links existing users only (`idp-detect-existing-broker-user`, `idp-auto-link`), back-channel `http://enroll:8445`, PKCE; the service account `portcullis-enroll` has exactly view-users + manage-users
     - `./portcullis invite`: link format, a new link revokes the older one, viewing doesn't consume it, a cross-site redeem is refused, `portcullis-hub` is refused, `admin` is allowed from the server
@@ -454,7 +462,12 @@ in use).
 **Cross-repo branches.** `ci.yml` also runs on `workflow_dispatch`. On a
 branch whose name exists in porelli/portcullis-hub (not `main`, not a tag),
 `.github/actions/hub-image` builds the Hub from that branch instead of pulling
-`edge`; the Hub's `build.yml` likewise tests against the same-named branch of
+`edge`. Likewise, on a branch whose name exists in porelli/portcullis-keycloak
+(not `main`, not a tag), `.github/actions/keycloak-image` builds the Keycloak
+image from it (`KEYCLOAK_IMAGE=portcullis-keycloak:ci`, `KEYCLOAK_LOCAL=1`);
+otherwise it pulls the published `edge` and names its digest in the step
+summary. Every job that runs Keycloak uses it, and the cached image lists leave
+both images out (unpinned). The Hub's `build.yml` likewise tests against the same-named branch of
 the templates and core repos, else `main`.
 
 ### Caching
@@ -474,11 +487,12 @@ The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most
 
 Runs on `v*` tags:
 
-1. **`preflight`** checks two things:
+1. **`preflight`** checks three things:
     - The tag is `vMAJOR.MINOR.PATCH` and `CHANGELOG.md` has its `## [X.Y.Z]` section.
     - The `HUB_IMAGE` default in `docker-compose.yml` is `ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…`, where `vA.B.C` is a published (non-draft, non-prerelease) Hub release and the tag still resolves to that digest.
+    - The `KEYCLOAK_IMAGE` default is `ghcr.io/porelli/portcullis-keycloak:D.E.F@sha256:…` in the same way (a published portcullis-keycloak release whose tag still resolves to that digest).
 2. **`ci`** runs the full `ci.yml` on the tagged commit.
-3. **`release`** builds a reproducible `portcullis-X.Y.Z.tar.gz` (the checkout without `.git`, plus `VERSION`) and its `.sha256`. It then creates the GitHub release with the changelog section, the pinned Hub image and generated notes.
+3. **`release`** builds a reproducible `portcullis-X.Y.Z.tar.gz` (the checkout without `.git`, plus `VERSION`) and its `.sha256`. It then creates the GitHub release with the changelog section, the pinned Hub and Keycloak images and generated notes.
 
 See [Upgrading & Releases](upgrading.md#core-releases).
 

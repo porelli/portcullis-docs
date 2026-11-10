@@ -25,6 +25,7 @@ ports, and header trust.
 | Public exceptions (share links, off unless an admin turns them on) | Anonymous access to app endpoints, token guessing, share-password brute force, identity spoofing on header-auth apps | Only declared, validated prefixes; listed mode routes only admin-listed share tokens; identity headers stripped; `rate-limit@file`; see [Public exceptions](#public-exceptions) |
 | AI clients (MCP, [AI support](ai.md)) | A token replayed at another app, an AI acting beyond the person, injected instructions in app content, a secret leaking into the model | `mcp-gate` checks every request: signature, issuer, the exact audience and scope of that one resource (a token for two resources works nowhere), the client, the resource's sign-in rule (certificate methods never count) and the person's population **on every request**. It never forwards the person's token; destructive tools need a confirmation in the person's browser; no tool takes or returns a secret. See [AI support](#ai-support-mcp-gate) |
 | An LLDAP account deleted and re-created under the same name | The newcomer inherits the previous holder's Keycloak user (passkeys, sessions, consents, AI connections) | Keycloak links LLDAP accounts by LLDAP's immutable `entryUUID`: the newcomer is a new Keycloak user (new `sub`); the old copy and its passkeys, sessions and consents are removed at the next lookup |
+| Password guessing (only while the password method is on) | Online guessing of a person's LLDAP password at `auth.<domain>` | Keycloak's brute-force protection (realm, `keycloak configure`): after 10 failures each further one adds 60 s of wait, at most 15 min, never a permanent lockout (so nobody can lock an account out for good); Traefik's `rate-limit-auth@file`; `admin` and `portcullis-hub` never sign in with a password (refused before any check, not counted) |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
 
@@ -64,7 +65,7 @@ reach an app. What a turned-on exception exposes:
 - **The host's TLS tier.** With an mTLS-only policy the host drops from
   `protected@file` to `authaware@file`: group-gate still enforces the client
   certificate per request on gated routers, but native-OIDC apps then check it
-  only at login (Keycloak acr), and routers without group-gate not at all.
+  only at login (Keycloak's template check), and routers without group-gate not at all.
 
 What it can't do:
 
@@ -213,7 +214,11 @@ Every core service gets:
 
 - `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`
 - `mem_limit` and `pids_limit`
-- an image pinned `tag@sha256:digest`. The Hub comes from `HUB_IMAGE`; enroll
+- an image pinned `tag@sha256:digest`. The Hub comes from `HUB_IMAGE` and
+  Keycloak from `KEYCLOAK_IMAGE` (`ghcr.io/porelli/portcullis-keycloak`, our
+  own image: the official Keycloak pinned `tag@sha256` plus the sign-in
+  extension built with Gradle dependency verification; `edge` on core `main`,
+  a core release pins a released tag by digest); enroll
   and group-gate are built from `enroll/Dockerfile` / `group-gate/Dockerfile`,
   whose base images are pinned. group-gate's Python dependencies are exact pins
   with hashes in `group-gate/requirements.txt`, installed wheels-only with
@@ -228,7 +233,7 @@ CI fails if any of these is missing.
 | postgres | 70:70 | read-only (`tmpfs /var/run/postgresql`, `/tmp`) | — | `pg_isready` | `/var/lib/postgresql` is postgres-owned in the image, so the entrypoint needs no `chown` |
 | vault | 100:1000 | read-only (`tmpfs /tmp`) | — | `vault status` | `disable_mlock` (raft), so no `IPC_LOCK`. Reads `secrets/vault-unseal/` via group 1000 |
 | lldap | 1000 (`-rootless` image) | read-only (`tmpfs /tmp`) | — | `lldap healthcheck` | |
-| keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider is a build option. A custom pre-built (`--optimized`) image would allow read-only |
+| keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`). Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider (and the sign-in extension's providers) are build options; never `--optimized`. Reads `hub_data` read-only (`/hub-data/signin-keycloak.json`, the Hub's sign-in methods and templates; missing or invalid = nobody signs in) |
 | forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client |
 | forward-auth-ext (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Same image, provider config, client and cookie secret as forward-auth; serves extra-domain hosts only (contract §5): relative callback `/oauth2/callback` built from the request host (`X-Forwarded-Host`, trusted from `OAUTH2_PROXY_TRUSTED_PROXY_IPS` only), host-only cookie `__Host-portcullis_ext` (`Secure`, no `Domain`, `Path=/`), no redirect whitelist (only relative redirects are accepted). Both oauth2-proxies send PKCE S256 and the `portcullis-forward-auth` client requires it (`pkce.code.challenge.method`), so a code delivered to a stale callback URI is useless without the verifier. Routed only by the Hub's per-host `Host(<h>) && PathPrefix(/oauth2/)` routers. Its middleware `portcullis-auth-ext` lists the same `authResponseHeaders` / `authResponseHeadersRegex` as `portcullis-auth` (CI compares them) |
 | group-gate | 10003:10003 (`USER` in Dockerfile) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL parsing) and `PyJWT` (token claims) + the script. Only world-readable mounts |
