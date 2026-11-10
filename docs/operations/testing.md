@@ -34,6 +34,7 @@ exactly as on a real install. Every step drives the stack through
     - network validation
     - `cert sync`, which must never empty the revoked list when Vault fails
     - `pki setup` idempotency, including resuming a partial run
+    - `invite --replace-keys` deletes every passkey kind (`webauthn`, `webauthn-passwordless`, `portcullis-device-passkey`, `portcullis-security-key`), never a password or OTP credential, then signs the person out
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - backups' `MANIFEST.json` names the Hub and Keycloak images; `upgrade` warns about a pinned `HUB_IMAGE` or `KEYCLOAK_IMAGE`

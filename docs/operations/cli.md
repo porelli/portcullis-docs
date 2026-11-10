@@ -504,7 +504,7 @@ refuses invites for `admin`; only the server can issue them.
 |--------|---------|
 | `--ttl DURATION` | Go duration, e.g. `30m`, `24h` |
 | `--to` | Where to land afterwards: `hub` (`https://hub.<domain>/`), `portal` (`https://<domain>/`, default) or an https URL on the domain |
-| `--replace-keys` | Lost or stolen key: first delete all of the user's passkeys and security keys in Keycloak and sign them out everywhere. Without it the new key is added next to the old ones (a spare key) |
+| `--replace-keys` | Lost or stolen key: first delete all of the user's passkeys and security keys in Keycloak (every passkey kind: synced, device-bound and security key) and sign them out everywhere. Without it the new key is added next to the old ones (a spare key) |
 | `--json` | Print enroll's JSON (`{"url","expires_at"}`) |
 
 ---
