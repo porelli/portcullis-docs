@@ -71,8 +71,9 @@ in the method counts, the warnings and the lockout guard.
   but onboarding a new person with a password is refused while it is off.
 - **Password sign-in is never available for `admin` and `portcullis-hub`**,
   whatever the switch says. Keycloak answers "Password sign-in isn't
-  available for this account", and a failed attempt counts towards Keycloak's
-  brute-force lockout like a wrong password.
+  available for this account" without checking the password, and the attempt
+  doesn't count towards Keycloak's brute-force lockout (so nobody can lock
+  these accounts out by trying passwords).
 
 ## Templates
 
