@@ -533,8 +533,9 @@ portcullis signin reset-core [--yes]
 Recovery when no administrator can sign in to the Hub any more (a method
 switched off, a template edited, or the Hub moved to a template nobody meets;
 the Hub refuses such saves, but this covers the rest). It stops the Hub, runs
-the Hub's own `hub signin reset-core` against its data, and starts the Hub
-again. The reset:
+the Hub's own `hub signin reset-core` against its data in a one-off container
+of the Hub's image, as the image's user (uid 10001, so nothing in the Hub's
+data ends up owned by root), and starts the Hub again. The reset:
 
 - puts the Hub and people.&lt;domain&gt; core pages on **Standard**;
 - restores the built-in Standard rule (any passkey or any certificate) and
@@ -543,8 +544,12 @@ again. The reset:
   certificate);
 - is audited `signin.reset_core` (actor `cli`) and prints what it changed.
 
+Everything else (other templates, apps' picks, passwords) is kept. If the reset
+fails, the CLI still starts the Hub again, then exits 1 with the Hub's exit
+status (its message is printed above); nothing was changed.
+
 Without `--yes` it asks you to type `reset`; with no terminal and no `--yes`
-it refuses. See
+it refuses (exit 2). See
 [Sign-in methods → Locked out of the Hub](auth-policies.md#locked-out-of-the-hub).
 
 | Option | Meaning |

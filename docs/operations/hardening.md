@@ -690,7 +690,8 @@ forward-auth.
   redemption cookie scoped to `/invite/`, a 60 s single-use code bound to the
   broker redirect URI and the PKCE challenge, and an ES256 id_token.
 - **Unrouted ports.** Its token / JWKS port (8445) and the Hub's invite API
-  (8444, bearer secret) are not routed by Traefik. `./portcullis invite` (the
+  (8444, bearer secret; also the certificates list for the Hub's sign-in
+  inventory, contract §9.4) are not routed by Traefik. `./portcullis invite` (the
   CLI, through `docker exec`) uses a loopback-only listener (8446), the only
   way to invite an administrator.
 - **Admins only through the CLI.** The Hub API refuses `admin`,
