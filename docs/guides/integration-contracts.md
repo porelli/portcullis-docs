@@ -770,7 +770,7 @@ The extension keeps the attestation (statement, AAGUID, authenticator data, `x5c
 #### Passwords
 
 - The sign-in password **is** the LLDAP password (one password). Keycloak checks it by LDAP bind; the federation stays `READ_ONLY`.
-- Hub-set passwords are 12–128 characters, not the username, and not in the embedded common-password list (SecLists 10k, MIT). The Hub records `sign_in.passwords.<user> = {set_at, set_by}` whenever it sets one, and only Hub-recorded passwords count in counts, warnings and the lockout guard.
+- Hub-set passwords are 12–128 characters, not the username, and not in the embedded common-password list (SecLists 10k, MIT). The Hub records `sign_in.passwords.<user> = {set_at, set_by, uuid}` (the LLDAP account it was set for) whenever it sets one, and only Hub-recorded passwords of the person's current account count in counts, warnings and the lockout guard; a person disabled in Keycloak counts no method at all.
 - Setting a password is allowed while the method is off (LDAP-binding apps use it); onboarding with a password is refused (`409`) while it is off.
 - **Password sign-in is never available for `admin` and `portcullis-hub`**: the extension's password form refuses both (a fixed list, compared lowercased; "Password sign-in isn't available for this account", counted by brute-force protection like a wrong password), and the Hub never counts a password for them.
 
@@ -786,7 +786,7 @@ A Settings switch, `add_stronger`, **off** at the start. While it is off, a pers
 
 #### Lockout guard and `signin reset-core`
 
-A save that changes methods, templates, the default or the `hub` core pick is refused (`409`, naming why) when it would take the number of unexpired `lldap_admin` members who can meet the Hub's compiled template from more than 0 to 0. When it is already 0 the save goes through with the warning "No administrator can meet the Hub's template". Keycloak unreachable makes the guard answer `503`. The recovery is the CLI: `./portcullis signin reset-core` stops the Hub, runs `hub signin reset-core` against its data, which puts `hub` and `people` on `standard`, restores and enables the built-in Standard rule and switches its methods back on (`browser_cert` stays off; audited `signin.reset_core`, actor `cli`), then starts the Hub.
+A save that changes methods, templates, the default or the `hub` core pick is refused (`409`, naming why) when it would take the number of unexpired `lldap_admin` members who can meet the Hub's compiled template from more than 0 to 0. When it is already 0 the save goes through with the warning "No administrator can meet the Hub's template". The guard reads Keycloak, enroll and LLDAP only for a save that can lower that number (one where someone who meets the Hub's compiled template before might not after); Keycloak or LLDAP unreachable then makes it answer `503`. A save that can't lower it always goes through, with the warning when the last known inventory shows no administrator able (no warning when nothing is known). The recovery is the CLI: `./portcullis signin reset-core` stops the Hub, runs `hub signin reset-core` against its data (it refuses while a Hub holds the data directory's lock, `.hub.lock`), which puts `hub` and `people` on `standard`, restores and enables the built-in Standard rule and switches its methods back on (`browser_cert` stays off; audited `signin.reset_core`, actor `cli`), then starts the Hub.
 
 #### The Keycloak extension
 
