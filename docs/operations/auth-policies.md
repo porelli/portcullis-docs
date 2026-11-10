@@ -133,7 +133,11 @@ key* alternative is dropped and the rest still scores 4.4.
   people.&lt;domain&gt;, directory, enroll, metrics and the Traefik dashboard
   each the default or a template. The Hub and people.&lt;domain&gt; start on
   **Strong**: they control everything else. `auth.<domain>` (Keycloak itself)
-  and `mcp.<domain>` take no template.
+  and `mcp.<domain>` take no template of their own: the Keycloak admin
+  console's router (`auth.<domain>/admin`, which also runs group-gate) follows
+  the default template, and `mcp.<domain>` never reaches group-gate (mcp-gate
+  checks it). The portal checks its own template (its router has no group
+  check). A core page the policy file doesn't list is denied.
 
 ### What each app can enforce
 
@@ -352,9 +356,12 @@ publishes it three times, rewritten after every change:
 
 - **group-gate**: `group-gate-policy.json` (version 6), with the methods,
   the templates, the default, each app's own pick keyed by every full
-  hostname it routes, and each core page's template. A file group-gate
-  can't read, or one with an unknown method or rule, makes it deny (fail
-  closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
+  hostname it routes, and each core page's template, plus each person's
+  set-up methods and the add-stronger switch (these two only word
+  group-gate's pages, they never decide access). A missing file, one
+  group-gate can't read, another version, an unknown key, an unknown method
+  or rule shape, a method in a rule that isn't on, or a template a host names
+  but the file lacks makes it deny (fail closed). Format: [Integration Contracts §4](../guides/integration-contracts.md#4-policy-file-hub-group-gate).
 - **Keycloak**: `signin-keycloak.json`, with the methods, the templates, the
   native-OIDC clients and their templates, and the FIDO list's verdicts. If
   it is missing or invalid every method counts as off and nobody signs in
@@ -417,9 +424,11 @@ accounts by it. See [Security & Hardening](hardening.md#header-spoofing-protecti
 A YubiKey certificate in the session (`amr=mtls`) only proves a certificate
 was used at sign-in. group-gate counts the **YubiKey certificate** method
 only while the current request presents an unrevoked client certificate whose
-CN equals the session's `preferred_username`. Without it the method is
-missing, and a template that needs it shows the step-up or needs-stronger
-page. A session opened with a since-revoked certificate, or replayed from a
+CN equals the session's `preferred_username` (and the token's
+`preferred_username` is the same user). Without it the method is missing: a
+template the certificate would meet shows the present-certificate page
+([above](#present-your-yubikey-certificate)), any other the step-up or
+needs-stronger page. A session opened with a since-revoked certificate, or replayed from a
 browser without the key, stops meeting such a template at once. See
 [TLS & mTLS](../setup/certificates.md#mtls-binding-group-gate).
 

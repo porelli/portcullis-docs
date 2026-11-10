@@ -627,7 +627,23 @@ backends must never trust those headers (none of them reads them).
   `authResponseHeaders`, so Traefik deletes them). Otherwise it echoes them
   unchanged: apps keep the token, and the Keycloak console behind
   `portcullis-auth-console` keeps its own bearer. A file without `version`
-  denies as well; only a missing file means "nothing published".
+  denies as well, and so does a missing file: with no file no method is on
+  and no template is known.
+- **Session methods come from oauth2-proxy only.** group-gate reads the
+  session's `amr` from `X-Forwarded-Access-Token`, which oauth2-proxy sets on
+  every forward-auth route (it is in every forwardAuth middleware's
+  `authResponseHeaders`, so client copies are deleted), never from
+  `Authorization`: on the Keycloak console's route that header is the
+  client's own, and group-gate doesn't check token signatures (oauth2-proxy
+  did). The YubiKey certificate counts only with the
+  [mTLS binding](auth-policies.md#mtls-binding).
+- **Sign-in pages.** An unmet template gets a `403` page from group-gate
+  (present your certificate, a step-up for one method, or needs a stronger
+  sign-in), never a redirect: no refresh, no script, every value
+  HTML-escaped, `Cache-Control: no-store` and a `default-src 'none'` CSP that
+  allows only the page's own inline style. The step-up URL (`pc_method=<one
+  method id or passkey>`, also in `X-Stepup-URL`) only reaches oauth2-proxy,
+  whose `loginURLParameters` allow exactly those values and no `acr_values`.
 - **Session re-validation.** Forward-auth sessions are re-validated every
   minute (`OAUTH2_PROXY_COOKIE_REFRESH=1m`, a legacy option that still applies
   with `--alpha-config`): once the session cookie is a minute old, oauth2-proxy

@@ -36,10 +36,15 @@ exactly as on a real install. Every step drives the stack through
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - backups' `MANIFEST.json` names the Hub and Keycloak images; `upgrade` warns about a pinned `HUB_IMAGE` or `KEYCLOAK_IMAGE`
 - **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
-    - policy file v5: maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, v4 and older deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and enrolled domains denied
-    - core hosts from the map file (`<sub>` → `<sub>.<domain>`, the apex included), never from the policy file; merging the map file with the Hub's `groups`
-    - step-up URLs: `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
-    - fail-closed policies (version without `version` key → deny) and the reserved deny group
+    - policy file v6 (contract §4): only version 6 (v5 and older, a float or string `6`, no `version`, a missing file → deny), every v6 key required (`methods` … `add_stronger`) and no unknown key, maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and enrolled domains denied
+    - compiled rules: an unknown leaf (`webauthn`, a family, `inv`, an amr value), a leaf that isn't switched on, an unknown `op`, 0 or > 8 items, > 4 levels, > 48 leaves, a template id, `default`, `hosts` or `core` reference that isn't published, `core` keys that aren't gated core hosts, bad `people` / `add_stronger` → deny (`policy_error`)
+    - the shared rule vectors `tests/signin_vectors.json` (a byte copy of the Hub's `internal/signin/testdata/vectors.json`): every evaluated case's `satisfied` and `alternatives` (set of sets, each listed once), every `reject` case refused
+    - session methods: amr through the method table, a switched-off method's amr ignored, `inv` meets nothing, the YubiKey certificate only with a bound certificate on the request; `people` / `add_stronger` never change a decision
+    - the host's template: `core` for core hosts (missing → deny; `hosts` entries ignored), the default for `auth.<domain>`, `/authenticated` and the portal check theirs
+    - the pages: present-certificate (no `X-Stepup-URL`), the step-up candidate rules (`pc_method` = the first set-up candidate, `passkey` for an unknown person with two or more passkey kinds, never `yubikey_cert` while amr holds `mtls`), the needs-stronger copy word for word as the Keycloak extension's (`portcullis-needs-stronger.ftl`), every value escaped, no refresh, CSP
+    - `oauth2-proxy/alpha.yaml`: `loginURLParameters` are exactly `pc_method` (the six method ids and `passkey`), `kc_idp_hint`, `prompt`; no `acr_values`
+    - step-up URLs (`/oauth2/start?pc_method=<method>`): `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
+    - the reserved deny group
     - `path_groups`, including bypass variants
     - the mTLS binding
     - revocation by serial list and by a real openssl-generated CRL
@@ -52,6 +57,7 @@ exactly as on a real install. Every step drives the stack through
     - every failure message is scrubbed: a password or NT hash in a record never reaches the output.
 
     The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
+- **Shared sign-in vectors match the Hub.** `tests/signin_vectors.json` must equal, byte for byte, the Hub's `internal/signin/testdata/vectors.json` on the same-named porelli/portcullis-hub branch when it exists, else `main` (like portcullis-keycloak's `vectors` job); a failed branch lookup fails the step.
 - **Compose validity and wiring**, against a generated `.env`. `docker compose config -q` must pass for the core, apps and test compose files. It also checks:
     - `HUB_PROXY_SECRET` is generated, and an empty one is rejected
     - the public default forward-auth secret is gone
