@@ -274,8 +274,11 @@ reachable.
 ### After a setup link
 
 A setup link signs the person in with a session that meets **no** template.
-Right after it they touch their new passkey once more to open apps (the
-step-up asks for a passkey kind they have, or any passkey).
+Right after it they touch their new passkey once more to open apps. The
+step-up asks for any passkey when the app's template accepts several passkey
+kinds, else for the first method the template can complete: the list of who has which method may not show the new passkey yet, so
+it isn't consulted for a setup-link session (no "needs a stronger sign-in"
+page just because it is behind).
 
 ### Fresh sign-in for sensitive actions
 

@@ -69,7 +69,7 @@ exactly as on a real install. Every step drives the stack through
     - every core image is pinned by digest, and `enroll/Dockerfile` + `group-gate/Dockerfile` bases too
     - every service has `no-new-privileges`, `cap_drop: ALL` and memory/pid limits
     - Keycloak's `--proxy-trusted-addresses` is Traefik's `portcullis-auth` IP, and only Keycloak and Traefik are on that network
-    - Keycloak's image is `ghcr.io/porelli/portcullis-keycloak:…` and its only volume is `hub_data:/hub-data` read-only; `hub_data` is mounted by exactly the Hub, group-gate, mcp-gate and Keycloak
+    - Keycloak's image is `ghcr.io/porelli/portcullis-keycloak:…` and its only named volume is `hub_data:/hub-data` read-only; `hub_data` is mounted by exactly the Hub, group-gate, mcp-gate and Keycloak
     - `group-gate-map.conf` has `people=*`
     - `forward-auth-ext` mirrors `forward-auth` (image, command, secrets, trusted proxies; `portcullis-auth-ext` has every `portcullis-auth` forwardauth setting), defines no router, uses the relative callback `/oauth2/callback` and the host-only cookie `__Host-portcullis_ext` (`Secure`, `Path=/`, no cookie domain, no whitelist); `oauth2-proxy/alpha.yaml` sends PKCE S256
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
@@ -102,9 +102,11 @@ the internal PKI) and verifies:
     - LLDAP users show up through the federation
     - the `email-unverified` scope has exactly one mapper (`email`), also after a second `keycloak configure`; a throwaway direct-grant client with that scope instead of `email` gets `email` but no `email_verified` in the ID token, access token and userinfo, while the built-in `email` scope sends `email_verified: false`
 - **mTLS**
+    - the Hub isn't running yet, so the step writes policy file v6 into `hub_data` (the starting methods, Standard the default, every gated core page on Standard; later steps add their keys to it): without a file group-gate denies everything
     - requests with no cert, or a cert from another CA, are rejected
     - cert info, including the serial, reaches the backend
     - requests arrive from Traefik's static IP
+    - the group-gated test router (no forward-auth: the test sends the session headers itself, with an unsigned stand-in access token per method — group-gate reads only its `amr` / `preferred_username`) answers the step-up page to a cert without a session, the present-certificate page to an `mtls` session without the cert, and lets an `mtls` session with testuser's own unrevoked cert through
 - **X.509 login**
     - a login via Traefik with a real cert (`pc_method=yubikey_cert`) succeeds; the Hub isn't running yet, so the step writes a minimal `signin-keycloak.json` (the starting methods) into `hub_data` first, or the sign-in extension would refuse everyone
     - the same cert as a forged header sent straight to Keycloak (from the
@@ -143,8 +145,9 @@ the internal PKI) and verifies:
     - runs as non-root
     - talks to Docker only via its proxy
     - answers 403 without the proxy secret
-    - on a fresh install publishes the built-in default auth policy `{factors: [mtls, webauthn], op: any}` (either YubiKey method), which group-gate applies (step-up for a session with neither) to an app without its own policy
-    - then gets a public default through `PUT /api/settings`, like an admin would; the revocation test checks that precondition, and every hand-written group-gate policy file in CI states its default explicitly
+    - on a fresh install publishes policy file v6 with the four starting methods, Standard the default and Strong on `hub` / `people` (`GET /api/signin` agrees), which group-gate applies to an app without its own pick: a step-up for no session, through for a synced passkey, a security key or a bound certificate
+    - an admin's `PUT /api/signin/default` to Strong reaches group-gate (a synced session gets the step-up or needs-stronger page, a bound certificate still opens the app), and back to Standard
+    - the revocation test's precondition is live: testuser's bound `mtls` session opens the test router before the revocation, so only the revocation can turn 200 into 403
 - **`signin reset-core` on the real Hub.** First `passkey_synced` is switched off through the Hub's API (`PUT /api/signin/methods/passkey_synced`), so the reset has something to undo. Without `--yes` and a terminal it exits exactly 2; `--yes` prints `method passkey_synced: off -> on` (never "nothing to change"), the Hub runs and answers `/healthz` again with `passkey_synced` on, the files the reset wrote — `state.yaml` (rewritten atomically, so a new inode owned by the writer), `audit.jsonl`, `.hub.lock` — are `10001:10001` (a root run would leave `state.yaml` root's), and the audit log's last `signin.reset_core` entry is by `cli`, `ok`, naming the change.
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
 - **Sign-in flows and setup links.**
@@ -174,7 +177,23 @@ The step "Test the public guard (public exceptions) through Traefik" routes a te
 `tests/e2e/requirements.txt`) with a CDP virtual WebAuthn authenticator against
 the full chain: Traefik → oauth2-proxy → Keycloak (LLDAP users, WebAuthn, X.509)
 → group-gate. A `whoami` test app has three hosts: `app.` (group `users_e2e`,
-`/admin` → `admin_e2e`), `hwk.` (WebAuthn policy) and `mtls.` (mTLS policy).
+`/admin` → `admin_e2e`, the default template Standard), `hwk.` (template
+any[`security_key`]) and `mtls.` (template any[`yubikey_cert`]). With no Hub
+in this job, the workflow writes policy file v6 and `signin-keycloak.json`
+itself; the latter's trust list is the CI fixture
+`tests/e2e/fixtures/virtual-authenticators.json`: Chromium's virtual CTAP2
+authenticator (AAGUID `01020304-0506-0708-0102-030405060708`, `packed`
+attestation with a self-signed "Batch Certificate", backup-eligible 0) as a
+`security_key` with that certificate as its root, so the virtual key registers
+as a security key (Keycloak's realm asks for direct attestation). The jobs
+that run the Hub (`e2e-instances`, `e2e-settings`, `e2e-folders`,
+`e2e-filesharing`, `e2e-ai`) start it with `HUB_DEV=1` and
+`HUB_SIGNIN_EXTRA_AUTHENTICATORS=/run/portcullis/signin/extra-authenticators.json`
+through their CI-only compose override, which mounts the same fixture
+read-only there ([contract §8.1](../guides/integration-contracts.md#81-sign-in-methods-new-sign-in)
+"Extra entries", development only), so their virtual keys are security keys
+too (Strong on `hub` / `people`). Every setup-link sign-in in them walks the
+step-up page with the shared `passkey_flow` helper of `e2e_login.py`.
 
 Scenarios:
 
@@ -184,22 +203,23 @@ creates one-time setup links with `./portcullis invite <user> --to <landing> --j
 them. Any password field fails the test.
 
 1. An unauthenticated request is redirected to a passkey-only Keycloak sign-in page.
-2. The setup link → **Register my key** → passkey registration → the webauthn-policy app (`hwk.`), with no second prompt.
+2. The setup link → **Register my key** → passkey registration → group-gate's step-up page on `hwk.` (a setup-link session, amr `inv`, meets no template) asking for exactly `security_key` → **Continue** → one assertion of the new key → the app. Exactly one registration and one assertion; a needs-stronger page fails the test.
 3. The setup link works once.
 4. The session reaches the app.
 5. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped.
 6. `path_groups`: `/admin` needs `admin_e2e`. `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` are denied, while `/administrator` is allowed.
 7. A second login in a fresh browser with the same key is one passkey assertion.
 8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
-9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link.
+9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link, after one step-up asking for any passkey (`pc_method=passkey`).
 10. An unused setup link, redeemed and then steered to another client's authorize endpoint with `kc_idp_hint=portcullis-invite` (client `e2e-invite-bypass`, created by the job), is denied by the invite post-broker flow: no code for the client, no passkey registered.
-11. X.509 login via Keycloak satisfies an mTLS policy.
+11. X.509 login via Keycloak satisfies the YubiKey-certificate template.
 12. An mTLS session without the cert on the request is refused (mTLS binding).
 13. A revoked client cert is rejected.
 14. A client cert from a foreign CA is rejected in the TLS handshake.
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
-checks (registration, no password, `acr`/`amr` = `hwk`, single use, one-touch
+checks (registration, no password, the step-up after the link with one more
+touch, a passkey method in the token's `amr`, single use, one-touch
 second login, the invite identity provider refuses browsers without a link)
 against any running install, e.g. a live server with a throwaway user
 (`E2E_IGNORE_HTTPS_ERRORS=1` for ACME staging). With
@@ -230,9 +250,11 @@ service's list). The Hub's only template source is the CI template
 `tests/e2e/apps/echo` (`traefik/whoami` behind Portcullis sign-in, plus a
 `hold` service that ignores SIGTERM so a backup can be made slow), seeded into
 `hub_data` as a local source. Through the Hub's API the job creates `echo-a`
-and `echo-c` on `team-b.test` and `echo-b` on the main domain (`echo-c` with
-policy mtls), checks the published policy file (v5, host keys, groups per
-instance, `extra_domains`), the rendered labels (`portcullis-auth-ext` and the
+and `echo-c` on `team-b.test` and `echo-b` on the main domain (`echo-c` on a
+template the job creates, `e2e-cert` = any[`yubikey_cert`], picked with
+`PUT /api/instances/echo-c/settings` `{sign_in_template}`), checks the
+published policy file (v6, host keys, groups per instance, `hosts` for
+`echo-c` only, `extra_domains`), the rendered labels (`portcullis-auth-ext` and the
 `/oauth2/` router to `forward-auth-ext` on extra-domain hosts only), the
 callbacks on `portcullis-forward-auth` and the SNI certificate. Every create
 carries a `label` ("Team A", …); a create without one is `400`, and so is a
@@ -248,8 +270,9 @@ a setting's variable (`ECHO_STOP_GRACE`) are refused with `400`, the reset
 - cross-domain SSO: signed in on the main domain, `echo-a` opens with no
   further WebAuthn assertion, through the host's own callback, PKCE S256 and a
   host-only `__Host-portcullis_ext` cookie; a stale ext cookie signs in again
-  without a loop; `echo-c` steps up to mtls exactly once (a returning user's
-  passkey session, the client certificate available);
+  without a loop; `echo-c` steps up to the YubiKey certificate exactly once
+  (`pc_method=yubikey_cert` on the host's own `/oauth2/start`; a returning
+  user's passkey session, the client certificate available);
 - two instances, two groups: each user reaches only their instance;
 - a backup longer than 60 s through `hub.<domain>`: `202`, a concurrent
   request `409`, the op record ends ok (Traefik keeps its default timeouts).

@@ -217,8 +217,9 @@ Every core service gets:
 - an image pinned `tag@sha256:digest`. The Hub comes from `HUB_IMAGE` and
   Keycloak from `KEYCLOAK_IMAGE` (`ghcr.io/porelli/portcullis-keycloak`, our
   own image: the official Keycloak pinned `tag@sha256` plus the sign-in
-  extension built with Gradle dependency verification; `edge` on core `main`,
-  a core release pins a released tag by digest); enroll
+  extension built with Gradle dependency verification; core `main` defaults to
+  its `edge` tag, the latest build of the extension repo's `main`, and a core
+  release pins a released tag by digest); enroll
   and group-gate are built from `enroll/Dockerfile` / `group-gate/Dockerfile`,
   whose base images are pinned. group-gate's Python dependencies are exact pins
   with hashes in `group-gate/requirements.txt`, installed wheels-only with
