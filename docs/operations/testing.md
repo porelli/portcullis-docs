@@ -318,7 +318,7 @@ whose directory the CI override mounts read-only at
 the Hub's API the job enables Basic and YubiKey + certificate, creates
 `e2e-cert` = any[`yubikey_cert`] and the instances `echo-std` (the default,
 Standard), `echo-basic` (Basic), `echo-cert` (`e2e-cert`), `oidc-strong`
-(Strong) and `oidc-all` (YubiKey + certificate), and checks what it published:
+(Strong), `oidc-all` (YubiKey + certificate) and `oidc-cert` (`e2e-cert`), and checks what it published:
 the picks in policy file v6, `hub` / `people` on Strong, and
 `signin-keycloak.json` `clients` (`oidc-strong` / `oidc-all` with their
 templates and names), the fixture's AAGUID, password off. People (created
@@ -338,15 +338,17 @@ its log. In order:
 
 1. **Password off:** the cold sign-in offers the passkey only — no "Try
    another way", no password field —, also for a step-up with
-   `pc_method=password`.
+   `pc_method=password` (the authorize request is checked to carry it).
 2. **Reclassification, part 1:** the fixture rewritten to `{}` (a directory
    change through the Hub — a throwaway group — makes it publish:
    `signin-keycloak.json` loses the virtual key's entry — the real FIDO MDS's
    entries stay — and gets a higher `mds.serial`);
    rita's setup-link key registers as `webauthn-passwordless`
    (`passkey_synced`, logged by the extension); the fixture is put back at
-   once. **`pc_fresh` absent** for her setup-link session: an authorization
-   through `portcullis-fresh-auth` (PKCE S256, SSO reused) has no `pc_fresh`.
+   once (written atomically: temp file + rename in the mounted directory).
+   **`pc_fresh` absent** for her setup-link session: an authorization through
+   `portcullis-fresh-auth` (PKCE S256, SSO reused, no touch of the key) has no
+   `pc_fresh`.
 3. **Security key on Strong:** root's setup link → step-up
    `pc_method=security_key` → `hub.<d>` 200, amr `hwk`, credential type
    `portcullis-security-key`.
@@ -368,12 +370,14 @@ its log. In order:
    another way", no password field) and asks for the security key only; the
    token's amr then has `spk` and `hwk`.
 8. **Cross-user certificate:** alice's passkey session presenting bob's
-   certificate — on `echo-cert`'s `yubikey_cert` step-up Keycloak refuses
-   (its error page; the log has the extension's USER_CONFLICT line naming
-   alice, or Keycloak's own X.509 authenticator refusing to set another user
-   than the step's: a `LOGIN_ERROR` for bob's certificate with no user), no
-   code reaches oauth2-proxy; on `oidc-all`'s template step it is needs-stronger or an
-   error, no code. Bob has no Keycloak session, and the forward-auth session
+   certificate, refused by Keycloak's X.509 user check or the extension's
+   USER_CONFLICT (the log has the extension's line naming alice or a
+   `LOGIN_ERROR` for bob's certificate with no user) — on `echo-cert`'s
+   `yubikey_cert` step-up (no code reaches oauth2-proxy) and on `oidc-cert`, a
+   native-OIDC client on `e2e-cert` = any[`yubikey_cert`] where a switch to bob
+   would meet the template: without `pc_method` Keycloak's needs-stronger page
+   (the certificate isn't alice's, so the template step doesn't ask for it),
+   with `pc_method=yubikey_cert` the refusal; no code either way. Bob has no Keycloak session, and the forward-auth session
    is never bob's.
 9. **An `all` template met step by step:** root with his certificate on
    `oidc-all` (all[`yubikey_cert`, `security_key`]): the certificate signs in,
@@ -391,10 +395,11 @@ its log. In order:
     for admin shows 0 failures and not disabled, and admin's passkey still
     signs in.
 13. **Password off again:** as in 1.
-14. **Reclassification, part 2:** within 7 min of the fixture's return (a
-    new mtime → a higher `mds.serial`; the extension's task runs every 5
-    min) rita's credential type is `portcullis-security-key` and the log has
-    `PasskeyReclassified user rita … passkey_synced -> security_key`.
+14. **Reclassification, part 2:** rita's credential type becomes
+    `portcullis-security-key`, and the log's `PasskeyReclassified user rita …
+    passkey_synced -> security_key` line (`docker compose logs -t`) is at most
+    360 s after the fixture's return (a new mtime → a higher `mds.serial`; the
+    extension's task runs every 5 min, plus slack).
 15. **TLS follows the switches** (last; it restarts apps): with
     `yubikey_cert` on, `echo-std` and `echo-basic` are on `authaware@file` and
     `openssl s_client -servername <host>` shows "Acceptable client certificate
@@ -404,15 +409,19 @@ its log. In order:
     CA names; `echo-basic` (Basic still names `family:certificate`) moves only
     when `yubikey_cert` is switched off. `auth.<d>` and `hub.<d>` keep their
     CA names (core routers stay on `authaware`). Then everything is put back
-    and compared with the snapshot taken before (methods, templates and rules,
+    (in a `finally`, also when a step failed) and compared with the snapshot taken before (methods, templates and rules,
     default, core pages, instance picks), and both apps are back on
     `authaware@file` with CA names.
 
+The throwaway `ci-kick-<n>` groups are deleted at the end (best effort).
 `./portcullis signin reset-core` is covered by `build-and-test` (above). The
 setup link landing on the step-up page is `e2e` scenario 2. Failure artifacts:
 screenshots, HTML and service logs; no Playwright traces (a DOM snapshot
-would carry a typed password), and the password pages are captured before
-anything is typed.
+would carry a typed password), the password pages are captured before
+anything is typed, and no whoami page is captured (it echoes session cookies
+and bearer tokens). Setup links are masked in the log (`::add-mask::`) and
+redacted from failure messages; the screenshots / HTML of the setup pages
+show the consumed links (nothing reusable).
 
 ### `e2e-settings` (app settings panel)
 
