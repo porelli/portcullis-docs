@@ -142,6 +142,7 @@ the internal PKI) and verifies:
   Keycloak and is off by default.
 
 - **Hub**
+    - its LLDAP service account is set up first (the same `lldap_service_account` that `portcullis up` runs later in the job): the admin routes check the actor in LLDAP
     - runs as non-root
     - talks to Docker only via its proxy
     - answers 403 without the proxy secret
@@ -202,7 +203,7 @@ creates one-time setup links with `./portcullis invite <user> --to <landing> --j
 (for `e2e`, `e2e-other`, `e2e-bypass` and the bootstrap `admin`) and the test starts from
 them. Any password field fails the test.
 
-1. An unauthenticated request is redirected to a passkey-only Keycloak sign-in page.
+1. An unauthenticated request is redirected to a passkey-only Keycloak sign-in page: it offers the passkey (`#authenticateWebAuthnButton`), no password field, and isn't Keycloak's error page.
 2. The setup link → **Register my key** → passkey registration → group-gate's step-up page on `hwk.` (a setup-link session, amr `inv`, meets no template) asking for exactly `security_key` → **Continue** → one assertion of the new key → the app. Exactly one registration and one assertion; a needs-stronger page fails the test.
 3. The setup link works once.
 4. The session reaches the app.
