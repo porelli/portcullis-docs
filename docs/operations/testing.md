@@ -67,6 +67,7 @@ exactly as on a real install. Every step drives the stack through
     - the public default forward-auth secret is gone
     - only the two socket proxies mount `docker.sock`; Traefik and the Hub use their proxies, and each proxy network has exactly its two members
     - the Hub router carries `hub-proxy-secret@docker` with the right secret, and the people router carries the same middleware
+    - token headers: `portcullis-auth` and `portcullis-auth-ext` list `X-Forwarded-Access-Token` and `Authorization` in `authResponseHeaders` (Traefik deletes a client's copies; group-gate reads amr only from that token); `portcullis-auth-console` lists the access token but not `Authorization` (the Keycloak console keeps its own bearer)
     - every core image is pinned by digest, and `enroll/Dockerfile` + `group-gate/Dockerfile` bases too
     - every service has `no-new-privileges`, `cap_drop: ALL` and memory/pid limits
     - Keycloak's `--proxy-trusted-addresses` is Traefik's `portcullis-auth` IP, and only Keycloak and Traefik are on that network
@@ -195,7 +196,7 @@ through their CI-only compose override, which mounts the same fixture
 read-only there ([contract §8.1](../guides/integration-contracts.md#81-sign-in-methods-new-sign-in)
 "Extra entries", development only), so their virtual keys are security keys
 too (Strong on `hub` / `people`). Every setup-link sign-in in them walks the
-step-up page with the shared `passkey_flow` helper of `e2e_login.py`.
+step-up page with the shared `passkey_flow` helper of `e2e_login.py`; every caller states how many step-up pages it expects (one after a setup link, none for a later sign-in), and one more fails at once.
 
 Scenarios:
 
@@ -208,7 +209,7 @@ them. Any password field fails the test.
 2. The setup link → **Register my key** → passkey registration → group-gate's step-up page on `hwk.` (a setup-link session, amr `inv`, meets no template) asking for exactly `security_key` → **Continue** → one assertion of the new key → the app. Exactly one registration and one assertion; a needs-stronger page fails the test.
 3. The setup link works once.
 4. The session reaches the app.
-5. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped.
+5. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped. A forged unsigned `X-Forwarded-Access-Token` / `Authorization` (amr `hwk`, `mtls`, the user's own name) never reaches the app, and on `mtls.` the real session still gets group-gate's step-up to `yubikey_cert` (a forged amr `mtls` reaching group-gate would show present-certificate instead).
 6. `path_groups`: `/admin` needs `admin_e2e`. `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` are denied, while `/administrator` is allowed.
 7. A second login in a fresh browser with the same key is one passkey assertion.
 8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
@@ -220,7 +221,7 @@ them. Any password field fails the test.
 14. A client cert from a foreign CA is rejected in the TLS handshake.
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
-checks (registration, no password, the step-up after the link with one more
+checks (registration, no password, `--expect-amr hwk` in CI: the token's passkey method is exactly that one; the re-invite counts one step-up click and one passkey click; the step-up after the link with one more
 touch, a passkey method in the token's `amr`, single use, one-touch
 second login, the invite identity provider refuses browsers without a link)
 against any running install, e.g. a live server with a throwaway user
