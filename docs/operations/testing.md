@@ -227,7 +227,10 @@ against any running install, e.g. a live server with a throwaway user
 `--reinvite-cmd "<command printing portcullis invite <same user> --json>"` it
 also registers a second, new authenticator through a second link and checks
 that both keys sign in — or, with `--replaced` (`--replace-keys`), that the
-old one no longer does. The `e2e` job runs both variants after the browser
+old one no longer does. With a spare key the step-up after the second link
+counts two assertion events for one touch: the account holds two passkeys, and
+Chromium silently probes a multi-entry `allowCredentials` list first (CDP
+reports that probe as an assertion too). The `e2e` job runs both variants after the browser
 tests (users `e2e-spare`, `e2e-lost`). Dialogs are answered like a user
 pressing OK (the default value).
 
