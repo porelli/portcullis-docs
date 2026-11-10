@@ -544,9 +544,12 @@ data ends up owned by root), and starts the Hub again. The reset:
   certificate);
 - is audited `signin.reset_core` (actor `cli`) and prints what it changed.
 
-Everything else (other templates, apps' picks, passwords) is kept. If the reset
-fails, the CLI still starts the Hub again, then exits 1 with the Hub's exit
-status (its message is printed above); nothing was changed.
+Everything else (other templates, apps' picks, passwords) is kept. The
+one-off container never becomes a Traefik target (`traefik.enable=false`). If
+the reset fails, or the Hub can't be stopped, or you interrupt the command, the
+CLI starts the Hub again; a failed reset then exits 1 with the Hub's exit
+status, its own message and "the Hub was started again". Check its output and
+the audit log for what, if anything, was saved.
 
 Without `--yes` it asks you to type `reset`; with no terminal and no `--yes`
 it refuses (exit 2). See
