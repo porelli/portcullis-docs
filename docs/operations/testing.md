@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
@@ -151,7 +151,7 @@ the internal PKI) and verifies:
     - on a fresh install publishes policy file v6 with the four starting methods, Standard the default and Strong on `hub` / `people` (`GET /api/signin` agrees), which group-gate applies to an app without its own pick: a step-up for no session, through for a synced passkey, a security key or a bound certificate
     - an admin's `PUT /api/signin/default` to Strong reaches group-gate (a synced session gets the step-up or needs-stronger page, a bound certificate still opens the app), and back to Standard
     - the revocation test's precondition is live: testuser's bound `mtls` session opens the test router before the revocation, so only the revocation can turn 200 into 403
-- **`signin reset-core` on the real Hub.** First `passkey_synced` is switched off through the Hub's API (`PUT /api/signin/methods/passkey_synced`), so the reset has something to undo. Without `--yes` and a terminal it exits exactly 2; `--yes` prints `method passkey_synced: off -> on` (never "nothing to change"), the Hub runs and answers `/healthz` again with `passkey_synced` on, the files the reset wrote — `state.yaml` (rewritten atomically, so a new inode owned by the writer), `audit.jsonl`, `.hub.lock` — are `10001:10001` (a root run would leave `state.yaml` root's), and the audit log's last `signin.reset_core` entry is by `cli`, `ok`, naming the change.
+- **`signin reset-core` on the real Hub.** First `passkey_synced` is switched off through the Hub's API (`PUT /api/signin/methods/passkey_synced`), so the reset has something to undo. Without `--yes` and a terminal it exits exactly 2; `--yes` prints `method passkey_synced: off -> on` (never "nothing to change"), the Hub runs and answers `/healthz` again with `passkey_synced` on and `GET /api/signin` shows `hub` and `people` moved from Strong (the fresh install's) to `standard`, the files the reset wrote — `state.yaml` (rewritten atomically, so a new inode owned by the writer), `audit.jsonl`, `.hub.lock` — are `10001:10001` (a root run would leave `state.yaml` root's), and the audit log's last `signin.reset_core` entry is by `cli`, `ok`, naming the change.
 - **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
 - **Sign-in flows and setup links.**
     - the browser flow is exactly the sign-in extension's tree (contract §8.1: cookie · invite redirector · {`portcullis-x509` · passkey with one conditional sub-flow per kind · `portcullis-password-form`}, then `portcullis-template`), every reference config has a known amr and `maxAge` 36000; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
@@ -189,11 +189,11 @@ authenticator (AAGUID `01020304-0506-0708-0102-030405060708`, `packed`
 attestation with a self-signed "Batch Certificate", backup-eligible 0) as a
 `security_key` with that certificate as its root, so the virtual key registers
 as a security key (Keycloak's realm asks for direct attestation). The jobs
-that run the Hub (`e2e-instances`, `e2e-settings`, `e2e-folders`,
+that run the Hub (`e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`,
 `e2e-filesharing`, `e2e-ai`) start it with `HUB_DEV=1` and
 `HUB_SIGNIN_EXTRA_AUTHENTICATORS=/run/portcullis/signin/extra-authenticators.json`
 through their CI-only compose override, which mounts the same fixture
-read-only there ([contract §8.1](../guides/integration-contracts.md#81-sign-in-methods-new-sign-in)
+read-only there (`e2e-signin` mounts a copy's directory instead, which its test rewrites) ([contract §8.1](../guides/integration-contracts.md#81-sign-in-methods-new-sign-in)
 "Extra entries", development only), so their virtual keys are security keys
 too (Strong on `hub` / `people`). Every setup-link sign-in in them walks the
 step-up page with the shared `passkey_flow` helper of `e2e_login.py`; every caller states how many step-up pages it expects (one after a setup link, none for a later sign-in), and one more fails at once.
@@ -303,6 +303,116 @@ of another op, fails at once. On failure both print the record's error,
 hint, output and steps. Stop is sent with the enable's `op_id`. Folder and
 doctor ops poll their own records (`/api/folders/<id>/op`, `/api/doctor/op`),
 which have no history.
+
+### `e2e-signin` (sign-in methods)
+
+The whole stack plus the Hub and the Keycloak image (each built from its
+same-named branch) with one local template source: the CI templates
+`tests/e2e/apps/echo` (forward-auth) and `tests/e2e/apps/oidc-echo` (a
+native-OIDC client the Hub registers; `traefik/whoami` only answers the
+redirect URI — the test stops the browser there and redeems the code
+itself). The Hub's trust-list fixture is a copy of
+`tests/e2e/fixtures/virtual-authenticators.json` in `/tmp/signin-fixture`,
+whose directory the CI override mounts read-only at
+`/run/portcullis/signin`, so the test can rewrite the file in place. Through
+the Hub's API the job enables Basic and YubiKey + certificate, creates
+`e2e-cert` = any[`yubikey_cert`] and the instances `echo-std` (the default,
+Standard), `echo-basic` (Basic), `echo-cert` (`e2e-cert`), `oidc-strong`
+(Strong) and `oidc-all` (YubiKey + certificate), and checks what it published:
+the picks in policy file v6, `hub` / `people` on Strong, and
+`signin-keycloak.json` `clients` (`oidc-strong` / `oidc-all` with their
+templates and names), the fixture's AAGUID, password off. People (created
+with the Hub's LLDAP service account): `root` and `sam` (`lldap_admin`),
+`alice`, `bob` (a Vault certificate only), `pat` (a Hub-generated password
+only, kept in a 0600 file, never printed) and `rita`; `root` gets a
+certificate too. Setup links come from `./portcullis invite` inside the test.
+
+`tests/e2e/e2e_signin.py` uses two kinds of CDP virtual authenticator:
+backup eligibility 0 (Chromium's packed attestation, listed in the fixture:
+a **security key**) and backup eligibility 1 (a **synced** passkey, contract
+§8.1 "Passkey kinds"). An init script records the `allowCredentials` of every
+`navigator.credentials.get`, so "only that kind's credentials" is checked on
+what the browser was asked, not on Chromium's silent probe. Keycloak state is
+read from its admin API (credential types, brute-force status, sessions) and
+its log. In order:
+
+1. **Password off:** the cold sign-in offers the passkey only — no "Try
+   another way", no password field —, also for a step-up with
+   `pc_method=password`.
+2. **Reclassification, part 1:** the fixture rewritten to `{}` (a directory
+   change through the Hub — a throwaway group — makes it publish:
+   `signin-keycloak.json` loses the virtual key's entry — the real FIDO MDS's
+   entries stay — and gets a higher `mds.serial`);
+   rita's setup-link key registers as `webauthn-passwordless`
+   (`passkey_synced`, logged by the extension); the fixture is put back at
+   once. **`pc_fresh` absent** for her setup-link session: an authorization
+   through `portcullis-fresh-auth` (PKCE S256, SSO reused) has no `pc_fresh`.
+3. **Security key on Strong:** root's setup link → step-up
+   `pc_method=security_key` → `hub.<d>` 200, amr `hwk`, credential type
+   `portcullis-security-key`.
+4. **Synced passkey refused on Strong:** sam's synced key
+   (`webauthn-passwordless`, amr `spk`): once the Hub's inventory lists
+   `people.sam = [passkey_synced]`, a later sign-in with it (one touch, amr
+   without `inv`: a setup-link session counts as not known in `people`)
+   gets `#needs-stronger` on `hub.<d>` (no step-up).
+5. **Native-OIDC template enforced:** sam on `oidc-strong` gets Keycloak's
+   `portcullis-needs-stronger.ftl` ("OIDC echo · OIDC Strong needs a stronger
+   sign-in") in core's `portcullis` theme, no code. The screenshot and HTML are
+   uploaded on every run (artifact `e2e-signin-needs-stronger`).
+6. **`pc_method` for one kind:** sam's spare security key (a second setup
+   link, landing on `hub.<d>`): the step-up asks `security_key` and the browser
+   is asked for that key only, never the synced one.
+7. **`pc_method` reaches Keycloak, amr accumulates:** sam's synced session (from 4) on
+   `hub.<d>`, with `people.sam = [passkey_synced, security_key]`: step-up
+   `pc_method=security_key`; Keycloak shows the passkey prompt only (no "Try
+   another way", no password field) and asks for the security key only; the
+   token's amr then has `spk` and `hwk`.
+8. **Cross-user certificate:** alice's passkey session presenting bob's
+   certificate — on `echo-cert`'s `yubikey_cert` step-up Keycloak refuses
+   (its error page; the log has the extension's USER_CONFLICT line naming
+   alice, or Keycloak's own X.509 authenticator refusing to set another user
+   than the step's: a `LOGIN_ERROR` for bob's certificate with no user), no
+   code reaches oauth2-proxy; on `oidc-all`'s template step it is needs-stronger or an
+   error, no code. Bob has no Keycloak session, and the forward-auth session
+   is never bob's.
+9. **An `all` template met step by step:** root with his certificate on
+   `oidc-all` (all[`yubikey_cert`, `security_key`]): the certificate signs in,
+   Keycloak asks for his security key itself (only it), then issues; the ID
+   token's amr has `mtls` and `hwk`.
+10. **`pc_fresh` present:** root's fresh passkey sign-in on
+    `portcullis-fresh-auth` (`prompt=login`, `max_age=0`) has `pc_fresh` =
+    `security_key`; an SSO reuse right after has none.
+11. **Password on:** pat signs in with his password ("Try another way" →
+    Password) on `echo-basic` (Basic; amr `pwd`); once the inventory lists
+    `people.pat = [password]`, `people.<d>` (Strong) answers `#needs-stronger`.
+12. **Admin's password refused:** `admin` with LLDAP's admin password, 11
+    times (above the realm's failure factor 10): "Password sign-in isn't
+    available for this account" each time, Keycloak's brute-force status
+    for admin shows 0 failures and not disabled, and admin's passkey still
+    signs in.
+13. **Password off again:** as in 1.
+14. **Reclassification, part 2:** within 7 min of the fixture's return (a
+    new mtime → a higher `mds.serial`; the extension's task runs every 5
+    min) rita's credential type is `portcullis-security-key` and the log has
+    `PasskeyReclassified user rita … passkey_synced -> security_key`.
+15. **TLS follows the switches** (last; it restarts apps): with
+    `yubikey_cert` on, `echo-std` and `echo-basic` are on `authaware@file` and
+    `openssl s_client -servername <host>` shows "Acceptable client certificate
+    CA names". Standard saved as any[`family:passkey`], the instances off the
+    certificate templates, `hub` / `people` on `standard`, Strong, YubiKey +
+    certificate and `e2e-cert` disabled → `echo-std` on `public@file` with no
+    CA names; `echo-basic` (Basic still names `family:certificate`) moves only
+    when `yubikey_cert` is switched off. `auth.<d>` and `hub.<d>` keep their
+    CA names (core routers stay on `authaware`). Then everything is put back
+    and compared with the snapshot taken before (methods, templates and rules,
+    default, core pages, instance picks), and both apps are back on
+    `authaware@file` with CA names.
+
+`./portcullis signin reset-core` is covered by `build-and-test` (above). The
+setup link landing on the step-up page is `e2e` scenario 2. Failure artifacts:
+screenshots, HTML and service logs; no Playwright traces (a DOM snapshot
+would carry a typed password), and the password pages are captured before
+anything is typed.
 
 ### `e2e-settings` (app settings panel)
 
