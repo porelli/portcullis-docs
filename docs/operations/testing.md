@@ -323,8 +323,8 @@ itself). The Hub's trust-list fixture is a copy of
 `tests/e2e/fixtures/virtual-authenticators.json` in `/tmp/signin-fixture`,
 whose directory the CI override mounts read-only at
 `/run/portcullis/signin`, so the test can rewrite the file in place. Through
-the Hub's API the job enables Basic and YubiKey + certificate, switches
-`browser_cert` on, creates `e2e-cert` = any[`yubikey_cert`], `e2e-file` =
+the Hub's API the job enables Basic and YubiKey + certificate, checks that
+`browser_cert` is off by default, switches it on, creates `e2e-cert` = any[`yubikey_cert`], `e2e-file` =
 any[`browser_cert`] and `e2e-anycert` = any[`yubikey_cert`, `browser_cert`],
 and the instances `echo-std` (the default, Standard), `echo-basic` (Basic),
 `echo-cert` (`e2e-cert`, `protected@file`), `echo-file` (`e2e-file`) and
@@ -451,9 +451,12 @@ its log. In order:
       CA.
     - **`tls_mtls_refuses_browser_cert`:** `curl` to `echo-cert` with alice's
       browser leaf followed by the `.p12`'s whole chain (`pki_file` + root,
-      as a browser sends it) gets no answer (the handshake fails), and so does
-      a Playwright context presenting the `.p12` itself; root's YubiKey
-      certificate completes the handshake.
+      as a browser sends it) is refused in the handshake (curl exit 35 or 56,
+      nothing else), while the same files complete it on `echo-anycert`; a
+      Playwright context presenting the `.p12` itself is refused too (its
+      synthetic 503 "client-certificate error" page, or Chromium's
+      `net::ERR_BAD_SSL_CLIENT_AUTH_CERT` — any other error fails); root's
+      YubiKey certificate completes the handshake.
     - **`tls_protected_any`:** `echo-anycert`'s CA names are the root and both
       CAs; the browser certificate (with its chain) completes the handshake,
       no certificate fails it.
@@ -472,6 +475,13 @@ its log. In order:
       `POST /api/me/signin/yubikey-certificate/renew` with a CSR for its key
       gets `403` "present your current YubiKey certificate"; nothing is
       issued.
+    - **`browser_cert_off_counts_nothing`:** `echo-file` off `e2e-file`,
+      `e2e-file` disabled, `browser_cert` switched off (both published files
+      without it, `echo-anycert` on `authaware@file`): the same valid `.p12`
+      alone leaves the browser on Keycloak's passkey prompt with no LOGIN
+      event, and alice's earlier file session gets `403` on `echo-anycert`.
+      Everything is switched back in a `finally` (`echo-file` /
+      `echo-anycert` back on `protected-any@file`).
     - **`yubikey_cert_still_mtls`:** a `pki_int` certificate CI issues for
       alice through Vault signs her in without an authenticator: amr `mtls`,
       never `file`; `echo-cert` opens.
@@ -485,7 +495,9 @@ its log. In order:
       `X-Forwarded-Tls-Client-Cert` / `-Info`: alice's `mtls` session without
       the certificate but with both headers forged (her real YubiKey
       certificate) stays on `#present-certificate` on `people.<d>/`, and a
-      renewal from her passkey session with them forged gets `403`.
+      renewal from her passkey session with them forged gets `403`; the same
+      header sent straight to the Hub's people listener (`:8889`, no Traefik)
+      renews (`200`), so the `403` is Traefik deleting it.
     - **`browser_cert_revoked`:** `DELETE /api/me/signin/certificates/<serial>`
       (through Traefik, with that certificate) → `204`; within 70 s
       `echo-file` answers `403` (revoked) and `GET /api/me/signin` shows it
@@ -514,7 +526,8 @@ its log. In order:
     - **`browser_cert_none_left`:** all three revoked, none active, and the
       policy file's `people` no longer lists `browser_cert` for alice.
     - **`history_entries`:** alice's `/api/me/signin/history` (no unknown
-      source) has a `sign_in` with methods `[browser_cert]` and a non-empty
+      source) has her setup-link `sign_in` (no methods, detail "Setup link
+      used"), a `sign_in` with methods `[browser_cert]` and a non-empty
       browser, a `step_up`, an `opened` for `echo-file` with `browser_cert`,
       at least three `help` entries by carol and at least three
       `certificate` entries, and no `.p12` password; pat's has a `failed`
@@ -533,7 +546,9 @@ its log. In order:
     `e2e-cert`, `e2e-file` and `e2e-anycert` disabled → `echo-std` on
     `public@file` with no CA names; `echo-basic` (Basic still names
     `family:certificate`) stays on `authaware@file` while `browser_cert` alone
-    is on and moves only when both `yubikey_cert` and `browser_cert` are
+    is on — checked on six samples over 30 s once the Hub has applied
+    `yubikey_cert` off (both published files without it, the Hub's own tier
+    for `echo-basic` `authaware@file`, no `echo-basic` op running) — and moves only when both `yubikey_cert` and `browser_cert` are
     switched off. `auth.<d>` and `hub.<d>` keep their CA names (core routers
     stay on `authaware`). Then everything is put back (in a `finally`, also
     when a step failed) and compared with the snapshot taken before (methods,
