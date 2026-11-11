@@ -79,9 +79,9 @@
 *[privileged options]: Per-person settings that grant a privilege; per-group values only from groups delegates can't steer
 *[fixer helper]: Short-lived container the Hub starts from its own image to scan or fix a shared folder's ownership (no network, only the mode's capabilities)
 *[LAN only]: A template port that should be reachable only from the local networks; the Hub's doctor judges its binding
-*[file-share password]: Per-person SMB password each person creates on My apps after a fresh passkey sign-in; the Hub keeps only its NT hash
-*[file-share passwords]: Per-person SMB passwords each person creates on My apps after a fresh passkey sign-in; the Hub keeps only their NT hashes
-*[fresh auth]: A new hardware sign-in (passkey or hardware certificate) within the last 5 minutes, proven to the Hub with an ID token
+*[file-share password]: Per-person SMB password each person creates on My apps after a fresh sign-in; the Hub keeps only its NT hash
+*[file-share passwords]: Per-person SMB passwords each person creates on My apps after a fresh sign-in; the Hub keeps only their NT hashes
+*[fresh auth]: A new sign-in, with a method the governing template accepts, within the last 5 minutes, proven to the Hub with an ID token
 *[router-less]: A custom-auth template with no Traefik router (no web page), such as the SMB file-sharing templates
 *[secrets epoch]: Random value the Hub keeps both in state.yaml and on the hub_secrets volume; a mismatch voids every file-share password
 *[share slot]: One of the Samba template's eight fixed shared-folder shares (share1–share8)

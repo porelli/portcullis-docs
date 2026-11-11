@@ -444,7 +444,7 @@ flowchart TB
     LLDAP[(LLDAP<br/>users, groups)]
     App[Samba / Time Machine container<br/>portcullis-sync + smbd]
 
-    Person -->|popup: fresh passkey or YubiKey-certificate sign-in, PKCE| KC
+    Person -->|popup: fresh sign-in with a method the app's template accepts, PKCE| KC
     Person -->|code, verifier, nonce| Hub
     Hub -->|code exchange, ID token check| KC
     Hub -->|NT hash file per person| Secrets
@@ -483,12 +483,14 @@ flowchart TB
 1. On [My apps](operations/hub.md#my-apps) the person clicks **Create
    password**. The page opens Keycloak's `portcullis-fresh-auth` client in
    a popup (PKCE S256, `prompt=login`, `max_age=0`), so
-   they sign in again with a passkey or their YubiKey certificate.
+   they sign in again with a method the app's template accepts (a password
+   too, when the template takes one).
 2. The popup hands the code back to the page, which posts the code, the
    PKCE verifier and the nonce to the Hub. The Hub exchanges the code with
    Keycloak itself and checks the ID token: the sign-in is at most 300 s
    old, its `pc_fresh` claim (the method that ran in that sign-in; never `amr`)
-   is a passkey kind or the YubiKey certificate, switched on, the nonce matches,
+   is a switched-on method of the instance's template (its own pick, else
+   the default; [contract §8](guides/integration-contracts.md#8-keycloak-clients-core-hub-templates)), the nonce matches,
    `aud` / `azp` is the client, and `preferred_username` is the caller.
 3. The Hub draws 24 characters from a 54-character alphabet with
    `crypto/rand`. It shows them as 6 groups of 4 joined by `-`: 29

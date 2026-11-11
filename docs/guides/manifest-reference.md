@@ -629,7 +629,8 @@ the access group's members. Neither takes `scope`, `default`, `required`,
 `requires_any`; neither can be set by an admin.
 
 **`person_secret`**: each person with access creates their own file-share
-password on My apps after a fresh passkey sign-in. It is shown once; the Hub
+password on My apps after a fresh sign-in (a method the app's template
+accepts). It is shown once; the Hub
 keeps only its NT hash, outside every backup, and destroys it when the
 person loses access.
 
