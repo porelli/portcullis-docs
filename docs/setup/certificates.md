@@ -95,7 +95,7 @@ and defines four TLS option sets:
 
 | Tier | Traefik option | Trusts | Behavior |
 |------|---------------|--------|----------|
-| **protected** | `RequireAndVerifyClientCert` | `certs/ca-chain-yubikey.crt` (root + YubiKey CA) | A **YubiKey** certificate is **required**. Without one, the TLS handshake fails; a browser certificate never passes |
+| **protected** | `RequireAndVerifyClientCert` | `certs/ca-chain-yubikey.crt` (the YubiKey CA alone) | A **YubiKey** certificate is **required**. Without one, the TLS handshake fails; a browser certificate never passes |
 | **protected-any** | `RequireAndVerifyClientCert` | `certs/ca-chain.crt` (root + both CAs) | A YubiKey or browser certificate is **required** |
 | **authaware** | `VerifyClientCertIfGiven` | `certs/ca-chain.crt` | A certificate is **optional**, verified if present |
 | **public** | no `clientAuth` | — | No certificate requested |
@@ -403,8 +403,10 @@ intermediates signed by it, one per certificate kind:
   `max_ttl=$CLIENT_CERT_TTL`) and is rewritten on every run.
 - `certs/ca-chain.crt` is root + `pki_int` + `pki_file`, in that order (the
   `protected-any` and `authaware` TLS options), `certs/ca-chain-yubikey.crt`
-  is root + `pki_int` only (the `protected` option, so a browser certificate
-  never passes it), and Keycloak's truststore (`certs/truststore/`) gets
+  is `pki_int` alone, without the root (the `protected` option, so a browser
+  certificate never passes it: Traefik trusts every certificate in that file
+  as an anchor and uses the intermediates the browser sends, and a browser
+  certificate's `.p12` carries `pki_file` and the root), and Keycloak's truststore (`certs/truststore/`) gets
   `portcullis-ca-chain.pem`, `portcullis-yubikey-ca.pem` and
   `portcullis-browser-ca.pem`. Whenever `pki_file` is created or either chain
   on disk is out of date, `pki setup` rewrites both chain files and the

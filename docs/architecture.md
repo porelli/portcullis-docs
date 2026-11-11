@@ -234,7 +234,7 @@ Traefik's static `traefik/dynamic/tls.yml` defines four TLS option sets. The Hub
 
 | Tier | Traefik TLS Option | Certificate Behavior | Use Case |
 |------|-------------------|---------------------|----------|
-| **protected** | `RequireAndVerifyClientCert`, `certs/ca-chain-yubikey.crt` | A YubiKey certificate required -- the TLS handshake fails without one (a browser certificate never passes) | `mtls`-method apps; templates where every alternative needs the YubiKey certificate |
+| **protected** | `RequireAndVerifyClientCert`, `certs/ca-chain-yubikey.crt` (the YubiKey CA alone, no root) | A YubiKey certificate required -- the TLS handshake fails without one (a browser certificate never passes) | `mtls`-method apps; templates where every alternative needs the YubiKey certificate |
 | **protected-any** | `RequireAndVerifyClientCert`, `certs/ca-chain.crt` | A YubiKey or browser certificate required | Templates where every alternative needs a certificate and at least one accepts the browser certificate |
 | **authaware** | `VerifyClientCertIfGiven`, `certs/ca-chain.crt` | Optional -- verified if present, passkeys otherwise | Apps whose template has a certificate in some alternative (Standard, Strong); every core page |
 | **public** | no `clientAuth` | Not requested | Templates with no certificate method on, apps that manage their own auth |
