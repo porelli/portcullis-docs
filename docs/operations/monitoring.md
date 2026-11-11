@@ -56,7 +56,7 @@ All images:
 | `group-gate` | `group-gate:8080/metrics` | Decisions by endpoint/result (`allow`, `deny`, and the sign-in pages `stepup`, `needs_stronger`, `present_certificate`), denials and sign-in pages by reason, policy load errors, CRL last fetch and `nextUpdate`, revoked-serial counts |
 | `keycloak` | `keycloak:9000/metrics` | Management port (`--metrics-enabled`), not routed. Refused password attempts for `admin` / `portcullis-hub` (password sign-in is never available for them, contract §8.1 "Passwords") still appear as Keycloak `LOGIN_ERROR` events (`invalid_user_credentials`, with the account's user id) although brute-force protection counts nothing: don't alert on them as a lockout |
 | `prometheus`, `alertmanager`, `grafana` | self | |
-| `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry, newest YubiKey certificate per user) |
+| `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry of the root and both intermediates, the newest YubiKey and browser certificate per person and kind) |
 | `vault_health` | blackbox → `http://vault:8200/v1/sys/health` | 200 only when initialised, unsealed and active |
 | `services`, `services_tcp` | blackbox → enroll, forward-auth, Hub, LLDAP (HTTP); Postgres, LLDAP LDAP (TCP) | Services without a metrics endpoint |
 | `tls` | blackbox → `auth.<domain>:443` | Goes through the host's published port, so it sees the certificate browsers see. Verified against the system roots |
@@ -81,8 +81,8 @@ The Vault metrics token is an orphan token without the default policy, with a
 | `GroupGatePolicyErrors` | The Hub policy file is invalid (group-gate fails closed) | warning |
 | `BackupTooOld` | The last successful local or off-host backup is > 36 h old | warning |
 | `BackupNeverRan` | No backup metric at all for 6 h | warning |
-| `ClientCertExpiring` | A user's newest YubiKey certificate expires in < 7 days (renew it on the Sign-in page, `https://people.<domain>/signin`) | info |
-| `CaExpiring` | The root or intermediate CA expires in < 90 days | critical |
+| `ClientCertExpiring` | A person's newest YubiKey or browser certificate (label `kind`: `yubikey` / `browser`) expires in < 7 days (renew the YubiKey certificate, or make a new browser certificate, on the Sign-in page, `https://people.<domain>/signin`) | info |
+| `CaExpiring` | The root, the YubiKey certificate CA (`ca="intermediate"`) or the browser certificate CA (`ca="browser"`) expires in < 90 days | critical |
 | `PortcullisStatusStale` / `PortcullisStatusProblems` | `status --textfile` did not run for 36 h / reported problems for 1 h | warning |
 
 Core CI runs `promtool test rules monitoring/prometheus/tests/alerts_test.yml`,

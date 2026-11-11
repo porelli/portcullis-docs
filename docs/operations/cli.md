@@ -160,7 +160,7 @@ portcullis status [--json | --textfile]
 Prints a health overview:
 
 - compose services
-- Vault: sealed/active, CA expiry, issued certs, and YubiKey certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days
+- Vault: sealed/active, CA expiry (root, YubiKey certificate CA, browser certificate CA), issued certs (both mounts), and YubiKey and browser certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days (each person's newest of each kind; renewed or replaced on the Sign-in page)
 - Keycloak: realm, users, forward-auth client
 - LLDAP and Traefik
 - containers on `portcullis-proxy` answering to a core service name or an AI
@@ -175,8 +175,8 @@ Otherwise it exits 0.
 
 | Option | Meaning |
 |--------|---------|
-| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring`, name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves) |
-| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, CA and per-user client-cert expiry. Run it after every scheduled backup (the systemd unit does) |
+| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves) |
+| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, CA expiry and per-person YubiKey / browser certificate expiry (label `kind`). Run it after every scheduled backup (the systemd unit does) |
 
 ### version
 

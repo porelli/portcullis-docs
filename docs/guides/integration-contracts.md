@@ -1009,7 +1009,7 @@ Vault holds three CAs: the root `pki`, the intermediate `pki_int` (YubiKey certi
 - **Rules:**
     - `pki setup` refuses (exit 1) when the two intermediates' CNs are equal: every reader tells the kinds apart by issuer.
     - It creates `pki_file` when it is missing, even while `pki_int` exists (a missing piece).
-    - Whenever `pki_file` is created, or either chain on disk differs from what it should be (`ca-chain.crt` = root + `pki_int` + `pki_file`, `ca-chain-yubikey.crt` = root + `pki_int`), it rewrites both chain files and the truststore and sets `PKI_TRUSTSTORE_CHANGED=true`, which makes `./portcullis up` (`stack.sh`) restart Traefik and Keycloak.
+    - Whenever `pki_file` is created, or either chain on disk differs from what it should be (`ca-chain.crt` = root + `pki_int` + `pki_file`, `ca-chain-yubikey.crt` = root + `pki_int`), it rewrites both chain files and the truststore and sets `PKI_TRUSTSTORE_CHANGED=true`, which makes `./portcullis up` (`stack.sh`) restart Traefik and Keycloak. A rewritten `yubikey-ca.crt` or `browser-ca.crt` sets it too, and group-gate, which bind-mounts both files (§4 "Certificate binding"), is restarted with them; before the first `pki setup`, `./portcullis up` makes both empty files (no certificate counts until they hold the CAs).
     - `--force` destroys both CAs.
 - **enroll's Vault policy** (`vault/policies/enroll.hcl`) grants exactly: `pki_int/sign/client-cert` and `pki_file/sign/browser-cert` (update); `pki_int/certs`, `pki_file/certs` (list) and `pki_int/cert/*`, `pki_file/cert/*` (read); `pki_int/revoke` and `pki_file/revoke` (update); `pki_int/crl/rotate` and `pki_file/crl/rotate` (read).
 
