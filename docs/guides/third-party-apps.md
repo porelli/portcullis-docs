@@ -56,9 +56,9 @@ myapp=users_myapp
 Then create the group in LLDAP and add users to it. group-gate re-reads the map file on every request, so no restart is needed. If you skip this step, any authenticated Portcullis user can access the app (group-gate logs `ALLOW-UNMAPPED`).
 
 !!! note "Use a hostname no Hub app uses"
-    The map file takes `<sub>=<group>` entries and group-gate expands each `<sub>` to `<sub>.<PORTCULLIS_DOMAIN>`; the Hub's policy file (version 6) keys everything by full hostname. If a Hub-enabled instance routes the same hostname, the Hub's `groups` entry overrides the map file. Hosts Portcullis can't serve — neither `<label>.<PORTCULLIS_DOMAIN>` nor an enrolled domain `<d>` / `<label>.<d>` — are always denied by group-gate. An app on an enrolled domain needs the Hub (it publishes those hosts); the map file only covers the main domain. Core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp`) cannot be reused.
+    The map file takes `<sub>=<group>` entries and group-gate expands each `<sub>` to `<sub>.<PORTCULLIS_DOMAIN>`; the Hub's policy file (version 6) keys everything by full hostname. If a Hub-enabled instance routes the same hostname, the Hub's `groups` entry overrides the map file. Hosts Portcullis can't serve — neither `<label>.<PORTCULLIS_DOMAIN>` nor an added domain `<d>` / `<label>.<d>` — are always denied by group-gate. An app on an added domain needs the Hub (it publishes those hosts); the map file only covers the main domain. Core subdomains (`auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp`) cannot be reused.
 
-`client-headers@file` must come **before** `portcullis-groups@docker`, so group-gate sees the client certificate and can enforce revocation. For admin-only paths, use a separate `PathPrefix` router; per-path groups (`path_groups`) are only published by the Hub for templates.
+`client-headers@file` must come **before** `portcullis-groups@docker`, so group-gate sees the YubiKey or browser certificate and can enforce revocation. For admin-only paths, use a separate `PathPrefix` router; per-path groups (`path_groups`) are only published by the Hub for templates.
 
 ### Passing user identity
 

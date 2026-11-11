@@ -61,7 +61,7 @@ mkdir myapp
 | speaks OpenID Connect and can be pointed at Keycloak | `native-oidc` (+ `keycloak_clients`) | **no** `portcullis-auth`; the app logs users in itself |
 | can create/log in users from a trusted header (`X-Forwarded-User`) | `header-auth` | `portcullis-auth@docker,portcullis-groups@docker` |
 | has its own login (or none) and no SSO | `forward-auth` | `portcullis-auth@docker,portcullis-groups@docker` |
-| is protected by client certificates only | `mtls` | `tls.options: protected@file`, no forward-auth |
+| is protected by a certificate at the TLS handshake only (any YubiKey or browser certificate the internal certificate authority issued) | `mtls` | `tls.options: protected@file`, no forward-auth |
 | uses a vendor account system (e.g. plex.tv) | `custom` (+ [`auth.native_login`](manifest-reference.md#authnative_login) if it has its own login) | none: the Hub adds Portcullis sign-in through its override |
 | is meant to be public | `public` | none |
 

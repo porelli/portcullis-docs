@@ -52,11 +52,11 @@ has an **AI support** section.
   `auth.<domain>` and every app host people connect to must be reachable from
   the internet. Settings → AI says so. Claude Code and other local clients
   connect from the person's machine, so a LAN-only install works for them.
-- **No client certificate.** No MCP client can present the person's YubiKey
-  certificate, so certificate methods never count for AI, and an app whose
+- **No certificates.** No MCP client can present the person's YubiKey or
+  browser certificate, so certificate methods never count for AI, and an app whose
   [sign-in template](auth-policies.md) needs a certificate in every
-  alternative can't get AI support (the switch is refused with "needs a client
-  certificate on every sign-in"). A sign-in change that would make it so
+  alternative can't get AI support (the switch is refused with "needs a YubiKey
+  or browser certificate on every sign-in"). A sign-in change that would make it so
   switches AI support off on that app first, and the preview lists it.
 - **Rate limits are per person**, not per IP: every hosted Claude user comes
   from Anthropic's range. Core's `rate-limit@file` (per source IP) still

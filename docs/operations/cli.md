@@ -45,16 +45,16 @@ the core checkout: `./portcullis`. There are no other scripts.
 | Vault and PKI | [`vault init`](#vault-init) | Initialise and unseal Vault, set up the enroll AppRole |
 | | [`vault unseal`](#vault-unseal) | Unseal Vault and wait until it is active |
 | | [`vault rotate-enroll-secret`](#vault-rotate-enroll-secret) | Issue a new enroll AppRole secret-id |
-| | [`pki setup`](#pki-setup) | Create the client-certificate CA (idempotent) |
+| | [`pki setup`](#pki-setup) | Create the internal certificate authority: YubiKey and browser certificate CAs (idempotent) |
 | Identity | [`keycloak configure`](#keycloak-configure) | Import or patch the `portcullis` realm |
 | | [`oidc register`](#oidc-register) | Create the core OIDC clients and push their secrets from `.env` |
 | | [`invite`](#invite) | One-time setup link: register a passkey, signed in (no password) |
 | | [`lldap-ui`](#lldap-ui) | Break-glass SSH tunnel to LLDAP's own web UI (server only) |
 | | [`signin reset-core`](#signin-reset-core) | Locked out of the Hub: put the Hub and people pages back on Standard |
-| Client certificates (YubiKey PIV) | [`cert enroll`](#cert-enroll) | New key and certificate on a YubiKey |
-| | [`cert renew`](#cert-renew) | New certificate for the key already on the YubiKey |
-| | [`cert revoke`](#cert-revoke) | Revoke a certificate (enforced by group-gate) |
-| | [`cert list`](#cert-list) | List issued certificates |
+| YubiKey and browser certificates | [`cert enroll`](#cert-enroll) | New key and YubiKey certificate on a YubiKey |
+| | [`cert renew`](#cert-renew) | New YubiKey certificate for the key already on the YubiKey |
+| | [`cert revoke`](#cert-revoke) | Revoke a YubiKey or browser certificate (enforced by group-gate) |
+| | [`cert list`](#cert-list) | List issued YubiKey and browser certificates |
 | | [`cert sync`](#cert-sync) | Rewrite the revoked-serial list from Vault |
 
 ---
@@ -140,7 +140,7 @@ Updates a running installation after `git pull`:
 1. Generates any missing `HUB_PROXY_SECRET`, `FORWARD_AUTH_*`, `LLDAP_JWT_SECRET` or `BACKUP_PASSWORD`. Other secrets must already be in `.env`.
 2. Creates a local backup (`portcullis backup`: Vault snapshot, `pg_dump`, volumes, `.env`, `certs/`, `secrets/`).
 3. Pulls images.
-4. Re-runs the idempotent setup steps: `vault init`, `pki setup` (client role incl. `CLIENT_CERT_TTL`, Keycloak truststore) and the CA bundle.
+4. Re-runs the idempotent setup steps: `vault init`, `pki setup` (both CAs, the `client-cert` and `browser-cert` roles incl. `CLIENT_CERT_TTL`, Keycloak truststore) and the CA bundle.
 5. Runs `docker compose up -d --build` and waits for health.
 6. Restarts services whose bind-mounted config files changed (see [`up`](#up) for the list).
 7. Runs `keycloak configure` and `oidc register`.
@@ -160,7 +160,7 @@ portcullis status [--json | --textfile]
 Prints a health overview:
 
 - compose services
-- Vault: sealed/active, CA expiry, issued certs, and client certs expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days
+- Vault: sealed/active, CA expiry, issued certs, and YubiKey certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days
 - Keycloak: realm, users, forward-auth client
 - LLDAP and Traefik
 - containers on `portcullis-proxy` answering to a core service name or an AI
@@ -320,13 +320,13 @@ Applies the ACME toggle in `.env` and rebuilds `certs/ca-bundle.crt`:
 | `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it clears Traefik's `acme.json` so Traefik registers again |
 
 It never writes `traefik/dynamic/tls.yml`: that file is static, and which apps
-ask for a client certificate follows the sign-in methods and templates in the
+ask for a YubiKey or browser certificate follows the sign-in methods and templates in the
 Hub ([TLS tier](auth-policies.md#traefik-tls-tier)).
 
 Run `portcullis up` afterwards. It restarts Traefik and, when the bundle
 changed, the two forward-auth services, which read it only at start-up (the
 sha256 they last started with is kept in `certs/.ca-bundle.loaded`). See
-[TLS & mTLS](../setup/certificates.md).
+[Certificates](../setup/certificates.md).
 
 | Option | Meaning |
 |--------|---------|
@@ -421,28 +421,32 @@ enroll service picks it up on its next login.
 portcullis pki setup [--force] [--with-server-cert]
 ```
 
-Creates the client-certificate CA in Vault:
+Creates the internal certificate authority in Vault
+([Certificates](../setup/certificates.md#internal-certificate-authority)):
 
-- root CA (10 years) and intermediate CA (5 years)
-- the `client-cert` role, with lifetime `CLIENT_CERT_TTL` (default `720h` = 30 days). The CN is taken from the caller, never from the CSR
+- the root CA (10 years, `pki`) and two intermediates signed by it, 5 years each: the YubiKey certificate CA (`pki_int`) and the browser certificate CA (`pki_file`, CN `<domain> Browser Certificate CA`)
+- the `client-cert` role on `pki_int` and the `browser-cert` role on `pki_file`, both with lifetime `CLIENT_CERT_TTL` (default `720h` = 30 days). The CN is taken from the caller, never from the CSR
 
-It writes `certs/root-ca.crt`, `intermediate-ca.crt`, `ca-chain.crt` and
-Keycloak's truststore (`certs/truststore/portcullis-ca-chain.pem`), and
-enables CRL auto-rebuild on `pki_int`.
+It writes `certs/root-ca.crt`, `intermediate-ca.crt`, `yubikey-ca.crt`,
+`browser-ca.crt`, `ca-chain.crt` (root + both intermediates) and Keycloak's
+truststore (`certs/truststore/portcullis-ca-chain.pem`,
+`portcullis-yubikey-ca.pem`, `portcullis-browser-ca.pem`), and enables CRL
+auto-rebuild and delta CRLs on both intermediates.
 
 It is idempotent:
 
 - An existing CA is never replaced.
-- The `client-cert` role is rewritten, so a new `CLIENT_CERT_TTL` applies to certs issued from then on.
-- Missing pieces (CA files, truststore, server cert) are recreated.
+- Both roles are rewritten, so a new `CLIENT_CERT_TTL` applies to certificates issued from then on.
+- Missing pieces (the browser certificate CA, CA files, truststore, server cert) are recreated. When the browser certificate CA is created or the chain on disk is out of date, the next `up` restarts Traefik and Keycloak.
 - A partial earlier run is redone.
+- It refuses (exit 1) when the two intermediates would have the same CN.
 
 If Vault has no CA but `certs/ca-chain.crt` exists (Vault data lost), it
 refuses to create a new CA. Restore a backup, or use `--force`.
 
 | Option | Meaning |
 |--------|---------|
-| `--force` | **Destroy** the existing CA and create a new one. Every enrolled client certificate stops working |
+| `--force` | **Destroy** both CAs and create new ones. Every YubiKey and browser certificate stops working |
 | `--with-server-cert` | Also issue a self-signed `*.<domain>` server cert (`certs/server.crt`, `server.key` `0640` group 0) for local dev and CI |
 
 Admin token: `VAULT_TOKEN` if set, else the root token in
@@ -469,7 +473,8 @@ admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 - keeps `webauthn-register-passwordless` enabled and the two-factor `webauthn-register` disabled
 - the invite identity provider `portcullis-invite` (enroll; URLs and client secret from `secrets/enroll/invite-client-secret`) and the service-account client `portcullis-enroll` (view-users, manage-users)
 - `lldap_admin` = realm-admin of the `portcullis` realm (realm console)
-- pushes the X.509 authenticator settings from the file onto the `portcullis-x509` execution: CRL check against Vault's `pki_int` CRL, trust re-validation, `clientAuth` EKU
+- pushes each certificate step's settings from the file onto its `portcullis-x509` execution, by alias: `x509-config` (YubiKey certificate, Vault's `pki_int` CRLs) and `x509-browser-config` (browser certificate, `pki_file` CRLs), with trust re-validation and the `clientAuth` EKU
+- never touches the realm's events config (the Hub owns it: sign-in history)
 - checks the sign-in executions' AMR reference values (max age 10 h), and ensures the `amr` mapper and the `groups` scope
 - ensures the `email-unverified` scope (`email` claim, no `email_verified`) that Hub templates opt into with `keycloak_clients[].email_verified_claim: false`
 - `portcullis-forward-auth`: the `acr`/`groups` scopes, no default acr, requires PKCE S256, the `auth.<domain>` callback (keeps the Hub's extra-domain callbacks), and the `portcullis-invite-client` scope (setup links work only through it; removed from every other client)
@@ -571,11 +576,15 @@ it refuses (exit 2). See
 
 ---
 
-## Client certificates (YubiKey PIV)
+## YubiKey and browser certificates
 
-`cert enroll` and `cert renew` need `ykman`, `openssl`, `jq` and Vault access.
-Run them on the Portcullis host, or export `VAULT_ADDR`/`VAULT_TOKEN`. The cert
-CN is `<username>`.
+`cert revoke`, `cert list` and `cert sync` cover both kinds: YubiKey
+certificates (the internal certificate authority's `pki_int`) and browser
+certificates (`pki_file`). People create browser certificates themselves on
+the [Sign-in page](auth-policies.md#browser-certificates); there is no CLI
+command for them. `cert enroll` and `cert renew` need `ykman`, `openssl`,
+`jq` and Vault access. Run them on the Portcullis host, or export
+`VAULT_ADDR`/`VAULT_TOKEN`. The certificate CN is `<username>`.
 
 | Environment | Meaning |
 |-------------|---------|
@@ -590,7 +599,9 @@ portcullis cert enroll [--slot SLOT] [--ttl TTL] <username> [email]
 ```
 
 Generates a new ECCP256 key pair on the YubiKey, overwriting the slot. It then
-creates a CSR, has Vault sign it, and imports the certificate into the slot.
+creates a CSR, has Vault sign it, and imports the YubiKey certificate into the
+slot. It ends by naming the Sign-in page, `https://people.<domain>/signin`,
+where the person renews it later.
 
 | Option | Meaning |
 |--------|---------|
@@ -603,10 +614,10 @@ creates a CSR, has Vault sign it, and imports the certificate into the slot.
 portcullis cert renew [--slot SLOT] [--ttl TTL] <username> [email]
 ```
 
-Keeps the key already on the YubiKey and issues a fresh certificate for it.
-Same options as `cert enroll`. Users can also renew their own certificate at
-`https://enroll.<domain>/self` (see
-[TLS & mTLS](../setup/certificates.md#lifetime-and-renewal)).
+Keeps the key already on the YubiKey and issues a fresh YubiKey certificate
+for it. Same options as `cert enroll`. People can also renew their own on the
+Sign-in page (see
+[Certificates](../setup/certificates.md#lifetime-and-renewal)).
 
 ### cert revoke
 
@@ -614,9 +625,11 @@ Same options as `cert enroll`. Users can also renew their own certificate at
 portcullis cert revoke [--yes] <serial>
 ```
 
-Revokes a client certificate in Vault and rewrites the revoked-serial list that
-group-gate checks on every request. Find serials with `portcullis cert list` or
-in the enrollment UI (`/certs`).
+Revokes a YubiKey or browser certificate in Vault (it finds which CA issued
+the serial), rotates that CA's CRL and rewrites the revoked-serial list that
+group-gate checks on every request. Find serials with `portcullis cert list`,
+on the person's Sign-in tab in the Hub, or on their Sign-in page. This is how
+an administrator's certificate is revoked: the Hub refuses it.
 
 | Option | Meaning |
 |--------|---------|
@@ -628,8 +641,9 @@ in the enrollment UI (`/certs`).
 portcullis cert list [--all]
 ```
 
-Lists issued client certificates: serial, CN, status and expiry. `expiring`
-means fewer than `CERT_EXPIRY_WARN_DAYS` (default 7) days are left.
+Lists issued YubiKey and browser certificates: serial, KIND (`YubiKey` or
+`Browser`), CN, status and expiry. `expiring` means fewer than
+`CERT_EXPIRY_WARN_DAYS` (default 7) days are left.
 
 | Option | Meaning |
 |--------|---------|
@@ -641,7 +655,8 @@ means fewer than `CERT_EXPIRY_WARN_DAYS` (default 7) days are left.
 portcullis cert sync
 ```
 
-Rewrites `certs/revocation/revoked-serials.txt` atomically from Vault's list of
-revoked serials. If Vault cannot be queried (sealed, bad token, unreachable),
+Rewrites `certs/revocation/revoked-serials.txt` atomically from Vault's lists
+of revoked serials of both CAs (`pki_int` and `pki_file`, the union). If
+either cannot be queried (sealed, bad token, unreachable),
 the file is left unchanged and the command fails. It never "un-revokes" by
 writing an empty list.

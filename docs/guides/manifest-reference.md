@@ -144,7 +144,7 @@ sign-in test runs without the access role (see
 | `native-oidc` | The app talks OIDC to Keycloak itself. Needs `keycloak_clients` | **No** `portcullis-auth` on the host-wide router. Login or admin paths may use a separate `PathPrefix` router with forward-auth |
 | `forward-auth` | oauth2-proxy + group-gate in front. The app has its own login, or none | `portcullis-auth@docker,portcullis-groups@docker` |
 | `header-auth` | Forward-auth, and the app also trusts `X-Forwarded-User` from Traefik (and only from Traefik) | `portcullis-auth@docker,portcullis-groups@docker` |
-| `mtls` | Client certificate at the TLS layer | `tls.options: protected@file`, no forward-auth |
+| `mtls` | A certificate at the TLS layer: any YubiKey or browser certificate the internal certificate authority issued | `tls.options: protected@file`, no forward-auth |
 | `custom` | The app handles its own sign-in (app-specific account system, e.g. plex.tv). With `native_login`, the Hub can put Portcullis sign-in in front of it | None: the Hub's override adds the gateway pair for Portcullis sign-in |
 | `public` | No authentication | None |
 

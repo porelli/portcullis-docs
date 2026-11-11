@@ -10,15 +10,15 @@ ports, and header trust.
 
 | Asset / boundary | Threat | Mitigation |
 |------------------|--------|------------|
-| Logins | Phishing, password reuse | WebAuthn (FIDO2) and PIV client certificates. Both are bound to the origin or the TLS handshake. Per-app [policies](auth-policies.md) can require them |
+| Logins | Phishing, password reuse | WebAuthn (FIDO2) passkeys and YubiKey certificates (PIV). Both are bound to the origin or the TLS handshake. Per-app [templates](auth-policies.md) can require them. Browser certificates are files and can be copied, so they score like a synced passkey (2.5) and never count as a YubiKey certificate |
 | User identity | A user changes their own LLDAP email to someone else's | Identity is the immutable username everywhere; email is never used to authorise or link accounts |
-| Identity headers (`X-Forwarded-User`, client-cert headers) | Spoofed by an internet client | Traefik deletes client-supplied `X-Forwarded-*` and cert headers on the entrypoint, and forward-auth replaces the identity headers |
+| Identity headers (`X-Forwarded-User`, certificate headers) | Spoofed by an internet client | Traefik deletes client-supplied `X-Forwarded-*` and cert headers on the entrypoint, and forward-auth replaces the identity headers |
 | Attribute headers (`X-Forwarded-Attr-*`) | Spoofed by an internet client or by routers without forwardAuth | Client copies stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on every forwardAuth middleware (Traefik can't delete headers by prefix in a headers middleware). Routers without forwardAuth (keycloak, enroll-invite, headscale, netbird, docs) don't strip them; backends there must not trust them |
 | Identity headers | Spoofed by another container on `portcullis-proxy` | Header-auth apps trust only Traefik's fixed IP (`PORTCULLIS_TRAEFIK_IP`). Keycloak trusts proxy headers only from Traefik's fixed IP on the internal `portcullis-auth` network |
 | Hub (runs compose, so it is effectively host root) | Reached without passing forward-auth | Hub: requires `lldap_admin` and the `X-Portcullis-Proxy-Secret` header. People listener (`people.<domain>`): any signed-in user (group-gate-map.conf `people=*`), per-request permission checks |
 | Docker API | A compromised Traefik or Hub takes over the host | No service mounts the socket except two socket proxies with per-client allow-lists |
 | Forward-auth session cookies (shared cookie secret) | A cookie stolen from one host replayed elsewhere | Same parity as the main domain: `forward-auth` and `forward-auth-ext` share the cookie secret, but oauth2-proxy's HMAC covers the cookie name, so a `_oauth2_proxy` (main domain) value isn't accepted as `__Host-portcullis_ext` or vice versa. A stolen `__Host-portcullis_ext` value is a session on every extra-domain host, as the `.<domain>` cookie is on every main-domain host: browsers send it to its host only, and group-gate still checks each host's group and policy. Sessions re-validate with Keycloak every minute (cookie refresh), so a Keycloak logout ends both |
-| Lost or stolen YubiKey cert | Keeps working until expiry | Revocation is checked on every request (group-gate), at Keycloak X.509 login (CRL, fail closed), and by the mTLS binding. On removal or expiry, group-gate also withholds `Authorization` and `X-Forwarded-Access-Token` |
+| Lost or stolen YubiKey or browser certificate | Keeps working until expiry | Revocation is checked on every request (group-gate, both CAs' CRLs), at Keycloak certificate login (that CA's CRLs, fail closed), and by the certificate binding; a revocation on the web is enforced within a minute. On removal or expiry, group-gate also withholds `Authorization` and `X-Forwarded-Access-Token` |
 | Expired group membership | Keeps working while Hub is down | Every pending expiry is in the policy file's `expiring` array (plus a 10-min grace after LLDAP removal). group-gate treats it as absent. The Hub also revokes Keycloak sessions (oauth2-proxy cookie refresh is 1 min, so removals and Keycloak logouts take effect within ~1 min; sessions end at Keycloak's idle 8h / max 12h) |
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
 | Templates (outside contributions) | A malicious or careless template opens access | The Hub rejects routing it can't fully see, refuses hostname collisions and core hosts, validates custom overrides (no Traefik labels, host-path bind roots, privileges), and fails closed on unknown config. Templates CI lints fork PRs without secrets |
@@ -34,7 +34,7 @@ Known limits:
 - **The Hub can still start arbitrary containers** (privileged, host mounts):
   that is what "run compose for any template" means. Treat it as host root.
 - **Auto-unseal trades confidentiality at rest for availability** on the same
-  host (see [TLS & mTLS](../setup/certificates.md#vault-server-mode-auto-unseal-and-approle)).
+  host (see [Certificates](../setup/certificates.md#vault-server-mode-auto-unseal-and-approle)).
 - **Routers without `portcullis-groups@docker`** don't get revocation checks.
   They also get no group or path checks.
 
@@ -62,8 +62,8 @@ reach an app. What a turned-on exception exposes:
   `#[PublicPage]` routes.
 - **Uploads** where the app allows them on a share (Nextcloud file drop via
   `/public.php/dav`).
-- **The host's TLS tier.** With an mTLS-only policy the host drops from
-  `protected@file` to `authaware@file`: group-gate still enforces the client
+- **The host's TLS tier.** With a certificate-only template the host drops from
+  `protected@file` to `authaware@file`: group-gate still enforces the
   certificate per request on gated routers, but native-OIDC apps then check it
   only at login (Keycloak's template check), and routers without group-gate not at all.
 
@@ -149,7 +149,7 @@ graph LR
 |---------|---------|------------|---------|
 | `portcullis` | Traefik and all core services | Docker default | Core service traffic: forward-auth, Vault, LLDAP, PostgreSQL |
 | `portcullis-proxy` | Traefik and app frontends | `PORTCULLIS_PROXY_SUBNET` (default `172.31.250.0/24`). Dynamic range `PORTCULLIS_PROXY_IP_RANGE` (`172.31.250.128/25`). Traefik pinned at `PORTCULLIS_TRAEFIK_IP` (`172.31.250.2`), outside the range | Routing plane. Traefik's docker provider uses this network. No app container can ever get Traefik's address |
-| `portcullis-auth` | Traefik and Keycloak only (`internal: true`) | `PORTCULLIS_AUTH_SUBNET` (`172.31.251.0/28`), range `PORTCULLIS_AUTH_IP_RANGE` (`172.31.251.8/29`), Traefik at `PORTCULLIS_AUTH_TRAEFIK_IP` (`172.31.251.2`) | The only path from which Keycloak accepts proxy headers, including the forwarded client cert for X.509 login |
+| `portcullis-auth` | Traefik and Keycloak only (`internal: true`) | `PORTCULLIS_AUTH_SUBNET` (`172.31.251.0/28`), range `PORTCULLIS_AUTH_IP_RANGE` (`172.31.251.8/29`), Traefik at `PORTCULLIS_AUTH_TRAEFIK_IP` (`172.31.251.2`) | The only path from which Keycloak accepts proxy headers, including the forwarded certificate for YubiKey and browser certificate login |
 | `portcullis-mcp` | `mcp-gate`, Keycloak and the Hub only (`internal: true`) | `PORTCULLIS_MCP_SUBNET` (`172.31.253.0/28`), range `PORTCULLIS_MCP_IP_RANGE` (`172.31.253.8/29`), Keycloak at `PORTCULLIS_MCP_KEYCLOAK_IP` (`.2`), the Hub at `PORTCULLIS_MCP_HUB_IP` (`.3`) | The gate's only path to Keycloak's keys and the Hub's MCP listener; the gate pins both names to these addresses in `extra_hosts`, so no container can shadow them. The gate itself is on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP` (`172.31.250.3`, outside the dynamic range) |
 | `socket-proxy-traefik` | Traefik + its socket proxy (`internal: true`) | Docker default | Read-only Docker API for Traefik |
 | `socket-proxy-hub` | Hub + its socket proxy (`internal: true`) | Docker default | Docker API for the Hub |
@@ -237,9 +237,9 @@ CI fails if any of these is missing.
 | keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`). Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider (and the sign-in extension's providers) are build options; never `--optimized`. Reads `hub_data` read-only (`/hub-data/signin-keycloak.json`, the Hub's sign-in methods and templates; missing or invalid = nobody signs in) |
 | forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client |
 | forward-auth-ext (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Same image, provider config, client and cookie secret as forward-auth; serves extra-domain hosts only (contract §5): relative callback `/oauth2/callback` built from the request host (`X-Forwarded-Host`, trusted from `OAUTH2_PROXY_TRUSTED_PROXY_IPS` only), host-only cookie `__Host-portcullis_ext` (`Secure`, no `Domain`, `Path=/`), no redirect whitelist (only relative redirects are accepted). Both oauth2-proxies send PKCE S256 and the `portcullis-forward-auth` client requires it (`pkce.code.challenge.method`), so a code delivered to a stale callback URI is useless without the verifier. Routed only by the Hub's per-host `Host(<h>) && PathPrefix(/oauth2/)` routers. Its middleware `portcullis-auth-ext` lists the same `authResponseHeaders` / `authResponseHeadersRegex` as `portcullis-auth` (CI compares them) |
-| group-gate | 10003:10003 (`USER` in Dockerfile) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL parsing) and `PyJWT` (token claims) + the script. Only world-readable mounts |
-| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
-| enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002 |
+| group-gate | 10003:10003 + group 10001 (`group_add`) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL and CA-file parsing) and `PyJWT` (token claims) + the script. Mounts `certs/yubikey-ca.crt` and `certs/browser-ca.crt` read-only (`/etc/group-gate/ca/`). Writes only `group_gate_data` (`/data`, owned `10003:10001`): the opened log `opened/` (mode 2770, group 10001; files 0640) for sign-in history. A write failure never denies a request |
+| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
+| enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002. Generates browser certificates' keys in memory, answers the `.p12` and its password once to the Hub, clears them and never stores or logs them |
 | mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps one person's requests in flight and the memory request bodies hold, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps); results and aggregate refreshes aren't budgeted, so many people at once can still exhaust it and the container restarts, one person can't), `pids_limit` 256 |
 | prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
 | grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
@@ -519,7 +519,7 @@ and your router or host firewall.
   `forwardedHeaders.trustedIPs`, so Traefik deletes client-supplied
   `X-Forwarded-*` and `X-Forwarded-Tls-Client-Cert(-Info)` headers.
   `aliasHeadersStrategy=delete` also drops alias spellings such as
-  `X_Forwarded_Tls_Client_Cert`. The cert headers that group-gate, enroll and
+  `X_Forwarded_Tls_Client_Cert`. The certificate headers that group-gate, the Hub and
   Keycloak see therefore always describe a certificate Traefik verified.
 - **Forward-auth headers.** Traefik's `forwardAuth` deletes every
   `authResponseHeaders` entry from the upstream request and re-adds only the
@@ -538,7 +538,7 @@ and your router or host firewall.
     - Apps get `X-Forwarded-User` / `X-Auth-Request-User` = immutable username, and `X-Forwarded-Email` / `X-Auth-Request-Email` = email (display only).
     - Every identity header is in the forward-auth middlewares' `authResponseHeaders`, which is what strips client-supplied copies.
     - Apps also get `X-Auth-Request-Groups`. All of these headers are `authResponseHeaders` of the forward-auth middlewares, so Traefik deletes client-supplied copies (the e2e test sends spoofed ones). Header-auth apps must log users in by `X-Forwarded-User` as a username and take the email from `X-Forwarded-Email`.
-    - enroll and the Hub use `X-Forwarded-User` as-is (no email → username lookup). group-gate's mTLS binding compares the cert CN with that same username and requires the token's `preferred_username` to match it.
+    - enroll and the Hub use `X-Forwarded-User` as-is (no email → username lookup); every certificate enroll issues has that username as CN, never a CSR's subject or a value from the client. group-gate's certificate binding compares the certificate's CN with that same username and requires the token's `preferred_username` to match it.
     - Keycloak links the LLDAP account by its immutable `entryUUID` (`uuidLDAPAttribute`, in the realm export and re-asserted by `./portcullis keycloak configure`), so a re-created name never inherits the previous holder's Keycloak user: it gets a new `sub`.
     - Native-OIDC apps must key accounts on `sub` (a re-created username has a new one: an app that links by `preferred_username` alone would hand the newcomer the old app account) and must not link existing accounts by email (e.g. Vaultwarden `SSO_SIGNUPS_MATCH_EMAIL`). Apps that insist on `email_verified=true` need their "allow unverified email" option. AI credential mints get the person's checked Keycloak `sub` and a credential belongs to the LLDAP account it was minted for (a re-created name gets a new one); Gitea mints only for the account linked to that `sub`. Residual: Nextcloud keys accounts on the username (user_oidc), so a re-created name gets the former person's Nextcloud account on the web and through AI alike: delete it (`occ user:delete`) before re-using the name ([AI support → Nextcloud](ai.md#ai-nextcloud)).
     - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (`INVITATIONS_ALLOWED=false`, `SIGNUPS_ALLOWED=false`) and gates the SSO login paths with group-gate (`users_vaultwarden`).
@@ -552,7 +552,7 @@ and your router or host firewall.
   `PORTCULLIS_AUTH_TRAEFIK_IP` on `portcullis-auth`, decided by the TCP peer
   address (`--proxy-trusted-addresses`). The `127.0.0.1:8080` publish for the
   CLI's admin API is untrusted, so it can't inject a cert. See
-  [mTLS login](../setup/certificates.md#trusted-proxy-address).
+  [certificate login](../setup/certificates.md#trusted-proxy-address).
 - **Paths.** Traefik's default path handling stays on (`sanitizePath`,
   decoding of unreserved `%XX`). Encoded `/`, `\`, `;` and `%00` are allowed
   through because apps such as GitLab and Nextcloud use them. group-gate's
@@ -562,8 +562,7 @@ and your router or host firewall.
 
 ### Attribute headers
 
-On every request group-gate allows (`/` and `/authenticated`, app and core
-subdomains alike) it also returns `X-Forwarded-Attr-<Header-Name>` for the
+On every request group-gate allows (app and core subdomains alike) it also returns `X-Forwarded-Attr-<Header-Name>` for the
 signed-in user's shared custom fields, read from the Hub's
 `user-attributes.json` in `hub_data`
 ([contract §4.1 / §5](../guides/integration-contracts.md)):
@@ -636,8 +635,8 @@ backends must never trust those headers (none of them reads them).
   `authResponseHeaders`, so client copies are deleted), never from
   `Authorization`: on the Keycloak console's route that header is the
   client's own, and group-gate doesn't check token signatures (oauth2-proxy
-  did). The YubiKey certificate counts only with the
-  [mTLS binding](auth-policies.md#mtls-binding).
+  did). A YubiKey or browser certificate counts only with the
+  [certificate binding](auth-policies.md#certificate-binding).
 - **Sign-in pages.** An unmet template gets a `403` page from group-gate
   (present your certificate, a step-up for one method, or needs a stronger
   sign-in), never a redirect: no refresh, no script, every value
@@ -678,8 +677,10 @@ backends must never trust those headers (none of them reads them).
 
 ### Setup links (enroll)
 
-`enroll-invite` (`enroll.<domain>/invite/*`) is the only enroll router without
-forward-auth.
+`enroll-invite` (`enroll.<domain>/invite/*`) is the only router on
+`enroll.<domain>`, without forward-auth; every other path there gets Traefik's
+404. enroll's certificate actions are only on its internal listener
+(`enroll:8444`, the invite bearer), which Traefik never routes.
 
 - **The token** is 256 bit, stored as SHA-256, single use, bound to one LLDAP
   user, valid 72 h (max 7 days) and revoked by a newer link. `GET` only shows
@@ -830,7 +831,7 @@ To rotate it, empty `HUB_PROXY_SECRET` in `.env` and run
 
 ## Domains service
 
-The **domains** service manages enrolled extra domains: DNS records, ACME DNS-01
+The **domains** service manages added extra domains: DNS records, ACME DNS-01
 for wildcard certificates, and serving those certificates to Traefik.
 
 ### Network isolation
@@ -868,29 +869,29 @@ by `./portcullis init`), mounted read-only into domains only.
 
 The encrypted file is in core backups (`BACKUP_FILE_VOLUMES`). Treat it like
 Vault's raft snapshot: whoever has a backup and the age key (both in `secrets/`)
-can decrypt every enrolled domain's DNS credentials.
+can decrypt every added domain's DNS credentials.
 
 ### Certificate endpoint (domains → Traefik)
 
 Traefik fetches certificates from `https://domains:8443/traefik/dynamic` via its
 HTTP provider (polling every 10 s). The endpoint:
 
-- **requires** and **verifies** a client certificate on every interface (TLS
+- **requires** and **verifies** Traefik's own certificate on every interface (TLS
   `RequireAndVerifyClientCert` against a private CA)
 - returns only `tls.certificates` with inline PEM (cert chain + key), never
   routers, services, middlewares or other Traefik config
 - checks every certificate's SANs before serving: they must be exactly `<d>` and
-  `*.<d>` for an enrolled domain `<d>`, never the main domain or any host at or
-  under it (except enrolled subdomains of the main domain themselves)
+  `*.<d>` for an added domain `<d>`, never the main domain or any host at or
+  under it (except added subdomains of the main domain themselves)
 
-Traefik's static config (`TRAEFIK_PROVIDERS_HTTP_*`) tells it to use the client
+Traefik's static config (`TRAEFIK_PROVIDERS_HTTP_*`) tells it to use its own
 certificate for this endpoint. Certificates and keys are never on a shared volume.
 
 **Private CA** (generated by `./portcullis init` / `up`):
 
 - CA valid 10 years, renewed < 1 year left (then all three)
 - Server certificate (`DNS:domains`) valid until the CA expires, renewed < 30 days left
-- Client certificate (Traefik) valid until the CA expires, renewed < 30 days left
+- Traefik's certificate valid until the CA expires, renewed < 30 days left
 - ECDSA P-256, `extendedKeyUsage` `serverAuth` / `clientAuth`
 
 After any renewal, `./portcullis up` / `upgrade` restarts `domains`, waits for
@@ -899,7 +900,7 @@ re-reads them while running).
 `./portcullis status` warns when a certificate expires within 30 days.
 
 The network membership (`portcullis-certs`: domains + Traefik) is defense in
-depth; reaching the port is never enough — the client certificate is required.
+depth; reaching the port is never enough — Traefik's certificate is required.
 
 ### Public IP detection
 
@@ -921,9 +922,9 @@ A detection that ran and failed keeps the last detected address
 (`secrets/domains/last-public-ipv4` / `last-public-ipv6`), because "no IPv6"
 removes the AAAA records; a skipped lookup never uses it. The addresses reach the service through
 `secrets/domains/public-ips.env` (mode 0600, compose `env_file`), never through
-the compose `environment:`. While no domain is enrolled, `./portcullis` does no
+the compose `environment:`. While no domain is added, `./portcullis` does no
 lookups at all and publishes no address unless `.env` sets
-`PORTCULLIS_PUBLIC_IPV4` / `_IPV6`: the first enrolled domain may need one more
+`PORTCULLIS_PUBLIC_IPV4` / `_IPV6`: the first added domain may need one more
 `./portcullis up` (or the address set in `.env`). With the IPv4 unknown, the
 service keeps the records it set before, still uses a configured IPv6 and still
 renews certificates.

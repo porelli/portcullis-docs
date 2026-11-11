@@ -27,7 +27,7 @@ portcullis.example.com    A  203.0.113.10
 ```
 
 !!! warning "Cloudflare proxy"
-    If using Cloudflare, **disable the orange cloud (proxy)** for the wildcard record. Cloudflare's proxy interferes with mTLS client certificate verification.
+    If using Cloudflare, **disable the orange cloud (proxy)** for the wildcard record. Cloudflare's proxy terminates TLS itself, so YubiKey and browser certificates never reach Portcullis.
 
 ### Option B: Individual DNS Records
 
@@ -220,15 +220,15 @@ For local development without a real domain or ACME:
 3. Import `certs/root-ca.crt` into your browser or OS trust store to avoid certificate warnings
 
 !!! note
-    mTLS with client certificates works the same way locally. The only difference is the server certificate is self-signed instead of from Let's Encrypt.
+    YubiKey and browser certificates work the same way locally. The only difference is the website certificate (HTTPS) is self-signed instead of from Let's Encrypt.
 
-## Enrolling extra domains
+## Adding extra domains
 
 Beyond the main domain, Portcullis can serve **extra domains** with their own
-wildcard certificates. Extra domains are enrolled through the Hub's
-**Settings → Domains** section (see [Hub Management](../operations/hub.md#enrolling-extra-domains)).
+wildcard website certificates (HTTPS). Extra domains are added in the Hub's
+**Settings → Domains** section with **+ Add domain** (see [Hub Management](../operations/hub.md#adding-extra-domains)).
 
-Each enrolled domain:
+Each added domain:
 
 - has its own A/AAAA records (`<d>` and `*.<d>`) managed by the domains service
 - gets its own Let's Encrypt wildcard certificate via DNS-01
@@ -239,21 +239,21 @@ Each enrolled domain:
 
 **Server addresses.** The records point at the server's public IPv4 (and
 IPv6), from `PORTCULLIS_PUBLIC_IPV4` / `_IPV6` in `.env` or detected by
-`./portcullis up`. While no domain is enrolled, `./portcullis` doesn't look them
-up and publishes no address unless `.env` sets them: the first enrolled domain
+`./portcullis up`. While no domain is added, `./portcullis` doesn't look them
+up and publishes no address unless `.env` sets them: the first added domain
 may need one more `./portcullis up` (or set `PORTCULLIS_PUBLIC_IPV4` / `_IPV6`
 in `.env`) (see
 [Security & Hardening](../operations/hardening.md#public-ip-detection)).
 
-**Enrolled subdomains of the main domain** (e.g. `team-a.<main domain>`) are
+**Added subdomains of the main domain** (e.g. `team-a.<main domain>`) are
 allowed. This lets you delegate zones of your main domain to Portcullis without
-changing the main domain's DNS setup. The enrolled subdomain gets its own
+changing the main domain's DNS setup. The added subdomain gets its own
 wildcard certificate, and app instances on it use the cross-domain sign-in flow
 (see [Hub Management](../operations/hub.md#cross-domain-sign-in)).
 
 **Core services stay on the main domain**: the portal, Hub, people, auth,
-directory, enroll, traefik, metrics and `mcp` endpoints are never served on extra domains (an app's own MCP endpoint is on the app's host, wherever it is).
+directory, enroll (setup links), traefik, metrics and `mcp` endpoints are never served on extra domains (an app's own MCP endpoint is on the app's host, wherever it is).
 
-**Removing an enrolled domain** is allowed only when no app instance has a
+**Removing an added domain** is allowed only when no app instance has a
 hostname on it. The domains service removes the DNS records it created (and
 retries once on failure).
