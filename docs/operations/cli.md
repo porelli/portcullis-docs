@@ -110,6 +110,15 @@ network settings, creates the bind-mount sources, and rebuilds
 for vault, postgres, lldap and keycloak to be healthy. Vault unseals itself on
 start.
 
+After `docker compose up`, services are restarted if their bind-mounted config
+files changed since the last start (e.g. after `git pull`). Affected files:
+`oauth2-proxy/alpha.yaml` (forward-auth services), `group-gate/group-gate-map.conf`
+(group-gate, enroll), `keycloak/themes/portcullis` (keycloak), monitoring
+configs (prometheus, blackbox). Services that re-read their config automatically
+(Traefik's dynamic file provider, group-gate's policy file) or apply config
+through other commands (Keycloak's realm export via `keycloak configure`) are
+not restarted.
+
 ### down
 
 ```
@@ -133,7 +142,8 @@ Updates a running installation after `git pull`:
 3. Pulls images.
 4. Re-runs the idempotent setup steps: `vault init`, `pki setup` (client role incl. `CLIENT_CERT_TTL`, Keycloak truststore) and the CA bundle.
 5. Runs `docker compose up -d --build` and waits for health.
-6. Runs `keycloak configure` and `oidc register`.
+6. Restarts services whose bind-mounted config files changed (see [`up`](#up) for the list).
+7. Runs `keycloak configure` and `oidc register`.
 
 | Option | Meaning |
 |--------|---------|
