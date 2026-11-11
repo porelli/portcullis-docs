@@ -118,8 +118,8 @@ image pull), fix it and run `./portcullis init` again.
 
 !!! danger "Back up `secrets/` now, offline"
     `secrets/vault-init.json` holds the Vault root token and the unseal key.
-    Losing it together with the host means losing the CA, and every client
-    certificate with it. Anyone who has it can unseal Vault. Keep an offline
+    Losing it together with the host means losing the CA, and every YubiKey
+    and browser certificate with it. Anyone who has it can unseal Vault. Keep an offline
     copy, and treat backups made by `./portcullis backup` the same way: they
     contain `secrets/` and `.env`. Store `BACKUP_PASSWORD` offline too:
     without it, off-host backups can't be restored after losing the host

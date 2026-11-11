@@ -223,8 +223,8 @@ sequenceDiagram
     Note over K: trusts the header only from Traefik's IP;<br/>the step whose CA issued the leaf runs:<br/>re-validates chain + EKU, checks that CA's CRLs (fail closed)
     K-->>U: Session with amr=mtls (YubiKey) or amr=file (browser)
     U->>T: GET https://app.example.com (cookie + certificate)
-    T->>G: forward-auth with X-Forwarded-Tls-Client-Cert-Info
-    Note over G: serial not revoked (both CAs)?<br/>issuer = the CA of the counted method?<br/>then CN must equal preferred_username
+    T->>G: forward-auth with X-Forwarded-Tls-Client-Cert (PEM) and -Info
+    Note over G: serial not revoked (both CAs)?<br/>leaf signed by the CA of the counted method?<br/>then CN must equal preferred_username
     G-->>T: 200 OK
     T->>A: Forward request
 ```

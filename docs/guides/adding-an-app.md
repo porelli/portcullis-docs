@@ -538,7 +538,7 @@ lets nobody sync.
   middleware of your own: on an extra-domain hostname the Hub swaps it for the
   extra-domain sign-in, and it refuses (400) extra-domain hostnames for a
   router whose own chain reaches `portcullis-auth`.
-  `client-headers@file` first lets group-gate check client-cert revocation.
+  `client-headers@file` first lets group-gate check certificate revocation (YubiKey and browser certificates).
 - **Volumes** declare **no** `name:` in a `multi` template: the Hub's override
   names them, `portcullis_<key>` for the default instance and
   `portcullis_<instance-id>-<key>` for the others. Never rename a volume key
@@ -656,10 +656,10 @@ Gate an admin path of a native-OIDC app with a second router and
 Same as above with `tls.options: public@file`, only `security-headers@file` as
 middleware, and `auth.method: public` / `group_access: false` in the manifest.
 
-### Trusting the internal CA
+### Trusting the internal certificate authority
 
 Apps that call Keycloak over HTTPS must trust `certs/ca-bundle.crt` (system CAs,
-the Portcullis PKI chain, and the LE staging root when `ACME_STAGING=true`).
+the internal certificate authority's chain, and the LE staging root when `ACME_STAGING=true`).
 Mount it read-only and point the runtime at it:
 
 | Runtime | Setting |
