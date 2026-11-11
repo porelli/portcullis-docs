@@ -191,7 +191,7 @@ networks:
     external: true
 ```
 
-Note: `tls.options: public@file` (no client cert request) and no auth middleware.
+Note: `tls.options: public@file` (no certificate request) and no auth middleware.
 
 ## Running Alongside Portcullis
 

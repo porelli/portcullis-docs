@@ -236,8 +236,8 @@ YubiKey attached:
 ./portcullis cert enroll alice alice@example.com
 ```
 
-or pastes a CSR made with `ykman` on the person's **Sign-in** tab in the
-Hub. Certificates last 30 days. People renew their own on their Sign-in page,
+or pastes a CSR made with `ykman` on the person's **Sign-in** tab on
+`https://people.<your-domain>/`. Certificates last 30 days. People renew their own on their Sign-in page,
 `https://people.<your-domain>/signin`.
 
 Browser certificates start off: switch **Browser certificate** on in Hub →

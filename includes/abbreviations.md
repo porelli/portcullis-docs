@@ -63,11 +63,9 @@
 *[instance]: An independent deployment of a template with its own data, settings, and groups
 *[instances]: Independent deployments of a template with their own data, settings, and groups
 *[default instance]: The instance of a template whose id equals the template id
-*[enrolled domain]: Extra domain served by Portcullis with its own wildcard certificate
-*[enrolled domains]: Extra domains served by Portcullis with their own wildcard certificates
 *[main domain]: The primary Portcullis domain (PORTCULLIS_DOMAIN)
 *[main-domain host]: A hostname under the main domain (<label>.<main domain>)
-*[extra-domain host]: A hostname on an enrolled domain
+*[extra-domain host]: A hostname on an added domain
 *[immutable host]: Host router whose hostname cannot be changed after instance creation
 *[host router]: Traefik router with a Host() rule alone, defining an instance hostname
 *[access role]: Keycloak client role enforcing access group membership for native-OIDC apps

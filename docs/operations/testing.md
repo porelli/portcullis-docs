@@ -27,7 +27,7 @@ exactly as on a real install. Every step drives the stack through
     - the realm export's sign-in flows (contract §8.1): `portcullis-universal` = REQUIRED `portcullis-authenticate` + REQUIRED `portcullis-template`, `portcullis-signin` (x509 · passkey sub-flow · password form), one conditional sub-flow per passkey kind with its `kind` and `method` configs, no `conditional-level-of-authentication` anywhere, `acr.loa.map` `{}`, every reference config `maxAge` 36000, the invite configs `inv`, brute force, the passwordless policy, every config used once
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
     - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
-    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`), `authaware` (`VerifyClientCertIfGiven`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
+    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `authaware` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
     - `signin reset-core` (stubbed `docker compose`): without `--yes` and a terminal it refuses (exit 2, nothing run); `--yes` runs `stop hub`, `run --rm --no-deps -T --user 10001:10001 --label traefik.enable=false --entrypoint /usr/local/bin/hub hub signin reset-core`, `start hub` and shows the Hub's output; a failed run still starts the Hub and exits 1 with the exit status, the Hub's own message and "the Hub was started again" (never "nothing was reset"); a failed stop starts the Hub again and runs nothing; a failed start says so
 - **`tests/test_shell_libs.sh`.** Shell-library tests against stub `docker`/`vault`:
     - `.env` handling and secret generation
@@ -96,7 +96,7 @@ the internal PKI) and verifies:
     - after a restart it auto-unseals and the CA is unchanged
     - the enroll AppRole can only sign, list, read and revoke certificates and rotate the CRLs, on both CAs
 - **PKI**
-    - the CA chain (root + YubiKey CA + browser CA) is created and valid
+    - both chain files are created and valid: `certs/ca-chain.crt` is exactly root + YubiKey CA + browser CA, `certs/ca-chain-yubikey.crt` exactly root + YubiKey CA (no browser CA in it)
     - Vault issues YubiKey certificates
 - **Keycloak**
     - the OIDC discovery and SAML descriptor endpoints
@@ -106,7 +106,7 @@ the internal PKI) and verifies:
     - the invite post-broker flow admits only clients with the `portcullis-invite-client` scope (only `portcullis-forward-auth`, never a realm default), and a second `keycloak configure` keeps an extra-domain callback on `portcullis-forward-auth` while dropping a wildcard
     - LLDAP users show up through the federation
     - the `email-unverified` scope has exactly one mapper (`email`), also after a second `keycloak configure`; a throwaway direct-grant client with that scope instead of `email` gets `email` but no `email_verified` in the ID token, access token and userinfo, while the built-in `email` scope sends `email_verified: false`
-- **mTLS**
+- **YubiKey certificates at the handshake**
     - the Hub isn't running yet, so the step writes policy file v6 into `hub_data` (the starting methods, Standard the default, every gated core page on Standard; later steps add their keys to it): without a file group-gate denies everything
     - requests with no cert, or a cert from another CA, are rejected
     - cert info, including the serial, reaches the backend
@@ -465,7 +465,21 @@ Then the Sign-in page cases (sign-in methods part 2):
     with methods `[browser_cert]` and a non-empty browser, a `step_up`, an
     `opened` for the app's host, a `help` by carol and `certificate`
     entries; bob's has a `failed` entry (his wrong password).
-26. **`enroll_site_gone`:** `https://enroll.<d>/` and `/self` answer `404`,
+26. **`browser_cert_cannot_renew`:** alice's browser certificate presented
+    on `POST /api/me/signin/yubikey-certificate/renew` with a CSR for its key
+    gets `403` "present your current YubiKey certificate"; nothing is issued.
+27. **`tls_protected_yubikey_ca_only`:** `echo-cert` (`e2e-cert` =
+    any[`yubikey_cert`] → `protected@file`, the option `mtls` apps get):
+    `openssl s_client -servername <host>`'s "Acceptable client certificate CA
+    names" lists only the root and the YubiKey CA, never the browser CA.
+28. **`tls_mtls_refuses_browser_cert`:** a TLS handshake to that host with
+    alice's browser certificate fails (and with root's YubiKey certificate
+    succeeds).
+29. **`tls_protected_any`:** an instance `echo-anycert` on `e2e-anycert` =
+    any[`yubikey_cert`, `browser_cert`] is on `protected-any@file`; its CA
+    names list the root and both CAs, a handshake with alice's browser
+    certificate succeeds, and one without a certificate fails.
+30. **`enroll_site_gone`:** `https://enroll.<d>/` and `/self` answer `404`,
     while `/invite/<bad token>` shows the invite page's "no longer usable".
 
 `tests/e2e/e2e_signin.py`'s and `e2e_filesharing.py`'s fresh sign-ins on
@@ -1069,7 +1083,7 @@ Also check, from the builders' reports:
   (`GetLiveContext`); a non-admin member turns an exposed light on. The same
   with Claude Code (loopback, port 33418). Removing the person from the group
   ends the connection after the next reconcile (at most 10 minutes for a
-  pending code). The host must be publicly reachable and not need mTLS.
+  pending code). The host must be publicly reachable and not need a YubiKey or browser certificate.
 - **Nextcloud**: AI on; alice uses claude.ai through
   `https://<nextcloud host>/mcp`; leaving revokes the app password (up to
   10 s of lag); a restore runs `revoke_all`.

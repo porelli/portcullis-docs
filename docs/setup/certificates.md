@@ -91,17 +91,17 @@ Keycloak or in group-gate.
 ### TLS tiers
 
 Core's `traefik/dynamic/tls.yml` is static (`config apply` never writes it)
-and defines three TLS option sets:
+and defines four TLS option sets:
 
-| Tier | Traefik option | Behavior |
-|------|---------------|----------|
-| **protected** | `RequireAndVerifyClientCert` | A certificate is **required**. Without one, the TLS handshake fails |
-| **authaware** | `VerifyClientCertIfGiven` | A certificate is **optional**. Verified against `certs/ca-chain.crt` if present |
-| **public** | no `clientAuth` | No certificate requested |
+| Tier | Traefik option | Trusts | Behavior |
+|------|---------------|--------|----------|
+| **protected** | `RequireAndVerifyClientCert` | `certs/ca-chain-yubikey.crt` (root + YubiKey CA) | A **YubiKey** certificate is **required**. Without one, the TLS handshake fails; a browser certificate never passes |
+| **protected-any** | `RequireAndVerifyClientCert` | `certs/ca-chain.crt` (root + both CAs) | A YubiKey or browser certificate is **required** |
+| **authaware** | `VerifyClientCertIfGiven` | `certs/ca-chain.crt` | A certificate is **optional**, verified if present |
+| **public** | no `clientAuth` | — | No certificate requested |
 
-`certs/ca-chain.crt` holds the root and both intermediate CAs, so both kinds
-pass the handshake; which method a certificate is decides Keycloak and
-group-gate by its issuer.
+Which method a certificate counts as decides Keycloak and group-gate by its
+issuer.
 
 **Certificate requests follow the switches.** All core routers (`auth`,
 `hub`, `people`, the portal, `enroll-invite`, `traefik`, `directory`,
@@ -112,11 +112,17 @@ the tier from the app's
 certificate methods that are switched on, and writes it into a per-app
 compose override:
 
-- every alternative of the template needs a certificate → `protected`;
+- an `mtls` app always gets `protected` (YubiKey certificates only);
+- every alternative of the template needs the YubiKey certificate →
+  `protected`;
+- every alternative needs a certificate, and at least one accepts the
+  browser certificate → `protected-any`;
 - some alternative has one → `authaware`;
 - none has one (for example both certificate methods are off), or the app
-  has no Portcullis sign-in → `public`, so the browser is never asked;
-- an `mtls` app always gets `protected`.
+  has no Portcullis sign-in → `public`, so the browser is never asked.
+
+While an app has open [public exceptions](../operations/auth-policies.md#public-exceptions),
+`protected` and `protected-any` become `authaware` for all of its routers.
 
 You change it in the Hub (Settings → Sign-in, or the app's template), not in
 the template's `compose.yml`.
@@ -208,7 +214,7 @@ fewer than `CERT_EXPIRY_WARN_DAYS` (default 7) days left:
 - `./portcullis status` (and `vault.certs_expiring` in `status --json`)
 - `./portcullis cert list`, which marks them `expiring`
 - the Sign-in page and the person's Sign-in tab, which show `expiring` for
-  any certificate with fewer than 7 days left
+  any certificate with fewer than `CERT_EXPIRY_WARN_DAYS` (default 7) days left
 
 ### Certificate login through Keycloak
 
@@ -315,7 +321,7 @@ that needs the certificate then shows the present-certificate page, the
 step-up page or the needs-stronger page.
 
 So a session opened with a certificate that is revoked later stops working
-within a minute. So does a session replayed from another browser without it.
+normally within a minute. So does a session replayed from another browser without it.
 
 ### Revocation
 
@@ -327,7 +333,7 @@ within a minute. So does a session replayed from another browser without it.
 
 People revoke their own browser certificates on the Sign-in page; admins and
 sign-in helpers revoke anyone's (but an administrator's) on the person's
-Sign-in tab. A revoked certificate **stops working within a minute** and
+Sign-in tab. A revoked certificate **normally stops working within a minute** and
 shows as revoked everywhere (the Sign-in page, the Sign-in tab,
 `cert list --all`).
 
@@ -395,12 +401,15 @@ intermediates signed by it, one per certificate kind:
 - The `browser-cert` role copies the `client-cert` role's settings (client
   certificates only, EC P-256 keys, the CN never taken from a request,
   `max_ttl=$CLIENT_CERT_TTL`) and is rewritten on every run.
-- `certs/ca-chain.crt` is root + `pki_int` + `pki_file`, in that order, and
-  Keycloak's truststore (`certs/truststore/`) gets `portcullis-ca-chain.pem`,
-  `portcullis-yubikey-ca.pem` and `portcullis-browser-ca.pem`. Whenever
-  `pki_file` is created or the chain on disk is out of date, `pki setup`
-  rewrites them, and the next `./portcullis up` restarts Traefik and
-  Keycloak so they load it.
+- `certs/ca-chain.crt` is root + `pki_int` + `pki_file`, in that order (the
+  `protected-any` and `authaware` TLS options), `certs/ca-chain-yubikey.crt`
+  is root + `pki_int` only (the `protected` option, so a browser certificate
+  never passes it), and Keycloak's truststore (`certs/truststore/`) gets
+  `portcullis-ca-chain.pem`, `portcullis-yubikey-ca.pem` and
+  `portcullis-browser-ca.pem`. Whenever `pki_file` is created or either chain
+  on disk is out of date, `pki setup` rewrites both chain files and the
+  truststore, and the next `./portcullis up` restarts Traefik and Keycloak so
+  they load them.
 - It refuses (exit 1) when the two intermediates would have the same CN:
   every reader tells the kinds apart by issuer.
 - It creates `pki_file` when it is missing, even while `pki_int` exists.
@@ -486,9 +495,11 @@ request; a browser without a certificate shows nothing. You don't need
 `ykman` or PIV setup.
 
 !!! danger "`mtls` apps rely on the certificate alone"
-    An app with `auth.method: mtls` has no forward-auth: the certificate at
-    the TLS handshake **is** its sign-in, and it always keeps the
-    `protected` tier. Without issued certificates nobody reaches it.
+    An app with `auth.method: mtls` has no forward-auth: the YubiKey
+    certificate at the TLS handshake **is** its sign-in, and it always keeps
+    the `protected` tier, which trusts only the YubiKey certificate
+    authority (a browser certificate is refused at the handshake). Without
+    issued YubiKey certificates nobody reaches it.
 
 ---
 
@@ -524,10 +535,12 @@ still valid (otherwise an admin issues a new one); create a new browser
 certificate there.
 
 ### `ERR_SSL_CLIENT_AUTH_CERT_NEEDED`
-The router is on the `protected` tier and requires a certificate. Get a
-YubiKey certificate (or create a browser certificate, if the template accepts
-one), or move the app to a template that doesn't need a certificate in every
-alternative (Hub → the app's Settings).
+The router is on the `protected` tier (a YubiKey certificate required; a
+browser certificate is never accepted there) or `protected-any` (a YubiKey or
+browser certificate required). Get a YubiKey certificate (or, on
+`protected-any`, create a browser certificate), or move the app to a template
+that doesn't need a certificate in every alternative (Hub → the app's
+Settings).
 
 ### 403: the certificate has been revoked
 group-gate found the certificate's serial in the revoked list or a CRL.

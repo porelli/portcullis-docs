@@ -14,7 +14,7 @@ User (YubiKey) --> Traefik --> App
                               LLDAP
 ```
 
-The user authenticates at the Traefik layer (via mTLS or WebAuthn). The app then uses SAML to verify the user's identity via Keycloak, which looks up users in LLDAP.
+The user authenticates at the Traefik layer (with a passkey, or a YubiKey or browser certificate). The app then uses SAML to verify the user's identity via Keycloak, which looks up users in LLDAP.
 
 ## Step 1: Deploy the App
 

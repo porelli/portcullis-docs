@@ -428,7 +428,9 @@ Creates the internal certificate authority in Vault
 - the `client-cert` role on `pki_int` and the `browser-cert` role on `pki_file`, both with lifetime `CLIENT_CERT_TTL` (default `720h` = 30 days). The CN is taken from the caller, never from the CSR
 
 It writes `certs/root-ca.crt`, `intermediate-ca.crt`, `yubikey-ca.crt`,
-`browser-ca.crt`, `ca-chain.crt` (root + both intermediates) and Keycloak's
+`browser-ca.crt`, `ca-chain.crt` (root + both intermediates: Traefik's
+`protected-any` and `authaware` options), `ca-chain-yubikey.crt` (root + the
+YubiKey CA only: Traefik's `protected` option) and Keycloak's
 truststore (`certs/truststore/portcullis-ca-chain.pem`,
 `portcullis-yubikey-ca.pem`, `portcullis-browser-ca.pem`), and enables CRL
 auto-rebuild and delta CRLs on both intermediates.
@@ -437,7 +439,7 @@ It is idempotent:
 
 - An existing CA is never replaced.
 - Both roles are rewritten, so a new `CLIENT_CERT_TTL` applies to certificates issued from then on.
-- Missing pieces (the browser certificate CA, CA files, truststore, server cert) are recreated. When the browser certificate CA is created or the chain on disk is out of date, the next `up` restarts Traefik and Keycloak.
+- Missing pieces (the browser certificate CA, CA files, truststore, server cert) are recreated. When the browser certificate CA is created or either chain file on disk is out of date, it rewrites both chain files and the truststore, and the next `up` restarts Traefik and Keycloak.
 - A partial earlier run is redone.
 - It refuses (exit 1) when the two intermediates would have the same CN.
 

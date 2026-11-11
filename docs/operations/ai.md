@@ -120,7 +120,7 @@ Each instance page has an **AI** tab (deep link
   the Doctor) and *revoke pending* (on, but kept off until the app's next
   start revokes its earlier credentials).
 - **Refused** while the master switch is off, the instance is being deleted
-  or restored, the template says `ai.unsupported`, the policy needs mTLS, the
+  or restored, the template says `ai.unsupported`, the sign-in needs a YubiKey or browser certificate, the
   companion alias would be longer than one DNS label, another container
   already answers to the alias, or a template update's revocation is still
   owed.

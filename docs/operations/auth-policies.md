@@ -226,8 +226,9 @@ top bar, **Sign-in methods** on the portal, and every "Set up …" and
     - **YubiKey certificate:** its validity and **Renew**: the page shows the
       `ykman` commands that make a new request (CSR) for the key already on
       the YubiKey; you paste it, and the browser must present your current
-      YubiKey certificate on that request. No fresh sign-in is needed: the
-      certificate and the request both prove you hold the key.
+      YubiKey certificate on that request (only a YubiKey certificate
+      renews; a browser certificate is refused). No fresh sign-in is needed:
+      the certificate and the request both prove you hold the key.
     - **Browser certificate:** the list and **Create**
       ([below](#browser-certificates)); each one can be revoked.
 - **Apps and what they need:** every app you can use, plus the people page
@@ -278,10 +279,14 @@ certificate, and signing in with it gives amr `file`, never `mtls`.
       is encrypted with AES-256, which older versions can't open); Safari and
       Chrome use the login keychain.
 
+Administrators create and revoke their own browser certificates here like
+anyone else; only `admin`, `portcullis-hub` and `portcullis-*` accounts
+can't (their certificates are managed from the server).
+
 A person can have at most 3 active browser certificates (the limit), and
 each one lasts at most the lifetime limit. A certificate **revoked** on the
 Sign-in page (or by an admin or helper, or with
-`./portcullis cert revoke`) **stops working within a minute** everywhere,
+`./portcullis cert revoke`) **normally stops working within a minute** everywhere,
 and shows as revoked on the Sign-in page, the person's Sign-in tab and
 `./portcullis cert list --all`.
 
@@ -296,9 +301,9 @@ Both open the person's **Sign-in** tab on their page on people.&lt;domain&gt;:
 |--------|----------------|---------------------------|
 | Send a setup link | yes (not to another administrator: `./portcullis invite <user>`) | yes, also for accounts they didn't create |
 | Remove passkeys | yes (another administrator's needs their username typed again) | yes |
-| Revoke a certificate | yes, except an administrator's (`./portcullis cert revoke <serial>`) | yes |
+| Revoke a certificate | yes, except an administrator's, `admin`'s, `portcullis-hub`'s or any `portcullis-*` account's (`./portcullis cert revoke <serial>`) | yes |
 | Reset the password | yes (another administrator's needs their username typed again) | **no** |
-| Issue a YubiKey certificate (from a CSR) | yes, after a fresh sign-in; not for an administrator | **no** |
+| Issue a YubiKey certificate (from a CSR) | yes, after a fresh sign-in; not for an administrator, `admin`, `portcullis-hub` or any `portcullis-*` account (`./portcullis cert enroll`) | **no** |
 
 A helper can never act on themselves, on `admin` or `portcullis-hub`, on an
 administrator, or on a member of any delegated-permission group; the check
@@ -465,23 +470,25 @@ disabled, gone or can't be met refuses.
 
 Whether browsers are asked for a certificate (YubiKey or browser) follows the
 method switches and the app's template. Core's `traefik/dynamic/tls.yml` is static
-and defines three options; the Hub picks one per app and writes it as a
+and defines four options; the Hub picks one per app and writes it as a
 `tls.options` label on every router of the app, in
 `${HUB_DATA_DIR}/overrides/<app>.override.yml`:
 
 | The app's template | Tier | Behaviour |
 |--------------------|------|-----------|
-| Every alternative needs a certificate method that is on (e.g. YubiKey + certificate) | `protected@file` | A certificate required at the TLS handshake |
+| An `mtls` app | `protected@file` | Always: a **YubiKey** certificate required at the TLS handshake |
+| Every alternative needs the YubiKey certificate (e.g. YubiKey + certificate) | `protected@file` | A **YubiKey** certificate required at the TLS handshake; a browser certificate never passes it |
+| Every alternative needs a certificate method that is on, and at least one accepts the browser certificate | `protected-any@file` | A YubiKey or browser certificate required at the TLS handshake |
 | Some alternative has one (e.g. Standard, Strong) | `authaware@file` | A certificate asked for, optional |
 | None has one, or the app has no Portcullis sign-in | `public@file` | No certificate requested |
-| An `mtls` app | `protected@file` | Always |
 
-Core pages (Keycloak, the Hub, people.&lt;domain&gt;, the portal, the
-consoles) always use `authaware@file`: they always offer an optional
-certificate (a browser without one shows nothing). Traefik accepts both
-kinds at the handshake (`certs/ca-chain.crt` holds both certificate
-authorities); which method a certificate counts as is decided by its
-issuer ([certificate binding](#certificate-binding)). Switching a certificate
+`protected` trusts only the YubiKey certificate authority
+(`certs/ca-chain-yubikey.crt`); `protected-any` and `authaware` trust both
+(`certs/ca-chain.crt`). Core pages (Keycloak, the Hub, people.&lt;domain&gt;,
+the portal, the consoles) always use `authaware@file`: they always offer an
+optional certificate (a browser without one shows nothing). Which method a
+certificate counts as is decided by its issuer
+([certificate binding](#certificate-binding)). Switching a certificate
 method on or off, or a template change that moves an app to another tier,
 restarts only the apps whose tier changed. Base `compose.yml` files in
 templates are untouched.
@@ -519,7 +526,8 @@ on, the Hub adds a router `portcullis-public-<app>` for those paths only:
   other token on the same prefix still goes through forward-auth.
 
 **Exceptions vs a required certificate.** A template that needs a
-certificate in every alternative normally gives the host `protected@file`.
+certificate in every alternative normally gives the host `protected@file` or
+`protected-any@file`.
 Anonymous visitors can't present a certificate, so while the public router
 exists the Hub uses `authaware@file` for **all** of the app's routers instead
 (`policy.HostTier`). What still enforces the certificate:
@@ -643,7 +651,7 @@ store, for Firefox) and that the origin matches the Traefik wildcard
 **"&lt;App&gt; needs your browser certificate" although it is installed**
 The certificate may be revoked or expired: open the
 [Sign-in page](#the-sign-in-page) and check its status. A revoked
-certificate stops working within a minute.
+certificate normally stops working within a minute.
 
 **Keycloak sign-in page appears when you expected single sign-on**
 The session cookie expired (8 hours idle / 12 hours max by default), or the

@@ -607,7 +607,7 @@ block (bordered in amber):
   "remember me" opens shares in a private window), and the Hub strips
   identity headers;
 - if the app's template requires a YubiKey or browser certificate at the TLS handshake
-  (`protected@file`), an amber warning that **all** of the app's routers use
+  (`protected@file` or `protected-any@file`), an amber warning that **all** of the app's routers use
   `authaware@file` while a public path is open. For native-OIDC apps it adds
   that the certificate is then only enforced at sign-in (Keycloak's template check); for forward-auth /
   header-auth apps that group-gate still checks the certificate on
@@ -1791,8 +1791,8 @@ people (admins see all of it; others the parts their permissions allow).
 | Require passkey | Admins | Adds the passkey registration action for the next sign-in |
 | Clear pending | Admins | Removes pending required actions |
 | Reset passkeys | Admins, holders of `sign_in_help` | Deletes all passkeys, signs the user out, then creates a new invite (or shows `./portcullis invite <user>` for an administrator). Type the username to confirm |
-| Revoke certificate | Admins, holders of `sign_in_help` (Sign-in tab) | Revokes one YubiKey or browser certificate; it stops working within a minute. Refused (409) for an administrator's: `./portcullis cert revoke <serial>` |
-| Issue YubiKey certificate | Admins (Sign-in tab) | Signs a CSR made on the person's YubiKey, after a fresh sign-in the people page's template accepts (not a password or a browser certificate). Refused (409) for an administrator |
+| Revoke certificate | Admins, holders of `sign_in_help` (Sign-in tab) | Revokes one YubiKey or browser certificate; it normally stops working within a minute. Refused (409) for an administrator's, and for `admin`, `portcullis-hub` and any `portcullis-*` account: `./portcullis cert revoke <serial>` |
+| Issue YubiKey certificate | Admins (Sign-in tab) | Signs a CSR made on the person's YubiKey, after a fresh sign-in the people page's template accepts (not a password or a browser certificate). Refused (409) for an administrator, `admin`, `portcullis-hub` and any `portcullis-*` account |
 | Password… | Admins | Fallback: set or generate a password; signs the user out |
 | Delete | Admins, delegates with `remove` | Deletes the user from LLDAP and Keycloak. Type the username to confirm |
 
