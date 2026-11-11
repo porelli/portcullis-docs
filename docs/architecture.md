@@ -15,7 +15,7 @@ graph TB
 
         subgraph Auth Layer
             OAuth2[oauth2-proxy<br/>Forward Auth]
-            GroupGate[group-gate<br/>Groups, paths, policy,<br/>revocation]
+            GroupGate[group-gate<br/>Revocation, groups, paths,<br/>sign-in template]
         end
 
         subgraph Identity
@@ -89,7 +89,7 @@ graph TB
 |-----------|------|
 | **Traefik** | Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests client certificates. Reads Docker labels through its read-only socket proxy. |
 | **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with a per-request `pc_method` for a one-method step-up), and returns identity headers and the access token on success. |
-| **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the app's auth policy (`acr`/`amr`, mTLS binding), the subdomain's required group and `path_groups`. Returns 403 or a step-up page. |
+| **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the subdomain's required group and `path_groups`, then the app's sign-in template (the session's `amr` methods, mTLS binding). Returns 403 or a step-up page. |
 | **Keycloak** | Identity provider, Portcullis's own image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`: the official Keycloak plus the sign-in extension). Passkeys of three kinds, X.509 (YubiKey PIV) login with CRL checks, password, one-method step-up (`pc_method`) and the per-app [sign-in template](operations/auth-policies.md#sign-in-flows-in-keycloak) check, from the Hub's `signin-keycloak.json` (`hub_data`, read-only); OIDC/SAML for apps. Federates users from LLDAP. |
 | **LLDAP** | Lightweight LDAP directory. Stores users and groups (custom user fields are LLDAP attributes). They are managed in the Hub; `directory.<domain>` redirects to `people.<domain>` (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
 | **PostgreSQL** | Database backend for Keycloak. |
@@ -149,7 +149,7 @@ sequenceDiagram
     T->>O: Forward auth check
     O-->>T: 200 OK (X-Auth-Request-*, access token)
     T->>G: Check (host, groups, access token, URI, client cert info)
-    Note over G: revocation, policy (acr/amr), group users_pihole, path_groups
+    Note over G: revocation, group users_pihole, path_groups, sign-in template
     G-->>T: 200 OK (X-Forwarded-User, X-Auth-Request-Groups)
     T->>A: Forward request
     A-->>U: App response
@@ -444,7 +444,7 @@ flowchart TB
     LLDAP[(LLDAP<br/>users, groups)]
     App[Samba / Time Machine container<br/>portcullis-sync + smbd]
 
-    Person -->|popup: fresh hardware sign-in, PKCE| KC
+    Person -->|popup: fresh passkey or YubiKey-certificate sign-in, PKCE| KC
     Person -->|code, verifier, nonce| Hub
     Hub -->|code exchange, ID token check| KC
     Hub -->|NT hash file per person| Secrets

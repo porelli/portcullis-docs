@@ -80,7 +80,7 @@ zensical build --strict   # what CI runs
 
 - The project has **no legacy installs**: document the current behaviour only — no migration guides, no "older releases did X".
 - Every operator action goes through `./portcullis <command>`; never document `docker compose` invocations where a CLI command exists, and never reference the removed `scripts/*.sh`.
-- Verify statements against the code in the other three repos (they are the source of truth); report inconsistencies instead of papering over them.
+- Verify statements against the code in the other four repos — core, Hub, templates, portcullis-keycloak (they are the source of truth); report inconsistencies instead of papering over them.
 - This site is authoritative for all documentation (backups, monitoring, hardening, certificates included). Core's `docs/*.md` only point here; verify against core's code, not its docs.
 - One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `mcp`, `metrics`.
 - New Portcullis terms get a glossary entry in `includes/abbreviations.md` (hover tooltips via Python-Markdown abbr extension).
@@ -111,7 +111,7 @@ Push to `main` (or the daily schedule, which picks up template changes) → GitH
 | `docs/setup/` | Setup guides (edit manually) |
 | `docs/guides/` | Developer guides (edit manually) |
 | `docs/operations/` | Operations guides (edit manually): CLI reference, upgrading & releases, backups, monitoring, security & hardening, groups, auth policies, Hub, testing |
-| `docs/guides/integration-contracts.md` | Single source of truth for the interfaces between the four repos |
+| `docs/guides/integration-contracts.md` | Single source of truth for the interfaces between the five repos (core, Hub, templates, docs, portcullis-keycloak) |
 | `.github/workflows/deploy.yml` | GitHub Pages deployment |
 | `requirements.txt` | Pinned build deps (zensical, ghp-import, PyYAML); CI's pip cache keys on it, Dependabot bumps it |
 

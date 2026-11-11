@@ -241,7 +241,7 @@ the Hub adds one Traefik router for them **without** forward-auth and
 group-gate (contracts §3). A template must never ship such a router in
 `compose.yml`. The app's own auth (share token, share password, expiry) is
 all that protects these paths; see
-[Auth policies → Public exceptions](../operations/auth-policies.md#public-exceptions).
+[Sign-in methods → Public exceptions](../operations/auth-policies.md#public-exceptions).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

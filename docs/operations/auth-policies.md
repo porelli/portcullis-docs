@@ -211,7 +211,9 @@ The Hub refuses (`409`, saying why) a save that changes methods, templates,
 the default or the Hub's template when it would leave **no** administrator
 (an unexpired `lldap_admin` member) able to meet the Hub's template. If none
 can already, the save goes through with the warning "No administrator can meet
-the Hub's template". When Keycloak can't be reached, such saves answer `503`.
+the Hub's template". Only a save that can lower the number of administrators
+able to meet it reads Keycloak, enroll and LLDAP; when Keycloak or LLDAP
+can't be reached, such a save answers `503`.
 
 If you are locked out anyway, recover on the server:
 

@@ -126,7 +126,10 @@ only if all of the following holds:
    (`ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…`). That tag must be a
    published, non-prerelease Hub release that still resolves to that digest.
    The `KEYCLOAK_IMAGE` default is pinned the same way, to a released
-   `ghcr.io/porelli/portcullis-keycloak` tag and its digest.
+   `ghcr.io/porelli/portcullis-keycloak` tag and its digest: that tag must be
+   a published, non-prerelease GitHub release of `porelli/portcullis-keycloak`
+   that still resolves to that digest. A core release therefore needs
+   published releases of both portcullis-hub and portcullis-keycloak.
 3. **CI.** The full core CI (`ci.yml`, called as a reusable workflow) passes on
    the tagged commit.
 
@@ -253,6 +256,12 @@ the same notes in its `CHANGELOG.md`.
   hostname change in its own record. A hostname change that failed under an
   older Hub isn't re-applied after the upgrade: repeat it once (save the same
   hostnames again).
+
+### Sign-in methods (Hub, core v6, portcullis-keycloak)
+
+- There are no installs to migrate: an older `state.yaml` loads with every
+  app's sign-in reset to the default template and its native-login choices
+  dropped.
 
 ## Changing settings during an upgrade
 

@@ -11,7 +11,7 @@ User (YubiKey) --> Traefik --> oauth2-proxy --> group-gate --> App (trusts only 
                                Keycloak
 ```
 
-The user authenticates via oauth2-proxy (which redirects to Keycloak). group-gate then checks groups and policy and returns the identity headers, which Traefik adds to the request. The app reads `X-Forwarded-User` and logs the user in automatically -- no separate login step.
+The user authenticates via oauth2-proxy (which redirects to Keycloak). group-gate then checks the certificate revocation, groups and path groups, then the app's sign-in template, and returns the identity headers, which Traefik adds to the request. The app reads `X-Forwarded-User` and logs the user in automatically -- no separate login step.
 
 ## When to Use Header Auth
 
@@ -75,7 +75,7 @@ After `portcullis-auth@docker` (oauth2-proxy) and `portcullis-groups@docker` (gr
 | `Authorization`, `X-Forwarded-Access-Token` | The Keycloak access token (`Bearer …`) | oauth2-proxy |
 | `X-Forwarded-Attr-<Header-Name>` | Custom user field values (e.g., `X-Forwarded-Attr-Department`, `X-Forwarded-Attr-Office-Location`), if the field is shared with apps | group-gate |
 
-**Custom attribute headers** (`X-Forwarded-Attr-*`): When admins define custom user fields (department, office, manager, etc.) in the Hub's **Setup** tab and enable "Share with apps", group-gate returns additional headers with the user's field values. Values are percent-encoded (`%` → `%25`, `,` → `%2C`), joined with `, ` (comma-space), and limited to 1 KB per value (before encoding; longer values are dropped and logged). **Apps must percent-decode each value after splitting on `, `**. Attribute headers are present only when the request is allowed (after auth factors are satisfied). See [Integration Contracts §4.1, §5](integration-contracts.md#41-user-attributes-file-hub-group-gate-new).
+**Custom attribute headers** (`X-Forwarded-Attr-*`): When admins define custom user fields (department, office, manager, etc.) in the Hub's **Setup** tab and enable "Share with apps", group-gate returns additional headers with the user's field values. Values are percent-encoded (`%` → `%25`, `,` → `%2C`), joined with `, ` (comma-space), and limited to 1 KB per value (before encoding; longer values are dropped and logged). **Apps must percent-decode each value after splitting on `, `**. Attribute headers are present only when the request is allowed (after the app's sign-in template is met). See [Integration Contracts §4.1, §5](integration-contracts.md#41-user-attributes-file-hub-group-gate-new).
 
 Traefik deletes every one of these from the client's request first and only adds the values the forward-auth services returned. Client copies of `X-Forwarded-Attr-*` are stripped by `authResponseHeadersRegex: ^X-Forwarded-Attr-` on every forwardAuth middleware (CI's browser test sends spoofed copies and checks they are dropped).
 

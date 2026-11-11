@@ -20,7 +20,7 @@
 *[acr]: OIDC Authentication Context Class Reference; Portcullis doesn't use it (amr and sign-in templates decide)
 *[amr]: Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)
 *[hwk]: amr of a security key passkey (a YubiKey touch)
-*[group-gate]: Per-request authorization middleware checking groups, policies, and revocation
+*[group-gate]: Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template
 *[LLDAP]: Light LDAP directory server storing users and groups
 *[Keycloak]: Identity provider handling WebAuthn, X.509, and OIDC/SAML
 *[Traefik]: Reverse proxy terminating TLS and routing requests by hostname

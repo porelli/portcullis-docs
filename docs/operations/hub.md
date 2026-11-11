@@ -613,7 +613,7 @@ block (bordered in amber):
   header-auth apps that group-gate still checks the client certificate on
   every gated request; and it lists routers without group-gate, which lose
   the handshake check. See
-  [Auth policies → Public exceptions](auth-policies.md#public-exceptions).
+  [Sign-in methods → Public exceptions](auth-policies.md#public-exceptions).
 
 Controls:
 
@@ -1887,7 +1887,8 @@ something personal for them, sorted by id, each with its link:
   password per app instance. The card shows the address to connect to
   (for example `smb://nas.home.arpa/Home`) and the username.
     - **Create password** (when there is none): a popup asks the person to
-      sign in again with their hardware key. This is a **fresh** sign-in,
+      sign in again with a passkey or YubiKey certificate (a method that is
+      switched on). This is a **fresh** sign-in,
       even if they signed in a minute ago, and the Hub accepts it only if
       it is at most 5 minutes old. The Hub then generates a 24-character
       random password and shows it **once**, as 6 groups of 4 joined by
