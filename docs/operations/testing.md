@@ -319,8 +319,10 @@ itself). The Hub's trust-list fixture is a copy of
 whose directory the CI override mounts read-only at
 `/run/portcullis/signin`, so the test can rewrite the file in place. Through
 the Hub's API the job enables Basic and YubiKey + certificate, creates
-`e2e-cert` = any[`yubikey_cert`] and the instances `echo-std` (the default,
-Standard), `echo-basic` (Basic), `echo-cert` (`e2e-cert`), `oidc-strong`
+`e2e-cert` = any[`yubikey_cert`] and `e2e-anycert` = any[`yubikey_cert`,
+`browser_cert`], and the instances `echo-std` (the default,
+Standard), `echo-basic` (Basic), `echo-cert` (`e2e-cert`), `echo-anycert`
+(`e2e-anycert`), `oidc-strong`
 (Strong), `oidc-all` (YubiKey + certificate) and `oidc-cert` (`e2e-cert`), and checks what it published:
 the picks in policy file v6, `hub` / `people` on Strong, and
 `signin-keycloak.json` `clients` (`oidc-strong` / `oidc-all` with their
@@ -475,8 +477,8 @@ Then the Sign-in page cases (sign-in methods part 2):
 28. **`tls_mtls_refuses_browser_cert`:** a TLS handshake to that host with
     alice's browser certificate fails (and with root's YubiKey certificate
     succeeds).
-29. **`tls_protected_any`:** an instance `echo-anycert` on `e2e-anycert` =
-    any[`yubikey_cert`, `browser_cert`] is on `protected-any@file`; its CA
+29. **`tls_protected_any`:** `echo-anycert` (on `e2e-anycert`) is on
+    `protected-any@file`; its CA
     names list the root and both CAs, a handshake with alice's browser
     certificate succeeds, and one without a certificate fails.
 30. **`enroll_site_gone`:** `https://enroll.<d>/` and `/self` answer `404`,

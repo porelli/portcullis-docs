@@ -63,7 +63,7 @@ reach an app. What a turned-on exception exposes:
 - **Uploads** where the app allows them on a share (Nextcloud file drop via
   `/public.php/dav`).
 - **The host's TLS tier.** With a certificate-only template the host drops from
-  `protected@file` to `authaware@file`: group-gate still enforces the
+  `protected@file` (or `protected-any@file`) to `authaware@file`: group-gate still enforces the
   certificate per request on gated routers, but native-OIDC apps then check it
   only at login (Keycloak's template check), and routers without group-gate not at all.
 
