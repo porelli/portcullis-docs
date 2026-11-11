@@ -501,9 +501,12 @@ its log. In order:
       issued.
     - **`browser_cert_off_counts_nothing`:** `echo-file` off `e2e-file`,
       `e2e-file` disabled, `browser_cert` switched off (both published files
-      without it, `echo-anycert` on `authaware@file`): the same valid `.p12`
-      alone leaves the browser on Keycloak's passkey prompt with no LOGIN
-      event, and alice's earlier file session gets `403` on `echo-anycert`.
+      without it; `echo-anycert` on `protected@file`, since the switch drops
+      `browser_cert` from every compiled rule and `e2e-anycert` becomes
+      any[`yubikey_cert`]; `echo-file`, on the default Standard meanwhile,
+      on `authaware@file`): on `echo-file` the same valid `.p12` alone leaves
+      the browser on Keycloak's passkey prompt with no LOGIN event, and
+      alice's earlier file session gets `403`.
       Everything is switched back in a `finally` (`echo-file` /
       `echo-anycert` back on `protected-any@file`).
     - **`yubikey_cert_still_mtls`:** a `pki_int` certificate CI issues for
