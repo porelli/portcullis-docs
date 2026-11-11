@@ -386,6 +386,14 @@ its log. In order:
 10. **`pc_fresh` present:** root's fresh passkey sign-in on
     `portcullis-fresh-auth` (`prompt=login`, `max_age=0`) has `pc_fresh` =
     `security_key`; an SSO reuse right after has none.
+    **The hub core template governs admin confirmations:** sam calls
+    `delete_group` on a throwaway group through the Hub's MCP listener
+    (`:8890/mcp/admin`, the gate secret read from `secrets/mcp-gate/hub-secret`,
+    never printed); his fresh sign-in on `portcullis-fresh-auth` with redirect
+    `https://hub.<d>/` (the proof posted to `/api/me/confirmations/<id>` as
+    the page does) with the synced passkey is refused (403 "a fresh sign-in
+    is required"), with the security key approved; `ai.confirm` names
+    `template strong` both times. The confirmation is never consumed.
 11. **Password on:** pat signs in with his password ("Try another way" →
     Password) on `echo-basic` (Basic; amr `pwd`); once the inventory lists
     `people.pat = [password]`, `people.<d>` (Strong) answers `#needs-stronger`.
@@ -531,13 +539,14 @@ uploads `e2e-folders-artifacts`: logs, API answers, the tree and
 
 ### `e2e-filesharing` (file-share passwords, SMB3 hardening, revocation)
 
-`tests/e2e/e2e_filesharing.py` (Playwright, smbclient 4.19.5) provisions a stack with Samba and Time Machine instances, tests per-person credential creation (fresh passkey touch, the password shown once), SMB3 connections with encryption required, revocation latencies (hub-made removal, LLDAP-direct removal, writer demoted to reader), instance and core restores voiding credentials, that no hash appears in any backup or log, and the F58 capability ruling (smbd signals work without `CAP_KILL`). Scenarios:
+`tests/e2e/e2e_filesharing.py` (Playwright, smbclient 4.19.5) provisions a stack with Samba and Time Machine instances, tests per-person credential creation (a fresh sign-in the app's template accepts — a passkey, or a password under a password-only template —, the password shown once), SMB3 connections with encryption required, revocation latencies (hub-made removal, LLDAP-direct removal, writer demoted to reader), instance and core restores voiding credentials, that no hash appears in any backup or log, and the F58 capability ruling (smbd signals work without `CAP_KILL`). Scenarios:
 
 - Setup: connect_address, ports on 127.0.0.1, size_limit 500GiB / office_milan 10GiB, folder slot via assignment, readers / writers before enable, testparm hardening.
 - Sign-in via setup links (alice, bob, carol); fresh auth popup flow (COOP, the authorize parameters, the password once, replay refused).
 - SMB3 sessions: Time Machine and Samba list shares, carol writes as `21002:60000`, encryption required, SMB2/NTLMv1/guest/wrong password refused, outside-LAN client refused.
 - Revocation: hub-made ≤ 10 s, LLDAP-direct ≤ 75 s, writer demoted ≤ 4 s (session gone, login refused). Measured at 0.8–0.9 s, 3.4–51.8 s, and about 3.6 s.
-- Restore: instance restore → credential voided, card says "reset by a restore", re-create works. Core restore → no hash in 45 backup files, `hub_secrets` emptied, credentials voided, uid pool +1000, Samba restarted from Hub.
+- Restore: instance restore → credential voided, card says "reset by a restore", re-create works.
+- Governing template: dave (users_samba, a Hub-set password only), with password on, signs in on `portcullis-fresh-auth` with his password (`prompt=login`, `max_age=0`) and the proof is posted to the people listener: refused (403) while the default (Samba takes no pick) is Standard, accepted once the default is a password-only template (`credential.create` audited with `template=e2e-pw`); his share then works. The default, the template and the password switch are restored in a `finally`. Core restore → no hash in 45 backup files, `hub_secrets` emptied, credentials voided, uid pool +1000, Samba restarted from Hub.
 - No hash visible: `docker inspect`, container logs, `hub_data`, audit, ops, archives, `state.yaml`.
 
 Built like `e2e-settings` (same-named Hub and templates branches, else `main`). Ubuntu 24.04 runners, smbclient pinned at `2:4.19.5+dfsg-4ubuntu9*`. On failure: policy/attributes files, data files, container logs, screenshots, no traces (DOM snapshots would carry the password).
