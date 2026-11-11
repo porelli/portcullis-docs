@@ -224,6 +224,7 @@ them. Any password field fails the test.
 10. An unused setup link, redeemed and then steered to another client's authorize endpoint with `kc_idp_hint=portcullis-invite` (client `e2e-invite-bypass`, created by the job), is denied by the invite post-broker flow: no code for the client, no passkey registered.
 11. A YubiKey-certificate login via Keycloak satisfies the YubiKey-certificate template.
 12. A YubiKey-certificate session without the certificate on the request is refused (certificate binding).
+    The cert-only session opens a default-template app, and enroll's `/self` and `/api/self/renew` answer `404` for it (the cert-only renewal is `e2e-signin`'s `yubikey_cert_renew`: this job runs no Hub).
 13. A revoked YubiKey certificate is rejected.
 14. A certificate from a foreign CA is rejected in the TLS handshake.
 
@@ -322,19 +323,24 @@ itself). The Hub's trust-list fixture is a copy of
 `tests/e2e/fixtures/virtual-authenticators.json` in `/tmp/signin-fixture`,
 whose directory the CI override mounts read-only at
 `/run/portcullis/signin`, so the test can rewrite the file in place. Through
-the Hub's API the job enables Basic and YubiKey + certificate, creates
-`e2e-cert` = any[`yubikey_cert`] and `e2e-anycert` = any[`yubikey_cert`,
-`browser_cert`], and the instances `echo-std` (the default,
-Standard), `echo-basic` (Basic), `echo-cert` (`e2e-cert`), `echo-anycert`
-(`e2e-anycert`), `oidc-strong`
+the Hub's API the job enables Basic and YubiKey + certificate, switches
+`browser_cert` on, creates `e2e-cert` = any[`yubikey_cert`], `e2e-file` =
+any[`browser_cert`] and `e2e-anycert` = any[`yubikey_cert`, `browser_cert`],
+and the instances `echo-std` (the default, Standard), `echo-basic` (Basic),
+`echo-cert` (`e2e-cert`, `protected@file`), `echo-file` (`e2e-file`) and
+`echo-anycert` (`e2e-anycert`, both `protected-any@file`), `oidc-strong`
 (Strong), `oidc-all` (YubiKey + certificate) and `oidc-cert` (`e2e-cert`), and checks what it published:
 the picks in policy file v6, `hub` / `people` on Strong, and
 `signin-keycloak.json` `clients` (`oidc-strong` / `oidc-all` with their
-templates and names), the fixture's AAGUID, password off. People (created
-with the Hub's LLDAP service account): `root` and `sam` (`lldap_admin`),
-`alice`, `bob` (a Vault certificate only), `pat` (a Hub-generated password
-only, kept in a 0600 file, never printed) and `rita`; `root` gets a
-certificate too. Setup links come from `./portcullis invite` inside the test.
+templates and names), the fixture's AAGUID, password off, `browser_cert` on.
+People (created with the Hub's LLDAP service account): `root` and `sam`
+(`lldap_admin`), `alice`, `bob` (a Vault certificate only), `pat` (a
+Hub-generated password only, kept in a 0600 file, never printed), `rita` and
+`carol`; `root` gets a certificate too. Setup links come from `./portcullis
+invite` inside the test. The venv also gets `cryptography` (group-gate's
+pinned, hashed wheels) for the `.p12`, the CSRs and the CA checks; keys,
+certificates and `.p12` passwords live only in a 0700 temp directory and in
+memory, and every password is `::add-mask::`ed.
 
 `tests/e2e/e2e_signin.py` uses two kinds of CDP virtual authenticator:
 backup eligibility 0 (Chromium's packed attestation, listed in the fixture:
@@ -417,81 +423,125 @@ its log. In order:
     passkey_synced -> security_key` line (`docker compose logs -t`) is at most
     360 s after the fixture's return (a new mtime → a higher `mds.serial`; the
     extension's task runs every 5 min, plus slack).
-15. **TLS follows the switches** (last; it restarts apps): with
-    `yubikey_cert` on, `echo-std` and `echo-basic` are on `authaware@file` and
-    `openssl s_client -servername <host>` shows "Acceptable client certificate
-    CA names". Standard saved as any[`family:passkey`], the instances off the
-    certificate templates, `hub` / `people` on `standard`, Strong, YubiKey +
-    certificate and `e2e-cert` disabled → `echo-std` on `public@file` with no
-    CA names; `echo-basic` (Basic still names `family:certificate`) moves only
-    when `yubikey_cert` is switched off. `auth.<d>` and `hub.<d>` keep their
-    CA names (core routers stay on `authaware`). Then everything is put back
-    (in a `finally`, also when a step failed) and compared with the snapshot taken before (methods, templates and rules,
-    default, core pages, instance picks), and both apps are back on
-    `authaware@file` with CA names.
-
-Then the Sign-in page cases (sign-in methods part 2):
-
-16. **`browser_cert_create_download`:** `browser_cert` switched on (Hub API).
-    Alice does a fresh sign-in with her virtual security key, then
-    `POST https://people.<d>/api/me/signin/browser-certificates {days: 30}`:
-    `200` with `Cache-Control: no-store`; `pkcs12.load_key_and_certificates(p12, password)`
-    gives an EC key and a leaf with CN `alice`, issued by the browser CA,
-    `not_after` ≈ now + 30 days. The `cert.create` audit entry holds neither
-    the password nor any base64.
-17. **`browser_cert_fresh_refused_weak`:** a fresh sign-in with a synced
-    passkey under Strong gets `403` "a fresh sign-in is required".
-18. **`browser_cert_max_active`:** two more creates succeed and the fourth
-    gets `409`.
-19. **`browser_cert_signin_file`:** alice has no other session, an app sits on
-    any[`browser_cert`], and her browser context carries
-    `client_certificates` from the `.p12`. She signs in with the certificate
-    only: the app opens, the token's amr ∋ `file` ∌ `mtls`, and Keycloak's
-    log has no `mtls` for her.
-20. **`browser_cert_not_yubikey`:** the same session on an app on
-    any[`yubikey_cert`] gets `#needs-stronger` (or `#present-certificate`
-    for the YubiKey); Keycloak with `pc_method=yubikey_cert` and that
-    certificate doesn't sign her in.
-21. **`yubikey_cert_still_mtls`:** a `pki_int` certificate issued by CI through
-    Vault signs in with amr ∋ `mtls`.
-22. **`browser_cert_revoked`:** `DELETE /api/me/signin/certificates/<serial>`;
-    within 70 s the app answers `403`, `GET /api/me/signin` shows `revoked`,
-    and the policy file's `people` no longer lists `browser_cert` for alice.
-23. **`signin_page_reachable_weak`:** password on, bob signed in with a
-    password only: `/signin` and `/api/me/signin` answer `200`;
-    `/api/directory`, and `/signin/../api/directory` sent as a raw,
-    unnormalised path (`http.client`, the path written as is), get
-    `#needs-stronger`.
-24. **`sign_in_help_actions`:** `PUT /api/directory/permissions/sign_in_help {group: "hr"}`;
-    hr member carol sends alice a setup link (`200`), removes her passkeys
-    (`200`) and revokes her certificate (`204`); she gets `403` for setting
-    alice's password, for acting on root and for acting on herself; the admin
-    issue / revoke routes on root answer `409` (as an admin).
-25. **`history_entries`:** alice's `/api/me/signin/history` has a `sign_in`
-    with methods `[browser_cert]` and a non-empty browser, a `step_up`, an
-    `opened` for the app's host, a `help` by carol and `certificate`
-    entries; bob's has a `failed` entry (his wrong password).
-26. **`browser_cert_cannot_renew`:** alice's browser certificate presented
-    on `POST /api/me/signin/yubikey-certificate/renew` with a CSR for its key
-    gets `403` "present your current YubiKey certificate"; nothing is issued.
-27. **`tls_protected_yubikey_ca_only`:** `echo-cert` (`e2e-cert` =
-    any[`yubikey_cert`] → `protected@file`, the option `mtls` apps get):
-    `openssl s_client -servername <host>`'s "Acceptable client certificate CA
-    names" lists only the root and the YubiKey CA, never the browser CA.
-28. **`tls_mtls_refuses_browser_cert`:** a TLS handshake to that host with
-    alice's browser certificate fails (and with root's YubiKey certificate
-    succeeds).
-29. **`tls_protected_any`:** `echo-anycert` (on `e2e-anycert`) is on
-    `protected-any@file`; its CA
-    names list the root and both CAs, a handshake with alice's browser
-    certificate succeeds, and one without a certificate fails.
-30. **`enroll_site_gone`:** `https://enroll.<d>/` and `/self` answer `404`,
-    while `/invite/<bad token>` shows the invite page's "no longer usable".
+15. **Sign-in page, part 2** (`browser_cert` on since the job's setup):
+    - **`browser_cert_on`:** the switch is on in `GET /api/signin` and
+      `signin-keycloak.json`; `echo-file` / `echo-anycert` carry
+      `protected-any@file`, `echo-cert` `protected@file`.
+    - **`browser_cert_create_download`:** alice signs in on
+      `people.<d>/signin` with her virtual security key, does a fresh sign-in
+      (the popup flow, redirect `https://people.<d>/signin`), then
+      `POST https://people.<d>/api/me/signin/browser-certificates {days: 30}`
+      through Traefik: `200` with `Cache-Control: no-store` and
+      `Pragma: no-cache`; the password is 4 × 5 Crockford characters;
+      `pkcs12.load_key_and_certificates(p12, password)` gives an EC P-256 key
+      and a leaf with CN `alice`, issued (and signed) by the browser CA,
+      `not_after` ≈ now + 30 days; the `.p12`'s chain holds the browser CA and
+      the root (never the YubiKey CA); the filename and the row's serial
+      match. The `cert.create` audit entries hold neither the password nor
+      any base64 run. The policy file's `people` then lists `browser_cert`
+      for alice.
+    - **`browser_cert_fresh_refused_weak`:** sam's synced-passkey fresh
+      sign-in (the people core template is Strong) gets `403` "a fresh
+      sign-in is required"; nothing is created.
+    - **`browser_cert_max_active`:** two more creates succeed and the fourth
+      gets `409` (at most 3 active).
+    - **`tls_protected_yubikey_ca_only`:** `echo-cert` (`protected@file`, the
+      option `mtls` apps get): `openssl s_client`'s "Acceptable client
+      certificate CA names" is exactly the YubiKey CA — no root, no browser
+      CA.
+    - **`tls_mtls_refuses_browser_cert`:** `curl` to `echo-cert` with alice's
+      browser leaf followed by the `.p12`'s whole chain (`pki_file` + root,
+      as a browser sends it) gets no answer (the handshake fails), and so does
+      a Playwright context presenting the `.p12` itself; root's YubiKey
+      certificate completes the handshake.
+    - **`tls_protected_any`:** `echo-anycert`'s CA names are the root and both
+      CAs; the browser certificate (with its chain) completes the handshake,
+      no certificate fails it.
+    - **`browser_cert_signin_file`:** a new context with the `.p12` as its
+      `client_certificates` and no authenticator: alice signs in with the
+      certificate only and `echo-file` (any[`browser_cert`]) opens; the
+      token's amr has `file` and never `mtls`; Keycloak's LOGIN events have
+      `pc_methods` `browser_cert` (never `yubikey_cert`) and its log names no
+      `mtls` / `yubikey_cert` for her.
+    - **`browser_cert_not_yubikey`:** that session on `oidc-cert`
+      (any[`yubikey_cert`]) gets Keycloak's needs-stronger page; with
+      `pc_method=yubikey_cert` it signs nobody in (no code). A forward-auth
+      any[`yubikey_cert`] host is `protected@file`, so there the handshake
+      refuses the browser certificate (above).
+    - **`browser_cert_cannot_renew`:** the browser certificate presented on
+      `POST /api/me/signin/yubikey-certificate/renew` with a CSR for its key
+      gets `403` "present your current YubiKey certificate"; nothing is
+      issued.
+    - **`yubikey_cert_still_mtls`:** a `pki_int` certificate CI issues for
+      alice through Vault signs her in without an authenticator: amr `mtls`,
+      never `file`; `echo-cert` opens.
+    - **`yubikey_cert_renew`** (the cert-only renewal, moved here from
+      `e2e`: enroll's `/self` is gone and the `e2e` job runs no Hub): that
+      session renews on the Sign-in page —
+      `POST https://people.<d>/api/me/signin/yubikey-certificate/renew` with
+      a CSR for the same key → `200` no-store, CN `alice`, the YubiKey CA,
+      the same key, a new serial.
+    - **`forged_cert_headers`:** Traefik deletes client-sent
+      `X-Forwarded-Tls-Client-Cert` / `-Info`: alice's `mtls` session without
+      the certificate but with both headers forged (her real YubiKey
+      certificate) stays on `#present-certificate` on `people.<d>/`, and a
+      renewal from her passkey session with them forged gets `403`.
+    - **`browser_cert_revoked`:** `DELETE /api/me/signin/certificates/<serial>`
+      (through Traefik, with that certificate) → `204`; within 70 s
+      `echo-file` answers `403` (revoked) and `GET /api/me/signin` shows it
+      `revoked`; a YubiKey certificate's serial on that route is `404`; she
+      revokes her third one too.
+    - **`signin_page_reachable_weak`:** password on, pat (a password only —
+      bob has a YubiKey certificate, so `people.<d>` would offer him a
+      step-up) signs in with a wrong password once, then his own:
+      `/signin` and `/api/me/signin` answer `200`; `/api/directory` gets
+      `#needs-stronger`; raw, unnormalised paths sent with `http.client`
+      (the path written as is: `/signin/../api/directory`,
+      `/api/me/signin/../../directory`, `/static/../api/directory` → `403`
+      `#needs-stronger`; encoded dots, slashes and backslashes → refused,
+      `400` / `403` / `404`, never the Hub). Password off again after.
+    - **`sign_in_help_actions`:** group `hr` with carol,
+      `PUT /api/directory/permissions/sign_in_help {group: "hr"}`; carol's
+      view of alice's Sign-in tab may send a setup link, remove passkeys and
+      revoke, not set a password or issue; she sends alice a setup link
+      (`200`, masked), removes her passkeys (`200`, gone from Keycloak) and
+      revokes her second browser certificate (`204`); she gets `403` for
+      alice's password and for every action on root, `portcullis-hub` and
+      herself (also revoking root's certificate); as an admin, issuing and
+      revoking root's certificate get `409` "… managed from the server". The
+      audit has `user.invite`, `user.remove_passkeys` and `cert.revoke` with
+      `as sign_in_help`.
+    - **`browser_cert_none_left`:** all three revoked, none active, and the
+      policy file's `people` no longer lists `browser_cert` for alice.
+    - **`history_entries`:** alice's `/api/me/signin/history` (no unknown
+      source) has a `sign_in` with methods `[browser_cert]` and a non-empty
+      browser, a `step_up`, an `opened` for `echo-file` with `browser_cert`,
+      at least three `help` entries by carol and at least three
+      `certificate` entries, and no `.p12` password; pat's has a `failed`
+      entry (his wrong password); carol may read alice's history.
+    - **`enroll_site_gone`:** `https://enroll.<d>/`, `/self`,
+      `/api/self/renew`, `/api/sign`, `/api/users`, `/users` and `/certs`
+      get Traefik's own `404` (no router), while `/invite/<bad token>`
+      reaches enroll's invite page ("This setup link is invalid, expired or
+      already used", `404`).
+16. **TLS follows the switches** (last; it restarts apps): with both
+    certificate methods on, `echo-std` and `echo-basic` are on
+    `authaware@file` and `openssl s_client -servername <host>` shows
+    "Acceptable client certificate CA names". Standard saved as
+    any[`family:passkey`], the instances off the certificate templates,
+    `hub` / `people` on `standard`, Strong, YubiKey + certificate,
+    `e2e-cert`, `e2e-file` and `e2e-anycert` disabled → `echo-std` on
+    `public@file` with no CA names; `echo-basic` (Basic still names
+    `family:certificate`) stays on `authaware@file` while `browser_cert` alone
+    is on and moves only when both `yubikey_cert` and `browser_cert` are
+    switched off. `auth.<d>` and `hub.<d>` keep their CA names (core routers
+    stay on `authaware`). Then everything is put back (in a `finally`, also
+    when a step failed) and compared with the snapshot taken before (methods,
+    templates and rules, default, core pages, instance picks), and both apps
+    are back on `authaware@file` with CA names.
 
 `tests/e2e/e2e_signin.py`'s and `e2e_filesharing.py`'s fresh sign-ins on
-people.&lt;domain&gt; use the redirect `https://people.<d>/signin`, and
-`e2e_login.py` renews a YubiKey certificate through
-`POST https://people.<d>/api/me/signin/yubikey-certificate/renew`.
+people.&lt;domain&gt; use the redirect `https://people.<d>/signin`.
 
 The throwaway `ci-kick-<n>` groups are deleted at the end (best effort).
 `./portcullis signin reset-core` is covered by `build-and-test` (above). The
