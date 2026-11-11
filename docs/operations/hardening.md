@@ -17,7 +17,8 @@ ports, and header trust.
 | Identity headers | Spoofed by another container on `portcullis-proxy` | Header-auth apps trust only Traefik's fixed IP (`PORTCULLIS_TRAEFIK_IP`). Keycloak trusts proxy headers only from Traefik's fixed IP on the internal `portcullis-auth` network |
 | Hub (runs compose, so it is effectively host root) | Reached without passing forward-auth | Hub: requires `lldap_admin` and the `X-Portcullis-Proxy-Secret` header. People listener (`people.<domain>`): any signed-in user (group-gate-map.conf `people=*`), per-request permission checks |
 | Docker API | A compromised Traefik or Hub takes over the host | No service mounts the socket except two socket proxies with per-client allow-lists |
-| Forward-auth session cookies (shared cookie secret) | A cookie stolen from one host replayed elsewhere | Same parity as the main domain: `forward-auth` and `forward-auth-ext` share the cookie secret, but oauth2-proxy's HMAC covers the cookie name, so a `_oauth2_proxy` (main domain) value isn't accepted as `__Host-portcullis_ext` or vice versa. A stolen `__Host-portcullis_ext` value is a session on every extra-domain host, as the `.<domain>` cookie is on every main-domain host: browsers send it to its host only, and group-gate still checks each host's group and policy. Sessions re-validate with Keycloak every minute (cookie refresh), so a Keycloak logout ends both |
+| Forward-auth session cookies (shared cookie secret) | A cookie stolen from one host replayed elsewhere | Same parity as the main domain: `forward-auth` and `forward-auth-ext` share the cookie secret, but oauth2-proxy's HMAC covers the cookie name, so a `_oauth2_proxy` (main domain) value isn't accepted as `__Host-portcullis_ext` or vice versa. A stolen `__Host-portcullis_ext` value is a session on every extra-domain host, as the `.<domain>` cookie is on every main-domain host: browsers send it to its host only, and group-gate still checks each host's group and policy. The cookie is only a ticket: the session itself is in the [session store](#session-store-sessions), so signing out deletes it and the stolen ticket stops working. Sessions re-validate with Keycloak every minute (cookie refresh), so a Keycloak logout ends both |
+| Session store (`sessions`, Valkey) | Another container reads or rewrites sessions; one oauth2-proxy touches the other's | Reachable only on the internal `portcullis-sessions` network (the store and the two oauth2-proxies); the default user is off; each oauth2-proxy has its own user and password, limited to its own ticket keys and the handful of commands oauth2-proxy sends. Sessions are encrypted with a per-ticket secret that only the browser's cookie holds. Memory only: nothing on disk, a restart signs everyone out |
 | Lost or stolen YubiKey or browser certificate | Keeps working until expiry | Revocation is checked on every request (group-gate, both CAs' CRLs), at Keycloak certificate login (that CA's CRLs, fail closed), and by the certificate binding; a revocation on the web is normally enforced within a minute. On removal or expiry, group-gate also withholds `Authorization` and `X-Forwarded-Access-Token` |
 | Expired group membership | Keeps working while Hub is down | Every pending expiry is in the policy file's `expiring` array (plus a 10-min grace after LLDAP removal). group-gate treats it as absent. The Hub also revokes Keycloak sessions (oauth2-proxy cookie refresh is 1 min, so removals and Keycloak logouts take effect within ~1 min; sessions end at Keycloak's idle 8h / max 12h) |
 | Path-based admin areas | Bypassed with encoded or dot-segment paths | group-gate normalises the path and denies ambiguous encodings (see [Groups](groups.md#path-rules-path_groups-and-admin_paths)) |
@@ -127,6 +128,9 @@ graph LR
     KC[Keycloak] --- NA
     KC --- NC
     O2[oauth2-proxy] --- NC
+    NSS{{portcullis-sessions<br/>internal}}
+    O2 --- NSS
+    SS[(sessions)] --- NSS
     GG[group-gate] --- NC
     En[enroll] --- NC
     V[Vault] --- NC
@@ -151,14 +155,17 @@ graph LR
 | `portcullis-proxy` | Traefik and app frontends | `PORTCULLIS_PROXY_SUBNET` (default `172.31.250.0/24`). Dynamic range `PORTCULLIS_PROXY_IP_RANGE` (`172.31.250.128/25`). Traefik pinned at `PORTCULLIS_TRAEFIK_IP` (`172.31.250.2`), outside the range | Routing plane. Traefik's docker provider uses this network. No app container can ever get Traefik's address |
 | `portcullis-auth` | Traefik and Keycloak only (`internal: true`) | `PORTCULLIS_AUTH_SUBNET` (`172.31.251.0/28`), range `PORTCULLIS_AUTH_IP_RANGE` (`172.31.251.8/29`), Traefik at `PORTCULLIS_AUTH_TRAEFIK_IP` (`172.31.251.2`) | The only path from which Keycloak accepts proxy headers, including the forwarded certificate for YubiKey and browser certificate login |
 | `portcullis-mcp` | `mcp-gate`, Keycloak and the Hub only (`internal: true`) | `PORTCULLIS_MCP_SUBNET` (`172.31.253.0/28`), range `PORTCULLIS_MCP_IP_RANGE` (`172.31.253.8/29`), Keycloak at `PORTCULLIS_MCP_KEYCLOAK_IP` (`.2`), the Hub at `PORTCULLIS_MCP_HUB_IP` (`.3`) | The gate's only path to Keycloak's keys and the Hub's MCP listener; the gate pins both names to these addresses in `extra_hosts`, so no container can shadow them. The gate itself is on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP` (`172.31.250.3`, outside the dynamic range) |
+| `portcullis-sessions` | `sessions`, `forward-auth` and `forward-auth-ext` only (`internal: true`) | Docker default | The oauth2-proxies' path to their [session store](#session-store-sessions); nothing else can reach it |
 | `socket-proxy-traefik` | Traefik + its socket proxy (`internal: true`) | Docker default | Read-only Docker API for Traefik |
 | `socket-proxy-hub` | Hub + its socket proxy (`internal: true`) | Docker default | Docker API for the Hub |
 | `monitoring` (profile `monitoring`, `internal: true`) | Prometheus, Alertmanager, Grafana, blackbox, textfile exporter | Docker default | Scraping and dashboards. Prometheus and blackbox also join `portcullis`, Grafana joins `portcullis-proxy` (routed at `metrics.<domain>`) |
 | `alerting` (profile `monitoring`) | Alertmanager | Docker default | Alertmanager's only network with egress, for the receivers |
 | `portcullis-<app>_default` | One app's services | Docker default | App-internal traffic (databases, caches). Isolated from other apps and from core |
 
-CI checks that exactly `keycloak` and `traefik` are on `portcullis-auth`, and
-that each socket-proxy network has exactly its two members.
+CI checks that exactly `keycloak` and `traefik` are on `portcullis-auth`,
+that each socket-proxy network has exactly its two members, and that
+`portcullis-sessions` has exactly `sessions`, `forward-auth` and
+`forward-auth-ext`.
 
 **Changing the ranges.** Only do this if the defaults collide with a host, LAN
 or VPN network, ideally before `./portcullis init`. The rules:
@@ -235,7 +242,8 @@ CI fails if any of these is missing.
 | vault | 100:1000 | read-only (`tmpfs /tmp`) | — | `vault status` | `disable_mlock` (raft), so no `IPC_LOCK`. Reads `secrets/vault-unseal/` via group 1000 |
 | lldap | 1000 (`-rootless` image) | read-only (`tmpfs /tmp`) | — | `lldap healthcheck` | |
 | keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`). Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider (and the sign-in extension's providers) are build options; never `--optimized`. Reads `hub_data` read-only (`/hub-data/signin-keycloak.json`, the Hub's sign-in methods and templates; missing or invalid = nobody signs in) |
-| forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client |
+| sessions (Valkey) | 999:1000 (the image's `valkey`) | read-only (`tmpfs /data`) | — | an unauthenticated `PING` must answer `NOAUTH` | Image `valkey/valkey` alpine, pinned. The [session store](#session-store-sessions) of both oauth2-proxies: no ports, only on `portcullis-sessions`, no persistence (`save ""`, `appendonly no`), `maxmemory 64mb` with `volatile-ttl`, `mem_limit` 128m, `pids_limit` 64. Reads `secrets/sessions/valkey.conf` read-only |
+| forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client. Sessions in `sessions` (user `forward-auth`), starts once it is healthy |
 | forward-auth-ext (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Same image, provider config, client and cookie secret as forward-auth; serves extra-domain hosts only (contract §5): relative callback `/oauth2/callback` built from the request host (`X-Forwarded-Host`, trusted from `OAUTH2_PROXY_TRUSTED_PROXY_IPS` only), host-only cookie `__Host-portcullis_ext` (`Secure`, no `Domain`, `Path=/`), no redirect whitelist (only relative redirects are accepted). Both oauth2-proxies send PKCE S256 and the `portcullis-forward-auth` client requires it (`pkce.code.challenge.method`), so a code delivered to a stale callback URI is useless without the verifier. Routed only by the Hub's per-host `Host(<h>) && PathPrefix(/oauth2/)` routers. Its middleware `portcullis-auth-ext` lists the same `authResponseHeaders` / `authResponseHeadersRegex` as `portcullis-auth` (CI compares them) |
 | group-gate | 10003:10003 + group 10001 (`group_add`) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL and CA-file parsing) and `PyJWT` (token claims) + the script. Mounts `certs/yubikey-ca.crt` and `certs/browser-ca.crt` read-only (`/etc/group-gate/ca/`). Writes only `group_gate_data` (`/data`, owned `10003:10001`): the opened log `opened/` (mode 2770, group 10001; files 0640) for sign-in history. A write failure never denies a request |
 | hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
@@ -282,6 +290,7 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/hub/invite/secret` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/invite/secret`, same value as enroll's `invite-api-secret`) |
 | `secrets/mcp-gate/age.key` | 10005 | 0640 (dir 0700) | mcp-gate (decrypts the AI credentials the Hub wrote) |
 | `secrets/mcp-gate/{age.pub,hub-secret}` | 10001 | 0640 | Hub (encrypts to `age.pub`; holds no identity) and mcp-gate (`hub-secret`, through group 10001) |
+| `secrets/sessions/valkey.conf` | 1000 | 0640 (dir 0700) | sessions (its config and ACL users: the SHA-256 of `FORWARD_AUTH_REDIS_PASSWORD` / `FORWARD_AUTH_EXT_REDIS_PASSWORD`, never the passwords; rewritten from `.env` on every run) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
 | `secrets/monitoring/alertmanager/alertmanager.yml` | 65534 | 0640 (dir 0750) | Alertmanager (receivers incl. SMTP password / webhook URLs) |
 | `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
@@ -652,6 +661,65 @@ backends must never trust those headers (none of them reads them).
   changed groups reach group-gate, within about a minute. The refresh also ends
   forward-auth sessions at Keycloak's SSO session limits (8 h idle, 12 h max);
   the 168 h cookie lifetime (`cookie_expire`) is only an upper bound.
+- **Session store.** See [below](#session-store-sessions): the refreshed
+  session is written back under the same ticket, so the browser's cookie never
+  has to change and the forward-auth middlewares need no
+  `addAuthCookiesToResponse`.
+
+### Session store (`sessions`)
+
+Both oauth2-proxies keep their sessions server-side in `sessions` (Valkey,
+`OAUTH2_PROXY_SESSION_STORE_TYPE=redis`, `redis://sessions:6379`); the
+browser holds one small cookie (`_oauth2_proxy` on the main domain,
+`__Host-portcullis_ext` on extra domains; names and domains as before) with a
+signed ticket: the session's key and the secret it is encrypted with.
+
+Why: oauth2-proxy v7.15.5 stores sessions in cookies, and a session that
+outgrows one cookie (about 4 KB: a step-up after a setup link does) is split
+into `_oauth2_proxy_0…n` while the old unsplit `_oauth2_proxy` is never
+expired. oauth2-proxy then keeps loading the stale one, and the step-up page
+came back forever (upstream issue
+[#3486](https://github.com/oauth2-proxy/oauth2-proxy/issues/3486); the fix,
+#3491, is not released yet).
+
+- **Network.** `portcullis-sessions` (`internal: true`) has exactly the store
+  and the two oauth2-proxies; nothing is published.
+- **Users** (`secrets/sessions/valkey.conf`, generated by `./portcullis`):
+  `user default off` (no password, keys or commands: an unauthenticated
+  client gets `NOAUTH`), and one user per oauth2-proxy, each limited to its own
+  keys and the commands oauth2-proxy v7.15.5 sends (with go-redis and
+  bsm/redislock):
+
+  | User | Keys | Commands |
+  |------|------|----------|
+  | `forward-auth` | `_oauth2_proxy-*` | `ping get set del evalsha eval msetnx mset getrange pexpire mget` |
+  | `forward-auth-ext` | `__Host-portcullis_ext-*` | the same |
+
+  Ticket keys are `<cookie name>-<32 hex>`; a refresh holds a lock
+  `<ticket key>.lock` (redislock's Lua scripts: `msetnx` / `mset` /
+  `getrange` / `pexpire` to take it, `mget` + `del` to release it). Scripts'
+  own calls are checked against the same user, so they can't reach other keys
+  or commands either. No `keys`, `scan`, `config`, `acl`, `client`,
+  `flush*`, `debug`, `module`, pub/sub or replication commands.
+- **Passwords.** `FORWARD_AUTH_REDIS_PASSWORD` and
+  `FORWARD_AUTH_EXT_REDIS_PASSWORD` (40 random characters, generated by
+  `init` and `upgrade`, required by compose) reach each oauth2-proxy as
+  `OAUTH2_PROXY_REDIS_PASSWORD`; `valkey.conf` holds only their SHA-256. A
+  changed config is written in place and the running store restarted before
+  `docker compose up`.
+- **Memory only.** No RDB or AOF, `/data` is a tmpfs: a store restart, a
+  rotated password or a restore signs everyone out once; backups carry no
+  sessions. `maxmemory 64mb` with `volatile-ttl` (every session has a TTL of
+  the cookie lifetime, so a full store evicts the sessions closest to
+  expiring).
+- **Refreshes.** A refresh (every minute, see above) saves the new session
+  under the same ticket, so the browser's cookie stays valid: it is signed
+  with the sign-in time and accepted for `cookie_expire` (168 h), longer than
+  Keycloak's 12 h maximum. The 202's `Set-Cookie` therefore doesn't have to
+  reach the browser, and the forward-auth middlewares have no
+  `addAuthCookiesToResponse`.
+- **Sign-out** (`/oauth2/sign_out`) deletes the session from the store: a copy
+  of the cookie stops working at once.
 - **`people.<domain>`** (the Hub's directory listener `:8889`,
   [contract §5.1](../guides/integration-contracts.md)) is open to any signed-in
   user: `people=*` in `group-gate-map.conf` (`*` is valid only there; in the

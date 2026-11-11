@@ -23,6 +23,7 @@ exactly as on a real install. Every step drives the stack through
 - **shellcheck** of `portcullis`, `scripts/lib/*.sh`, `tests/*.sh` and `vault/entrypoint.sh`.
 - **CLI help.** Every command listed by `./portcullis help` must print a `Usage: portcullis <cmd>` line for `--help`.
 - **`tests/test_cli.sh`.** Argument parsing, dispatch and `init --env-only`, with a stub `docker`. Also:
+    - `init --env-only` generates `FORWARD_AUTH_REDIS_PASSWORD` and `FORWARD_AUTH_EXT_REDIS_PASSWORD` (40 `[A-Za-z0-9]`, different), both core secrets (never shared with the Hub) and rotatable (`upgrade` generates them); `init`, `up` and `upgrade` run the session store's restart check before `docker compose up`
     - `keycloak configure` against a stub admin API: the realm PUT carries brute force and an empty `acr.loa.map`, the forward-auth client loses `default.acr.values`, the two-factor `webauthn-register` is disabled, the AMR check walks `portcullis-universal`, the X.509 settings go onto the `portcullis-x509` execution; it never writes the Hub's AI clients or `mcp:*` scopes
     - the realm export's sign-in flows (contract §8.1): `portcullis-universal` = REQUIRED `portcullis-authenticate` + REQUIRED `portcullis-template`, `portcullis-signin` (x509 · passkey sub-flow · password form), one conditional sub-flow per passkey kind with its `kind` and `method` configs, no `conditional-level-of-authentication` anywhere, `acr.loa.map` `{}`, every reference config `maxAge` 36000, the invite configs `inv`, brute force, the passwordless policy, every config used once
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
@@ -41,6 +42,7 @@ exactly as on a real install. Every step drives the stack through
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - backups' `MANIFEST.json` names the Hub and Keycloak images; `upgrade` warns about a pinned `HUB_IMAGE` or `KEYCLOAK_IMAGE`
     - `config_apply` with `ACME_STAGING=true` writes the staging `ACME_CA_SERVER` and touches no file under `traefik/`
+    - the session store's config (`sessions_prepare`): `secrets/sessions` 0700, `valkey.conf` 0640 group 1000 through the helper; exactly three users — `default` off with no password, keys, channels or commands, `forward-auth` on `~_oauth2_proxy-*` and `forward-auth-ext` on `~__Host-portcullis_ext-*`, each `-@all` plus exactly `ping get set del evalsha eval msetnx mset getrange pexpire mget` and its password's SHA-256 —; no broad or dangerous grant, no cleartext password, nothing printed; no persistence, `maxmemory 64mb` `volatile-ttl`; an unchanged config is not rewritten, a rotated password rewrites it in place (same inode) and flags it; a missing password fails; `sessions_restart_if_changed` restarts only a running store and only when it changed; `secrets_fix_perms` repairs the modes; the compose `user` matches `CT_UID_SESSIONS:CT_GID_SESSIONS`
 - **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
     - policy file v6 (contract §4): only version 6 (v5 and older, a float or string `6`, no `version`, a missing file → deny), every v6 key required (`methods` … `add_stronger`) and no unknown key, maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and added domains denied
     - compiled rules: an unknown leaf (`webauthn`, a family, `inv`, an amr value), a leaf that isn't switched on, an unknown `op`, 0 or > 8 items, > 4 levels, > 48 leaves, a template id, `default`, `hosts` or `core` reference that isn't published, `core` keys that aren't gated core hosts, bad `people` / `add_stronger` → deny (`policy_error`)
@@ -79,6 +81,7 @@ exactly as on a real install. Every step drives the stack through
     - Keycloak's image is `ghcr.io/porelli/portcullis-keycloak:…` and its only named volume is `hub_data:/hub-data` read-only; `hub_data` is mounted by exactly the Hub, group-gate, mcp-gate and Keycloak
     - `group-gate-map.conf` has `people=*`
     - `forward-auth-ext` mirrors `forward-auth` (image, command, secrets, trusted proxies; `portcullis-auth-ext` has every `portcullis-auth` forwardauth setting), defines no router, uses the relative callback `/oauth2/callback` and the host-only cookie `__Host-portcullis_ext` (`Secure`, `Path=/`, no cookie domain, no whitelist); `oauth2-proxy/alpha.yaml` sends PKCE S256
+    - the session store: `sessions` is `valkey/valkey` pinned, `999:1000`, read-only with a tmpfs `/data`, no ports, environment or routers, mounts only `secrets/sessions/valkey.conf` read-only (and nobody else mounts `secrets/sessions/`), has the `NOAUTH` healthcheck and only the network `portcullis-sessions`, which is internal with exactly `sessions`, `forward-auth` and `forward-auth-ext` (like `portcullis-mcp`'s members); both oauth2-proxies use the `redis` store at `redis://sessions:6379` with their own user and a generated 40-character password (different, in no other service's environment), wait for `sessions` healthy, and keep the cookie name / domain; an empty `FORWARD_AUTH_REDIS_PASSWORD` or `FORWARD_AUTH_EXT_REDIS_PASSWORD` is rejected
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
@@ -171,6 +174,24 @@ the internal PKI) and verifies:
 - **`./portcullis up` and the Hub's LLDAP account.** `portcullis-hub` is in `lldap_admin`, the 0640 / group 10001 password file logs in, a password changed in LLDAP is reset from the file on the next `up`, and the Hub sees `/run/portcullis/lldap` and `/run/portcullis/invite`.
 - **Revocation end to end**, once through `./portcullis cert revoke` and once through Vault's CRL alone.
 - **enroll's certificates API** (`enroll:8444/internal/certificates`, contract §9.4): `401` without `Authorization`, with an empty or wrong bearer or another scheme; with the bearer `200` and exactly `{"certificates": [...]}`, each entry exactly `user` (lowercase), `serial`, `kind` (`yubikey` / `browser`), `not_before` and `not_after` (RFC 3339 UTC), `revoked` (boolean); the test YubiKey certificate revoked above is listed as `revoked: true` under Vault's serial; Traefik's server certificate (`*.portcullis.local`) is not listed; no PEM in the answer. enroll's Go tests cover the fail-closed side: a serial whose read fails, whose certificate is missing, or whose `revocation_time` is missing or unreadable answers `503` for the whole list.
+- **Session store** (step "Test the session store"). `sessions` is healthy as
+  `999:1000`, read-only, all capabilities dropped, on `portcullis-sessions`
+  only; `secrets/sessions` is 0700 and `valkey.conf` 0640 group 1000 without
+  either password in clear. The ACL, through `valkey-cli` in the container
+  (the password by environment name, never on a command line): an
+  unauthenticated `PING` gets `NOAUTH`, a wrong password `WRONGPASS`; each
+  proxy's user reads and writes only its own keys (`_oauth2_proxy-*` /
+  `__Host-portcullis_ext-*`), the other's are `NOPERM`; `keys`, `scan`,
+  `flushall`, `config get` / `set`, `acl list`, `client list`, `info`,
+  `shutdown`, `script flush` are `NOPERM`; a Lua script reads its own key but
+  neither the other proxy's key nor `flushall`. Then a real sign-in through
+  `forward-auth` with a fresh YubiKey certificate for testuser
+  (`/oauth2/start?pc_method=yubikey_cert`, curl's cookie jar as the browser)
+  ends at `/oauth2/auth` with 202; the jar holds exactly one `_oauth2_proxy`
+  (no `_oauth2_proxy_0…`), under 512 bytes, whose value decodes to an
+  oauth2-proxy ticket `v2.<id>.<secret>` with id `_oauth2_proxy-<32 hex>`,
+  and the store holds that key (not readable by `forward-auth-ext`).
+  `/oauth2/sign_out` deletes it, and the old cookie then gets 401.
 - **CLI.** `./portcullis status`.
 - **Backup round-trip.** It runs, in order:
     - `./portcullis backup` with nothing stopped, then `backup verify --local`. A deliberately damaged backup must fail verification.
@@ -384,7 +405,10 @@ its log. In order:
    `pc_method=security_key`; Keycloak shows the passkey prompt only (no "Try
    another way", no password field) and asks for the security key only; the
    token's amr then has `spk` and `hwk`.
-8. **Cross-user certificate:** alice's passkey session presenting bob's
+8. **Cross-user certificate:** alice signs up through a setup link (one
+   step-up); her session is then exactly one small `_oauth2_proxy` ticket
+   cookie, no `_oauth2_proxy_0…` (oauth2-proxy #3486: before the session
+   store, this step-up looped). Her passkey session presenting bob's
    certificate, refused by Keycloak's X.509 user check or the extension's
    USER_CONFLICT (the log has the extension's line naming alice or a
    `LOGIN_ERROR` for bob's certificate with no user) — on `echo-cert`'s

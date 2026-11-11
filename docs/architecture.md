@@ -89,7 +89,8 @@ graph TB
 | Component | Role |
 |-----------|------|
 | **Traefik** | Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests a YubiKey or browser certificate. Reads Docker labels through its read-only socket proxy. |
-| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with a per-request `pc_method` for a one-method step-up), and returns identity headers and the access token on success. |
+| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with a per-request `pc_method` for a one-method step-up), and returns identity headers and the access token on success. Sessions live in the session store; the browser's cookie is only a ticket. |
+| **Session store** (`sessions`) | Valkey, memory only, reachable only by the two oauth2-proxies (internal network `portcullis-sessions`, one ACL user each). Holds the forward-auth sessions, so a session never outgrows its cookie and signing out ends it server-side. See [Security & Hardening](operations/hardening.md#session-store-sessions). |
 | **group-gate** | Per-request authorization (forward-auth). Checks certificate revocation (both certificate authorities), the subdomain's required group and `path_groups`, then the app's sign-in template (the session's `amr` methods, certificate binding by issuer). Returns 403 or a step-up page. Logs the first request of each session to each app (`group_gate_data`, for sign-in history). |
 | **Keycloak** | Identity provider, Portcullis's own image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`: the official Keycloak plus the sign-in extension). Passkeys of three kinds, YubiKey and browser certificate login (each against its own CA and CRLs), password, one-method step-up (`pc_method`) and the per-app [sign-in template](operations/auth-policies.md#sign-in-flows-in-keycloak) check, from the Hub's `signin-keycloak.json` (`hub_data`, read-only); OIDC/SAML for apps. Federates users from LLDAP. |
 | **LLDAP** | Lightweight LDAP directory. Stores users and groups (custom user fields are LLDAP attributes). They are managed in the Hub; `directory.<domain>` redirects to `people.<domain>` (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
@@ -145,9 +146,11 @@ sequenceDiagram
     U->>O: Callback with auth code
     O->>K: Exchange code for tokens
     K-->>O: ID token + access token (includes groups)
-    O-->>U: Set session cookie, redirect to app
+    Note over O: session saved in the session store (sessions)
+    O-->>U: Set ticket cookie, redirect to app
     U->>T: GET https://pihole.example.com (with cookie)
     T->>O: Forward auth check
+    Note over O: session loaded from the store by the ticket
     O-->>T: 200 OK (X-Auth-Request-*, access token)
     T->>G: Check (host, groups, access token, URI, certificate info)
     Note over G: revocation, group users_pihole, path_groups, sign-in template
@@ -248,6 +251,7 @@ Traefik is the only service exposed to the internet (ports 80 and 443). It is at
 - **`portcullis`** -- Core services: Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub, enroll. Apps are not on it and cannot reach these services directly.
 - **`portcullis-proxy`** -- Traefik and app frontend services; Traefik's docker provider routes over it. Fixed subnet (`PORTCULLIS_PROXY_SUBNET`, default `172.31.250.0/24`), Traefik always at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`), other containers from `PORTCULLIS_PROXY_IP_RANGE` (which excludes Traefik's IP). Header-auth apps trust identity headers only from Traefik's address.
 - **`portcullis-auth`** -- Internal network with only Traefik (fixed `PORTCULLIS_AUTH_TRAEFIK_IP`, default `172.31.251.2`) and Keycloak. Keycloak accepts proxy headers -- including the forwarded certificate for YubiKey and browser certificate login -- only from that address.
+- **`portcullis-sessions`** -- Internal network with only the session store `sessions` and the two oauth2-proxies (`forward-auth`, `forward-auth-ext`).
 - **`portcullis-mcp`** -- Internal network with only `mcp-gate`, Keycloak and the Hub (fixed addresses): the gate fetches Keycloak's keys and calls the Hub's MCP listener here. The gate also sits on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP` (default `172.31.250.3`), where Traefik routes MCP requests to it and it reaches the app companions.
 - **`socket-proxy-traefik`, `socket-proxy-hub`** -- Internal networks, each shared by one client and its Docker socket proxy.
 - **Per-app networks** -- Each app's compose project (`portcullis-<app-id>`) has its own `default` network. Internal services (databases, caches, workers) live only there, isolated from all other apps.
@@ -271,6 +275,10 @@ graph TB
 
     subgraph auth ["Network: portcullis-auth (internal)"]
         T[Traefik :80/:443<br/>172.31.250.2 / 172.31.251.2]
+    end
+
+    subgraph sess ["Network: portcullis-sessions (internal)"]
+        SS[(sessions :6379<br/>Valkey)]
     end
 
     subgraph sock ["Socket proxy networks (internal)"]
@@ -305,6 +313,7 @@ graph TB
     KC --- LL
     KC --- PG
     O2 --- KC
+    O2 --- SS
     GG --- V
     EN --- V
 ```

@@ -70,8 +70,10 @@ portcullis init [--domain DOMAIN] [--email EMAIL] [--dns-provider NAME]
 
 First-time setup. It creates `.env` (mode `0600`) with every secret randomly
 generated: the Postgres password, the Keycloak admin password, the LLDAP admin
-password and JWT secret, the forward-auth client and cookie secrets, and
-`HUB_PROXY_SECRET`, and `BACKUP_PASSWORD` for off-host backups. Then it runs these steps in order:
+password and JWT secret, the forward-auth client and cookie secrets, the two
+forward-auth session-store passwords (`FORWARD_AUTH_REDIS_PASSWORD`,
+`FORWARD_AUTH_EXT_REDIS_PASSWORD`), `HUB_PROXY_SECRET`, and `BACKUP_PASSWORD`
+for off-host backups. Then it runs these steps in order:
 
 1. DNS records (`dns setup`)
 2. Vault init, unseal and enroll AppRole (`vault init`)
@@ -110,6 +112,14 @@ network settings, creates the bind-mount sources, and rebuilds
 for vault, postgres, lldap and keycloak to be healthy. Vault unseals itself on
 start.
 
+Every `init`, `up`, `upgrade` and `restore` also writes the session store's
+config, `secrets/sessions/valkey.conf` (its users and the SHA-256 of the two
+`FORWARD_AUTH*_REDIS_PASSWORD`s, never the passwords; 0640, group 1000). When
+it changed (a password was rotated) and the store is running, the store is
+restarted before `docker compose up`: it keeps sessions in memory only, so
+everyone signs in again once. See
+[Security & Hardening](hardening.md#session-store-sessions).
+
 After `docker compose up`, services are restarted if their bind-mounted config
 files changed since the last start (e.g. after `git pull`). Affected files:
 `oauth2-proxy/alpha.yaml` (forward-auth services), `group-gate/group-gate-map.conf`
@@ -137,7 +147,7 @@ portcullis upgrade [--skip-backup]
 
 Updates a running installation after `git pull`:
 
-1. Generates any missing `HUB_PROXY_SECRET`, `FORWARD_AUTH_*`, `LLDAP_JWT_SECRET` or `BACKUP_PASSWORD`. Other secrets must already be in `.env`.
+1. Generates any missing `HUB_PROXY_SECRET`, `FORWARD_AUTH_*` (incl. the session-store passwords `FORWARD_AUTH_REDIS_PASSWORD` / `FORWARD_AUTH_EXT_REDIS_PASSWORD`), `LLDAP_JWT_SECRET` or `BACKUP_PASSWORD`. Other secrets must already be in `.env`.
 2. Creates a local backup (`portcullis backup`: Vault snapshot, `pg_dump`, volumes, `.env`, `certs/`, `secrets/`).
 3. Pulls images.
 4. Re-runs the idempotent setup steps: `vault init`, `pki setup` (both CAs, the `client-cert` and `browser-cert` roles incl. `CLIENT_CERT_TTL`, Keycloak truststore) and the CA bundle.
