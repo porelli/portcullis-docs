@@ -478,8 +478,12 @@ its log. In order:
       as a browser sends it) is refused in the handshake (curl exit 35 or 56,
       nothing else), while the same files complete it on `echo-anycert`; a
       Playwright context presenting the `.p12` itself is refused too (its
-      synthetic 503 "client-certificate error" page, or Chromium's
-      `net::ERR_BAD_SSL_CLIENT_AUTH_CERT` — any other error fails); root's
+      synthetic 503 "client-certificate error" page, Chromium's
+      `net::ERR_BAD_SSL_CLIENT_AUTH_CERT`, or `net::ERR_HTTP2_PROTOCOL_ERROR`
+      when the TLS 1.3 refusal reaches Playwright's TLS proxy after it already
+      answered the browser with h2 — that one only with a real answer for the
+      same `.p12` from `echo-anycert` in the same context; any other error
+      fails); root's
       YubiKey certificate completes the handshake.
     - **`tls_protected_any`:** `echo-anycert`'s CA names are the root and both
       CAs; the browser certificate (with its chain) completes the handshake,
