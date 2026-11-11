@@ -802,6 +802,30 @@ summary. Every job that runs Keycloak uses it, and the cached image lists leave
 both images out (unpinned). The Hub's `build.yml` likewise tests against the same-named branch of
 the templates and core repos, else `main`.
 
+**Running some jobs only.** `workflow_dispatch` has an input `jobs`
+(default `all`): `all`, or job names separated by commas and/or spaces —
+`unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`,
+`e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`. The names match
+exactly (`e2e` doesn't run `e2e-ai`); the other jobs are skipped. No job
+`needs:` another, so any subset runs. Push, pull request and `workflow_call`
+always run every job (`release.yml` passes no `jobs`; the called workflow's
+default is `all`).
+
+```
+gh workflow run ci.yml --ref <branch> -R porelli/portcullis -f jobs=build-and-test
+gh workflow run ci.yml --ref <branch> -R porelli/portcullis -f jobs="e2e-signin e2e-settings"
+```
+
+**Timeouts.** Every job has `timeout-minutes` (about 1.5× its longest green
+run, at least 20: 20 for most, `e2e-signin` 25, `e2e-settings` 30), and so
+do the slow steps: image loads and local builds 15, the Hub / Keycloak image
+20, Playwright installs 10, artifact uploads 10, backup / restore steps 15.
+A step that runs out fails instead of hanging. The build-push action's
+build-summary / build-record uploads are off (`DOCKER_BUILD_SUMMARY`,
+`DOCKER_BUILD_RECORD_UPLOAD` false): nothing reads them, and a failing
+artifact service once kept a finished `e2e-settings` job retrying them for
+over 30 minutes.
+
 ### Caching
 
 Core CI caches what it safely can. Caches are written only on pushes to `main`.
