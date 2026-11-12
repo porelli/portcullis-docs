@@ -786,8 +786,9 @@ Administrators sign in as someone else only through Portcullis's own start
   `authResponseHeaders` and the public routers strip them, so a client
   can't send them.
 
-The reason is kept in the audit, the Hub's file and the Keycloak session
-only, never in a token, a URL or a log line.
+The reason is kept only in the audit, the Hub's state and file, and the
+Keycloak session (and on the pages that show it), never in a token, a URL
+or a log line.
 
 ### Setup links (enroll)
 
