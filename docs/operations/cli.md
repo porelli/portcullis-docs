@@ -171,7 +171,15 @@ Prints a health overview:
 
 - compose services
 - Vault: sealed/active, CA expiry (root, YubiKey certificate CA, browser certificate CA), issued certs (both mounts), and YubiKey and browser certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days (each person's newest of each kind; renewed or replaced on the Sign-in page)
-- Keycloak: realm, users, forward-auth client
+- Keycloak: realm, users, forward-auth client, and the passkey policy: the
+  realm's passwordless WebAuthn policy must be attestation `direct`, any
+  attachment, resident key and user verification required, with
+  `webauthn-register-passwordless` enabled and the two-factor
+  `webauthn-register` disabled. Anything else (or a realm or action that
+  can't be read) is a failing line such as
+  `✗ passkey policy: attestation none (wanted direct) — new passkeys can't be told apart; run ./portcullis keycloak configure`:
+  with any other conveyance browsers send no attestation and every new
+  passkey, a YubiKey included, counts as synced
 - LLDAP and Traefik
 - containers on `portcullis-proxy` answering to a core service name or an AI
   companion name they don't own ([hardening](hardening.md#ai-support-mcp-gate))
@@ -180,13 +188,14 @@ Prints a health overview:
   ([AI support → Residuals](ai.md#residuals))
 
 Exits 1 if a core service is down or unhealthy, if Vault is not active, if
-such a container exists, or if mcp-gate refuses every AI request.
+the passkey policy drifted, if such a container exists, or if mcp-gate
+refuses every AI request.
 Otherwise it exits 0.
 
 | Option | Meaning |
 |--------|---------|
-| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves) |
-| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, CA expiry and per-person YubiKey / browser certificate expiry (label `kind`). Run it after every scheduled backup (the systemd unit does) |
+| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used) |
+| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, the passkey policy (`portcullis_keycloak_passkey_policy_ok`, absent when not checked), CA expiry and per-person YubiKey / browser certificate expiry (label `kind`). Run it after every scheduled backup (the systemd unit does) |
 
 ### version
 
@@ -480,7 +489,7 @@ admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 
 - imports `keycloak/realm-export.json` if the realm does not exist
 - points the LDAP federation at LLDAP (`LLDAP_BASE_DN`, `LLDAP_ADMIN_PASSWORD`); users and groups deleted in LLDAP are removed from Keycloak (hourly sync, `removeInvalidUsersEnabled`, the group mapper drops missing groups)
-- sets `sslRequired=external`, `browserFlow=portcullis-universal`, an empty `acr.loa.map` (sign-in is decided by [templates](auth-policies.md), not levels), brute-force protection (10 failures, then 60 s more per failure up to 15 min, never permanent) and the passkey policy (direct attestation, any attachment, resident key and user verification required)
+- sets `sslRequired=external`, `browserFlow=portcullis-universal`, an empty `acr.loa.map` (sign-in is decided by [templates](auth-policies.md), not levels), brute-force protection (10 failures, then 60 s more per failure up to 15 min, never permanent) and the passkey policy (direct attestation, any attachment, resident key and user verification required), then reads the realm back and fails when the passkey policy still differs (Keycloak keeps the old policy, answering success, when an update lacks `webAuthnPolicyPasswordlessRpEntityName`)
 - offline sessions at most 30 days idle / 90 days total (the Hub sets shorter values on its AI clients); refresh-token rotation off
 - rebuilds every top-level flow of the file whose tree changed: the browser flow with the sign-in extension's methods and template check ([Sign-in flows](auth-policies.md#sign-in-flows-in-keycloak)), the invite identity provider's first-login and post-login flows
 - keeps `webauthn-register-passwordless` enabled and the two-factor `webauthn-register` disabled
