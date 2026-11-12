@@ -289,7 +289,7 @@ records its own `amr` value:
 | Method | amr |
 |--------|-----|
 | YubiKey certificate | `mtls` |
-| Security key passkey | `hwk` |
+| Security key | `hwk` |
 | Device-bound passkey | `dpk` |
 | Synced passkey | `spk` |
 | Browser certificate | `file` |

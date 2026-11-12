@@ -556,6 +556,7 @@ and your router or host firewall.
     - Apps that refuse `email_verified=false` but accept it absent (Vaultwarden SSO signups) get the `email-unverified` client scope instead of `email` (manifest `email_verified_claim: false`): the `email` claim without `email_verified`. The email is no more trusted than before. Vaultwarden still matches pending email invitations by email, so its template turns invitations off (`INVITATIONS_ALLOWED=false`, `SIGNUPS_ALLOWED=false`) and gates the SSO login paths with group-gate (`users_vaultwarden`).
 
     **Rule: email is never an identity or account-linking key.**
+
 - **Header-auth apps** accept identity headers only from
   `${PORTCULLIS_TRAEFIK_IP}`, through the app's proxy allow-list or a small
   gate in front of it. Templates CI checks this statically and with a forged
@@ -704,6 +705,7 @@ came back forever (upstream issue
   own calls are checked against the same user, so they can't reach other keys
   or commands either. No `keys`, `scan`, `config`, `acl`, `client`,
   `flush*`, `debug`, `module`, pub/sub or replication commands.
+
 - **Residual risk.** oauth2-proxy and redislock need `eval` / `evalsha` and
   a plain `set`, so each proxy user keeps them. A compromised oauth2-proxy
   still can't read or change the other proxy's sessions, but it can hurt
@@ -794,6 +796,7 @@ or a log line.
 
 `enroll-invite` (`enroll.<domain>/invite/*`) is the only router on
 `enroll.<domain>`, without forward-auth; every other path there gets Traefik's
+
 404. enroll's certificate actions are only on its internal listener
 (`enroll:8444`, the invite bearer), which Traefik never routes.
 
