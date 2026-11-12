@@ -52,6 +52,10 @@ jobs:
       - name: Build
         run: zensical build --strict --clean
 
+      # Python-Markdown folds a list that follows a paragraph line into it.
+      - name: No literal list markers
+        run: python scripts/check-lists.py site
+
       # Same mechanism `mkdocs gh-deploy` used: force-push site/ to gh-pages.
       - name: Deploy to gh-pages
         run: |

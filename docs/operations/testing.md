@@ -75,6 +75,7 @@ exactly as on a real install. Every step drives the stack through
     - every failure message is scrubbed: a password or NT hash in a record never reaches the output.
 
     The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
+
 - **Shared sign-in vectors match the Hub.** `tests/signin_vectors.json` must equal, byte for byte, the Hub's `internal/signin/testdata/vectors.json` on the same-named porelli/portcullis-hub branch when it exists (exactly `refs/heads/<branch>`), else `main`, fetched at the commit `git ls-remote` listed (like portcullis-keycloak's `vectors` job); a failed branch lookup fails the step.
 - **Compose validity and wiring**, against a generated `.env`. `docker compose config -q` must pass for the core, apps and test compose files. It also checks:
     - `HUB_PROXY_SECRET` is generated, and an empty one is rejected
@@ -1254,6 +1255,7 @@ pinned by commit SHA.
     A build-tagged harness (`go test -tags harness -run TestHarness -timeout 0 ./internal/httpapi`) serves the UI on `127.0.0.1:18888` (and the people page on `:18889`) against in-memory fakes, for checking the panels in a browser.
     **Branding.** `TestBrandingCopies` (`web/web_test.go`) pins each embedded icon, the web manifest and `mark.svg` (= `concept-1-mark-dark.svg`) to its branding-source sha256; `TestPagesCarryBranding` checks that each HTML page links the favicon set and the manifest and has the mark in its `<h1>`; `TestStaticContentTypes` checks the `.svg`, `.png`, `.ico` and `.webmanifest` content types (with `nosniff`) on both listeners.
     `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
+
 - **`build`** (after `test`):
     - Multi-arch image (`linux/amd64`, `linux/arm64`) with SBOM and provenance (`mode=max`) attestations.
     - Tags `X.Y.Z`/`X.Y`/`X`/`sha-<short>` for release tags and `edge` for `main`. `latest` is disabled.

@@ -733,6 +733,7 @@ def generate_app_page(app: dict, output_dir: Path):
             lines.append("")
             if redirects:
                 lines.append("Redirect URIs:")
+                lines.append("")  # Python-Markdown starts a list only after a blank line
                 for r in redirects:
                     lines.append(f"- `{r}`")
             elif redirect:

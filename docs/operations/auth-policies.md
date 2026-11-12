@@ -699,6 +699,7 @@ change) have no Level-of-Authentication steps any more:
     Each method stays in the session's amr for 10 hours. A step-up
     (`pc_method=<method>`) makes the other methods step aside, and the SSO
     cookie hands a session that lacks the method back to the sign-in.
+
 - **Setup links** (`portcullis-invite-session`, the setup-link identity
   provider's post-login flow): only for `portcullis-forward-auth`, then the
   session gets amr `inv` (not a method, it meets no template) and the

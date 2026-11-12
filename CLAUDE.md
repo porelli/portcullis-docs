@@ -83,12 +83,15 @@ zensical build --strict   # what CI runs
 - Verify statements against the code in the other four repos — core, Hub, templates, portcullis-keycloak (they are the source of truth); report inconsistencies instead of papering over them.
 - This site is authoritative for all documentation (backups, monitoring, hardening, certificates included). Core's `docs/*.md` only point here; verify against core's code, not its docs.
 - One base domain per installation; core subdomains are `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `mcp`, `metrics`.
+- A list right after a paragraph line needs a blank line before it (Python-Markdown folds it into the paragraph otherwise; `scripts/check-lists.py` fails the build).
 - New Portcullis terms get a glossary entry in `includes/abbreviations.md` (hover tooltips via Python-Markdown abbr extension).
 
 ### Verify before committing
 
 ```bash
-zensical build --strict --clean && rm -rf site      # no broken links/anchors
+bash scripts/check-branding.sh                      # logo/favicon are the pinned branding copies
+zensical build --strict --clean                     # no broken links/anchors
+python3 scripts/check-lists.py site && rm -rf site  # no literal "- " list markers in the built HTML
 grep -rnE 'bootstrap\.sh|apply-config|configure-keycloak|register-oidc|setup-vault-pki|vault-init\.sh|enroll-yubikey|renew-yubikey|revoke-cert|status\.sh|upgrade\.sh|restore\.sh|setup-dns|init-config|scripts/group-gate' docs   # must be empty
 ```
 
@@ -105,6 +108,8 @@ Push to `main` (or the daily schedule, which picks up template changes) → GitH
 | `docs/<section>/.nav.yml` | Per-section nav order (setup, guides, operations) |
 | `docs/apps/.nav.yml` | Auto-generated (by `generate-app-docs.py`) |
 | `scripts/generate-app-docs.py` | Reads templates repo `manifest.yaml` + `compose.yml` → writes `docs/apps/*.md` + `docs/apps/.nav.yml` |
+| `scripts/check-branding.sh` | Pins `docs/assets/logo.svg` / `favicon.svg` to the branding source's sha256 (CI step "Branding copies") |
+| `scripts/check-lists.py` | Fails on a literal list marker in a built paragraph (CI step "No literal list markers") |
 | `docs/apps/index.md` | Auto-generated app catalog table |
 | `docs/apps/*.md` | Auto-generated per-app pages |
 | `docs/architecture.md` | Mermaid diagrams (edit manually) |
