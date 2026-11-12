@@ -1146,7 +1146,7 @@ An administrator can sign in as another person and act in their apps: no approva
 5. Then it:
     - logs out the administrator's session (`AuthenticationManager.backchannelLogout`) and expires the identity, remember-me and auth-session cookies, as Keycloak's own impersonation does in the same realm. The administrator signs in again after Stop;
     - creates the person's session, `new UserSessionManager(session).createUserSession(realm, target, target.getUsername(), ip, "portcullis-impersonate", false, null, null)`, with the user-session notes:
-        - `IMPERSONATOR_ID` / `IMPERSONATOR_USERNAME` (Keycloak's names, so the admin console shows them);
+        - `IMPERSONATOR_USERNAME` (Keycloak's name, so the admin console shows it), never `IMPERSONATOR_ID`: with that note Keycloak's `TokenManager.setActClaimFromImpersonator` runs after every mapper and replaces `act` with `{"sub": <the administrator's user id>, …}`;
         - `portcullis.imp.id`, `portcullis.imp.until` (epoch seconds) and `portcullis.imp.reason`;
         - `AUTHENTICATORS_COMPLETED` = the computed methods;
     - sets the login cookie (`AuthenticationManager.createLoginCookie`);
