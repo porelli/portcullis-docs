@@ -586,6 +586,65 @@ its log. In order:
     templates and rules, default, core pages, instance picks), and both apps
     are back on `authaware@file` with CA names.
 
+17. **Signing in as someone else** (the job's `.env` sets
+    `IMPERSONATION_MAX_MINUTES=2`, for every case). Each case starts with
+    root's fresh sign-in with his security key, then POSTs the start route
+    on the Hub listener; every case stops its own impersonation within 2
+    minutes, except `imp_expiry` and the 125 s case of `imp_next_bound`,
+    which run last among them, in parallel browser contexts. `sam` is the second
+    administrator.
+    - **`imp_start`:** reason "checking quota", then `next`: root's browser
+      lands on the portal as alice; the token has `preferred_username`
+      alice, `act.sub` root, `pc_imp.id` = the id and root's amr from before
+      the start (with `hwk`); root has no Keycloak session left and alice
+      has one, with the impersonator.
+    - **`imp_banner_everywhere`:** `You are signed in as alice (by root) ·
+      reason “checking quota” ·` … `min left` with a Stop control on the
+      portal, on people.&lt;d&gt;'s My apps and `/signin` (after
+      `impersonation.js` ran), on a group-gate needs-stronger page and on
+      the extension's page.
+    - **`imp_call5`:** an app on `e2e-cert` opens only while root's YubiKey
+      certificate is presented; with alice's certificate it shows the
+      impersonation needs page with no `X-Stepup-URL`. An app on Strong
+      opens although alice's own methods don't meet Strong.
+    - **`imp_people_read_only`:** `PUT /api/me/signin/password`,
+      `POST /api/me/signin/browser-certificates` and
+      `DELETE /api/me/ai/connections/x` get `403` "not while you are signed
+      in as someone else: Stop first"; `GET /api/me/apps` is `200`.
+    - **`imp_ai_refused`:** the CI AI client's authorize in this browser
+      shows `#portcullis-impersonating` and issues no code; a token minted
+      for alice before the start still works through `mcpclient`.
+    - **`imp_stop`:** Stop on the portal → the Stop page POSTs, the browser
+      goes through `/oauth2/sign_out` to the sign-in page; within 20 s alice
+      has no impersonated Keycloak session; the old `_oauth2_proxy` cookie
+      replayed on the app never gets `200`; the audit has
+      `impersonation.start` with the reason and `impersonation.end`
+      "stopped" with the apps opened; alice's history has the
+      `impersonation` entry by root with the reason and the apps.
+    - **`imp_stop_elsewhere`:** sam's `stop_impersonation` (Hub MCP) ends
+      it; root's browser gets group-gate's ended page within 5 s.
+    - **`imp_notice_next_signin`:** after `imp_stop`, alice signs in herself
+      in a new context: the notice reads "root signed in as you on … UTC
+      for … min: checking quota.", Continue reaches her app, and her next
+      sign-in shows no notice.
+    - **`imp_refused_proofs`:** sam's synced-passkey proof, root's
+      browser-certificate proof and bob's proof → `403`; reason "ab" →
+      `400`. (The password case is the Hub's unit test: root has no
+      password.)
+    - **`imp_refused_targets`:** root himself, `sam` (an administrator),
+      `portcullis-hub` and `admin` → `409`; a `sign_in_help` holder as the
+      caller → `403`; the switch off → `409`, and a running impersonation
+      ends.
+    - **`imp_next_bound`:** `next` opened in bob's signed-in context →
+      `403` page and bob's session intact; opened again in root's context
+      after a successful use → `403`; a fresh start's `next` opened after
+      125 s → `403`. Each time alice gets no session.
+    - **`imp_expiry`:** after 2 min 10 s a request gets the ended page,
+      within a further 20 s Keycloak has no impersonated session, and the
+      audit has "expired" by `portcullis`.
+    - **`imp_stock_endpoint_off`:** Keycloak's own admin impersonation
+      endpoint answers non-2xx.
+
 `tests/e2e/e2e_signin.py`'s and `e2e_filesharing.py`'s fresh sign-ins on
 people.&lt;domain&gt; use the redirect `https://people.<d>/signin`.
 
@@ -822,7 +881,7 @@ gh workflow run ci.yml --ref <branch> -R porelli/portcullis -f jobs="e2e-signin 
 ```
 
 **Timeouts.** Every job has `timeout-minutes` (about 1.5× its longest green
-run, at least 20: 20 for most, `e2e-signin` 25, `e2e-settings` 30), and so
+run, at least 20: 20 for most, `e2e-signin` 40, `e2e-settings` 30), and so
 do the slow steps: image loads and local builds 15, the Hub / Keycloak image
 20, Playwright installs 10, artifact uploads 10, backup / restore steps 15.
 A step that runs out fails instead of hanging. The build-push action's

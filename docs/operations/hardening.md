@@ -753,6 +753,42 @@ came back forever (upstream issue
   admin API; `portcullis-auth` would replace it with the forward-auth session's
   token ("You do not have permission to access this resource").
 
+### Keycloak impersonation
+
+Core starts Keycloak with `--features-disabled=impersonation`. Keycloak's own
+impersonation (the admin console's **Impersonate** button and
+`POST /admin/realms/<realm>/users/{id}/impersonation`) then answers "feature
+disabled", even for a Keycloak console administrator. It is off because it
+has none of the safeguards Portcullis needs: no fresh hardware touch, no
+reason, no time limit, no banner and no record the person can see. Nothing
+in Portcullis uses it, and core CI checks that it stays off.
+
+Administrators sign in as someone else only through Portcullis's own start
+([Signing in as someone else](auth-policies.md#signing-in-as-someone-else)):
+
+- it needs a fresh YubiKey touch by the administrator and a typed reason,
+  and lasts at most 30 minutes;
+- the start link works once, within 2 minutes, and only in the browser that
+  holds the administrator's own Keycloak session, so it is worthless to
+  anyone who sees it;
+- the impersonated session carries the administrator's methods, never more:
+  it meets a template only when the administrator's own sign-in would, and a
+  certificate counts only when it is the administrator's;
+- it can't change anything on Portcullis's pages, reach an AI tool, add a
+  method, confirm a fresh sign-in or complete a required action;
+- group-gate checks every request against the Hub's file
+  `impersonation.json` and the token's `act` / `pc_imp` claims: an ended,
+  unknown or overdue impersonation, a malformed claim, or a file the Hub
+  hasn't rewritten for 5 minutes is denied at once; Keycloak logs out ended
+  sessions within 15 seconds;
+- the headers `X-Forwarded-Impersonator` and `X-Forwarded-Impersonation`
+  are set only by group-gate: every forward-auth middleware lists them in
+  `authResponseHeaders` and the public routers strip them, so a client
+  can't send them.
+
+The reason is kept in the audit, the Hub's file and the Keycloak session
+only, never in a token, a URL or a log line.
+
 ### Setup links (enroll)
 
 `enroll-invite` (`enroll.<domain>/invite/*`) is the only router on
