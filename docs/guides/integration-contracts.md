@@ -1163,15 +1163,16 @@ An administrator can sign in as another person and act in their apps: no approva
 - `act` = `{"sub": "<admin username>"}` (RFC 8693's actor claim);
 - `pc_imp` = `{"id": "<id>", "until": <epoch seconds>}`.
 
-The reason is never emitted, and a configured claim name is ignored.
+The reason is never emitted, and a configured claim name is ignored. In an impersonated session the access, ID and introspection tokens' `exp` is lowered to `until` (never raised; partial notes give an expired token), so no token outlives the impersonation; a refresh after the expiry task's logout fails with `invalid_grant`.
 
 **Live.** `Impersonation.live`: the file's `allowed` is true, its `sessions` has the id and it isn't ended, the record's `admin` and `target` equal the session's, and now is before both the note's `until` and the record's.
 
 **What an impersonated session may do in Keycloak.** In a browser whose identity cookie is an impersonated session (`ImpersonationGuard.check`, first in `auth-cookie` and in `portcullis-template`), an authentication goes ahead only when:
 
 - the client is in the file's `clients`;
-- only the SSO cookie signed in (no authenticator ran a method), with no `pc_method` and no `prompt=login`;
-- the person has no required action other than `portcullis-impersonation-notice`;
+- only the SSO cookie signed in: no authenticator ran a method (no method note, and at `portcullis-template` no completed execution with a reference value beyond the session's own; `auth-cookie`'s stock code must sign in with the cookie alone, so an acr step-up is refused too), and the authentication is not a forked flow;
+- no `pc_method`, no `prompt=login`, **any** `max_age` (an app asking for a fresh sign-in; one that always sends `max_age` can't be opened while impersonating), and no acr request (a requested or forced level of authentication);
+- the person has no required action other than `portcullis-impersonation-notice`, and there is no `kc_action` other than it;
 - the session is live.
 
 Otherwise the page is `portcullis-impersonating.ftl`, sent with `forceChallenge` as `portcullis-template` sends its page: mode `refused` ("Not while you are signed in as &lt;person&gt;", with Stop), or mode `ended` when the session isn't live, which is then logged out first. That covers fresh auth, the AI clients, the account console and step-ups. For native-OIDC apps `portcullis-template` evaluates the session's methods as always, but never asks for a method (no step, no certificate completion): an unmet template shows mode `needs` instead of the needs-stronger page. Required actions, which only have a `RequiredActionContext`, use `ImpersonationGuard.impersonated(session, realm, authSession)`: passkey registration (`webauthn-register`, `webauthn-register-passwordless`) refuses in an impersonated session, and the notice action ignores it. Every mode of `portcullis-impersonating.ftl`, and `portcullis-needs-stronger.ftl` in an impersonated session, shows the banner (§5), with Stop at `https://people.<domain>/impersonation/stop` (from `PORTCULLIS_SIGNIN_URL`'s origin).
