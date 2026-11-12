@@ -231,6 +231,10 @@ sequenceDiagram
 
 Routers on the `protected` tier without forward-auth (`mtls`-method apps) rely on the TLS handshake alone: there only a YubiKey certificate gets in, and it works until it expires. See [Certificates](setup/certificates.md#revocation).
 
+### Signing in as someone else
+
+An administrator can [sign in as another person](operations/auth-policies.md#signing-in-as-someone-else) after a fresh YubiKey touch and a typed reason. The Hub checks the rules, records the impersonation and publishes it in `impersonation.json` on the `hub_data` volume; the administrator's browser then opens a one-time link to the Keycloak extension's own start (Keycloak's stock impersonation is switched off), which replaces the administrator's session with one for the person carrying the administrator's sign-in methods. Tokens of that session carry `act` (the administrator) and `pc_imp` (the impersonation's id and end). group-gate checks both against the file on every request, binds certificates to the administrator, never steps up, adds `X-Forwarded-Impersonator` / `X-Forwarded-Impersonation` and shows the banner; the Hub's pages turn read-only; mcp-gate refuses such tokens. Stop, 30 minutes or the Settings switch end it: the Hub rewrites the file (group-gate denies at once), Keycloak logs the session out within 15 seconds, and the person's history and next sign-in show who, when, why and the apps opened ([contract §8.1](guides/integration-contracts.md#impersonation-new-sign-in-part-3)).
+
 ## TLS Tiers
 
 Traefik's static `traefik/dynamic/tls.yml` defines four TLS option sets. The Hub picks each app's tier from its sign-in template and the certificate methods that are switched on.

@@ -117,6 +117,8 @@
 *[internal certificate authority]: Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates
 *[Internal certificate authority]: Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates
 *[website certificate]: The HTTPS certificate browsers check (Let's Encrypt), as opposed to YubiKey and browser certificates
-*[sign-in history]: A person's sign-ins, step-ups, failures, apps opened and help received, merged from Keycloak events, group-gate's opened log and the Hub's audit
+*[sign-in history]: A person's sign-ins, step-ups, failures, apps opened, help received and impersonations, merged from Keycloak events, group-gate's opened log and the Hub's audit
 *[added domain]: An extra domain added in Hub Settings → Domains (the domains service manages its records and website certificate)
 *[added domains]: Extra domains added in Hub Settings → Domains (the domains service manages their records and website certificates)
+*[impersonation]: An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)
+*[pc_imp]: Token claim of an impersonated session: the impersonation's id and end time
