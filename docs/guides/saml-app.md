@@ -14,7 +14,7 @@ User (YubiKey) --> Traefik --> App
                               LLDAP
 ```
 
-The user authenticates at the Traefik layer (via mTLS or WebAuthn). The app then uses SAML to verify the user's identity via Keycloak, which looks up users in LLDAP.
+The user authenticates at the Traefik layer (with a passkey, or a YubiKey or browser certificate). The app then uses SAML to verify the user's identity via Keycloak, which looks up users in LLDAP.
 
 ## Step 1: Deploy the App
 
@@ -158,7 +158,7 @@ In Nextcloud's **Administration settings** under **SSO & SAML authentication**:
 1. Open a private/incognito window
 2. Go to `https://nextcloud.<your-domain>`
 3. You should see a "Login with SSO" button or be redirected automatically
-4. Keycloak authenticates with your passkey (or client certificate if mTLS is enabled)
+4. Keycloak authenticates with your passkey (or your YubiKey or browser certificate, if that method is on)
 5. You are logged into the app
 
 ## Step 4: Optional -- LDAP User Backend

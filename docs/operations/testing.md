@@ -23,34 +23,41 @@ exactly as on a real install. Every step drives the stack through
 - **shellcheck** of `portcullis`, `scripts/lib/*.sh`, `tests/*.sh` and `vault/entrypoint.sh`.
 - **CLI help.** Every command listed by `./portcullis help` must print a `Usage: portcullis <cmd>` line for `--help`.
 - **`tests/test_cli.sh`.** Argument parsing, dispatch and `init --env-only`, with a stub `docker`. Also:
+    - `init --env-only` generates `FORWARD_AUTH_REDIS_PASSWORD` and `FORWARD_AUTH_EXT_REDIS_PASSWORD` (40 `[A-Za-z0-9]`, different), both core secrets (never shared with the Hub) and rotatable (`upgrade` generates them); `init`, `up` and `upgrade` run the session store's restart check before `docker compose up`
     - `keycloak configure` against a stub admin API: the realm PUT carries brute force and an empty `acr.loa.map`, the forward-auth client loses `default.acr.values`, the two-factor `webauthn-register` is disabled, the AMR check walks `portcullis-universal`, the X.509 settings go onto the `portcullis-x509` execution; it never writes the Hub's AI clients or `mcp:*` scopes
     - the realm export's sign-in flows (contract §8.1): `portcullis-universal` = REQUIRED `portcullis-authenticate` + REQUIRED `portcullis-template`, `portcullis-signin` (x509 · passkey sub-flow · password form), one conditional sub-flow per passkey kind with its `kind` and `method` configs, no `conditional-level-of-authentication` anywhere, `acr.loa.map` `{}`, every reference config `maxAge` 36000, the invite configs `inv`, brute force, the passwordless policy, every config used once
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
     - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
-    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`), `authaware` (`VerifyClientCertIfGiven`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
+    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `authaware` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
+    - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else
+    - `cert list --all` (stub `vault`) shows KIND `YubiKey` / `Browser` and revoked rows; `cert revoke` finds a `pki_file` serial after `pki_int`, revokes it there and rotates `pki_file`'s CRL; `cert enroll`'s renewal hint names `https://people.<domain>/signin`
     - `signin reset-core` (stubbed `docker compose`): without `--yes` and a terminal it refuses (exit 2, nothing run); `--yes` runs `stop hub`, `run --rm --no-deps -T --user 10001:10001 --label traefik.enable=false --entrypoint /usr/local/bin/hub hub signin reset-core`, `start hub` and shows the Hub's output; a failed run still starts the Hub and exits 1 with the exit status, the Hub's own message and "the Hub was started again" (never "nothing was reset"); a failed stop starts the Hub again and runs nothing; a failed start says so
 - **`tests/test_shell_libs.sh`.** Shell-library tests against stub `docker`/`vault`:
     - `.env` handling and secret generation
     - network validation
-    - `cert sync`, which must never empty the revoked list when Vault fails
-    - `pki setup` idempotency, including resuming a partial run
+    - `cert sync`, which writes the union of both CAs' revoked serials and must never empty or change the list when either list fails
+    - `pki setup` idempotency, including resuming a partial run: a fresh Vault gets `pki`, `pki_int` and `pki_file`; an install with `pki_int` only gets `pki_file` and both chain files and the truststore rewritten with `PKI_TRUSTSTORE_CHANGED=true`; a stale or missing `ca-chain-yubikey.crt` is rewritten (it holds `pki_int` alone); the handshake rule with Go's semantics (`openssl verify -partial_chain`, the client's chain untrusted): `ca-chain-yubikey.crt` refuses a browser leaf sending `pki_file` + root and accepts a YubiKey leaf, `ca-chain.crt` accepts both, and a root added to the YubiKey file is caught; `pki_files_reload` restarts Traefik, Keycloak and group-gate whenever the CA files differ from `certs/.pki-files.loaded`, writing it only after a successful restart; nothing changes (flag unset) when everything is current; equal intermediate CNs are refused; the `browser-cert` role and `pki_file`'s CRL settings
     - `invite --replace-keys` deletes every passkey kind (`webauthn`, `webauthn-passwordless`, `portcullis-device-passkey`, `portcullis-security-key`), never a password or OTP credential, then signs the person out
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - backups' `MANIFEST.json` names the Hub and Keycloak images; `upgrade` warns about a pinned `HUB_IMAGE` or `KEYCLOAK_IMAGE`
     - `config_apply` with `ACME_STAGING=true` writes the staging `ACME_CA_SERVER` and touches no file under `traefik/`
+    - the session store's config (`sessions_prepare`): `secrets/sessions` 0700, `valkey.conf` 0640 group 1000 through the helper; exactly three users — `default` off with no password, keys, channels or commands, `forward-auth` on `~_oauth2_proxy-*` and `forward-auth-ext` on `~__Host-portcullis_ext-*`, each `-@all` plus exactly `ping get set del evalsha eval msetnx mset getrange pexpire mget` and its password's SHA-256 —; no broad or dangerous grant, no cleartext password, nothing printed; no persistence, `maxmemory 64mb` `volatile-ttl`; an unchanged config is not rewritten, a rotated password rewrites it in place (same inode) and flags it; a missing password fails; `sessions_restart_if_changed` restarts only a running store and only when it changed; `secrets_fix_perms` repairs the modes; the compose `user` matches `CT_UID_SESSIONS:CT_GID_SESSIONS`
 - **`tests/test_group_gate.py`.** group-gate unit tests (run in a venv with `pip install --require-hashes -r group-gate/requirements.txt`):
-    - policy file v6 (contract §4): only version 6 (v5 and older, a float or string `6`, no `version`, a missing file → deny), every v6 key required (`methods` … `add_stronger`) and no unknown key, maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and enrolled domains denied
+    - policy file v6 (contract §4): only version 6 (v5 and older, a float or string `6`, no `version`, a missing file → deny), every v6 key required (`methods` … `add_stronger`) and no unknown key, maps keyed by full hostname (exact match after lowercasing and stripping a numeric port and trailing dots; never a subdomain or parent fallback), keys that aren't valid hostnames deny, `extra_domains` (malformed or overlapping the main domain's core hosts → deny), hosts outside the main and added domains denied
     - compiled rules: an unknown leaf (`webauthn`, a family, `inv`, an amr value), a leaf that isn't switched on, an unknown `op`, 0 or > 8 items, > 4 levels, > 48 leaves, a template id, `default`, `hosts` or `core` reference that isn't published, `core` keys that aren't gated core hosts, bad `people` / `add_stronger` → deny (`policy_error`)
     - the shared rule vectors `tests/signin_vectors.json` (a byte copy of the Hub's `internal/signin/testdata/vectors.json`): every evaluated case's `satisfied` and `alternatives` (set of sets, each listed once), every `reject` case refused
-    - session methods: amr through the method table, a switched-off method's amr ignored, `inv` meets nothing, the YubiKey certificate only with a bound certificate on the request; `people` / `add_stronger` never change a decision
-    - the host's template: `core` for core hosts (missing → deny; `hosts` entries ignored), the Hub's core template for `auth.<domain>` (missing → deny), `/authenticated` and the portal check theirs; the membership checks first (a non-member with an unmet template gets the plain group 403, no page or `X-Stepup-URL`); the request metric's `result` `stepup` / `needs_stronger` / `present_certificate`
-    - the pages: present-certificate (no `X-Stepup-URL`), the step-up candidate rules (`pc_method` = the first set-up candidate, `passkey` for an unknown person with two or more passkey kinds, never `yubikey_cert` while amr holds `mtls`), the needs-stronger copy word for word as the Keycloak extension's (`portcullis-needs-stronger.ftl`), every value escaped, no refresh, CSP
+    - session methods: amr through the method table, a switched-off method's amr ignored, `inv` meets nothing, a certificate method only with a bound certificate of its own kind on the request; `people` / `add_stronger` never change a decision
+    - certificate binding by issuer (contract §4): `test_browser_leaf_never_binds_yubikey` (amr `mtls`, a leaf issued by the browser CA with the user's CN → no `yubikey_cert`), `test_yubikey_leaf_binds_only_yubikey`, `test_browser_cert_binds_with_file` (and nothing while `browser_cert` is off), `test_equal_or_missing_ca_files_count_nothing`
+    - revocation of both kinds: `test_revoked_browser_cert_denied_by_pki_file_crl` (a serial only in the `pki_file` delta CRL → 403 on any host), `test_crl_lists_union` (both full and both delta CRLs and the serial file)
+    - the opened log: `test_opened_log_first_request_per_session_host` (one line per session and host, the exact fields, `act` `""`, `ua` ≤ 256, file mode 0640; an unwritable directory still allows the request and counts `group_gate_opened_log_failures_total`)
+    - the host's template: `core` for core hosts (missing → deny; `hosts` entries ignored), the Hub's core template for `auth.<domain>` (missing → deny), the portal checks its own; `enroll` is reserved but not gated (`test_enroll_not_gated_but_reserved`); the Sign-in paths on people.&lt;domain&gt; take any switched-on method only for exactly `/signin`, `/api/me/signin`, `/api/me/signin/…` and `/static/…` after normalising (`test_signin_paths_exact_after_normalising`: `/signin/../api/directory`, `/static/../api/directory`, `/api/me/signinx`, `/api/me/signin%2F..%2Fapps`, `/Signin` and the same paths on `hub.<d>` or an app host get the host's template; `test_signin_paths_any_switched_on_method`); the membership checks first (a non-member with an unmet template gets the plain group 403, no page or `X-Stepup-URL`); the request metric's `result` `stepup` / `needs_stronger` / `present_certificate`
+    - the pages: present-certificate for both kinds (no `X-Stepup-URL`; `test_step_up_never_asks_held_cert_method`), the step-up candidate rules (`pc_method` = the first set-up candidate, `passkey` for an unknown person with two or more passkey kinds, never a certificate method whose amr the session holds), links to the Sign-in page (`test_pages_link_to_signin_page`: every "Set up …" and "Sign-in methods" href is `https://people.<d>/signin`; `test_no_enroll_links`: no `enroll.` and no `/self` on the portal), the needs-stronger copy word for word as the Keycloak extension's (`portcullis-needs-stronger.ftl`), every value escaped, no refresh, CSP
     - `oauth2-proxy/alpha.yaml`: `loginURLParameters` are exactly `pc_method` (the six method ids and `passkey`), `kc_idp_hint`, `prompt`; no `acr_values`
     - step-up URLs (`/oauth2/start?pc_method=<method>`): `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
     - the reserved deny group
     - `path_groups`, including bypass variants
-    - the mTLS binding
+    - the certificate binding (by issuer, both kinds)
     - revocation by serial list and by a real openssl-generated CRL
     - the identity headers and attribute headers returned on allow
     - `expiring` array: membership treated as absent once `now >= at`, token withholding (`Authorization` and `X-Forwarded-Access-Token` withheld when an expired membership is stripped)
@@ -74,14 +81,15 @@ exactly as on a real install. Every step drives the stack through
     - Keycloak's image is `ghcr.io/porelli/portcullis-keycloak:…` and its only named volume is `hub_data:/hub-data` read-only; `hub_data` is mounted by exactly the Hub, group-gate, mcp-gate and Keycloak
     - `group-gate-map.conf` has `people=*`
     - `forward-auth-ext` mirrors `forward-auth` (image, command, secrets, trusted proxies; `portcullis-auth-ext` has every `portcullis-auth` forwardauth setting), defines no router, uses the relative callback `/oauth2/callback` and the host-only cookie `__Host-portcullis_ext` (`Secure`, `Path=/`, no cookie domain, no whitelist); `oauth2-proxy/alpha.yaml` sends PKCE S256
+    - the session store: `sessions` is `valkey/valkey` pinned, `999:1000`, read-only with a tmpfs `/data`, no ports, environment or routers, mounts only `secrets/sessions/valkey.conf` read-only (and nobody else mounts `secrets/sessions/`), has the `NOAUTH` healthcheck and only the network `portcullis-sessions`, which is internal with exactly `sessions`, `forward-auth` and `forward-auth-ext` (like `portcullis-mcp`'s members); both oauth2-proxies use the `redis` store at `redis://sessions:6379` with their own user and a generated 40-character password (different, in no other service's environment), wait for `sessions` healthy, and keep the cookie name / domain; an empty `FORWARD_AUTH_REDIS_PASSWORD` or `FORWARD_AUTH_EXT_REDIS_PASSWORD` is rejected
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
     - `amtool check-config` for a generated Alertmanager config with no receiver, a webhook, ntfy and SMTP
     - `blackbox_exporter --config.check`
     - a sanity check of the provisioned dashboard JSON
-- **enroll** `go vet` + `go test` in the pinned Go image: CSR validation, admin requirement, content type, AppRole login and re-login, self-service renewal, the certificates API (`TestInternalCertificatesNeedsBearer`: 401 without, with an empty or wrong bearer or another scheme, not on the loopback listener; `TestInternalCertificatesLists`: only client-auth certificates, lowercase users, Vault serials, RFC 3339 UTC expiry, revocation state, no PEM, and `503` for the whole list when one serial, certificate or revocation state can't be read; `TestInternalCertificatesDeadline`: the deadline is at most 15 s, a listing that ignores its context still answers `503` at the deadline, and a Vault that never answers gets its call cancelled).
-- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`; gate file v2) is decoded strictly and re-encoded byte for byte; `TestConfigV2Strict` refuses version 1, `acr_loa` / `min_loa`, a rule leaf outside `methods`, groups of 9, depth 5, more than 48 leaves and a companion whose rule needs a certificate. `internal/signin` runs the shared sign-in vectors (`internal/signin/testdata/signin_vectors.json`, a byte copy of the Hub's `internal/signin/testdata/vectors.json`): rule shapes, meeting a rule, alternatives, the reader rejects. The step after the tests ("mcp-gate shared vectors match the Hub") compares all three files with the same-named Hub branch, else main, the same way (exact branch, at the listed commit). The tests cover the token rules (signature, issuer, audience, scope, client, the sign-in rule over the token's `amr` — a certificate, `inv`, an unknown or switched-off method never counts (`TestTokenNeverCountsCertificates`), checked after the population and met or refused on the people and admin resources too (`TestPopulationBeforeSignInRule`) —, population, `Origin`; a rule that doesn't decode names its path, never its value), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream clients and sign-in rules — `TestAggregatePerUpstreamRule`, entries keyed on the token's method set) and the Portcullis proxy. The gate writes a request's access-log line after the response has gone out. Before reading the log, the end-to-end tests therefore wait until every request they sent (except the open `GET` stream) has finished being handled, then flush the log's queue. A test never reads a line that is still on its way. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890.
+- **enroll** `go vet` + `go test` in the pinned Go image: CSR validation, content type, AppRole login and re-login, the renewal checks (`TestRenewChecksPresented`), browser certificates (`TestBrowserCertP12Decodes`: the `.p12` decodes with its password to an EC P-256 key matching a leaf with CN = the user issued by the browser CA, chain [browser CA, root]; `TestBrowserCertPasswordShape`; `TestBrowserCertTTLCeiling`; `TestBrowserCertMaxActive` and `TestBrowserCertMaxActiveConcurrent`: 10 parallel creates with a maximum of 3 → exactly 3; `TestBrowserCertSecretsNeverLogged`), the certificate actions (`TestCertAPINeedsBearer`, `TestCertAPIStrictBodies`, `TestCertAPIUnwired503`, `TestYubiKeyIssueValidatesCSR`, `TestRevokeFindsMountAndOwner`), the public mux (`TestPublicMuxOnlyInvite`: `/`, `/users`, `/certs`, `/self`, `/api/sign`, `/api/self/renew` → 404), the certificates API over both CAs (`TestCertificatesBothMountsKinds`) (`TestInternalCertificatesNeedsBearer`: 401 without, with an empty or wrong bearer or another scheme, not on the loopback listener; `TestInternalCertificatesLists`: only client-auth certificates, lowercase users, Vault serials, RFC 3339 UTC expiry, revocation state, no PEM, and `503` for the whole list when one serial, certificate or revocation state can't be read; `TestInternalCertificatesDeadline`: the deadline is at most 15 s, a listing that ignores its context still answers `503` at the deadline, and a Vault that never answers gets its call cancelled).
+- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`; gate file v2) is decoded strictly and re-encoded byte for byte; `TestConfigV2Strict` refuses version 1, `acr_loa` / `min_loa`, a rule leaf outside `methods`, groups of 9, depth 5, more than 48 leaves and a companion whose rule needs a certificate. `internal/signin` runs the shared sign-in vectors (`internal/signin/testdata/signin_vectors.json`, a byte copy of the Hub's `internal/signin/testdata/vectors.json`): rule shapes, meeting a rule, alternatives, the reader rejects. The step after the tests ("mcp-gate shared vectors match the Hub") compares all three files with the same-named Hub branch, else main, the same way (exact branch, at the listed commit). The tests cover the token rules (signature, issuer, audience, scope, client, the sign-in rule over the token's `amr` — a certificate, `inv`, an unknown or switched-off method never counts (`TestTokenNeverCountsCertificates`), checked after the population and met or refused on the people and admin resources too (`TestPopulationBeforeSignInRule`) —, population, `Origin`; a rule that doesn't decode names its path, never its value), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream clients and sign-in rules — `TestAggregatePerUpstreamRule`, entries keyed on the token's method set) and the Portcullis proxy. The gate writes a request's access-log line after the response has gone out. Before reading the log, the end-to-end tests therefore wait until every request they sent (except the open `GET` stream) has finished being handled, then flush the log's queue. A test never reads a line that is still on its way. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890. A second check (sign-in part 2) pins `group_gate_data` to exactly group-gate (read-write at `/data`, `10003:10003` + group `10001`) and the Hub (read-write at `/group-gate-data`), group-gate's two CA files (read-only under `/etc/group-gate/ca/`) and both CAs' CRL lists, the Hub's `HUB_CLIENT_CERT_TTL` / `HUB_CERT_EXPIRY_WARN_DAYS`, Keycloak's `PORTCULLIS_SIGNIN_URL`, no self-service middleware, and `enroll-invite` (`PathPrefix(/invite/)`) as the only router on `enroll.<domain>`; `tests/test_cli.sh` checks the same wiring in the files, the realm's two x509 executions and events settings, `keycloak configure` pushing each x509 config by its alias, and that no text names the retired `enroll.<domain>` self-service pages.
 
 ### `build-and-test` (whole stack)
 
@@ -91,10 +99,10 @@ the internal PKI) and verifies:
 - **Vault**
     - server-mode init and unseal, and the permissions on `secrets/`
     - after a restart it auto-unseals and the CA is unchanged
-    - the enroll AppRole can only sign, list and read certs
+    - the enroll AppRole can only sign, list, read and revoke certificates and rotate the CRLs, on both CAs
 - **PKI**
-    - the CA chain is created and valid
-    - Vault issues client certificates
+    - both chain files are created and valid: `certs/ca-chain.crt` is exactly root + YubiKey CA + browser CA, `certs/ca-chain-yubikey.crt` exactly the YubiKey CA (no root, no browser CA)
+    - Vault issues YubiKey certificates
 - **Keycloak**
     - the OIDC discovery and SAML descriptor endpoints
     - the WebAuthn policy
@@ -103,7 +111,7 @@ the internal PKI) and verifies:
     - the invite post-broker flow admits only clients with the `portcullis-invite-client` scope (only `portcullis-forward-auth`, never a realm default), and a second `keycloak configure` keeps an extra-domain callback on `portcullis-forward-auth` while dropping a wildcard
     - LLDAP users show up through the federation
     - the `email-unverified` scope has exactly one mapper (`email`), also after a second `keycloak configure`; a throwaway direct-grant client with that scope instead of `email` gets `email` but no `email_verified` in the ID token, access token and userinfo, while the built-in `email` scope sends `email_verified: false`
-- **mTLS**
+- **YubiKey certificates at the handshake**
     - the Hub isn't running yet, so the step writes policy file v6 into `hub_data` (the starting methods, Standard the default, every gated core page on Standard; later steps add their keys to it): without a file group-gate denies everything
     - requests with no cert, or a cert from another CA, are rejected
     - cert info, including the serial, reaches the backend
@@ -123,14 +131,14 @@ the internal PKI) and verifies:
   (adds provider `fake` with records in memory + a DNS server on `:8053`). CI
   runs Pebble (`-dnsserver domains:8053`) and configures the service to use
   `fake`, Pebble's minica root, and `DOMAINS_RESOLVERS=127.0.0.1:8053`. It checks:
-    - enrolling a domain, the records check, ACME DNS-01 order, serving the certificate
+    - adding a domain, the records check, ACME DNS-01 order, serving the certificate
     - `DELETE` stops serving it
     - the served document contains only `tls.certificates` (no routers, services, middlewares)
-    - every served certificate's SANs are exactly `{<d>, *.<d>}` for an enrolled domain
+    - every served certificate's SANs are exactly `{<d>, *.<d>}` for an added domain
     - Traefik picks up the certificate by SNI within ~25 s without restarting (`StartedAt` unchanged)
     - core hosts still serve the main-domain certificate, never a certificate from the HTTP provider
     - Traefik's API lists no `@http` object (routers, services, middlewares, serverstransports)
-    - mTLS refusal: the endpoint refuses requests without the client certificate
+    - mutual TLS: the endpoint refuses requests without Traefik's certificate
     - a kept domain survives backup/restore
   
   **The production image is built without `testprovider`** (no fake provider).
@@ -152,9 +160,11 @@ the internal PKI) and verifies:
     - an admin's `PUT /api/signin/default` to Strong reaches group-gate (a synced session gets the step-up or needs-stronger page, a bound certificate still opens the app), and back to Standard
     - the revocation test's precondition is live: testuser's bound `mtls` session opens the test router before the revocation, so only the revocation can turn 200 into 403
 - **`signin reset-core` on the real Hub.** First `passkey_synced` is switched off through the Hub's API (`PUT /api/signin/methods/passkey_synced`), so the reset has something to undo. Without `--yes` and a terminal it exits exactly 2; `--yes` prints `method passkey_synced: off -> on` (never "nothing to change"), the Hub runs and answers `/healthz` again with `passkey_synced` on and `GET /api/signin` shows `hub` and `people` moved from Strong (the fresh install's) to `standard`, the files the reset wrote — `state.yaml` (rewritten atomically, so a new inode owned by the writer), `audit.jsonl`, `.hub.lock` — are `10001:10001` (a root run would leave `state.yaml` root's), and the audit log's last `signin.reset_core` entry is by `cli`, `ok`, naming the change.
-- **Enrollment UI and API.** List users, sign a CSR with the AppRole token, list certs.
+- **enroll serves only setup links.** `https://enroll.<d>/` and every path but `/invite/…` answer Traefik's 404. On the container itself (step "Find enroll; its retired pages and APIs are gone") `:8443/healthz` answers 200 and `/`, `/users`, `/certs`, `/enroll/<u>`, `/api/users`, `/self`, `/api/self/renew` answer 404 (`POST /api/sign` 404 / 405).
+- **enroll's YubiKey certificate API** (`POST enroll:8444/internal/yubikey-certificates`, contract §9.4, the admin CSR path that replaced `/api/sign`): with the bearer, testuser's CSR is signed on `pki_int` through enroll's AppRole (201, a PEM certificate issued by the YubiKey CA, chaining to `certs/ca-chain.crt`); no bearer or a wrong one is 401; the same CSR for `admin` is refused.
 - **Sign-in flows and setup links.**
-    - the browser flow is exactly the sign-in extension's tree (contract §8.1: cookie · invite redirector · {`portcullis-x509` · passkey with one conditional sub-flow per kind · `portcullis-password-form`}, then `portcullis-template`), every reference config has a known amr and `maxAge` 36000; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
+    - the browser flow is exactly the sign-in extension's tree (contract §8.1: cookie · invite redirector · {`portcullis-x509` (`x509-config`) · `portcullis-x509` (`x509-browser-config`) · passkey with one conditional sub-flow per kind · `portcullis-password-form`}, then `portcullis-template`), every reference config has a known amr and `maxAge` 36000; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
+    - the two x509 configs on the live realm, as `keycloak configure` pushed them: `x509-config` (`yubikey_cert`, amr `mtls`, the YubiKey CA, `pki_int`'s CRLs) then `x509-browser-config` (`browser_cert`, `file`, the browser CA, `pki_file`'s CRLs), both aborting on a stale CRL; the realm's events config keeps `LOGIN` / `LOGIN_ERROR`
     - `webauthn-register-passwordless` enabled, the two-factor `webauthn-register` disabled; the realm has `acr.loa.map` `{}`, brute force (10 / 60 s / 900 s, not permanent) and direct passkey attestation
     - the invite post-broker flow: admit / deny sub-flows, then amr `inv` and `portcullis-template`
     - the LDAP federation has `cachePolicy` `NO_CACHE` (`tests/test_shell_libs.sh` also checks the realm export and that `keycloak configure`'s patch sets it idempotently)
@@ -163,7 +173,25 @@ the internal PKI) and verifies:
     - the Hub's invite API (`enroll:8444`, contract §9.4): 201 for a user, 409 for `admin` / `portcullis-hub`, 404 for an unknown user, 401 with a wrong secret; the Hub's copy of the secret matches; the JWKS serves an ES256 key
 - **`./portcullis up` and the Hub's LLDAP account.** `portcullis-hub` is in `lldap_admin`, the 0640 / group 10001 password file logs in, a password changed in LLDAP is reset from the file on the next `up`, and the Hub sees `/run/portcullis/lldap` and `/run/portcullis/invite`.
 - **Revocation end to end**, once through `./portcullis cert revoke` and once through Vault's CRL alone.
-- **enroll's certificates API** (`enroll:8444/internal/certificates`, contract §9.4): `401` without `Authorization`, with an empty or wrong bearer or another scheme; with the bearer `200` and exactly `{"certificates": [...]}`, each entry exactly `user` (lowercase), `serial`, `not_after` (RFC 3339 UTC), `revoked` (boolean); the test client certificate revoked above is listed as `revoked: true` under Vault's serial; Traefik's server certificate (`*.portcullis.local`) is not listed; no PEM in the answer. enroll's Go tests cover the fail-closed side: a serial whose read fails, whose certificate is missing, or whose `revocation_time` is missing or unreadable answers `503` for the whole list.
+- **enroll's certificates API** (`enroll:8444/internal/certificates`, contract §9.4): `401` without `Authorization`, with an empty or wrong bearer or another scheme; with the bearer `200` and exactly `{"certificates": [...]}`, each entry exactly `user` (lowercase), `serial`, `kind` (`yubikey` / `browser`), `not_before` and `not_after` (RFC 3339 UTC), `revoked` (boolean); the test YubiKey certificate revoked above is listed as `revoked: true` under Vault's serial; Traefik's server certificate (`*.portcullis.local`) is not listed; no PEM in the answer. enroll's Go tests cover the fail-closed side: a serial whose read fails, whose certificate is missing, or whose `revocation_time` is missing or unreadable answers `503` for the whole list.
+- **Session store** (step "Test the session store"). `sessions` is healthy as
+  `999:1000`, read-only, all capabilities dropped, on `portcullis-sessions`
+  only; `secrets/sessions` is 0700 and `valkey.conf` 0640 group 1000 without
+  either password in clear. The ACL, through `valkey-cli` in the container
+  (the password by environment name, never on a command line): an
+  unauthenticated `PING` gets `NOAUTH`, a wrong password `WRONGPASS`; each
+  proxy's user reads and writes only its own keys (`_oauth2_proxy-*` /
+  `__Host-portcullis_ext-*`), the other's are `NOPERM`; `keys`, `scan`,
+  `flushall`, `config get` / `set`, `acl list`, `client list`, `info`,
+  `shutdown`, `script flush` are `NOPERM`; a Lua script reads its own key but
+  neither the other proxy's key nor `flushall`. Then a real sign-in through
+  `forward-auth` with a fresh YubiKey certificate for testuser
+  (`/oauth2/start?pc_method=yubikey_cert`, curl's cookie jar as the browser)
+  ends at `/oauth2/auth` with 202; the jar holds exactly one `_oauth2_proxy`
+  (no `_oauth2_proxy_0…`), under 512 bytes, whose value decodes to an
+  oauth2-proxy ticket `v2.<id>.<secret>` with id `_oauth2_proxy-<32 hex>`,
+  and the store holds that key (not readable by `forward-auth-ext`).
+  `/oauth2/sign_out` deletes it, and the old cookie then gets 401.
 - **CLI.** `./portcullis status`.
 - **Backup round-trip.** It runs, in order:
     - `./portcullis backup` with nothing stopped, then `backup verify --local`. A deliberately damaged backup must fail verification.
@@ -215,10 +243,11 @@ them. Any password field fails the test.
 8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
 9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link, after one step-up asking for any passkey (`pc_method=passkey`).
 10. An unused setup link, redeemed and then steered to another client's authorize endpoint with `kc_idp_hint=portcullis-invite` (client `e2e-invite-bypass`, created by the job), is denied by the invite post-broker flow: no code for the client, no passkey registered.
-11. X.509 login via Keycloak satisfies the YubiKey-certificate template.
-12. An mTLS session without the cert on the request is refused (mTLS binding).
-13. A revoked client cert is rejected.
-14. A client cert from a foreign CA is rejected in the TLS handshake.
+11. A YubiKey-certificate login via Keycloak satisfies the YubiKey-certificate template.
+12. A YubiKey-certificate session without the certificate on the request is refused (certificate binding).
+    The cert-only session opens a default-template app, and enroll's `/self` and `/api/self/renew` answer `404` for it (the cert-only renewal is `e2e-signin`'s `yubikey_cert_renew`: this job runs no Hub).
+13. A revoked YubiKey certificate is rejected.
+14. A certificate from a foreign CA is rejected in the TLS handshake.
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
 checks (registration, no password, `--expect-amr hwk` in CI: the token's passkey method is exactly that one; the re-invite counts one step-up click and one passkey click; the step-up after the link with one more
@@ -239,7 +268,7 @@ pressing OK (the default value).
 After the browser tests, the job enables the **monitoring profile** and checks:
 
 - all monitoring services become healthy, and every Prometheus target is up
-- the Vault health probe and the enroll/forward-auth/LLDAP probes succeed
+- the Vault health probe and the enroll, forward-auth and forward-auth-ext (`/ready`: the session store answers) and LLDAP probes succeed
 - group-gate, CRL, backup (textfile), CA-expiry, Traefik and Vault metrics are present
 - the alert rules are loaded, and neither `VaultSealedOrDown` nor `CrlStale` is pending or firing
 - Grafana at `metrics.<domain>` redirects unauthenticated users to sign in, and rejects a forged identity header that doesn't come from Traefik's IP
@@ -250,7 +279,7 @@ artifacts. The test needs a live stack and is not collected by pytest.
 ### `e2e-instances` (app instances, extra domains)
 
 The whole stack plus the Hub, the domains service against Pebble with the fake
-DNS provider, and the enrolled domain `team-b.test` (enrolled on the domains
+DNS provider, and the added domain `team-b.test` (added on the domains
 API with the fake provider, which the Hub refuses; the Hub picks it up from the
 service's list). The Hub's only template source is the CI template
 `tests/e2e/apps/echo` (`traefik/whoami` behind Portcullis sign-in, plus a
@@ -264,7 +293,7 @@ published policy file (v6, host keys, groups per instance, `hosts` for
 `/oauth2/` router to `forward-auth-ext` on extra-domain hosts only), the
 callbacks on `portcullis-forward-auth` and the SNI certificate. Every create
 carries a `label` ("Team A", …); a create without one is `400`, and so is a
-host on a domain that isn't enrolled. On `echo-b` the job checks the env
+host on a domain that isn't added. On `echo-b` the job checks the env
 overrides ([contracts §11.9](../guides/integration-contracts.md#119-labels-groups-setup-choices-env-overrides-and-jobs-new-apps)):
 a variable of the admin's own (`PUT /api/instances/echo-b/env/CI_MARKER`) is
 stored and listed as a `custom` row, a Hub variable (`PORTCULLIS_INSTANCE`) and
@@ -278,7 +307,7 @@ a setting's variable (`ECHO_STOP_GRACE`) are refused with `400`, the reset
   host-only `__Host-portcullis_ext` cookie; a stale ext cookie signs in again
   without a loop; `echo-c` steps up to the YubiKey certificate exactly once
   (`pc_method=yubikey_cert` on the host's own `/oauth2/start`; a returning
-  user's passkey session, the client certificate available);
+  user's passkey session, the YubiKey certificate available);
 - two instances, two groups: each user reaches only their instance;
 - a backup longer than 60 s through `hub.<domain>`: `202`, a concurrent
   request `409`, the op record ends ok (Traefik keeps its default timeouts).
@@ -315,17 +344,24 @@ itself). The Hub's trust-list fixture is a copy of
 `tests/e2e/fixtures/virtual-authenticators.json` in `/tmp/signin-fixture`,
 whose directory the CI override mounts read-only at
 `/run/portcullis/signin`, so the test can rewrite the file in place. Through
-the Hub's API the job enables Basic and YubiKey + certificate, creates
-`e2e-cert` = any[`yubikey_cert`] and the instances `echo-std` (the default,
-Standard), `echo-basic` (Basic), `echo-cert` (`e2e-cert`), `oidc-strong`
+the Hub's API the job enables Basic and YubiKey + certificate, checks that
+`browser_cert` is off by default, switches it on, creates `e2e-cert` = any[`yubikey_cert`], `e2e-file` =
+any[`browser_cert`] and `e2e-anycert` = any[`yubikey_cert`, `browser_cert`],
+and the instances `echo-std` (the default, Standard), `echo-basic` (Basic),
+`echo-cert` (`e2e-cert`, `protected@file`), `echo-file` (`e2e-file`) and
+`echo-anycert` (`e2e-anycert`, both `protected-any@file`), `oidc-strong`
 (Strong), `oidc-all` (YubiKey + certificate) and `oidc-cert` (`e2e-cert`), and checks what it published:
 the picks in policy file v6, `hub` / `people` on Strong, and
 `signin-keycloak.json` `clients` (`oidc-strong` / `oidc-all` with their
-templates and names), the fixture's AAGUID, password off. People (created
-with the Hub's LLDAP service account): `root` and `sam` (`lldap_admin`),
-`alice`, `bob` (a Vault certificate only), `pat` (a Hub-generated password
-only, kept in a 0600 file, never printed) and `rita`; `root` gets a
-certificate too. Setup links come from `./portcullis invite` inside the test.
+templates and names), the fixture's AAGUID, password off, `browser_cert` on.
+People (created with the Hub's LLDAP service account): `root` and `sam`
+(`lldap_admin`), `alice`, `bob` (a Vault certificate only), `pat` (a
+Hub-generated password only, kept in a 0600 file, never printed), `rita` and
+`carol`; `root` gets a certificate too. Setup links come from `./portcullis
+invite` inside the test. The venv also gets `cryptography` (group-gate's
+pinned, hashed wheels) for the `.p12`, the CSRs and the CA checks; keys,
+certificates and `.p12` passwords live only in a 0700 temp directory and in
+memory, and every password is `::add-mask::`ed.
 
 `tests/e2e/e2e_signin.py` uses two kinds of CDP virtual authenticator:
 backup eligibility 0 (Chromium's packed attestation, listed in the fixture:
@@ -369,7 +405,10 @@ its log. In order:
    `pc_method=security_key`; Keycloak shows the passkey prompt only (no "Try
    another way", no password field) and asks for the security key only; the
    token's amr then has `spk` and `hwk`.
-8. **Cross-user certificate:** alice's passkey session presenting bob's
+8. **Cross-user certificate:** alice signs up through a setup link (one
+   step-up); her session is then exactly one small `_oauth2_proxy` ticket
+   cookie, no `_oauth2_proxy_0…` (oauth2-proxy #3486: before the session
+   store, this step-up looped). Her passkey session presenting bob's
    certificate, refused by Keycloak's X.509 user check or the extension's
    USER_CONFLICT (the log has the extension's line naming alice or a
    `LOGIN_ERROR` for bob's certificate with no user) — on `echo-cert`'s
@@ -408,18 +447,147 @@ its log. In order:
     passkey_synced -> security_key` line (`docker compose logs -t`) is at most
     360 s after the fixture's return (a new mtime → a higher `mds.serial`; the
     extension's task runs every 5 min, plus slack).
-15. **TLS follows the switches** (last; it restarts apps): with
-    `yubikey_cert` on, `echo-std` and `echo-basic` are on `authaware@file` and
-    `openssl s_client -servername <host>` shows "Acceptable client certificate
-    CA names". Standard saved as any[`family:passkey`], the instances off the
-    certificate templates, `hub` / `people` on `standard`, Strong, YubiKey +
-    certificate and `e2e-cert` disabled → `echo-std` on `public@file` with no
-    CA names; `echo-basic` (Basic still names `family:certificate`) moves only
-    when `yubikey_cert` is switched off. `auth.<d>` and `hub.<d>` keep their
-    CA names (core routers stay on `authaware`). Then everything is put back
-    (in a `finally`, also when a step failed) and compared with the snapshot taken before (methods, templates and rules,
-    default, core pages, instance picks), and both apps are back on
-    `authaware@file` with CA names.
+15. **Sign-in page, part 2** (`browser_cert` on since the job's setup):
+    - **`browser_cert_on`:** the switch is on in `GET /api/signin` and
+      `signin-keycloak.json`; `echo-file` / `echo-anycert` carry
+      `protected-any@file`, `echo-cert` `protected@file`.
+    - **`browser_cert_create_download`:** alice signs in on
+      `people.<d>/signin` with her virtual security key, does a fresh sign-in
+      (the popup flow, redirect `https://people.<d>/signin`), then
+      `POST https://people.<d>/api/me/signin/browser-certificates {days: 30}`
+      through Traefik: `200` with `Cache-Control: no-store` and
+      `Pragma: no-cache`; the password is 4 × 5 Crockford characters;
+      `pkcs12.load_key_and_certificates(p12, password)` gives an EC P-256 key
+      and a leaf with CN `alice`, issued (and signed) by the browser CA,
+      `not_after` ≈ now + 30 days; the `.p12`'s chain holds the browser CA and
+      the root (never the YubiKey CA); the filename and the row's serial
+      match. The `cert.create` audit entries hold neither the password nor
+      any base64 run. The policy file's `people` then lists `browser_cert`
+      for alice.
+    - **`browser_cert_fresh_refused_weak`:** sam's synced-passkey fresh
+      sign-in (the people core template is Strong) gets `403` "a fresh
+      sign-in is required"; nothing is created.
+    - **`browser_cert_max_active`:** two more creates succeed and the fourth
+      gets `409` (at most 3 active).
+    - **`tls_protected_yubikey_ca_only`:** `echo-cert` (`protected@file`, the
+      option `mtls` apps get): `openssl s_client`'s "Acceptable client
+      certificate CA names" is exactly the YubiKey CA — no root, no browser
+      CA.
+    - **`tls_mtls_refuses_browser_cert`:** `curl` to `echo-cert` with alice's
+      browser leaf followed by the `.p12`'s whole chain (`pki_file` + root,
+      as a browser sends it) is refused in the handshake (curl exit 35 or 56,
+      nothing else), while the same files complete it on `echo-anycert`; a
+      Playwright context presenting the `.p12` itself is refused too (its
+      synthetic 503 "client-certificate error" page, Chromium's
+      `net::ERR_BAD_SSL_CLIENT_AUTH_CERT`, or `net::ERR_HTTP2_PROTOCOL_ERROR`
+      when the TLS 1.3 refusal reaches Playwright's TLS proxy after it already
+      answered the browser with h2 — that one only with a real answer for the
+      same `.p12` from `echo-anycert` in the same context; any other error
+      fails); root's
+      YubiKey certificate completes the handshake.
+    - **`tls_protected_any`:** `echo-anycert`'s CA names are the root and both
+      CAs; the browser certificate (with its chain) completes the handshake,
+      no certificate fails it.
+    - **`browser_cert_signin_file`:** a new context with the `.p12` as its
+      `client_certificates` and no authenticator: alice signs in with the
+      certificate only and `echo-file` (any[`browser_cert`]) opens; the
+      token's amr has `file` and never `mtls`; Keycloak's LOGIN events have
+      `pc_methods` `browser_cert` (never `yubikey_cert`) and its log names no
+      `mtls` / `yubikey_cert` for her.
+    - **`browser_cert_not_yubikey`:** that session on `oidc-cert`
+      (any[`yubikey_cert`]) gets Keycloak's needs-stronger page; with
+      `pc_method=yubikey_cert` it signs nobody in (no code). A forward-auth
+      any[`yubikey_cert`] host is `protected@file`, so there the handshake
+      refuses the browser certificate (above).
+    - **`browser_cert_cannot_renew`:** the browser certificate presented on
+      `POST /api/me/signin/yubikey-certificate/renew` with a CSR for its key
+      gets `403` "present your current YubiKey certificate"; nothing is
+      issued.
+    - **`browser_cert_off_counts_nothing`:** `echo-file` off `e2e-file`,
+      `e2e-file` disabled, `browser_cert` switched off (both published files
+      without it; `echo-anycert` on `protected@file`, since the switch drops
+      `browser_cert` from every compiled rule and `e2e-anycert` becomes
+      any[`yubikey_cert`]; `echo-file`, on the default Standard meanwhile,
+      on `authaware@file`): on `echo-file` the same valid `.p12` alone leaves
+      the browser on Keycloak's passkey prompt with no LOGIN event, and
+      alice's earlier file session gets `403`.
+      Everything is switched back in a `finally` (`echo-file` /
+      `echo-anycert` back on `protected-any@file`).
+    - **`yubikey_cert_still_mtls`:** a `pki_int` certificate CI issues for
+      alice through Vault signs her in without an authenticator: amr `mtls`,
+      never `file`; `echo-cert` opens.
+    - **`yubikey_cert_renew`** (the cert-only renewal, moved here from
+      `e2e`: enroll's `/self` is gone and the `e2e` job runs no Hub): that
+      session renews on the Sign-in page —
+      `POST https://people.<d>/api/me/signin/yubikey-certificate/renew` with
+      a CSR for the same key → `200` no-store, CN `alice`, the YubiKey CA,
+      the same key, a new serial.
+    - **`forged_cert_headers`:** Traefik deletes client-sent
+      `X-Forwarded-Tls-Client-Cert` / `-Info`: alice's `mtls` session without
+      the certificate but with both headers forged (her real YubiKey
+      certificate) stays on `#present-certificate` on `people.<d>/`, and a
+      renewal from her passkey session with them forged gets `403`; the same
+      header sent straight to the Hub's people listener (`:8889`, no Traefik)
+      renews (`200`), so the `403` is Traefik deleting it.
+    - **`browser_cert_revoked`:** `DELETE /api/me/signin/certificates/<serial>`
+      (through Traefik, with that certificate) → `204`; within 70 s
+      `echo-file` answers `403` (revoked) and `GET /api/me/signin` shows it
+      `revoked`; a YubiKey certificate's serial on that route is `404`; she
+      revokes her third one too.
+    - **`signin_page_reachable_weak`:** password on, pat (a password only —
+      bob has a YubiKey certificate, so `people.<d>` would offer him a
+      step-up) signs in with a wrong password once, then his own:
+      `/signin` and `/api/me/signin` answer `200`; `/api/directory` gets
+      `#needs-stronger`; raw, unnormalised paths sent with `http.client`
+      (the path written as is: `/signin/../api/directory`,
+      `/api/me/signin/../../directory`, `/static/../api/directory` → `403`
+      `#needs-stronger`; encoded dots, slashes and backslashes → refused,
+      `400` / `403` / `404`, never the Hub). Password off again after.
+    - **`sign_in_help_actions`:** group `hr` with carol,
+      `PUT /api/directory/permissions/sign_in_help {group: "hr"}`; carol's
+      view of alice's Sign-in tab may send a setup link, remove passkeys and
+      revoke, not set a password or issue; she sends alice a setup link
+      (`200`, masked), removes her passkeys (`200`, gone from Keycloak) and
+      revokes her second browser certificate (`204`); she gets `403` for
+      alice's password and for every action on root, `portcullis-hub` and
+      herself (also revoking root's certificate); as an admin, issuing and
+      revoking root's certificate get `409` "… managed from the server". The
+      audit has `user.invite`, `user.remove_passkeys` and `cert.revoke` with
+      `as sign_in_help`.
+    - **`browser_cert_none_left`:** all three revoked, none active, and the
+      policy file's `people` no longer lists `browser_cert` for alice.
+    - **`history_entries`:** alice's `/api/me/signin/history` (no unknown
+      source) has her setup-link `sign_in` (no methods, detail "Setup link
+      used"), a `sign_in` with methods `[browser_cert]` and a non-empty
+      browser, a `step_up`, an `opened` for `echo-file` with `browser_cert`,
+      at least three `help` entries by carol and at least three
+      `certificate` entries, and no `.p12` password; pat's has a `failed`
+      entry (his wrong password); carol may read alice's history.
+    - **`enroll_site_gone`:** `https://enroll.<d>/`, `/self`,
+      `/api/self/renew`, `/api/sign`, `/api/users`, `/users` and `/certs`
+      get Traefik's own `404` (no router), while `/invite/<bad token>`
+      reaches enroll's invite page ("This setup link is invalid, expired or
+      already used", `404`).
+16. **TLS follows the switches** (last; it restarts apps): with both
+    certificate methods on, `echo-std` and `echo-basic` are on
+    `authaware@file` and `openssl s_client -servername <host>` shows
+    "Acceptable client certificate CA names". Standard saved as
+    any[`family:passkey`], the instances off the certificate templates,
+    `hub` / `people` on `standard`, Strong, YubiKey + certificate,
+    `e2e-cert`, `e2e-file` and `e2e-anycert` disabled → `echo-std` on
+    `public@file` with no CA names; `echo-basic` (Basic still names
+    `family:certificate`) stays on `authaware@file` while `browser_cert` alone
+    is on — checked on six samples over 30 s once the Hub has applied
+    `yubikey_cert` off (both published files without it, the Hub's own tier
+    for `echo-basic` `authaware@file`, no `echo-basic` op running) — and moves only when both `yubikey_cert` and `browser_cert` are
+    switched off. `auth.<d>` and `hub.<d>` keep their CA names (core routers
+    stay on `authaware`). Then everything is put back (in a `finally`, also
+    when a step failed) and compared with the snapshot taken before (methods,
+    templates and rules, default, core pages, instance picks), and both apps
+    are back on `authaware@file` with CA names.
+
+`tests/e2e/e2e_signin.py`'s and `e2e_filesharing.py`'s fresh sign-ins on
+people.&lt;domain&gt; use the redirect `https://people.<d>/signin`.
 
 The throwaway `ci-kick-<n>` groups are deleted at the end (best effort).
 `./portcullis signin reset-core` is covered by `build-and-test` (above). The
@@ -637,6 +805,31 @@ otherwise it pulls the published `edge` and names its digest in the step
 summary. Every job that runs Keycloak uses it, and the cached image lists leave
 both images out (unpinned). The Hub's `build.yml` likewise tests against the same-named branch of
 the templates and core repos, else `main`.
+
+**Running some jobs only.** `workflow_dispatch` has an input `jobs`
+(default `all`): `all`, or job names separated by commas and/or spaces —
+`unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`,
+`e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`. The names match
+exactly (`e2e` doesn't run `e2e-ai`); the other jobs are skipped. Every job
+needs the first job, `jobs-input`, which fails the run on an unknown name (or
+`all` together with names); any subset of the other jobs runs. Push, pull request and `workflow_call`
+always run every job (`release.yml` passes no `jobs`; the called workflow's
+default is `all`).
+
+```
+gh workflow run ci.yml --ref <branch> -R porelli/portcullis -f jobs=build-and-test
+gh workflow run ci.yml --ref <branch> -R porelli/portcullis -f jobs="e2e-signin e2e-settings"
+```
+
+**Timeouts.** Every job has `timeout-minutes` (about 1.5× its longest green
+run, at least 20: 20 for most, `e2e-signin` 25, `e2e-settings` 30), and so
+do the slow steps: image loads and local builds 15, the Hub / Keycloak image
+20, Playwright installs 10, artifact uploads 10, backup / restore steps 15.
+A step that runs out fails instead of hanging. The build-push action's
+build-summary / build-record uploads are off (`DOCKER_BUILD_SUMMARY`,
+`DOCKER_BUILD_RECORD_UPLOAD` false): nothing reads them, and a failing
+artifact service once kept a finished `e2e-settings` job retrying them for
+over 30 minutes.
 
 ### Caching
 
@@ -889,7 +1082,7 @@ emulates the Hub's delivery to an AI page.
 | LLDAP | `lldap_token`, `lldap_graphql`, `lldap_create_user`, `lldap_create_group`, `lldap_add_to_group`, `lldap_sync_keycloak` |
 | Compose | `compose_up APP`, `compose_down APP`, `app_container_ip APP`, `app_logs APP` |
 | Assertions | `assert_http_code URL CODE`, `assert_redirect_to_keycloak URL`, `assert_redirect_contains URL STRING`, `assert_body_contains URL STRING`, `assert_container_can_reach CONTAINER URL` |
-| Public exceptions | `public_routed_prefixes <manifest> <all\|listed> [token…]` prints what the Hub's public router opens; `write_public_override <app> <service> <host-arg> <tier> <out> <entry…>` writes the override labels the Hub would generate (tier for every router, public router behind `portcullis-public-guard@docker` with static-only supporting paths, exact paths, strip middleware); pass it to `compose_up` with `COMPOSE_OVERRIDE=<file>`. `write_public_policy <sub> <manifest> <mode>` writes the version-3 policy entry the Hub would publish into core's `hub_data` volume, so core's real public guard runs (`clear_public_policy` empties it). `assert_public_path <host> <path> [curl args]` / `assert_gated_path …` / `assert_public_refused …` send HTTPS requests through Traefik on the runner (no client certificate) and check the app answers / the request is redirected to `auth.<domain>` / the guard answers 403. `grafana.sh` uses them: a listed dashboard token is public; an unlisted token, `/`, `/api/user` and `/public/build/` stay gated; Grafana login cookies (also PHP-mangled spellings), `Authorization`, `X-Access-Token` and `auth_token` query variants are refused by the guard. It needs a core with `/public-guard` (`.core-ref`). `nextcloud.sh` and `immich.sh` check their path lists statically |
+| Public exceptions | `public_routed_prefixes <manifest> <all\|listed> [token…]` prints what the Hub's public router opens; `write_public_override <app> <service> <host-arg> <tier> <out> <entry…>` writes the override labels the Hub would generate (tier for every router, public router behind `portcullis-public-guard@docker` with static-only supporting paths, exact paths, strip middleware); pass it to `compose_up` with `COMPOSE_OVERRIDE=<file>`. `write_public_policy <sub> <manifest> <mode>` writes the version-3 policy entry the Hub would publish into core's `hub_data` volume, so core's real public guard runs (`clear_public_policy` empties it). `assert_public_path <host> <path> [curl args]` / `assert_gated_path …` / `assert_public_refused …` send HTTPS requests through Traefik on the runner (no certificate) and check the app answers / the request is redirected to `auth.<domain>` / the guard answers 403. `grafana.sh` uses them: a listed dashboard token is public; an unlisted token, `/`, `/api/user` and `/public/build/` stay gated; Grafana login cookies (also PHP-mangled spellings), `Authorization`, `X-Access-Token` and `auth_token` query variants are refused by the guard. It needs a core with `/public-guard` (`.core-ref`). `nextcloud.sh` and `immich.sh` check their path lists statically |
 | Settings data files | `write_appfiles_override <app> <name> <json> <out>` writes `<name>.json` the way the Hub does (a directory per file, mode 0640 group 10001 where the runner can set it) and an override that bind-mounts that directory read-only at the `files[]` entry's mount; pass it with `COMPOSE_OVERRIDE=<file>`. `write_appfile <app> <name> <json>` rewrites the file atomically (restart the service after). `firefox-sync.sh` uses them to check that only the file's uids can sync and that a bad or missing file stops the instance. The public-exception override also strips the template's header deliveries, as the Hub's public router does |
 | Header trust | `assert_traefik_only_trust <compose> <SETTING>` checks statically that the trust setting uses `${PORTCULLIS_TRAEFIK_IP:-…}` and nothing trusts every peer. `assert_spoofed_identity_rejected <url> [expected]` sends a forged `X-Forwarded-User` from the CI host (never Traefik) and expects a rejection. **Required for header-auth templates** |
 
@@ -1017,7 +1210,7 @@ Also check, from the builders' reports:
   (`GetLiveContext`); a non-admin member turns an exposed light on. The same
   with Claude Code (loopback, port 33418). Removing the person from the group
   ends the connection after the next reconcile (at most 10 minutes for a
-  pending code). The host must be publicly reachable and not need mTLS.
+  pending code). The host must be publicly reachable and not need a YubiKey or browser certificate.
 - **Nextcloud**: AI on; alice uses claude.ai through
   `https://<nextcloud host>/mcp`; leaving revokes the app password (up to
   10 s of lag); a restore runs `revoke_all`.

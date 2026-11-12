@@ -9,7 +9,7 @@ command: `./portcullis init`.
 - `openssl`, `jq` and `curl` on the host (the CLI checks for them)
 - **A domain you control**, with DNS hosted at a provider Traefik's ACME client (lego) supports: Cloudflare, Porkbun, Route53, DigitalOcean, Hetzner, ... (see [DNS Configuration](dns.md))
 - **A server** with ports 80 and 443 reachable (VPS, home server, or local machine)
-- **A YubiKey** (or another FIDO2 key) for WebAuthn. `ykman` is only needed for PIV/mTLS certificates
+- **A YubiKey** (or another FIDO2 key) for WebAuthn. `ykman` is only needed for YubiKey certificates (PIV)
 
 ## Before you start: DNS
 
@@ -96,29 +96,30 @@ All options are in the [CLI Reference](../operations/cli.md#init).
    `--dns-provider none`). The wildcard covers all app and core subdomains: `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp` (the "All my apps" MCP endpoint, [AI support](../operations/ai.md)), and each enabled app.
 3. **Initialises Vault** in server mode with persistent raft storage. The root
    token and unseal key go to `secrets/` (see the warning below), and the
-   enrollment service gets a least-privilege AppRole. Vault unseals itself on
+   enroll service gets a least-privilege AppRole. Vault unseals itself on
    every start from then on.
 4. **Starts the core stack** (`docker compose up -d --build`) and waits for
    Vault, PostgreSQL, LLDAP and Keycloak to be healthy.
-5. **Creates the Vault PKI**: root and intermediate CA for YubiKey client
-   certificates, Keycloak's truststore, and a self-signed wildcard server cert
-   for local use.
-6. **Configures Keycloak**: imports the `portcullis` realm (WebAuthn, X.509,
-   LLDAP federation, step-up flows) and registers the forward-auth OIDC client
+5. **Creates the internal certificate authority** in Vault: the root and two
+   intermediate CAs, for YubiKey certificates and browser certificates,
+   Keycloak's truststore, and a self-signed wildcard server cert for local
+   use.
+6. **Configures Keycloak**: imports the `portcullis` realm (passkeys, YubiKey and
+   browser certificates, LLDAP federation, step-up flows) and registers the forward-auth OIDC client
    with the secret from `.env`.
 7. **Creates `config/`**, a separate git repo holding your `.env` and
    overrides (skip with `--no-config-repo`; see
    [CLI Reference](../operations/cli.md#config-init)).
-8. **Prints the URLs** of the enrollment UI, directory, identity provider, Hub
-   and Traefik dashboard.
+8. **Prints the URLs** of the core pages (directory, identity provider, Hub,
+   Traefik dashboard).
 
 Every step is idempotent: if something fails (DNS not propagated yet, a slow
 image pull), fix it and run `./portcullis init` again.
 
 !!! danger "Back up `secrets/` now, offline"
     `secrets/vault-init.json` holds the Vault root token and the unseal key.
-    Losing it together with the host means losing the CA, and every client
-    certificate with it. Anyone who has it can unseal Vault. Keep an offline
+    Losing it together with the host means losing the CA, and every YubiKey
+    and browser certificate with it. Anyone who has it can unseal Vault. Keep an offline
     copy, and treat backups made by `./portcullis backup` the same way: they
     contain `secrets/` and `.env`. Store `BACKUP_PASSWORD` offline too:
     without it, off-host backups can't be restored after losing the host
@@ -132,7 +133,7 @@ image pull), fix it and run `./portcullis init` again.
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `ACME_STAGING` | `false` | `true` uses Let's Encrypt staging (untrusted certs, no rate limits). Apply with `./portcullis config apply && ./portcullis up` |
-| `CLIENT_CERT_TTL` | `720h` | Client certificate lifetime (30 days) |
+| `CLIENT_CERT_TTL` | `720h` | Longest lifetime of a YubiKey or browser certificate (30 days) |
 | `HUB_PROXY_SECRET` | generated | Shared secret Traefik adds to every request to the Hub. The Hub refuses to start without it (at least 32 characters) |
 | `HUB_IMAGE` | `ghcr.io/porelli/portcullis-hub:edge` on core `main` | Hub image. `edge` is the latest build of the Hub's `main`; a core release pins a released tag by digest. If you override it, use a released tag with its digest, e.g. `ghcr.io/porelli/portcullis-hub:1.2.3@sha256:…` (see [Upgrading & Releases](../operations/upgrading.md#hub-image)) |
 | `KEYCLOAK_IMAGE` | `ghcr.io/porelli/portcullis-keycloak:edge` on core `main` | Keycloak image (the official Keycloak plus the sign-in extension). Same rules as `HUB_IMAGE`: `edge` is the latest build of its `main`; pin a released tag with its digest if you override it |
@@ -146,7 +147,7 @@ image pull), fix it and run `./portcullis init` again.
 | `PORTCULLIS_TRAEFIK_IP` | `172.31.250.2` | Traefik's static IP on `portcullis-proxy`. Header-auth apps trust identity headers only from this address |
 | `PORTCULLIS_AUTH_SUBNET` | `172.31.251.0/28` | Internal Traefik ↔ Keycloak network `portcullis-auth`. Must not overlap the proxy subnet |
 | `PORTCULLIS_AUTH_IP_RANGE` | `172.31.251.8/29` | Dynamic range on `portcullis-auth` |
-| `PORTCULLIS_AUTH_TRAEFIK_IP` | `172.31.251.2` | The only address Keycloak accepts proxy headers (incl. the forwarded client cert) from |
+| `PORTCULLIS_AUTH_TRAEFIK_IP` | `172.31.251.2` | The only address Keycloak accepts proxy headers (incl. the forwarded YubiKey or browser certificate) from |
 | `HUB_PEOPLE_ADDR` | `:8889` | Hub's people listener port (set by core, not operator config). Accessible to any signed-in user at `people.<domain>` |
 
 !!! warning "Change the network ranges before `init`, not after"
@@ -205,8 +206,8 @@ which keeps its own `admin` / `LLDAP_ADMIN_PASSWORD` login):
    can't be changed later). The email is only profile data: users can edit it
    themselves, so it is never used to identify or link accounts.
 2. Add the user to the groups of the apps they need, e.g. `users_grafana`.
-   Members of `lldap_admin` can reach the core admin UIs (Hub, enrollment,
-   directory, Traefik dashboard, Keycloak's realm console).
+   Members of `lldap_admin` can reach the core admin UIs (Hub, directory,
+   Traefik dashboard, Keycloak's realm console).
 3. Send the user their setup link (the Hub shows it once; on the server:
    `./portcullis invite <user>`). It lands them on `https://<your-domain>/`,
    the portal with the apps they may use.
@@ -226,17 +227,23 @@ In the Hub:
 The app is reachable at its subdomain. Users need the app's `users_<app>`
 group if the app enforces group access.
 
-## Step 7 (optional): YubiKey client certificates
+## Step 7 (optional): YubiKey and browser certificates
 
-For mTLS (PIV certificates), an admin enrolls a user's YubiKey at
-`https://enroll.<your-domain>`, or on the host:
+For YubiKey certificates (PIV), an admin issues one on the host with the
+YubiKey attached:
 
 ```bash
 ./portcullis cert enroll alice alice@example.com
 ```
 
-Certificates last 30 days. Users renew their own at
-`https://enroll.<your-domain>/self`. See [TLS & mTLS](certificates.md).
+or pastes a CSR made with `ykman` on the person's **Sign-in** tab on
+`https://people.<your-domain>/`. Certificates last 30 days. People renew their own on their Sign-in page,
+`https://people.<your-domain>/signin`.
+
+Browser certificates start off: switch **Browser certificate** on in Hub →
+Settings → Sign-in, and people can create one (a `.p12` file) on their
+Sign-in page. See [Certificates](certificates.md) and
+[Sign-in methods](../operations/auth-policies.md#browser-certificates).
 
 ## Day-to-day
 
@@ -254,7 +261,7 @@ git pull && ./portcullis upgrade   # update (backs up first)
 - [Backups](../operations/backups.md): set up off-host backups and the systemd timer
 - [Monitoring](../operations/monitoring.md)
 - [DNS Configuration](dns.md)
-- [TLS & mTLS](certificates.md)
+- [Certificates](certificates.md)
 - [Architecture](../architecture.md) and [Security & Hardening](../operations/hardening.md)
 - [Groups & Access Control](../operations/groups.md)
 - [Adding an App](../guides/adding-an-app.md)

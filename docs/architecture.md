@@ -26,7 +26,7 @@ graph TB
 
         subgraph PKI
             Vault[Vault PKI<br/>Certificate Authority]
-            Enroll[Enrollment UI]
+            Enroll[enroll<br/>setup links, certificates]
         end
 
         subgraph AI
@@ -48,28 +48,29 @@ graph TB
         end
     end
 
-    User -->|HTTPS + optional client cert| Traefik
+    User -->|HTTPS + optional YubiKey or browser certificate| Traefik
 
     Traefik -->|forward-auth| OAuth2
     OAuth2 -->|OIDC| Keycloak
     Traefik -->|forward-auth| GroupGate
     GroupGate -.->|CRL| Vault
     GroupGate -.->|reads policy file| Hub
-    Traefik -->|portcullis-auth network<br/>client cert header| Keycloak
+    Traefik -->|portcullis-auth network<br/>certificate header| Keycloak
 
     Traefik --> AppFA
     Traefik --> AppOIDC
     Traefik --> AppHeader
     Traefik --> AppPublic
     Traefik -->|+ proxy secret| Hub
-    Traefik --> Enroll
+    Traefik -->|setup links only| Enroll
+    Hub -->|certificates API| Enroll
 
     AppOIDC -->|OIDC| Keycloak
 
     Keycloak -->|LDAP federation| LLDAP
     Keycloak --> Postgres
     Keycloak -.->|CRL| Vault
-    Enroll -->|AppRole: sign CSR| Vault
+    Enroll -->|AppRole: sign, revoke| Vault
 
     Traefik -->|read-only| SPT
     Hub -->|compose / Engine API| SPH
@@ -87,16 +88,17 @@ graph TB
 
 | Component | Role |
 |-----------|------|
-| **Traefik** | Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests client certificates. Reads Docker labels through its read-only socket proxy. |
-| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with a per-request `pc_method` for a one-method step-up), and returns identity headers and the access token on success. |
-| **group-gate** | Per-request authorization (forward-auth). Checks client-cert revocation, the subdomain's required group and `path_groups`, then the app's sign-in template (the session's `amr` methods, mTLS binding). Returns 403 or a step-up page. |
-| **Keycloak** | Identity provider, Portcullis's own image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`: the official Keycloak plus the sign-in extension). Passkeys of three kinds, X.509 (YubiKey PIV) login with CRL checks, password, one-method step-up (`pc_method`) and the per-app [sign-in template](operations/auth-policies.md#sign-in-flows-in-keycloak) check, from the Hub's `signin-keycloak.json` (`hub_data`, read-only); OIDC/SAML for apps. Federates users from LLDAP. |
+| **Traefik** | Reverse proxy. Terminates TLS (one ACME wildcard cert), routes requests by subdomain, applies middleware chains, optionally requests a YubiKey or browser certificate. Reads Docker labels through its read-only socket proxy. |
+| **oauth2-proxy** | Forward authentication. Redirects unauthenticated users to Keycloak (with a per-request `pc_method` for a one-method step-up), and returns identity headers and the access token on success. Sessions live in the session store; the browser's cookie is only a ticket. |
+| **Session store** (`sessions`) | Valkey, memory only, reachable only by the two oauth2-proxies (internal network `portcullis-sessions`, one ACL user each). Holds the forward-auth sessions, so a session never outgrows its cookie and signing out ends it server-side. See [Security & Hardening](operations/hardening.md#session-store-sessions). |
+| **group-gate** | Per-request authorization (forward-auth). Checks certificate revocation (both certificate authorities), the subdomain's required group and `path_groups`, then the app's sign-in template (the session's `amr` methods, certificate binding by issuer). Returns 403 or a step-up page. Logs the first request of each session to each app (`group_gate_data`, for sign-in history). |
+| **Keycloak** | Identity provider, Portcullis's own image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`: the official Keycloak plus the sign-in extension). Passkeys of three kinds, YubiKey and browser certificate login (each against its own CA and CRLs), password, one-method step-up (`pc_method`) and the per-app [sign-in template](operations/auth-policies.md#sign-in-flows-in-keycloak) check, from the Hub's `signin-keycloak.json` (`hub_data`, read-only); OIDC/SAML for apps. Federates users from LLDAP. |
 | **LLDAP** | Lightweight LDAP directory. Stores users and groups (custom user fields are LLDAP attributes). They are managed in the Hub; `directory.<domain>` redirects to `people.<domain>` (LLDAP's own UI has no SSO and is reachable only from the server: `portcullis lldap-ui`). |
 | **PostgreSQL** | Database backend for Keycloak. |
-| **Vault PKI** | Private CA in server mode (raft, auto-unseal). Issues client certificates (default 30 days) for YubiKey PIV slots and publishes the CRL. |
-| **Enrollment UI** | `enroll.<domain>`: admins enroll WebAuthn and PIV certificates; any user renews their own certificate at `/self`. Signs CSRs through a least-privilege Vault AppRole. |
-| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled app instance as its own compose project, registers Keycloak clients, writes the policy file v6 (sign-in methods and templates, keyed by full hostname), `signin-keycloak.json` and `user-attributes.json`, delivers app settings ([Settings Delivery](#settings-delivery)), reports drift, manages enrolled domains. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import) with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` permissions), and My apps (each person's own app settings). |
-| **Domains service** | Manages enrolled extra domains: creates DNS records, obtains wildcard certificates via ACME DNS-01, serves them to Traefik over its HTTP provider. Credentials stored encrypted at rest (age). See [Security & Hardening](operations/hardening.md#domains-service). |
+| **Vault PKI** | The internal certificate authority, in server mode (raft, auto-unseal): a root and two intermediates, `pki_int` for YubiKey certificates (PIV slots) and `pki_file` for browser certificates, each with its CRL. Default lifetime 30 days. |
+| **enroll** | Serves setup links at `enroll.<domain>/invite/…` (the only route on that host), and the Hub's internal API (`:8444`): invites, and issuing, renewing, listing and revoking YubiKey and browser certificates through a least-privilege Vault AppRole. It generates browser certificates' keys and never keeps them. |
+| **Hub** | Two listeners: `hub.<domain>` (admins only): app catalog, runs each enabled app instance as its own compose project, registers Keycloak clients, writes the policy file v6 (sign-in methods and templates, keyed by full hostname), `signin-keycloak.json` and `user-attributes.json`, delivers app settings ([Settings Delivery](#settings-delivery)), reports drift, manages added domains. `people.<domain>` (any signed-in user): Users & Groups (People, Groups, Org chart, Import) with per-request permission checks (admins, or delegated `edit_details` / `invite` / `remove` / `sign_in_help` permissions), My apps (each person's own app settings) and the Sign-in page (`/signin`: each person's sign-in methods, certificates and sign-in history). |
+| **Domains service** | Manages added extra domains: creates DNS records, obtains wildcard certificates via ACME DNS-01, serves them to Traefik over its HTTP provider. Credentials stored encrypted at rest (age). See [Security & Hardening](operations/hardening.md#domains-service). |
 | **forward-auth-ext** | Second oauth2-proxy for extra-domain hosts. Relative callback `/oauth2/callback`, host-only cookie `__Host-portcullis_ext`. Shares the Keycloak client with `forward-auth`. See [Hub Management](operations/hub.md#cross-domain-sign-in). |
 | **Monitoring** (optional) | Compose profile `monitoring`: Prometheus, Alertmanager, Grafana at `metrics.<domain>` (`lldap_admin`), blackbox and textfile exporters. See [Monitoring](operations/monitoring.md). |
 | **mcp-gate** | Terminates every MCP request of people's AI clients (`mcp.<domain>`, each app's `/mcp` endpoint, `hub.<domain>/mcp`, `people.<domain>/mcp`): checks the Keycloak token for exactly that resource, the person's population on every request, tool policy, limits and confirmations, logs every call, and forwards it to the app's companion as the person, never with their token. See [AI support](operations/ai.md#how-it-fits-together) and [AI support flow](#ai-support-flow). |
@@ -106,7 +108,7 @@ graph TB
 
 Portcullis is organized as four separate repositories, each with a distinct responsibility. Their interfaces are defined in [Integration Contracts](guides/integration-contracts.md).
 
-- **Core repo** ([porelli/portcullis](https://github.com/porelli/portcullis)) -- `docker-compose.yml` for all core services, the `./portcullis` admin CLI (libraries in `scripts/lib/`), group-gate (`group-gate/`), the enrollment UI (`enroll/`), Traefik dynamic configuration (`traefik/`), Vault configuration (`vault/`) and the Keycloak realm export. This is the only repo you need to clone to deploy Portcullis.
+- **Core repo** ([porelli/portcullis](https://github.com/porelli/portcullis)) -- `docker-compose.yml` for all core services, the `./portcullis` admin CLI (libraries in `scripts/lib/`), group-gate (`group-gate/`), enroll (`enroll/`), Traefik dynamic configuration (`traefik/`), Vault configuration (`vault/`) and the Keycloak realm export. This is the only repo you need to clone to deploy Portcullis.
 
 - **Hub repo** ([porelli/portcullis-hub](https://github.com/porelli/portcullis-hub)) -- The management web UI, published as a signed container image at `ghcr.io/porelli/portcullis-hub` (selected with `HUB_IMAGE`).
 
@@ -120,7 +122,7 @@ Portcullis supports four authentication methods. Each app declares its method in
 
 ### Forward Auth (oauth2-proxy + group-gate)
 
-Used by apps that have no native SSO support (Pi-hole, DokuWiki, Scrutiny, etc.). Traefik delegates authentication to oauth2-proxy and authorization to group-gate before the request reaches the app. The router's middleware chain is `client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file`; `client-headers@file` must come first so group-gate sees the client certificate (for revocation and the mTLS binding).
+Used by apps that have no native SSO support (Pi-hole, DokuWiki, Scrutiny, etc.). Traefik delegates authentication to oauth2-proxy and authorization to group-gate before the request reaches the app. The router's middleware chain is `client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file`; `client-headers@file` (or `client-cert-pem@file`) must come first so group-gate sees the certificate (for revocation and the certificate binding).
 
 If the session does not meet the app's [sign-in template](operations/auth-policies.md), group-gate answers with a 403 page: a step-up page whose **Continue** opens `https://auth.<domain>/oauth2/start?pc_method=<method>&rd=https://<app>/` (Keycloak then asks for that one method only), a "present your YubiKey certificate" page, or a needs-stronger page. (oauth2-proxy only serves `/oauth2/*` on `auth.<domain>`: a host-less router would get Traefik's default TLS options and be refused with 421 on every app host.)
 
@@ -144,11 +146,13 @@ sequenceDiagram
     U->>O: Callback with auth code
     O->>K: Exchange code for tokens
     K-->>O: ID token + access token (includes groups)
-    O-->>U: Set session cookie, redirect to app
+    Note over O: session saved in the session store (sessions)
+    O-->>U: Set ticket cookie, redirect to app
     U->>T: GET https://pihole.example.com (with cookie)
     T->>O: Forward auth check
+    Note over O: session loaded from the store by the ticket
     O-->>T: 200 OK (X-Auth-Request-*, access token)
-    T->>G: Check (host, groups, access token, URI, client cert info)
+    T->>G: Check (host, groups, access token, URI, certificate info)
     Note over G: revocation, group users_pihole, path_groups, sign-in template
     G-->>T: 200 OK (X-Forwarded-User, X-Auth-Request-Groups)
     T->>A: Forward request
@@ -200,44 +204,45 @@ sequenceDiagram
     A-->>U: App logs in alice automatically
 ```
 
-### mTLS (Client Certificate)
+### YubiKey and browser certificates
 
-When the YubiKey certificate method is on, the browser presents the X.509 certificate stored in the YubiKey's PIV slot during the TLS handshake. Traefik verifies it against the Portcullis CA chain, but **does not check revocation**; that happens in group-gate and Keycloak.
+When the YubiKey certificate method is on, the browser presents the certificate stored in the YubiKey's PIV slot during the TLS handshake; when the browser certificate method is on, it can present a browser certificate (a `.p12` the person created on the [Sign-in page](operations/auth-policies.md#the-sign-in-page)) the same way. Traefik verifies it against the chain of the host's TLS option (`protected`: root + the YubiKey CA only, so a browser certificate never passes; `protected-any` and `authaware`: root + both intermediates), but **does not check revocation**; that happens in group-gate and Keycloak. Both tell the two kinds apart by the issuing CA: `pki_int` (YubiKey) or `pki_file` (browser).
 
 ```mermaid
 sequenceDiagram
-    participant U as User + YubiKey
+    participant U as User + YubiKey or browser certificate
     participant T as Traefik
     participant K as Keycloak
     participant G as group-gate
     participant A as App
 
-    U->>T: TLS handshake (client cert)
+    U->>T: TLS handshake (certificate)
     T->>T: Verify chain against certs/ca-chain.crt
     U->>T: GET https://auth.example.com/... (login)
     T->>K: via portcullis-auth, X-Forwarded-Tls-Client-Cert (PEM)
-    Note over K: trusts the header only from Traefik's IP,<br/>re-validates chain + EKU, checks Vault CRL (fail closed)
-    K-->>U: Session with amr=mtls (YubiKey certificate)
-    U->>T: GET https://app.example.com (cookie + client cert)
-    T->>G: forward-auth with X-Forwarded-Tls-Client-Cert-Info
-    Note over G: serial not revoked? counting yubikey_cert?<br/>then cert CN must equal preferred_username
+    Note over K: trusts the header only from Traefik's IP;<br/>the step whose CA issued the leaf runs:<br/>re-validates chain + EKU, checks that CA's CRLs (fail closed)
+    K-->>U: Session with amr=mtls (YubiKey) or amr=file (browser)
+    U->>T: GET https://app.example.com (cookie + certificate)
+    T->>G: forward-auth with X-Forwarded-Tls-Client-Cert (PEM) and -Info
+    Note over G: serial not revoked (both CAs)?<br/>leaf signed by the CA of the counted method?<br/>then CN must equal preferred_username
     G-->>T: 200 OK
     T->>A: Forward request
 ```
 
-Routers on the `protected` tier without forward-auth (`mtls`-method apps) rely on the TLS handshake alone: there the certificate works until it expires. See [TLS & mTLS](setup/certificates.md#revocation).
+Routers on the `protected` tier without forward-auth (`mtls`-method apps) rely on the TLS handshake alone: there only a YubiKey certificate gets in, and it works until it expires. See [Certificates](setup/certificates.md#revocation).
 
 ## TLS Tiers
 
-Traefik's static `traefik/dynamic/tls.yml` defines three TLS option sets. The Hub picks each app's tier from its sign-in template and the certificate methods that are switched on.
+Traefik's static `traefik/dynamic/tls.yml` defines four TLS option sets. The Hub picks each app's tier from its sign-in template and the certificate methods that are switched on.
 
-| Tier | Traefik TLS Option | Client Cert Behavior | Use Case |
+| Tier | Traefik TLS Option | Certificate Behavior | Use Case |
 |------|-------------------|---------------------|----------|
-| **protected** | `RequireAndVerifyClientCert` | Required -- TLS handshake fails without a valid cert | Templates that need a certificate in every alternative; `mtls`-method apps |
-| **authaware** | `VerifyClientCertIfGiven` | Optional -- verified if present, passkeys otherwise | Apps whose template has a certificate in some alternative (Standard, Strong); every core page |
+| **protected** | `RequireAndVerifyClientCert`, `certs/ca-chain-yubikey.crt` (the YubiKey CA alone, no root) | A YubiKey certificate required -- the TLS handshake fails without one (a browser certificate never passes) | `mtls`-method apps; templates where every alternative needs the YubiKey certificate |
+| **protected-any** | `RequireAndVerifyClientCert`, `certs/ca-chain.crt` | A YubiKey or browser certificate required | Templates where every alternative needs a certificate and at least one accepts the browser certificate |
+| **authaware** | `VerifyClientCertIfGiven`, `certs/ca-chain.crt` | Optional -- verified if present, passkeys otherwise | Apps whose template has a certificate in some alternative (Standard, Strong); every core page |
 | **public** | no `clientAuth` | Not requested | Templates with no certificate method on, apps that manage their own auth |
 
-With the YubiKey certificate method off, no app asks for a client certificate (except `mtls`-method apps, whose certificate is their sign-in); core pages always offer an optional one. See [Sign-in Methods and Templates](operations/auth-policies.md#traefik-tls-tier).
+With both certificate methods off, no app asks for a certificate (except `mtls`-method apps, whose certificate is their sign-in); core pages always offer an optional one. See [Sign-in Methods and Templates](operations/auth-policies.md#traefik-tls-tier).
 
 ## Network Topology
 
@@ -245,7 +250,8 @@ Traefik is the only service exposed to the internet (ports 80 and 443). It is at
 
 - **`portcullis`** -- Core services: Keycloak, LLDAP, Vault, PostgreSQL, oauth2-proxy, group-gate, Hub, enroll. Apps are not on it and cannot reach these services directly.
 - **`portcullis-proxy`** -- Traefik and app frontend services; Traefik's docker provider routes over it. Fixed subnet (`PORTCULLIS_PROXY_SUBNET`, default `172.31.250.0/24`), Traefik always at `PORTCULLIS_TRAEFIK_IP` (default `172.31.250.2`), other containers from `PORTCULLIS_PROXY_IP_RANGE` (which excludes Traefik's IP). Header-auth apps trust identity headers only from Traefik's address.
-- **`portcullis-auth`** -- Internal network with only Traefik (fixed `PORTCULLIS_AUTH_TRAEFIK_IP`, default `172.31.251.2`) and Keycloak. Keycloak accepts proxy headers -- including the forwarded client certificate for X.509 login -- only from that address.
+- **`portcullis-auth`** -- Internal network with only Traefik (fixed `PORTCULLIS_AUTH_TRAEFIK_IP`, default `172.31.251.2`) and Keycloak. Keycloak accepts proxy headers -- including the forwarded certificate for YubiKey and browser certificate login -- only from that address.
+- **`portcullis-sessions`** -- Internal network with only the session store `sessions` and the two oauth2-proxies (`forward-auth`, `forward-auth-ext`).
 - **`portcullis-mcp`** -- Internal network with only `mcp-gate`, Keycloak and the Hub (fixed addresses): the gate fetches Keycloak's keys and calls the Hub's MCP listener here. The gate also sits on `portcullis-proxy` at `PORTCULLIS_MCP_GATE_IP` (default `172.31.250.3`), where Traefik routes MCP requests to it and it reaches the app companions.
 - **`socket-proxy-traefik`, `socket-proxy-hub`** -- Internal networks, each shared by one client and its Docker socket proxy.
 - **Per-app networks** -- Each app's compose project (`portcullis-<app-id>`) has its own `default` network. Internal services (databases, caches, workers) live only there, isolated from all other apps.
@@ -269,6 +275,10 @@ graph TB
 
     subgraph auth ["Network: portcullis-auth (internal)"]
         T[Traefik :80/:443<br/>172.31.250.2 / 172.31.251.2]
+    end
+
+    subgraph sess ["Network: portcullis-sessions (internal)"]
+        SS[(sessions :6379<br/>Valkey)]
     end
 
     subgraph sock ["Socket proxy networks (internal)"]
@@ -303,6 +313,7 @@ graph TB
     KC --- LL
     KC --- PG
     O2 --- KC
+    O2 --- SS
     GG --- V
     EN --- V
 ```

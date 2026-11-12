@@ -61,7 +61,7 @@ mkdir myapp
 | speaks OpenID Connect and can be pointed at Keycloak | `native-oidc` (+ `keycloak_clients`) | **no** `portcullis-auth`; the app logs users in itself |
 | can create/log in users from a trusted header (`X-Forwarded-User`) | `header-auth` | `portcullis-auth@docker,portcullis-groups@docker` |
 | has its own login (or none) and no SSO | `forward-auth` | `portcullis-auth@docker,portcullis-groups@docker` |
-| is protected by client certificates only | `mtls` | `tls.options: protected@file`, no forward-auth |
+| is protected by a YubiKey certificate at the TLS handshake only (browser certificates are refused there) | `mtls` | `tls.options: protected@file`, no forward-auth |
 | uses a vendor account system (e.g. plex.tv) | `custom` (+ [`auth.native_login`](manifest-reference.md#authnative_login) if it has its own login) | none: the Hub adds Portcullis sign-in through its override |
 | is meant to be public | `public` | none |
 
@@ -538,7 +538,7 @@ lets nobody sync.
   middleware of your own: on an extra-domain hostname the Hub swaps it for the
   extra-domain sign-in, and it refuses (400) extra-domain hostnames for a
   router whose own chain reaches `portcullis-auth`.
-  `client-headers@file` first lets group-gate check client-cert revocation.
+  `client-headers@file` first lets group-gate check certificate revocation (YubiKey and browser certificates).
 - **Volumes** declare **no** `name:` in a `multi` template: the Hub's override
   names them, `portcullis_<key>` for the default instance and
   `portcullis_<instance-id>-<key>` for the others. Never rename a volume key
@@ -656,10 +656,10 @@ Gate an admin path of a native-OIDC app with a second router and
 Same as above with `tls.options: public@file`, only `security-headers@file` as
 middleware, and `auth.method: public` / `group_access: false` in the manifest.
 
-### Trusting the internal CA
+### Trusting the internal certificate authority
 
 Apps that call Keycloak over HTTPS must trust `certs/ca-bundle.crt` (system CAs,
-the Portcullis PKI chain, and the LE staging root when `ACME_STAGING=true`).
+the internal certificate authority's chain, and the LE staging root when `ACME_STAGING=true`).
 Mount it read-only and point the runtime at it:
 
 | Runtime | Setting |
