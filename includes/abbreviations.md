@@ -35,6 +35,10 @@
 *[delta CRL]: Incremental CRL containing only changes since the last full CRL
 *[DNS-01]: ACME challenge proving domain control via DNS TXT records
 *[ACME]: Automated Certificate Management Environment - protocol for issuing certificates
+*[DNS plan]: The records Portcullis wants for a name (address, caa, nomail sets), their live values and status, and the zone's DNSSEC state (dns plan, the Hub's DNS panel)
+*[CAA]: Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name
+*[DS record]: Delegation Signer: the digest of a zone's DNSSEC key, published at the parent zone through the registrar
+*[DNSSEC]: DNS Security Extensions: signed DNS records that validating resolvers check
 *[wildcard certificate]: TLS certificate valid for all subdomains (*.domain)
 *[policy file]: JSON file (version 6) with the sign-in methods and templates, and full hostnames mapped to templates, groups and expiries
 *[public exception]: Unauthenticated paths for share links (off by default)

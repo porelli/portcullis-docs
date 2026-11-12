@@ -41,7 +41,9 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`restore`](#restore) | Restore a local or off-host (`--from-offsite`) backup |
 | Configuration | [`config apply`](#config-apply) | Apply `ACME_STAGING`, rebuild the CA bundle |
 | | [`config init`](#config-init) | Keep your settings in `config/`, a separate git repo |
-| | [`dns setup`](#dns-setup) | Create A/AAAA records for the domain and its wildcard |
+| | [`dns plan`](#dns-plan) | The domain's DNS plan: records, CAA pin, DNSSEC (changes nothing) |
+| | [`dns setup`](#dns-setup) | Write the planned records (A/AAAA, CAA) through the DNS provider |
+| | [`dns check`](#dns-check) | Public DNS checks only (no credentials); exit 1 on a problem |
 | Vault and PKI | [`vault init`](#vault-init) | Initialise and unseal Vault, set up the enroll AppRole |
 | | [`vault unseal`](#vault-unseal) | Unseal Vault and wait until it is active |
 | | [`vault rotate-enroll-secret`](#vault-rotate-enroll-secret) | Issue a new enroll AppRole secret-id |
@@ -84,6 +86,9 @@ for off-host backups. Then it runs these steps in order:
 7. OIDC clients (`oidc register`)
 8. `config/` repo (`config init`)
 
+At its end it reads Traefik's ACME account and pins the main domain's CAA
+to it, as [`up`](#up) does.
+
 If `.env` already exists it is kept, and only empty or missing secrets are
 generated. Every step is idempotent, so you can re-run `init` after a failure.
 
@@ -111,6 +116,14 @@ network settings, creates the bind-mount sources, and rebuilds
 `certs/ca-bundle.crt`. Then it runs `docker compose up -d --build` and waits
 for vault, postgres, lldap and keycloak to be healthy. Vault unseals itself on
 start.
+
+Then it reads Traefik's ACME account URI (a helper container with the ACME
+volume read-only and no network prints only the URI), writes it to
+`secrets/domains/main-domain.env` (restarting `domains` when it changed), and,
+with an automated provider and `DNS_CAA=true`, pins the main domain's CAA to
+that account when the live pin differs. It waits up to 3 minutes for a first
+registration. A failure only warns: `up` never fails because of it. See
+[DNS Configuration → CAA](../setup/dns.md#caa).
 
 Every `init`, `up`, `upgrade` and `restore` also writes the session store's
 config, `secrets/sessions/valkey.conf` (its users and the SHA-256 of the two
@@ -154,6 +167,7 @@ Updates a running installation after `git pull`:
 5. Runs `docker compose up -d --build` and waits for health.
 6. Restarts services whose bind-mounted config files changed (see [`up`](#up) for the list).
 7. Runs `keycloak configure` and `oidc register`.
+8. Pins the main domain's CAA to Traefik's ACME account, as [`up`](#up) does.
 
 | Option | Meaning |
 |--------|---------|
@@ -186,16 +200,25 @@ Prints a health overview:
 - mcp-gate refusing every AI request (`503`) and why, for example AI
   credentials it can't decrypt with `secrets/mcp-gate/age.key`
   ([AI support → Residuals](ai.md#residuals))
+- **DNS**, for the main domain and every added domain, from the domains
+  service's plans (`domains report`, over its loopback API): A/AAAA point at
+  this server, the CAA as planned, the DNSSEC state, and records under the
+  name that aren't Portcullis'. For the main domain it also compares the CAA
+  pin with Traefik's current ACME account: when the CA wouldn't issue to it,
+  or `main-domain.env` names another account, it fails with
+  `CAA allows another ACME account than Traefik's — fix: ./portcullis dns setup`.
+  A DNSSEC state `bogus` or `ds_mismatch` fails too. While the domains
+  service isn't running the block is one line, "DNS checks unavailable"
 
 Exits 1 if a core service is down or unhealthy, if Vault is not active, if
-the passkey policy drifted, if such a container exists, or if mcp-gate
-refuses every AI request.
+the passkey policy drifted, if such a container exists, if mcp-gate
+refuses every AI request, or if a DNS check is a Problem.
 Otherwise it exits 0.
 
 | Option | Meaning |
 |--------|---------|
-| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used) |
-| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, the passkey policy (`portcullis_keycloak_passkey_policy_ok`, absent when not checked), CA expiry and per-person YubiKey / browser certificate expiry (label `kind`). Run it after every scheduled backup (the systemd unit does) |
+| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used), the DNS block in `dns` (`{main, domains: {<name>: …}}`, each `{name, address_ok, caa_ok, would_issue, dnssec, foreign, problems, checks}`, the main domain also `lost_account`; `null` while the DNS checks are unavailable) |
+| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, the passkey policy (`portcullis_keycloak_passkey_policy_ok`, absent when not checked), CA expiry and per-person YubiKey / browser certificate expiry (label `kind`), the DNS checks (`portcullis_dns_check`, `portcullis_dnssec_state`). Run it after every scheduled backup (the systemd unit does) |
 
 ### version
 
@@ -336,7 +359,12 @@ Applies the ACME toggle in `.env` and rebuilds `certs/ca-bundle.crt`:
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it clears Traefik's `acme.json` so Traefik registers again |
+| `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it stops Traefik, relaxes the main domain's CAA to CA-only (automated providers with `DNS_CAA=true`; a failure only warns), then clears Traefik's `acme.json` so Traefik registers again |
+
+It also writes `ACME_DNS_PROVIDER` (Traefik's lego provider: `hetzner-cloud`
+becomes lego's `hetzner`), and refuses `DNS_PROVIDER=hetzner` with
+`HETZNER_API_TOKEN` set or `hetzner-cloud` with `HETZNER_API_KEY` set
+([DNS Configuration → Hetzner](../setup/dns.md#hetzner-legacy-dns-and-hetzner-cloud)).
 
 It never writes `traefik/dynamic/tls.yml`: that file is static, and which apps
 ask for a YubiKey or browser certificate follows the sign-in methods and templates in the
@@ -367,31 +395,93 @@ your settings. Re-running it only refreshes the symlinks.
 | `--remote URL` | Set `config/`'s git remote. Push it to a **private** repo: `.env` holds secrets |
 | `--from URL` | Clone an existing config repo into `config/` (new machine) |
 
+### dns plan
+
+`portcullis dns --help`:
+
+```
+Usage: portcullis dns plan|setup|check [options]
+
+  plan      Show the main domain's DNS plan: wanted vs live records, CAA, DNSSEC
+  setup     Show the plan, confirm, write the records through the provider API
+  check     Public checks only (no credentials); exit 1 on any problem
+```
+
+```
+portcullis dns plan [--json]
+```
+
+The DNS plan of `PORTCULLIS_DOMAIN`: every record Portcullis wants
+(`address`: A/AAAA for `<domain>` and `*.<domain>`; `caa`: `issue` +
+`issuewild` for the ACME CA, pinned to Traefik's ACME account, DNS-01 only;
+`nomail` with `DNS_NOMAIL=true`), what the provider holds and the public
+resolvers (1.1.1.1, 8.8.8.8) answer, records under the domain that aren't
+Portcullis', whether the CA would issue, and the DNSSEC state with the steps
+left. Changes nothing.
+
+| Option | Meaning |
+|--------|---------|
+| `--json` | The plan object ([contract §12.2](../guides/integration-contracts.md#122-api)) |
+
+The output is a table (set, name, type, wanted, live, status), the steps
+left under it (`→ …`), then a `CAA:` line (issuer, account or "CA-only (no
+Traefik account yet)", "would issue: yes / NO") and a `DNSSEC:` line (state,
+zone, the DS values). With an automated provider the plan also reads the
+provider's records; otherwise it uses the public resolvers only. If Traefik's
+ACME account exists but can't be read, it warns and shows the CA-only pin.
+
 ### dns setup
 
 ```
-portcullis dns setup [--check]
+portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail]
 ```
 
-Creates or updates the A records (and AAAA, if the host has public IPv6) for
-`PORTCULLIS_DOMAIN` and `*.PORTCULLIS_DOMAIN`. They point at this host's public
-IP. It uses `DNS_PROVIDER` and the provider's credentials from `.env`:
+Shows the plan, asks to apply it (`--yes`: don't ask; required without a
+terminal), writes the record sets through `DNS_PROVIDER`'s API with its
+credentials from `.env`, waits for the public resolvers (up to 5 minutes),
+then runs [`dns check`](#dns-check):
 
 | Provider | Variables |
 |----------|-----------|
 | `cloudflare` | `CLOUDFLARE_API_TOKEN` |
 | `porkbun` | `PORKBUN_API_KEY`, `PORKBUN_SECRET_API_KEY` |
+| `route53` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_HOSTED_ZONE_ID` (optional) |
 | `digitalocean` | `DO_AUTH_TOKEN` |
-| `hetzner` | `HETZNER_API_KEY` |
-| `route53` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_HOSTED_ZONE_ID` (needs the `aws` CLI) |
+| `hetzner` | `HETZNER_API_KEY` (the legacy dns.hetzner.com API) |
+| `hetzner-cloud` | `HETZNER_API_TOKEN` (DNS in the Hetzner Cloud API) |
 
-For other providers, or `none`, it prints the records to create by hand.
+Other providers (or `none`): it prints the records to create by hand and
+exits 0. The credentials reach the domains image's dns tool on its stdin
+only. A required variable that is empty fails before the tool starts, naming
+the variable (never its value).
 
 | Option | Meaning |
 |--------|---------|
-| `--check` | Only compare what resolves (via 1.1.1.1) with the public IP. Exits non-zero if the records are not correct yet |
+| `--yes` | Apply without asking |
+| `--dnssec` | Also turn on DNSSEC signing (the whole zone; `cloudflare` only; others print the steps). Signing is never turned off |
+| `--only SET` | Apply one record set: `address`, `caa` or `nomail` |
 
-See [DNS Configuration](../setup/dns.md).
+Without `--only` it applies `address` and `caa`, plus `nomail` with
+`DNS_NOMAIL=true`. With `DNS_CAA=false` the `caa` step removes the CAA
+entries Portcullis wrote. If Traefik's ACME account can't be read, the live
+CAA is left alone (`--only caa` is refused). There is no `--check` option:
+use `dns check`.
+
+### dns check
+
+```
+portcullis dns check [--json]
+```
+
+The plan from the public resolvers only (no credentials needed): A/AAAA,
+the CAA pin (would the CA issue for Traefik's account?) and DNSSEC. Exits
+1 when an item or the DNSSEC state is a problem.
+
+| Option | Meaning |
+|--------|---------|
+| `--json` | The plan object ([contract §12.2](../guides/integration-contracts.md#122-api)) |
+
+See [DNS Configuration](../setup/dns.md) for the record sets, CAA and DNSSEC.
 
 ---
 

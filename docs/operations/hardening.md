@@ -248,6 +248,7 @@ CI fails if any of these is missing.
 | group-gate | 10003:10003 + group 10001 (`group_add`) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL and CA-file parsing) and `PyJWT` (token claims) + the script. Mounts `certs/yubikey-ca.crt` and `certs/browser-ca.crt` read-only (`/etc/group-gate/ca/`). Writes only `group_gate_data` (`/data`, owned `10003:10001`): the opened log `opened/` (mode 2770, group 10001; files 0640) for sign-in history. A write failure never denies a request |
 | hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002. Generates browser certificates' keys in memory, answers the `.p12` and its password once to the Hub, clears them and never stores or logs them |
+| dns-tool (profile `tools`) | 10004:10004 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains dns`, built if missing, never pulled). Only `./portcullis dns …` starts it (`docker compose run --rm -T`). Network `domains-egress` only; no volumes, no `environment`, no `env_file`, no ports, no Traefik labels; `mem_limit` 128m, `pids_limit` 64. The provider credentials arrive as JSON on stdin ([The dns tool](#the-dns-tool)) |
 | mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps one person's requests in flight and the memory request bodies hold, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps); results and aggregate refreshes aren't budgeted, so many people at once can still exhaust it and the container restarts, one person can't), `pids_limit` 256 |
 | prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
 | grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
@@ -255,6 +256,12 @@ CI fails if any of these is missing.
 **Throwaway containers the CLI starts:**
 
 - the chown helper: pinned `alpine`, `--network none`, only `CAP_CHOWN`
+- `traefik-account-uri` (reading Traefik's ACME account for the CAA pin): the
+  `portcullis-domains` image as root (to read the root-owned `acme.json`),
+  `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, the
+  `traefik_acme` volume read-only. It prints only the account URI
+  (`.letsencrypt.Account.Registration.uri`, checked to be a plain `https`
+  URI), never anything else from the file, which holds private keys
 - for backups, the volume snapshot and LLDAP check: the `portcullis-group-gate`
   image (built first if missing), the volume owner's uid, `--network none`,
   read-only, no capabilities
@@ -959,8 +966,9 @@ The service sits on three networks, each with exactly the members below:
 - **`portcullis-domains`** (internal, fixed subnet `172.31.252.0/28`): domains + Hub.
   The HTTP API (`:8080`) accepts connections only addressed to this subnet or
   loopback, never from other networks.
-- **`domains-egress`** (internet access): domains only. It reaches ACME and DNS
-  providers over this, isolated from the other services.
+- **`domains-egress`** (internet access): domains and the one-shot
+  [`dns-tool`](#the-dns-tool). They reach ACME and the DNS providers over
+  this, isolated from the other services.
 - **`portcullis-certs`** (internal): domains + Traefik. The certificate endpoint
   (`:8443`) uses mutual TLS with a private CA.
 
@@ -977,6 +985,35 @@ DNS credentials are sent to the service **once** and never appear in the Hub's
 state, logs, audit or errors. The service's own errors are redacted against the
 domain's credentials before being logged, stored or returned (providers may echo
 tokens or request bodies).
+
+### The dns tool
+
+`./portcullis dns plan / setup / check` (and the CAA pin after `up`, the
+relax in `config apply`) run the domains image's one-shot tool as the compose
+service `dns-tool` (profile `tools`, never started on its own). It gives the
+main domain's `.env` DNS credentials to a short-lived container only; the
+long-running domains service and the Hub never hold them.
+
+- **Egress only.** Its only network is `domains-egress`: it reaches the DNS
+  provider and the public resolvers, nothing inside the stack. No volumes, no
+  `environment`, no `env_file`, read-only root filesystem, uid 10004, all
+  capabilities dropped. CI checks all of this, and that `domains` and
+  `dns-tool` are the only members of `domains-egress`.
+- **Credentials on stdin.** `./portcullis` builds one JSON object with `jq`,
+  which reads each value from its own environment (`env.X`), so a value
+  is never on a command line; it is piped to the tool's stdin. The
+  credentials never appear in argv, the container's environment, `docker
+  inspect` or logs. `dns check` sends none (the tool refuses credentials
+  there).
+- **Redaction.** Every provider error is redacted against the credentials
+  before it is printed.
+- **No secrets from files.** The CAA pin's account URI comes from the
+  separate `traefik-account-uri` helper ([Container hardening](#container-hardening)),
+  which prints nothing else from `acme.json`.
+
+`secrets/domains/main-domain.env` (0600) holds only Traefik's account URI
+(`DOMAINS_MAIN_ACME_ACCOUNT_URI`), for the domains service's read-only plan of
+the main domain. It holds no credentials.
 
 ### Credentials at rest
 

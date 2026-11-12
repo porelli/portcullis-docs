@@ -36,8 +36,11 @@ dig +short portcullis.example.com
 dig +short test.portcullis.example.com   # any name: answered by the wildcard
 ```
 
-Both must return the server's public IP. If the domain has a **CAA** record,
-it must allow `letsencrypt.org`.
+Both must return the server's public IP. `./portcullis dns check` checks
+the same and more. **CAA** is handled by `dns setup`: it writes a CAA that
+allows only Let's Encrypt, only by DNS-01 and, once Traefik has registered,
+only Traefik's ACME account. CAA entries of other CAs already at the name stay
+([DNS Configuration → CAA](dns.md#caa)).
 
 !!! tip
     For a first try, set `ACME_STAGING=true` in `.env` (see the table below):
@@ -92,8 +95,9 @@ All options are in the [CLI Reference](../operations/cli.md#init).
    to start if any of them is missing, so there are no default passwords. An
    existing `.env` is kept; only empty or missing secrets are filled in.
 2. **Creates DNS records** for `<domain>` and `*.<domain>` pointing at this
-   host's public IP (`dns setup`; skipped with `--skip-dns` or
-   `--dns-provider none`). The wildcard covers all app and core subdomains: `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp` (the "All my apps" MCP endpoint, [AI support](../operations/ai.md)), and each enabled app.
+   host's public IP, and the CA-only CAA (`dns setup`; skipped with
+   `--skip-dns` or `--dns-provider none`). Its last step pins the CAA to
+   Traefik's ACME account once Traefik has registered. The wildcard covers all app and core subdomains: `auth`, `traefik`, `hub`, `directory`, `enroll`, `people`, `metrics`, `mcp` (the "All my apps" MCP endpoint, [AI support](../operations/ai.md)), and each enabled app.
 3. **Initialises Vault** in server mode with persistent raft storage. The root
    token and unseal key go to `secrets/` (see the warning below), and the
    enroll service gets a least-privilege AppRole. Vault unseals itself on
@@ -172,11 +176,12 @@ docker compose logs -f traefik 2>&1 | grep -i acme
 
 No certificate after a few minutes? Check, in this order:
 
-- `./portcullis dns setup --check` (are the records right and public?);
+- `./portcullis dns check` (are the records right and public, would the CA issue?);
 - the provider token: it must be allowed to **edit DNS records** of this zone
   (a read-only or wrong-zone token fails the challenge);
 - the Traefik log for `acme` errors such as `rateLimited` (use
-  `ACME_STAGING=true` while testing) or `CAA`;
+  `ACME_STAGING=true` while testing) or `CAA` (`./portcullis dns setup`
+  pins the CAA to Traefik's current account);
 - to change the provider or token, follow [DNS Configuration → Changing the provider or credentials](dns.md#changing-the-provider-or-credentials).
 
 ## Step 4: First sign-in (setup link)

@@ -56,10 +56,25 @@ All images:
 | `group-gate` | `group-gate:8080/metrics` | Decisions by endpoint/result (`allow`, `deny`, and the sign-in pages `stepup`, `needs_stronger`, `present_certificate`), denials and sign-in pages by reason, policy load errors, CRL last fetch and `nextUpdate`, revoked-serial counts |
 | `keycloak` | `keycloak:9000/metrics` | Management port (`--metrics-enabled`), not routed. Refused password attempts for `admin` / `portcullis-hub` (password sign-in is never available for them, contract §8.1 "Passwords") still appear as Keycloak `LOGIN_ERROR` events (`invalid_user_credentials`, with the account's user id) although brute-force protection counts nothing: don't alert on them as a lockout |
 | `prometheus`, `alertmanager`, `grafana` | self | |
-| `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry of the root and both intermediates, the newest YubiKey and browser certificate per person and kind) |
+| `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry of the root and both intermediates, the newest YubiKey and browser certificate per person and kind, and the [DNS checks](#dns-metrics)) |
 | `vault_health` | blackbox → `http://vault:8200/v1/sys/health` | 200 only when initialised, unsealed and active |
 | `services`, `services_tcp` | blackbox → enroll, forward-auth, Hub, LLDAP (HTTP); Postgres, LLDAP LDAP (TCP) | Services without a metrics endpoint |
 | `tls` | blackbox → `auth.<domain>:443` | Goes through the host's published port, so it sees the certificate browsers see. Verified against the system roots |
+
+### DNS metrics
+
+`status --textfile` writes two gauges per name (the main domain and every
+added domain), from the same plans as the
+[status DNS block](cli.md#status):
+
+| Metric | Labels | Value |
+|--------|--------|-------|
+| `portcullis_dns_check` | `name`, `check` (`address`, `caa`, `dnssec`, `foreign`) | `1` when that check of the name has no Warning or Problem, else `0`. `caa` is also `0` when the CA wouldn't issue to the pinned account; `dnssec` is `1` only for `secure` or `unsigned` |
+| `portcullis_dnssec_state` | `name`, `state` (`secure`, `unsigned`, `ds_missing`, `ds_mismatch`, `bogus`, `unknown`) | `1` for the name's current state |
+
+Both are absent while the DNS checks are unavailable (the domains service
+not running). No alert rule uses them yet; a DNS Problem already counts in
+`PortcullisStatusProblems`.
 
 The Vault metrics token is an orphan token without the default policy, with a
 10-year TTL. It lives in `secrets/monitoring/prometheus/vault-token`.
