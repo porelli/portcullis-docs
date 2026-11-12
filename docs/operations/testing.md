@@ -38,6 +38,8 @@ exactly as on a real install. Every step drives the stack through
     - `cert sync`, which writes the union of both CAs' revoked serials and must never empty or change the list when either list fails
     - `pki setup` idempotency, including resuming a partial run: a fresh Vault gets `pki`, `pki_int` and `pki_file`; an install with `pki_int` only gets `pki_file` and both chain files and the truststore rewritten with `PKI_TRUSTSTORE_CHANGED=true`; a stale or missing `ca-chain-yubikey.crt` is rewritten (it holds `pki_int` alone); the handshake rule with Go's semantics (`openssl verify -partial_chain`, the client's chain untrusted): `ca-chain-yubikey.crt` refuses a browser leaf sending `pki_file` + root and accepts a YubiKey leaf, `ca-chain.crt` accepts both, and a root added to the YubiKey file is caught; `pki_files_reload` restarts Traefik, Keycloak and group-gate whenever the CA files differ from `certs/.pki-files.loaded`, writing it only after a successful restart; nothing changes (flag unset) when everything is current; equal intermediate CNs are refused; the `browser-cert` role and `pki_file`'s CRL settings
     - `invite --replace-keys` deletes every passkey kind (`webauthn`, `webauthn-passwordless`, `portcullis-device-passkey`, `portcullis-security-key`), never a password or OTP credential, then signs the person out
+    - `keycloak configure` re-reads the passkey policy after its PUT and fails when it still differs; `status` fails on a drifted passkey policy (a ✗ line, `--json` `keycloak.passkey_policy`, the textfile gauge)
+    - `keycloak configure` ensures the impersonation mapper on `acr` (once, by `protocolMapper`) and enables the `portcullis-impersonation-notice` required action, failing when the realm lacks it
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - backups' `MANIFEST.json` names the Hub and Keycloak images; `upgrade` warns about a pinned `HUB_IMAGE` or `KEYCLOAK_IMAGE`
@@ -56,6 +58,7 @@ exactly as on a real install. Every step drives the stack through
     - `oauth2-proxy/alpha.yaml`: `loginURLParameters` are exactly `pc_method` (the six method ids and `passkey`), `kc_idp_hint`, `prompt`; no `acr_values`
     - step-up URLs (`/oauth2/start?pc_method=<method>`): `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
     - the reserved deny group
+    - impersonation: `test_imp_claims_parse`, `test_imp_malformed_claims_denied`, `test_imp_live_allows_with_headers`, `test_imp_ended_denied_at_once`, `test_imp_stale_file_denies`, `test_imp_cert_binds_admin_only`, `test_imp_never_steps_up`, `test_imp_signin_paths`, `test_imp_opened_log_act`, `test_client_sent_imp_headers_ignored`, `test_banner_names_validated`
     - `path_groups`, including bypass variants
     - the certificate binding (by issuer, both kinds)
     - revocation by serial list and by a real openssl-generated CRL
@@ -82,6 +85,7 @@ exactly as on a real install. Every step drives the stack through
     - `group-gate-map.conf` has `people=*`
     - `forward-auth-ext` mirrors `forward-auth` (image, command, secrets, trusted proxies; `portcullis-auth-ext` has every `portcullis-auth` forwardauth setting), defines no router, uses the relative callback `/oauth2/callback` and the host-only cookie `__Host-portcullis_ext` (`Secure`, `Path=/`, no cookie domain, no whitelist); `oauth2-proxy/alpha.yaml` sends PKCE S256
     - the session store: `sessions` is `valkey/valkey` pinned, `999:1000`, read-only with a tmpfs `/data`, no ports, environment or routers, mounts only `secrets/sessions/valkey.conf` read-only (and nobody else mounts `secrets/sessions/`), has the `NOAUTH` healthcheck and only the network `portcullis-sessions`, which is internal with exactly `sessions`, `forward-auth` and `forward-auth-ext` (like `portcullis-mcp`'s members); both oauth2-proxies use the `redis` store at `redis://sessions:6379` with their own user and a generated 40-character password (different, in no other service's environment), wait for `sessions` healthy, and keep the cookie name / domain; an empty `FORWARD_AUTH_REDIS_PASSWORD` or `FORWARD_AUTH_EXT_REDIS_PASSWORD` is rejected
+    - impersonation: the four forward-auth middlewares list `X-Forwarded-Impersonator` and `X-Forwarded-Impersonation`; Keycloak has `--features-disabled=impersonation` and no `--features`/`KC_FEATURES` enabling it; `PORTCULLIS_PORTAL_URL` = `https://<domain>/`; group-gate's `GATE_IMPERSONATION_FILE` = `/hub-data/impersonation.json`; the Hub's `HUB_IMPERSONATION_MAX_MINUTES` = 30
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
@@ -89,7 +93,7 @@ exactly as on a real install. Every step drives the stack through
     - `blackbox_exporter --config.check`
     - a sanity check of the provisioned dashboard JSON
 - **enroll** `go vet` + `go test` in the pinned Go image: CSR validation, content type, AppRole login and re-login, the renewal checks (`TestRenewChecksPresented`), browser certificates (`TestBrowserCertP12Decodes`: the `.p12` decodes with its password to an EC P-256 key matching a leaf with CN = the user issued by the browser CA, chain [browser CA, root]; `TestBrowserCertPasswordShape`; `TestBrowserCertTTLCeiling`; `TestBrowserCertMaxActive` and `TestBrowserCertMaxActiveConcurrent`: 10 parallel creates with a maximum of 3 → exactly 3; `TestBrowserCertSecretsNeverLogged`), the certificate actions (`TestCertAPINeedsBearer`, `TestCertAPIStrictBodies`, `TestCertAPIUnwired503`, `TestYubiKeyIssueValidatesCSR`, `TestRevokeFindsMountAndOwner`), the public mux (`TestPublicMuxOnlyInvite`: `/`, `/users`, `/certs`, `/self`, `/api/sign`, `/api/self/renew` → 404), the certificates API over both CAs (`TestCertificatesBothMountsKinds`) (`TestInternalCertificatesNeedsBearer`: 401 without, with an empty or wrong bearer or another scheme, not on the loopback listener; `TestInternalCertificatesLists`: only client-auth certificates, lowercase users, Vault serials, RFC 3339 UTC expiry, revocation state, no PEM, and `503` for the whole list when one serial, certificate or revocation state can't be read; `TestInternalCertificatesDeadline`: the deadline is at most 15 s, a listing that ignores its context still answers `503` at the deadline, and a Vault that never answers gets its call cancelled).
-- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`; gate file v2) is decoded strictly and re-encoded byte for byte; `TestConfigV2Strict` refuses version 1, `acr_loa` / `min_loa`, a rule leaf outside `methods`, groups of 9, depth 5, more than 48 leaves and a companion whose rule needs a certificate. `internal/signin` runs the shared sign-in vectors (`internal/signin/testdata/signin_vectors.json`, a byte copy of the Hub's `internal/signin/testdata/vectors.json`): rule shapes, meeting a rule, alternatives, the reader rejects. The step after the tests ("mcp-gate shared vectors match the Hub") compares all three files with the same-named Hub branch, else main, the same way (exact branch, at the listed commit). The tests cover the token rules (signature, issuer, audience, scope, client, the sign-in rule over the token's `amr` — a certificate, `inv`, an unknown or switched-off method never counts (`TestTokenNeverCountsCertificates`), checked after the population and met or refused on the people and admin resources too (`TestPopulationBeforeSignInRule`) —, population, `Origin`; a rule that doesn't decode names its path, never its value), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream clients and sign-in rules — `TestAggregatePerUpstreamRule`, entries keyed on the token's method set) and the Portcullis proxy. The gate writes a request's access-log line after the response has gone out. Before reading the log, the end-to-end tests therefore wait until every request they sent (except the open `GET` stream) has finished being handled, then flush the log's queue. A test never reads a line that is still on its way. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890. A second check (sign-in part 2) pins `group_gate_data` to exactly group-gate (read-write at `/data`, `10003:10003` + group `10001`) and the Hub (read-write at `/group-gate-data`), group-gate's two CA files (read-only under `/etc/group-gate/ca/`) and both CAs' CRL lists, the Hub's `HUB_CLIENT_CERT_TTL` / `HUB_CERT_EXPIRY_WARN_DAYS`, Keycloak's `PORTCULLIS_SIGNIN_URL`, no self-service middleware, and `enroll-invite` (`PathPrefix(/invite/)`) as the only router on `enroll.<domain>`; `tests/test_cli.sh` checks the same wiring in the files, the realm's two x509 executions and events settings, `keycloak configure` pushing each x509 config by its alias, and that no text names the retired `enroll.<domain>` self-service pages.
+- **mcp-gate** (`mcp-gate/`): `go mod verify`, `go vet`, `gofmt`, `go test -race ./...`. The shared test vector of contract §15.4 (`internal/config/testdata/mcp-gate.json` and `mcp-credentials.json`, byte-identical to the Hub's `internal/aigate/testdata/`; gate file v2) is decoded strictly and re-encoded byte for byte; `TestConfigV2Strict` refuses version 1, `acr_loa` / `min_loa`, a rule leaf outside `methods`, groups of 9, depth 5, more than 48 leaves and a companion whose rule needs a certificate. `internal/signin` runs the shared sign-in vectors (`internal/signin/testdata/signin_vectors.json`, a byte copy of the Hub's `internal/signin/testdata/vectors.json`): rule shapes, meeting a rule, alternatives, the reader rejects. The step after the tests ("mcp-gate shared vectors match the Hub") compares all three files with the same-named Hub branch, else main, the same way (exact branch, at the listed commit). The tests cover the token rules (signature, issuer, audience, scope, client, the sign-in rule over the token's `amr` — a certificate, `inv`, an unknown or switched-off method never counts (`TestTokenNeverCountsCertificates`), checked after the population and met or refused on the people and admin resources too (`TestPopulationBeforeSignInRule`) —, population, `Origin`; a rule that doesn't decode names its path, never its value), resource metadata, protocol versions, tool policy, confirmations and continuations, rate limits, the access log (refusing unloggable calls), the aggregate (names, collisions, per-upstream clients and sign-in rules — `TestAggregatePerUpstreamRule`, entries keyed on the token's method set), the Portcullis proxy, and the `impersonated` refusal: a token with an `act` or `pc_imp` claim is refused (`TestImpersonatedTokenRefused`). The gate writes a request's access-log line after the response has gone out. Before reading the log, the end-to-end tests therefore wait until every request they sent (except the open `GET` stream) has finished being handled, then flush the log's queue. A test never reads a line that is still on its way. The compose wiring check also asserts the gate's networks (exactly `portcullis-mcp` with the Hub and Keycloak, and `portcullis-proxy` at its fixed IP), its secret mounts, `mcp_gate_data` (read-only in the Hub) and that no router targets the Hub's port 8890. A second check (sign-in part 2) pins `group_gate_data` to exactly group-gate (read-write at `/data`, `10003:10003` + group `10001`) and the Hub (read-write at `/group-gate-data`), group-gate's two CA files (read-only under `/etc/group-gate/ca/`) and both CAs' CRL lists, the Hub's `HUB_CLIENT_CERT_TTL` / `HUB_CERT_EXPIRY_WARN_DAYS`, Keycloak's `PORTCULLIS_SIGNIN_URL`, no self-service middleware, and `enroll-invite` (`PathPrefix(/invite/)`) as the only router on `enroll.<domain>`; `tests/test_cli.sh` checks the same wiring in the files, the realm's two x509 executions and events settings, `keycloak configure` pushing each x509 config by its alias, and that no text names the retired `enroll.<domain>` self-service pages.
 
 ### `build-and-test` (whole stack)
 
@@ -163,14 +167,18 @@ the internal PKI) and verifies:
 - **enroll serves only setup links.** `https://enroll.<d>/` and every path but `/invite/…` answer Traefik's 404. On the container itself (step "Find enroll; its retired pages and APIs are gone") `:8443/healthz` answers 200 and `/`, `/users`, `/certs`, `/enroll/<u>`, `/api/users`, `/self`, `/api/self/renew` answer 404 (`POST /api/sign` 404 / 405).
 - **enroll's YubiKey certificate API** (`POST enroll:8444/internal/yubikey-certificates`, contract §9.4, the admin CSR path that replaced `/api/sign`): with the bearer, testuser's CSR is signed on `pki_int` through enroll's AppRole (201, a PEM certificate issued by the YubiKey CA, chaining to `certs/ca-chain.crt`); no bearer or a wrong one is 401; the same CSR for `admin` is refused.
 - **Sign-in flows and setup links.**
+    - first the realm's passwordless passkey policy is drifted (conveyance `none`, attachment `cross-platform`), and `keycloak configure` must restore it
     - the browser flow is exactly the sign-in extension's tree (contract §8.1: cookie · invite redirector · {`portcullis-x509` (`x509-config`) · `portcullis-x509` (`x509-browser-config`) · passkey with one conditional sub-flow per kind · `portcullis-password-form`}, then `portcullis-template`), every reference config has a known amr and `maxAge` 36000; it carries the `[sync <hash>]` marker and a second `keycloak configure` rebuilds nothing
-    - the two x509 configs on the live realm, as `keycloak configure` pushed them: `x509-config` (`yubikey_cert`, amr `mtls`, the YubiKey CA, `pki_int`'s CRLs) then `x509-browser-config` (`browser_cert`, `file`, the browser CA, `pki_file`'s CRLs), both aborting on a stale CRL; the realm's events config keeps `LOGIN` / `LOGIN_ERROR`
+    - the two x509 configs on the live realm, as `keycloak configure` pushed them: `x509-config` (`yubikey_cert`, amr `mtls`, the YubiKey CA, `pki_int`'s CRLs) then `x509-browser-config` (`browser_cert`, `file`, the browser CA, `pki_file`'s CRLs), both aborting on a stale CRL; the realm's events config keeps `LOGIN`, `LOGIN_ERROR` and `IMPERSONATE`
     - `webauthn-register-passwordless` enabled, the two-factor `webauthn-register` disabled; the realm has `acr.loa.map` `{}`, brute force (10 / 60 s / 900 s, not permanent) and direct passkey attestation
     - the invite post-broker flow: admit / deny sub-flows, then amr `inv` and `portcullis-template`
     - the LDAP federation has `cachePolicy` `NO_CACHE` (`tests/test_shell_libs.sh` also checks the realm export and that `keycloak configure`'s patch sets it idempotently)
     - the invite identity provider is enabled, hidden, links existing users only (`idp-detect-existing-broker-user`, `idp-auto-link`), back-channel `http://enroll:8445`, PKCE; the service account `portcullis-enroll` has exactly view-users + manage-users
     - `./portcullis invite`: link format, a new link revokes the older one, viewing doesn't consume it, a cross-site redeem is refused, `portcullis-hub` is refused, `admin` is allowed from the server
     - the Hub's invite API (`enroll:8444`, contract §9.4): 201 for a user, 409 for `admin` / `portcullis-hub`, 404 for an unknown user, 401 with a wrong secret; the Hub's copy of the secret matches; the JWKS serves an ES256 key
+- **Stock impersonation is off.** Keycloak's own `POST …/users/{id}/impersonation` answers non-2xx and names the feature.
+- **acr scope has amr and impersonation.** The live `acr` scope has exactly one `amr` mapper and one `portcullis-impersonation` mapper (access token, ID token, userinfo), the notice required action is enabled, and a second `keycloak configure` adds no second mapper.
+- **Client-sent impersonation headers.** `X-Forwarded-Impersonator` / `X-Forwarded-Impersonation` sent by the client never reach an app on the gated test router, and on people.&lt;domain&gt; `GET /api/me/impersonation` with forged headers answers `{"active": null}`.
 - **`./portcullis up` and the Hub's LLDAP account.** `portcullis-hub` is in `lldap_admin`, the 0640 / group 10001 password file logs in, a password changed in LLDAP is reset from the file on the next `up`, and the Hub sees `/run/portcullis/lldap` and `/run/portcullis/invite`.
 - **Revocation end to end**, once through `./portcullis cert revoke` and once through Vault's CRL alone.
 - **enroll's certificates API** (`enroll:8444/internal/certificates`, contract §9.4): `401` without `Authorization`, with an empty or wrong bearer or another scheme; with the bearer `200` and exactly `{"certificates": [...]}`, each entry exactly `user` (lowercase), `serial`, `kind` (`yubikey` / `browser`), `not_before` and `not_after` (RFC 3339 UTC), `revoked` (boolean); the test YubiKey certificate revoked above is listed as `revoked: true` under Vault's serial; Traefik's server certificate (`*.portcullis.local`) is not listed; no PEM in the answer. enroll's Go tests cover the fail-closed side: a serial whose read fails, whose certificate is missing, or whose `revocation_time` is missing or unreadable answers `503` for the whole list.
@@ -370,7 +378,10 @@ a **security key**) and backup eligibility 1 (a **synced** passkey, contract
 `navigator.credentials.get`, so "only that kind's credentials" is checked on
 what the browser was asked, not on Chromium's silent probe. Keycloak state is
 read from its admin API (credential types, brute-force status, sessions) and
-its log. In order:
+its log. Before the test, the job drifts the realm's passwordless passkey
+policy (conveyance `none`, attachment `cross-platform`) and `keycloak
+configure` must restore it (`passkey_kinds_identified` below needs the
+restored policy). In order:
 
 1. **Password off:** the cold sign-in offers the passkey only — no "Try
    another way", no password field —, also for a step-up with
@@ -563,6 +574,11 @@ its log. In order:
       at least three `help` entries by carol and at least three
       `certificate` entries, and no `.p12` password; pat's has a `failed`
       entry (his wrong password); carol may read alice's history.
+    - **`cert_and_password_kinds_identified`:** Keycloak's `LOGIN`
+      `pc_methods` name `yubikey_cert` and `browser_cert` for alice's
+      certificate sign-ins and `password` for pat's; `/api/me/signin`
+      lists alice's `yubikey_cert` and pat's password (and nothing else
+      for pat).
     - **`enroll_site_gone`:** `https://enroll.<d>/`, `/self`,
       `/api/self/renew`, `/api/sign`, `/api/users`, `/users` and `/certs`
       get Traefik's own `404` (no router), while `/invite/<bad token>`
@@ -593,11 +609,13 @@ its log. In order:
     minutes, except `imp_expiry` and the 125 s case of `imp_next_bound`,
     which run last among them, in parallel browser contexts. `sam` is the second
     administrator.
-    - **`imp_start`:** reason "checking quota", then `next`: root's browser
-      lands on the portal as alice; the token has `preferred_username`
-      alice, `act.sub` root, `pc_imp.id` = the id and root's amr from before
-      the start (with `hwk`); root has no Keycloak session left and alice
-      has one, with the impersonator.
+    - **`imp_start`:** root's YubiKey-certificate session; his fresh
+      security-key sign-in leaves only `hwk` in the session, so he steps up
+      to `yubikey_cert` before the start. Reason "checking quota", then
+      `next`: root's browser lands on the portal as alice; the token has
+      `preferred_username` alice, `act.sub` root, `pc_imp.id` = the id and
+      root's amr (`mtls`, `hwk`); root has no Keycloak session left and
+      alice has one, with the impersonator.
     - **`imp_banner_everywhere`:** `You are signed in as alice (by root) ·
       reason “checking quota” ·` … `min left` with a Stop control on the
       portal, on people.&lt;d&gt;'s My apps and `/signin` (after
@@ -612,12 +630,17 @@ its log. In order:
       `DELETE /api/me/ai/connections/x` get `403` "not while you are signed
       in as someone else: Stop first"; `GET /api/me/apps` is `200`.
     - **`imp_ai_refused`:** the CI AI client's authorize in this browser
-      shows `#portcullis-impersonating` and issues no code; a token minted
+      shows `#impersonating` and issues no code; a token minted
       for alice before the start still works through `mcpclient`.
+    - **`imp_refused_concurrent`:** root's second start → `409` "Stop it
+      first"; sam on alice → `409` "root is signed in as alice right now".
     - **`imp_stop`:** Stop on the portal → the Stop page POSTs, the browser
-      goes through `/oauth2/sign_out` to the sign-in page; within 20 s alice
-      has no impersonated Keycloak session; the old `_oauth2_proxy` cookie
-      replayed on the app never gets `200`; the audit has
+      goes through `/oauth2/sign_out`, then to the sign-in page, or, since
+      the browser presents root's YubiKey certificate, to the portal as root
+      with no `act` / `pc_imp`; within 20 s alice has no impersonated
+      Keycloak session; the old `_oauth2_proxy` cookie replayed on the app
+      never gets `200`; `oidc-strong`'s refresh token is then
+      `invalid_grant`; the audit has
       `impersonation.start` with the reason and `impersonation.end`
       "stopped" with the apps opened; alice's history has the
       `impersonation` entry by root with the reason and the apps.
@@ -639,11 +662,20 @@ its log. In order:
       `403` page and bob's session intact; opened again in root's context
       after a successful use → `403`; a fresh start's `next` opened after
       125 s → `403`. Each time alice gets no session.
-    - **`imp_expiry`:** after 2 min 10 s a request gets the ended page,
+    - **`imp_expiry`:** after 2 min 10 s a request gets group-gate's ended
+      page, the extension's ended page or Keycloak's sign-in page (never
+      anything as alice),
       within a further 20 s Keycloak has no impersonated session, and the
       audit has "expired" by `portcullis`.
     - **`imp_stock_endpoint_off`:** Keycloak's own admin impersonation
       endpoint answers non-2xx.
+
+    After these, before 16, **`passkey_kinds_identified`**: the realm's
+    passwordless policy is the restored one, and a security key (rita,
+    after `invite --replace-keys`), a synced passkey (bob) and a
+    device-bound one (pat; the fixture kind `passkey_device`) are each
+    identified by kind: credential type, log kind and AAGUID, the
+    `/api/me/signin` row, the amr and `LOGIN` `pc_methods`.
 
 `tests/e2e/e2e_signin.py`'s and `e2e_filesharing.py`'s fresh sign-ins on
 people.&lt;domain&gt; use the redirect `https://people.<d>/signin`.
@@ -1193,6 +1225,7 @@ pinned by commit SHA.
     New packages: `internal/rules` (rule parser and evaluator), `internal/directory` (users, groups, fields, permissions, import, audit).
     `TestRealTemplates` loads a sibling `portcullis-templates` checkout if present.
     `TestPeopleListenerHasNoAppRoutes` checks that the people listener registers exactly the directory routes plus the nine caller-only My apps routes (`GET /api/me/apps`, `PUT` and `DELETE /api/me/apps/{instance}/values/{key}`, `POST` and `DELETE /api/me/apps/{instance}/credentials/{key}`, `GET /api/me/ai`, `DELETE /api/me/ai/connections/{client}`, `GET /confirm/{id}`, `POST /api/me/confirmations/{id}`), and no app/policy/drift/compose/settings/Docker routes.
+    **Signing in as someone else** is tested in `internal/hub/impersonation*_test.go` (the start rules and refusal texts, the published file, stop, expiry, the apps opened and the person's notice), `internal/httpapi/impersonation_test.go` and `middleware_test.go` (the routes and the read-only rule), `webui_impersonation_test.go` (the banner, the Stop page, the Sign-in tab's dialog and the Settings switch) and `internal/signinhistory/impersonation_test.go` (the history entries).
     **AI support** is tested per package: `internal/aigate` decodes and re-encodes the shared §15.4 vector byte for byte (the same files as mcp-gate's `internal/config/testdata/`); the gate files (populations, clients, fail-closed rebuilds), the credential store (`TestHubHoldsNoAgeIdentity`: no Hub code can decrypt), mint and revoke (single flight, exit 3, leavers, `app_oauth` records), the switches, the confirmations, the Keycloak AI clients against the `kctest` realm, and the Portcullis MCP: every tool's twin both ways (`TestAdminToolsSameAsHTTP`, `TestPeopleToolParity`), no secret argument name (`TestNoSecretArgNames`), no token echoed by any tool (`TestTokenNotEchoed`), the per-call classes. `TestLiveAIObjects` runs the AI client checks against a real Keycloak when `PORTCULLIS_KEYCLOAK_LIVE_URL` and `PORTCULLIS_KEYCLOAK_LIVE_WIPE=portcullis` are set (not in CI; it wipes realm `portcullis`).
     **Docs copies.** The Hub ships some pages of this site as MCP resources (`portcullis://docs/<name>`), committed under `web/docs/` (`web/docs/sync.sh`: `integration-contracts.md`, `hub.md`, `auth-policies.md`, `groups.md`, `backups.md`, `file-sharing.md`). After changing one of them here, run `PORTCULLIS_DOCS_DIR=<docs checkout> go generate ./web` in the Hub and commit; `TestDocsCopiesInSync` fails on drift when `PORTCULLIS_DOCS_DIR` is set (CI doesn't set it). A new page goes into both `sync.sh` and `docsPages` in `web/web_test.go`.
     The harness also serves AI fixtures (the Hub listener has its own fake fresh-auth verifier at `/harness/authorize`, signing in as root, for the admin confirmation page): an app with token and identity-header companions, an `app_oauth` app, a fake connections store and access log, and the people MCP switched off for one user (no card).

@@ -497,7 +497,8 @@ admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 - `lldap_admin` = realm-admin of the `portcullis` realm (realm console)
 - pushes each certificate step's settings from the file onto its `portcullis-x509` execution, by alias: `x509-config` (YubiKey certificate, Vault's `pki_int` CRLs) and `x509-browser-config` (browser certificate, `pki_file` CRLs), with trust re-validation and the `clientAuth` EKU
 - never touches the realm's events config (the Hub owns it: sign-in history)
-- checks the sign-in executions' AMR reference values (max age 10 h), and ensures the `amr` mapper and the `groups` scope
+- checks the sign-in executions' AMR reference values (max age 10 h), ensures the `amr` mapper and the sign-in extension's impersonation mapper (both on the `acr` scope; it fails unless exactly one `portcullis-impersonation` mapper is there) and the `groups` scope
+- enables the `portcullis-impersonation-notice` required action (the person's notice after an administrator signed in as them); it fails when the realm lacks it (a fresh realm import has it) or it can't be enabled
 - ensures the `email-unverified` scope (`email` claim, no `email_verified`) that Hub templates opt into with `keycloak_clients[].email_verified_claim: false`
 - `portcullis-forward-auth`: the `acr`/`groups` scopes, no default acr, requires PKCE S256, the `auth.<domain>` callback (keeps the Hub's extra-domain callbacks), and the `portcullis-invite-client` scope (setup links work only through it; removed from every other client)
 - creates a credential-less `testuser` and applies the `PORTAL_DISPLAY_NAME` branding
