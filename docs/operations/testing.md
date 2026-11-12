@@ -268,7 +268,7 @@ pressing OK (the default value).
 After the browser tests, the job enables the **monitoring profile** and checks:
 
 - all monitoring services become healthy, and every Prometheus target is up
-- the Vault health probe and the enroll/forward-auth/LLDAP probes succeed
+- the Vault health probe and the enroll, forward-auth and forward-auth-ext (`/ready`: the session store answers) and LLDAP probes succeed
 - group-gate, CRL, backup (textfile), CA-expiry, Traefik and Vault metrics are present
 - the alert rules are loaded, and neither `VaultSealedOrDown` nor `CrlStale` is pending or firing
 - Grafana at `metrics.<domain>` redirects unauthenticated users to sign in, and rejects a forged identity header that doesn't come from Traefik's IP
@@ -810,8 +810,9 @@ the templates and core repos, else `main`.
 (default `all`): `all`, or job names separated by commas and/or spaces —
 `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`,
 `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`. The names match
-exactly (`e2e` doesn't run `e2e-ai`); the other jobs are skipped. No job
-`needs:` another, so any subset runs. Push, pull request and `workflow_call`
+exactly (`e2e` doesn't run `e2e-ai`); the other jobs are skipped. Every job
+needs the first job, `jobs-input`, which fails the run on an unknown name (or
+`all` together with names); any subset of the other jobs runs. Push, pull request and `workflow_call`
 always run every job (`release.yml` passes no `jobs`; the called workflow's
 default is `all`).
 
