@@ -9,7 +9,8 @@ tests and signs its image.
 | core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
-| docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`zensical build --strict`, publish to `gh-pages`) |
+| Keycloak image (`porelli/portcullis-keycloak`) | `build.yml` | `test`, `vectors`, `smoke`, `publish` |
+| docs (`porelli/portcullis-docs`) | `deploy.yml` | `deploy` (`scripts/check-branding.sh`, `zensical build --strict`, publish to `gh-pages`) |
 
 ## Core CI
 
@@ -57,6 +58,7 @@ exactly as on a real install. Every step drives the stack through
     - the pages: present-certificate for both kinds (no `X-Stepup-URL`; `test_step_up_never_asks_held_cert_method`), the step-up candidate rules (`pc_method` = the first set-up candidate, `passkey` for an unknown person with two or more passkey kinds, never a certificate method whose amr the session holds), links to the Sign-in page (`test_pages_link_to_signin_page`: every "Set up …" and "Sign-in methods" href is `https://people.<d>/signin`; `test_no_enroll_links`: no `enroll.` and no `/self` on the portal), the needs-stronger copy word for word as the Keycloak extension's (`portcullis-needs-stronger.ftl`), every value escaped, no refresh, CSP
     - `oauth2-proxy/alpha.yaml`: `loginURLParameters` are exactly `pc_method` (the six method ids and `passkey`), `kc_idp_hint`, `prompt`; no `acr_values`
     - step-up URLs (`/oauth2/start?pc_method=<method>`): `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
+    - the step-up returns to the requested page (contract §5 "Step-up URL"): `test_stepup_returns_to_page` (`rd` = `https://<host><path>?<query>`, or `<path>?<query>` on an extra domain, for a `GET`), and `test_stepup_return_rejects_offhost_paths` (`rd` stays the root for a non-`GET`, `//…`, `/\…`, `%5C`, a byte outside `0x21–0x7e` such as a tab or newline, or more than 2048 bytes)
     - the reserved deny group
     - impersonation: `test_imp_claims_parse`, `test_imp_malformed_claims_denied`, `test_imp_live_allows_with_headers`, `test_imp_ended_denied_at_once`, `test_imp_stale_file_denies`, `test_imp_cert_binds_admin_only`, `test_imp_never_steps_up`, `test_imp_signin_paths`, `test_imp_opened_log_act`, `test_client_sent_imp_headers_ignored`, `test_banner_names_validated`
     - `path_groups`, including bypass variants
@@ -64,6 +66,8 @@ exactly as on a real install. Every step drives the stack through
     - revocation by serial list and by a real openssl-generated CRL
     - the identity headers and attribute headers returned on allow
     - `expiring` array: membership treated as absent once `now >= at`, token withholding (`Authorization` and `X-Forwarded-Access-Token` withheld when an expired membership is stripped)
+    - branding (`BrandingTest`): the inline mark and `data:` favicon match the pinned sha256 of `concept-1-mark-dark.svg` and `favicon.svg`; every group-gate page (portal, step-up, present-certificate, needs-stronger in both forms, ended, deny) carries both; `PORTAL_CSP` and `SIGNIN_CSP` allow `img-src data:`; no page loads anything external
+- **`tests/test_branding.py`** (step "branding copies"): the Keycloak login theme's favicon and mark are byte copies of the branding source (the pinned sha256 of `favicon.ico` and `concept-1-mark-dark.svg`), `theme.properties` loads `css/portcullis.css` after `css/styles.css`, and that stylesheet puts `../img/portcullis-mark.svg` in `#kc-header-wrapper::before`.
 - **`tests/test_e2e_fsops.py`** (step "e2e helper unit tests"). It runs with the same venv's interpreter, and needs nothing but the standard library. It tests `run_op` from `tests/e2e/e2e_fsops.py`, the module `e2e_filesharing.py` takes it from, against a fake Hub API. No stack, network or Playwright is involved:
     - a busy `409` whose record is the Hub's own running `restart` is waited for, polled by that restart's `op_id`. If the restart ends ok, the operation is sent exactly once more; if it ends failed, the test fails with its record.
     - any other `409` fails at once: another op, a restart that is no longer running, plain text, or a second `409` after the resend.
@@ -256,6 +260,8 @@ them. Any password field fails the test.
     The cert-only session opens a default-template app, and enroll's `/self` and `/api/self/renew` answer `404` for it (the cert-only renewal is `e2e-signin`'s `yubikey_cert_renew`: this job runs no Hub).
 13. A revoked YubiKey certificate is rejected.
 14. A certificate from a foreign CA is rejected in the TLS handshake.
+
+`login_theme_brand`: on the first Keycloak sign-in page the `portcullis` theme loads `css/portcullis.css`, the header's `::before` shows `portcullis-mark.svg`, and the page's `link[rel=icon]` answers `200` with the pinned `favicon.ico` bytes.
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
 checks (registration, no password, `--expect-amr hwk` in CI: the token's passkey method is exactly that one; the re-invite counts one step-up click and one passkey click; the step-up after the link with one more
@@ -629,6 +635,9 @@ restored policy). In order:
       `POST /api/me/signin/browser-certificates` and
       `DELETE /api/me/ai/connections/x` get `403` "not while you are signed
       in as someone else: Stop first"; `GET /api/me/apps` is `200`.
+    - **`imp_signin_page_read_only`:** the impersonating browser's
+      `/signin` says "Changes are off while root is signed in as you." and
+      offers no action (no `[data-msi-act]` element).
     - **`imp_ai_refused`:** the CI AI client's authorize in this browser
       shows `#impersonating` and issues no code; a token minted
       for alice before the start still works through `mcpclient`.
@@ -676,6 +685,18 @@ restored policy). In order:
     device-bound one (pat; the fixture kind `passkey_device`) are each
     identified by kind: credential type, log kind and AAGUID, the
     `/api/me/signin` row, the amr and `LOGIN` `pc_methods`.
+
+Also in `e2e_signin.py`:
+
+- **`stepup_returns_to_page`:** sam's synced session opens
+  `https://hub.<d>/?from=stepup#x` (Strong); the step-up page's Continue has
+  `rd` = `https://hub.<d>/?from=stepup`, and after the security-key touch the
+  browser is back on that page.
+- **`passkey_rename`:** sam renames his security key through
+  `PUT /api/me/signin/passkeys/<id>/label` "CI key" → `204`, and Keycloak's
+  credential has `userLabel` "CI key"; his synced passkey renamed "ci KEY"
+  → `409`; root's credential id → `404`; the audit has
+  `signin.passkey.label` with a detail ending `→ CI key`.
 
 `tests/e2e/e2e_signin.py`'s and `e2e_filesharing.py`'s fresh sign-ins on
 people.&lt;domain&gt; use the redirect `https://people.<d>/signin`.
@@ -1231,6 +1252,7 @@ pinned by commit SHA.
     The harness also serves AI fixtures (the Hub listener has its own fake fresh-auth verifier at `/harness/authorize`, signing in as root, for the admin confirmation page): an app with token and identity-header companions, an `app_oauth` app, a fake connections store and access log, and the people MCP switched off for one user (no card).
     The settings code is tested per package: the template settings validator, the setting types (parsing, rendering, resolution), the delivery engine (data files, claims, headers, hooks, reload, debounce, stale runs), person-entered values (uniqueness, population, purges, the refused-save limit) and the settings API (admins only, secrets never returned).
     A build-tagged harness (`go test -tags harness -run TestHarness -timeout 0 ./internal/httpapi`) serves the UI on `127.0.0.1:18888` (and the people page on `:18889`) against in-memory fakes, for checking the panels in a browser.
+    **Branding.** `TestBrandingCopies` (`web/web_test.go`) pins each embedded icon, the web manifest and `mark.svg` (= `concept-1-mark-dark.svg`) to its branding-source sha256; `TestPagesCarryBranding` checks that each HTML page links the favicon set and the manifest and has the mark in its `<h1>`; `TestStaticContentTypes` checks the `.svg`, `.png`, `.ico` and `.webmanifest` content types (with `nosniff`) on both listeners.
     `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
 - **`build`** (after `test`):
     - Multi-arch image (`linux/amd64`, `linux/arm64`) with SBOM and provenance (`mode=max`) attestations.
@@ -1239,6 +1261,19 @@ pinned by commit SHA.
 
 Verify a published image with the command in
 [Hub → Image tags](hub.md#image-tags-and-verification).
+
+## Keycloak image CI (`build.yml`)
+
+The extension's Gradle tests (`docker buildx build --target test`), the shared
+rule vectors against the Hub's, the smoke realm against core's flows, then the
+`smoke` job against a running image: the live sign-in run, "x509 kinds" and
+"impersonation" (`.github/smoke/signin.py`). The impersonation step also
+introspects the impersonated access token with a confidential client it
+creates (its secret generated in-process and sent in a form body, never on
+argv or in a log): the answer is `active` and carries `act` and `pc_imp`, and
+its `exp` is at most `pc_imp.until`
+([contract §8.1](../guides/integration-contracts.md#81-sign-in-methods-new-sign-in)
+"Impersonation").
 
 ## AI support manual checklist
 

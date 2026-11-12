@@ -46,6 +46,9 @@ jobs:
       - name: Generate app catalog from manifests
         run: python scripts/generate-app-docs.py --source portcullis-templates
 
+      - name: Branding copies
+        run: bash scripts/check-branding.sh
+
       - name: Build
         run: zensical build --strict --clean
 
