@@ -78,10 +78,13 @@ Browser workarounds for staging certs: start Chrome with
    the old pin's TTL too; it is deleted only once a flip has finished (a
    re-pin in between only moves it later). If the relax fails or hasn't settled, `config
    apply` stops **without** clearing `acme.json` (Traefik runs on) and exits
-   1, saying when to run it again. An old pin stored with a TTL above 15
-   minutes can't settle in one run: the message names that TTL and the time
-   after which a rerun goes through (lowering the CAA TTL at the provider
-   first shortens it). The settle point is a wall-clock time: a clock step
+   1, saying when to run it again. When the settle point is past what one
+   run waits (15 minutes), the message names the cause and the time after
+   which a rerun goes ahead: the old pin's stored TTL is above 15 minutes
+   (lowering the CAA TTL at the provider first shortens it), a resolver
+   still serves the old pin with N seconds left (public resolvers can
+   re-serve an old answer after its TTL; the settle point follows them), or
+   the settle point an earlier run saved is later. The settle point is a wall-clock time: a clock step
    forward between runs (an NTP correction after a reboot) shortens it by
    that step; keep the server's clock in sync. So Traefik never orders against the old pin, also
    when the flip happens inside `./portcullis up` (which runs `config
@@ -92,12 +95,22 @@ Browser workarounds for staging certs: start Chrome with
 4. Once Traefik's resolver is running, `up` **tightens** the CAA again: it
    reads the new account's URI (waiting up to 3 minutes for the
    registration), writes it to `secrets/domains/main-domain.env` and pins the
-   CAA to it. A failure there only warns; `./portcullis dns setup` pins it
+   CAA to it, waiting at most 3 minutes for stable answers (past that it
+   only warns "written; not yet stable at <resolver>"). A failure there only warns; `./portcullis dns setup` pins it
    later.
 
-Relaxing and tightening need an automated DNS provider (with its credentials) and `DNS_CAA=true`. Without them, every flip still checks the public CAA first and refuses while a pin would stop Traefik's new account (remove it at the provider and wait its TTL), and honours a settle point a `dns setup` saved when it removed or replaced a pin.
+Relaxing and tightening need an automated DNS provider (with its credentials) and `DNS_CAA=true`. Without them, every flip still checks the public CAA first and refuses while a pin would stop Traefik's new account (the refusal names the pin and its TTL), and honours a settle point a `dns setup` saved when it removed or replaced a pin. A failed lookup refuses too ("couldn't check … (DNS lookups failed)"): run it again when the resolvers answer.
 With a provider whose records you create by hand, change the CAA yourself:
 CA-only before the flip, the new pin (`./portcullis dns plan` shows it) after.
+
+!!! warning "After removing a pin by hand, wait its TTL before flipping"
+    Portcullis can't see when you changed the CAA at the provider. Once
+    1.1.1.1 and 8.8.8.8 show the CA-only form the flip's check passes, but
+    the CA's own resolvers may still cache the old pin for up to its TTL
+    (the refusal before the change printed it, e.g. "its TTL (600 s,
+    10 min)"; `dig CAA <domain> @<an authoritative nameserver>` shows it
+    too). Wait that long after the change before you run `config apply`,
+    or Traefik's new account may be refused.
 
 **Lost account.** If Traefik's `acme.json` is lost without a flip (its volume
 deleted or recreated), Traefik registers a new account by itself and its
