@@ -207,10 +207,9 @@ Prints a health overview:
   pin with Traefik's current ACME account: when the CA wouldn't issue to it,
   or `main-domain.env` names another account, it fails with
   `CAA allows another ACME account than Traefik's — fix: ./portcullis dns setup`
-  (a missing `main-domain.env` is only a warning). With nothing added and no
-  `PORTCULLIS_PUBLIC_IPV4` in `.env` the domains service doesn't know the
-  server's addresses, so the main domain's A/AAAA are `unknown`: a warning
-  line, not a failure.
+  (a missing `main-domain.env` is only a warning). When the server's addresses
+  couldn't be detected (and `.env` sets no `PORTCULLIS_PUBLIC_IPV4`), the main
+  domain's A/AAAA are `unknown`: a warning line, not a failure.
   A DNSSEC state `bogus` or `ds_mismatch` fails too; `insecure` (signed
   under a parent zone that isn't validated) is a ✓ line. While the domains
   service isn't running the block is one line, "DNS checks unavailable"

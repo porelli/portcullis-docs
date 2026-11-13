@@ -1073,16 +1073,22 @@ Anything else gives no address. Without an IPv4, the service publishes no record
 and sets the domain's `last_error`. Without an IPv6, it publishes no AAAA and
 removes existing AAAA records at `<d>` and `*.<d>`.
 
-A detection that ran and failed keeps the last detected address
-(`secrets/domains/last-public-ipv4` / `last-public-ipv6`), because "no IPv6"
-removes the AAAA records; a skipped lookup never uses it. The addresses reach the service through
-`secrets/domains/public-ips.env` (mode 0600, compose `env_file`), never through
-the compose `environment:`. While no domain is added, `./portcullis` does no
-lookups at all and publishes no address unless `.env` sets
-`PORTCULLIS_PUBLIC_IPV4` / `_IPV6`: the first added domain may need one more
-`./portcullis up` (or the address set in `.env`). With the IPv4 unknown, the
-service keeps the records it set before, still uses a configured IPv6 and still
-renews certificates.
+The lookups run whether or not a domain is added: the main domain's DNS check
+compares its A/AAAA records with these addresses too. The last detected address
+(`secrets/domains/last-public-ipv4` / `last-public-ipv6`) is saved, and a failed
+detection keeps it (because "no IPv6" removes the AAAA records), unless the
+running domains service confirms that no domain is added. When `./portcullis`
+can't tell (the service isn't running yet, as during `up` after a `down`, or
+doesn't answer), the last address is kept, so a transient IPv6 failure never
+removes the AAAA records. These two files belong to the host, not the install:
+`./portcullis backup` leaves them out and `./portcullis restore` deletes them,
+so a `secrets/` restored on a new server never hands the old server's address
+to the first added domain (a failed detection there gives no address). The addresses reach the
+service through `secrets/domains/public-ips.env` (mode 0600, compose
+`env_file`), never through the compose `environment:`. A server that may not
+reach the lookup services sets `PORTCULLIS_PUBLIC_IPV4` / `_IPV6` in `.env`.
+With the IPv4 unknown, the service keeps the records it set before, still uses
+a configured IPv6 and still renews certificates.
 
 `PORTCULLIS_DOMAINS_SUBNET` (the API network `portcullis-domains`, default
 `172.31.252.0/28`) is validated by `./portcullis`: a valid CIDR of at least /29,
