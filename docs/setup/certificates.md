@@ -95,7 +95,7 @@ Browser workarounds for staging certs: start Chrome with
    CAA to it. A failure there only warns; `./portcullis dns setup` pins it
    later.
 
-Relaxing and tightening need an automated DNS provider and `DNS_CAA=true`.
+Relaxing and tightening need an automated DNS provider (with its credentials) and `DNS_CAA=true`. Without them, every flip still checks the public CAA first and refuses while a pin would stop Traefik's new account (remove it at the provider and wait its TTL), and honours a settle point a `dns setup` saved when it removed or replaced a pin.
 With a provider whose records you create by hand, change the CAA yourself:
 CA-only before the flip, the new pin (`./portcullis dns plan` shows it) after.
 
