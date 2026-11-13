@@ -1639,9 +1639,10 @@ LAN-only ports reachable from outside.
 ### DNS checks
 
 The doctor also judges the [DNS plans](#the-dns-panel) of every added domain
-and of the main domain (the cached plans; when the domains service can't be
-read, or a lookup failed, there are no DNS findings and the Doctor tab says
-"DNS checks didn't run" (the report's `dns_unavailable`)):
+and of the main domain (the cached plans). When the domains service can't be read there are no DNS
+findings; when a lookup failed the findings it could judge still show. Either
+way the Doctor tab says "DNS checks didn't run" (the report's
+`dns_unavailable`):
 
 | Kind | Severity | Finds | Fix |
 |------|----------|-------|-----|
