@@ -75,7 +75,8 @@ Browser workarounds for staging certs: start Chrome with
    and 8.8.8.8 show the CA-only form. Then it stops Traefik, clears
    `acme.json` and starts Traefik again. The settle point is saved before
    the first write (`secrets/domains/acme-relax.env`), so a rerun waits for
-   the old pin's TTL too. If the relax fails or hasn't settled, `config
+   the old pin's TTL too; it is deleted only once a flip has finished (a
+   re-pin in between only moves it later). If the relax fails or hasn't settled, `config
    apply` stops **without** clearing `acme.json` (Traefik runs on) and exits
    1, saying when to run it again. An old pin stored with a TTL above 15
    minutes can't settle in one run: the message names that TTL and the time
