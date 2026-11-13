@@ -363,7 +363,7 @@ Applies the ACME toggle in `.env` and rebuilds `certs/ca-bundle.crt`:
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it stops Traefik, relaxes the main domain's CAA to CA-only (automated providers with `DNS_CAA=true`; a failure only warns), then clears Traefik's `acme.json` so Traefik registers again |
+| `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it stops Traefik, relaxes the main domain's CAA to CA-only (automated providers with `DNS_CAA=true`) and waits until no cache can still hold the old pin (the TTL the provider stored + 1 minute, at most 15 minutes; Porkbun: about 11 minutes), and only then clears Traefik's `acme.json` so Traefik registers again. If the relax fails or hasn't settled in time it stops, fail safe: `acme.json` and the flip are kept, Traefik is started again on its old account when it was running, and the command exits 1 — run it again once the caches have cleared (the message says when) |
 
 It also writes `ACME_DNS_PROVIDER` (Traefik's lego provider: `hetzner-cloud`
 becomes lego's `hetzner`), and refuses `DNS_PROVIDER=hetzner` with
@@ -442,8 +442,14 @@ portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail]
 
 Shows the plan, asks to apply it (`--yes`: don't ask; required without a
 terminal), writes the record sets through `DNS_PROVIDER`'s API with its
-credentials from `.env`, waits for the public resolvers (up to 5 minutes),
-then runs [`dns check`](#dns-check):
+credentials from `.env`, waits for the public resolvers, then runs
+[`dns check`](#dns-check). The wait follows the TTL the provider actually
+stored (Porkbun raises 300 s to 600 s): up to that TTL + 1 minute, longer
+while a resolver's answer shows it caches the old records longer, at most
+15 minutes. When it ends first, the records **were written**: the warning
+names the resolvers that don't show them yet and when their caches clear.
+A failed write is a separate error (exit 1). The providers and their
+variables:
 
 | Provider | Variables |
 |----------|-----------|

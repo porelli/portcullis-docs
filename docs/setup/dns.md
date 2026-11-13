@@ -167,8 +167,8 @@ has registered:
 - **`dns setup`** shows the plan and asks before it writes anything (`--yes`
   skips the question and is required without a terminal). It applies the
   `address` and `caa` sets (plus `nomail` with `DNS_NOMAIL=true`, or one set
-  with `--only address|caa|nomail`), waits up to 5 minutes for the public
-  resolvers, then runs `dns check`. `--dnssec` also turns on DNSSEC signing
+  with `--only address|caa|nomail`), waits for the public resolvers (see
+  [CAA → TTLs and waits](#caa)), then runs `dns check`. `--dnssec` also turns on DNSSEC signing
   (the question then says so: signing is zone-wide), see [DNSSEC](#dnssec). With a provider it can't write to, it prints the
   records to create by hand and exits 0.
 - **`dns check`** asks only the public resolvers (1.1.1.1 and 8.8.8.8), so it
@@ -319,9 +319,14 @@ when it orders, so the order of steps matters:
   `./portcullis up` and `upgrade` read Traefik's account URI once its
   resolver is running (waiting up to 3 minutes for a first registration),
   record it in `secrets/domains/main-domain.env`, and tighten the pin when the
-  live one differs. A failure there only warns. `./portcullis config apply`
-  on an `ACME_STAGING` flip relaxes the CAA to CA-only **before** it clears
-  `acme.json` (see [Certificates → Switching](certificates.md#switching)).
+  live one differs. A failure there only warns, and a pin that was written
+  but isn't visible everywhere yet says so ("was written, but it is not
+  visible yet at 8.8.8.8: those caches clear within …"), never "could not
+  pin". `./portcullis config apply` on an `ACME_STAGING` flip relaxes the
+  CAA to CA-only, waits until no cache can still hold the old pin, and only
+  then clears `acme.json`; if the relax fails or hasn't settled it stops
+  there, fail safe (see [Certificates → Switching](certificates.md#switching)).
+
 - **Lost account.** When Traefik's `acme.json` is gone (the volume deleted or
   recreated), Traefik registers a new account by itself, and its renewal then
   fails on CAA. `./portcullis status` shows the Problem "CAA allows another
@@ -331,6 +336,20 @@ when it orders, so the order of steps matters:
   registered yet when `up` ran) is only a Warning; `dns plan`, `dns setup`
   and `dns check` write it as soon as they read Traefik's account. Backup and
   restore keep both accounts, so a restore doesn't cause this.
+
+**TTLs and waits.** Portcullis asks for TTL 300 for the `caa` set, but a
+provider may store more: **Porkbun raises every TTL under 600 s to 600**.
+Resolvers then keep the old CAA for up to 10 minutes. So every wait after a
+write (`dns setup`, the tighten after `up`, the relax on a flip) follows the
+TTL the provider actually stored, read back from it before and after the
+write: up to that TTL + 1 minute, longer while a resolver's answer shows it
+keeps its copy longer (its remaining TTL; for a record that didn't exist,
+the zone's negative-caching TTL from its SOA), at most 15 minutes. The relax
+on a flip also waits out the TTL itself, since the CA's resolvers can't be
+asked. When a wait ends first, the records **were written**: the warning
+names the resolvers that don't show them yet and when their caches clear,
+and `./portcullis status` shows the CAA as planned once they have. A write
+that failed is a separate message.
 
 **Settings** (`.env`):
 
