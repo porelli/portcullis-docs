@@ -4626,6 +4626,12 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `folder_recheck_preview` | R | `POST /api/folders/{id}/recheck/preview` |
     | `folder_recheck_apply` | D or W per call | `POST /api/folders/{id}/recheck/apply` |
     | `folder_op` | R | `GET /api/folders/{id}/op` |
+    | `get_vpn` (**NEW (VPN)**) | R | `GET /api/vpn` |
+    | `list_vpn_devices` (**NEW (VPN)**) | R | `GET /api/vpn/devices` |
+    | `remove_vpn_device` (**NEW (VPN)**) `{id}` | D | `DELETE /api/vpn/devices/{id}` |
+    | `set_vpn_provider` (**NEW (VPN)**) `{id, wired}` | D | `PUT /api/instances/{id}/vpn-provider` |
+    | `assign_vpn_address` (**NEW (VPN)**) `{id, ip, user, name}` | D | `PUT /api/instances/{id}/vpn-static/{ip}` |
+    | `set_instance_reach` (**NEW (VPN)**) `{id, mode, via, public_links}` | D | `PUT /api/instances/{id}/reach` |
 
     People (`/mcp/people`; the ones with a permission are the delegate tools):
 
