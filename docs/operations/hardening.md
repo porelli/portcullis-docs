@@ -184,16 +184,17 @@ existing network has different IPAM:
 
 ## Docker socket proxies
 
-No service mounts `/var/run/docker.sock` except two
+No service mounts the engine socket except two
 [linuxserver/socket-proxy](https://github.com/linuxserver/docker-socket-proxy)
 containers (HAProxy, pinned by digest). Each sits on its own internal network,
 shared with exactly one client (integration contract
-[§6](../guides/integration-contracts.md#6-docker-access)):
+[§6](../guides/integration-contracts.md#6-engine-access)):
 
 | Proxy | Client | Network | Allowed API sections (`1`) | Methods |
 |-------|--------|---------|---------------------|---------|
 | `socket-proxy-traefik` | Traefik (`TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy-traefik:2375`) | `socket-proxy-traefik` | `CONTAINERS`, `NETWORKS`, `EVENTS`, `VERSION`, `PING` | `GET`/`HEAD` only (`POST=0`) |
 | `socket-proxy-hub` | Hub (`DOCKER_HOST=tcp://socket-proxy-hub:2375`) | `socket-proxy-hub` | `CONTAINERS`, `IMAGES`, `NETWORKS`, `VOLUMES`, `EXEC`, `EVENTS`, `INFO`, `VERSION`, `PING`, `ALLOW_LOGS`, `ALLOW_ARCHIVE` (instance backups / restores: the archive endpoints of never-started helper containers) | All. `POST=1` also allows `PUT`/`DELETE` on the allowed sections |
+| **Socket source** (both proxies) | — | — | `${PORTCULLIS_ENGINE_SOCKET:-/var/run/docker.sock}`, mounted read-only at `/var/run/docker.sock`: Docker's socket, or under [rootless Podman](rootless-podman.md) the operator's `/run/user/<uid>/podman/podman.sock` | — |
 
 The Hub's set is what `docker compose up/down/ps/logs` and the Hub's own Engine
 API calls (status, logs, exec, events) need:
@@ -205,14 +206,18 @@ API calls (status, logs, exec, events) need:
 
 Everything else is denied: `BUILD`, `COMMIT`, `SWARM`, `NODES`, `SERVICES`,
 `TASKS`, `SECRETS`, `CONFIGS`, `PLUGINS`, `SYSTEM` (df / prune), `AUTH`,
-`DISTRIBUTION`, `SESSION`, and container `archive` / `export`. CI runs a real
-`docker compose` project through `socket-proxy-hub` and checks the denials.
+`DISTRIBUTION`, `SESSION`, and container `archive` / `export`. Podman's own
+API (`/libpod/…`, with or without a version prefix: `play kube`, `generate`,
+`machine`) never matches an allowed section, so both proxies deny it on both
+runtimes. CI runs a real `docker compose` project through `socket-proxy-hub`
+and checks the denials, the Podman ones and `/build` included.
 
 **Limits of a socket proxy.** The Hub can still create containers with any
 `HostConfig` (privileged, host bind mounts): that is inherent to "runs compose
 for arbitrary templates". The proxy removes the rest of the API surface (swarm,
 plugins, image builds, system prune, secrets). Treat the Hub as
-host-root-equivalent and keep it behind `lldap_admin` and the
+host-root-equivalent (under [rootless Podman](#rootless-podman):
+operator-equivalent) and keep it behind `lldap_admin` and the
 [proxy secret](#hub-proxy-secret).
 
 ## Container hardening
@@ -246,7 +251,7 @@ CI fails if any of these is missing.
 | forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client. Sessions in `sessions` (user `forward-auth`), starts once it is healthy |
 | forward-auth-ext (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Same image, provider config, client and cookie secret as forward-auth; serves extra-domain hosts only (contract §5): relative callback `/oauth2/callback` built from the request host (`X-Forwarded-Host`, trusted from `OAUTH2_PROXY_TRUSTED_PROXY_IPS` only), host-only cookie `__Host-portcullis_ext` (`Secure`, no `Domain`, `Path=/`), no redirect whitelist (only relative redirects are accepted). Both oauth2-proxies send PKCE S256 and the `portcullis-forward-auth` client requires it (`pkce.code.challenge.method`), so a code delivered to a stale callback URI is useless without the verifier. Routed only by the Hub's per-host `Host(<h>) && PathPrefix(/oauth2/)` routers. Its middleware `portcullis-auth-ext` lists the same `authResponseHeaders` / `authResponseHeadersRegex` as `portcullis-auth` (CI compares them) |
 | group-gate | 10003:10003 + group 10001 (`group_add`) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL and CA-file parsing) and `PyJWT` (token claims) + the script. Mounts `certs/yubikey-ca.crt` and `certs/browser-ca.crt` read-only (`/etc/group-gate/ca/`). Writes only `group_gate_data` (`/data`, owned `10003:10001`): the opened log `opened/` (mode 2770, group 10001; files 0640) for sign-in history. A write failure never denies a request |
-| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
+| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub` (1777: Podman's compat API refuses uid=/gid=)) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002. Generates browser certificates' keys in memory, answers the `.p12` and its password once to the Hub, clears them and never stores or logs them |
 | dns-tool (profile `tools`) | 10004:10004 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains dns`, built if missing, never pulled). Only `./portcullis dns …` starts it (`docker compose run --rm --no-deps -T`); the image's health check is disabled for it. Network `domains-egress` only; no volumes, no `environment`, no `env_file`, no ports, no Traefik labels; `mem_limit` 128m, `pids_limit` 64. The provider credentials arrive as JSON on stdin ([The dns tool](#the-dns-tool)) |
 | mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps one person's requests in flight and the memory request bodies hold, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps); results and aggregate refreshes aren't budgeted, so many people at once can still exhaust it and the container restarts, one person can't), `pids_limit` 256 |
@@ -412,7 +417,9 @@ folder group; `FOWNER` sets modes and ACLs on others' files; `FSETID` keeps
 the setgid bit (uid 0 isn't in the folder's group). `SETFCAP` is never
 granted. The Hub refuses every run (`503`) under **userns-remap or rootless
 Docker**, where ids inside the helper are translated and owners and ACL
-entries would be wrong.
+entries would be wrong. Under **rootless Podman** it runs, because every
+container shares one mapping and the fixer checks it has exactly that shape
+([below](#rootless-podman)).
 
 **What it never does.** It never follows a symlink, never leaves the
 folder's filesystem or enters another mount, and never opens a device or
@@ -461,6 +468,68 @@ not by relying on the mount's read-only flag alone.
   the same filesystem (a host process, another container with a broader
   bind mount) can still move an entry out in the instant between that
   check and the change.
+
+## Rootless Podman
+
+Under [rootless Podman](rootless-podman.md) every hardening item above holds
+unchanged: the socket proxies and their allowlists, internal networks,
+pinned addresses, `no-new-privileges`, `cap_drop: ALL`, read-only roots,
+memory and pids limits, pinned digests. CI checks the same baseline against
+both the compose file and the SELinux overlay. What changes:
+
+- **Container root is the operator.** Every container shares the
+  operator's user namespace: container uid 0 is the operator, container
+  uid `n` (1–65535) is `subuid start + n − 1` on the host, and host ids
+  outside that mapping appear as `65534` (nobody). A container escape, or
+  the Hub's power to create any container, lands as the unprivileged
+  operator, not host root.
+- **The Hub is operator-equivalent** instead of host-root-equivalent: it
+  still creates containers with any `HostConfig`, but the most those
+  containers reach is what the operator account reaches (its files, its
+  subordinate ids, the ports the sysctl allows).
+- **Traefik and the proxies own the operator-owned files mounted into
+  them.** They run as container root, which is now the operator, so they
+  are the owner of operator-owned files mounted into them, not just readers
+  by mode (under rootful Docker, root without `DAC_OVERRIDE` reads by mode
+  only). The mounts don't change, and they set the blast radius: Traefik
+  sees `certs/`, its dynamic config and the ACME volume; the proxies see
+  only the engine socket. Both keep `no-new-privileges`, all capabilities
+  dropped (Traefik adds back `NET_BIND_SERVICE`, the proxies `SYS_CHROOT`,
+  meaningful only inside the namespace) and read-only roots.
+- **The secrets stay the operator's.** The CLI gives secrets to
+  container id 0 (the operator) with the reading container's group, so on
+  the host they belong to the operator, as under Docker (giving them to the
+  operator's host uid inside the namespace would hand them to a subordinate
+  id instead).
+- **Limits are refused, not dropped.** Without the `memory` and `pids`
+  cgroup controllers delegated to the operator's user manager, `init`,
+  `up`, `upgrade` and `restore` refuse to run.
+- **The shared-folder fixer** runs under exactly one mapping shape:
+  container 0 → the operator, container 1 onwards → one subordinate range
+  of at least 65536 ids. Any other mapping, userns-remap and rootless Docker
+  stay refused. A folder entry owned by a host account outside the range
+  (it reads as 65534) refuses the fix for that folder, with the
+  `sudo chown -R '<uid>:<gid>' '<path>'` step. The fixer never works around it.
+- **SELinux overlay.** Under Podman with SELinux enforcing, the CLI adds
+  `docker-compose.podman-selinux.yml`, which relabels bind mounts of core's
+  files with the narrowest label that works: `Z` (private) when one service
+  mounts the path, `z` (shared) only when several services mount it or a
+  path above or below it (and on `templates/` and `appfiles/`, whose
+  subdirectories app instances mount). Nothing labels the checkout itself,
+  `secrets/`, `backups/` or `.env` (or a parent of them): the Hub's
+  `.:/project:ro` becomes a 1 MiB tmpfs there, with `group-gate/group-gate-map.conf`
+  bound into it. The two socket proxies run with `label=disable` because a
+  confined container can't connect to the operator's Podman socket, and the
+  CLI's own short-lived helpers that bind-mount host files (`restore`,
+  `backup --offsite`) also run with `label=disable` under Podman: those
+  helpers are not SELinux-confined. Nothing relabels user data (`/srv`,
+  `/mnt`, `/media`, home directories) or the engine socket.
+- **Low ports.** `net.ipv4.ip_unprivileged_port_start=80` lets any local
+  account bind ports 80–1023. Keep the host dedicated to Portcullis.
+- **Client addresses.** Remote TCP keeps the client's address (with `nft` or
+  `iptables`); UDP and loopback connections see a rewritten source. Header
+  trust never depended on the gateway: identity headers are trusted only
+  from Traefik's pinned address, and Keycloak only from its pinned peers.
 
 ## File sharing
 

@@ -22,6 +22,15 @@ the core checkout: `./portcullis`. There are no other scripts.
 - **Secrets never go on the command line.** DNS credentials are read from the
   environment or a hidden prompt. The Vault admin token comes from `VAULT_TOKEN`
   or from `secrets/vault-init.json`.
+- **The container runtime is fixed at `init`.** `.env` says
+  `CONTAINER_RUNTIME=docker` or `CONTAINER_RUNTIME=podman`
+  ([Rootless Podman](rootless-podman.md)). Every command that talks to the
+  engine refuses to run while it is missing or empty, naming the variable,
+  and fails when the engine that answers contradicts it (for example a
+  `DOCKER_HOST` that points at Podman on a Docker install). `init` writes it;
+  no other command ever adds or changes it. Under Podman the CLI points the
+  Docker CLI at the operator's Podman socket itself, so every command below
+  works the same on both runtimes.
 - **Every setup step is idempotent.** `init`, `upgrade`, `vault init`,
   `pki setup`, `keycloak configure` and `oidc register` can be re-run safely.
 
@@ -67,7 +76,8 @@ the core checkout: `./portcullis`. There are no other scripts.
 
 ```
 portcullis init [--domain DOMAIN] [--email EMAIL] [--dns-provider NAME]
-                [--non-interactive] [--env-only] [--skip-dns] [--no-config-repo]
+                [--runtime docker|podman] [--non-interactive] [--env-only]
+                [--skip-dns] [--no-config-repo]
 ```
 
 First-time setup. It creates `.env` (mode `0600`) with every secret randomly
@@ -92,11 +102,37 @@ to it, as [`up`](#up) does.
 If `.env` already exists it is kept, and only empty or missing secrets are
 generated. Every step is idempotent, so you can re-run `init` after a failure.
 
+**The runtime.** `init` writes `CONTAINER_RUNTIME` into `.env`, and under
+Podman also `PORTCULLIS_ENGINE_SOCKET` (the operator's
+`$XDG_RUNTIME_DIR/podman/podman.sock`, or `/run/user/<uid>/podman/podman.sock`
+when `XDG_RUNTIME_DIR` is unset). It picks the runtime in this order:
+
+1. `--runtime`, or `CONTAINER_RUNTIME` in the environment;
+2. a Docker engine that answers on `/var/run/docker.sock` (or `DOCKER_HOST`)
+   and isn't Podman → `docker`;
+3. Podman installed, the operator not root, and the operator's Podman socket
+   answering → `podman`;
+4. otherwise it fails with the host preparation steps.
+
+When both answer, Docker wins unless you pass `--runtime podman`. Podman as
+root is refused: only rootless Podman is supported. `--env-only` with no
+`--runtime`, no `CONTAINER_RUNTIME` in the environment and no engine
+answering is refused (`no container engine answers: pass --runtime docker|podman`).
+An existing `.env` without the key gets the detected value, with an info line.
+An existing `.env` with the other runtime is refused: the runtime is never
+switched (backup → fresh `init` → `restore`, see
+[Rootless Podman → Moving between runtimes](rootless-podman.md#moving-between-runtimes)).
+
+Under Podman, `init`, `up`, `upgrade` and `restore` first run the host
+checks of [Rootless Podman → Host preparation](rootless-podman.md#host-preparation)
+and refuse while a required one fails, listing every failure.
+
 | Option | Meaning |
 |--------|---------|
 | `--domain DOMAIN` | Base domain (default: `$PORTCULLIS_DOMAIN`, otherwise a prompt) |
 | `--email EMAIL` | Let's Encrypt account email (default: `admin@DOMAIN`) |
 | `--dns-provider NAME` | `cloudflare`, `porkbun`, `route53`, `digitalocean`, `hetzner`, `hetzner-cloud`, `none`, or another lego provider name (default: `cloudflare`) |
+| `--runtime docker\|podman` | Container runtime, written to `.env` as `CONTAINER_RUNTIME` and never changed afterwards (default: detected, see above) |
 | `--non-interactive` | Never prompt. DNS credentials must be in the environment (e.g. `CLOUDFLARE_API_TOKEN=...`) |
 | `--env-only` | Only write or complete `.env`, then stop |
 | `--skip-dns` | Do not create DNS records |
@@ -115,7 +151,9 @@ Starts or updates the core stack. It checks `.env` and the `portcullis-proxy`
 network settings, creates the bind-mount sources, and rebuilds
 `certs/ca-bundle.crt`. Then it runs `docker compose up -d --build` and waits
 for vault, postgres, lldap and keycloak to be healthy. Vault unseals itself on
-start.
+start. Under Podman it builds core's local images with `podman build` first
+and runs `docker compose up -d --no-build`, so nothing reaches the engine's
+build endpoint (the socket proxies deny it).
 
 Then it reads Traefik's ACME account URI (a helper container with the ACME
 volume read-only and no network prints only the URI), writes it to
@@ -183,6 +221,11 @@ portcullis status [--json | --textfile]
 
 Prints a health overview:
 
+- the runtime: `runtime: docker <version>`, or under Podman
+  `runtime: podman <version> rootless, uid <uid>, subuid <start>+<count>, ports ≥ <port start>`,
+  followed under Podman by one line per host check
+  ([Rootless Podman → Host preparation](rootless-podman.md#host-preparation)).
+  A failed required check is a failing line
 - compose services
 - Vault: sealed/active, CA expiry (root, YubiKey certificate CA, browser certificate CA), issued certs (both mounts), and YubiKey and browser certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days (each person's newest of each kind; renewed or replaced on the Sign-in page)
 - Keycloak: realm, users, forward-auth client, and the passkey policy: the
@@ -225,14 +268,14 @@ Prints a health overview:
   (run ./portcullis up)", with the cached plan marked stale. `status --textfile` runs once after each scheduled
   backup, so this adds no steady lookups
 
-Exits 1 if a core service is down or unhealthy, if Vault is not active, if
+Exits 1 if a host check fails, if a core service is down or unhealthy, if Vault is not active, if
 the passkey policy drifted, if such a container exists, if mcp-gate
 refuses every AI request, or if a DNS check is a Problem.
 Otherwise it exits 0.
 
 | Option | Meaning |
 |--------|---------|
-| `--json` | Machine-readable output (same exit status). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used), the DNS block in `dns` (`{main, domains: {<name>: …}}`, each `{name, address_ok, address_unknown, caa_ok, would_issue, dnssec, foreign, problems, checks}` (`address_unknown`: the address set couldn't be judged — e.g. the server's IPv4 isn't known — a warning, never a problem), the main domain also `lost_account`; `null` while the DNS checks are unavailable) |
+| `--json` | Machine-readable output (same exit status). The runtime is in `runtime` (`{name, version, rootless, uid, subuid_start, subuid_count, subgid_start, subgid_count, port_start, checks: [{status, text}]}`). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used), the DNS block in `dns` (`{main, domains: {<name>: …}}`, each `{name, address_ok, address_unknown, caa_ok, would_issue, dnssec, foreign, problems, checks}` (`address_unknown`: the address set couldn't be judged — e.g. the server's IPv4 isn't known — a warning, never a problem), the main domain also `lost_account`; `null` while the DNS checks are unavailable) |
 | `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, the passkey policy (`portcullis_keycloak_passkey_policy_ok`, absent when not checked), CA expiry and per-person YubiKey / browser certificate expiry (label `kind`), the DNS checks (`portcullis_dns_check`, `portcullis_dnssec_state`). Run it after every scheduled backup (the systemd unit does) |
 
 ### version
@@ -246,8 +289,9 @@ Prints the core version and the Hub and Keycloak images in use:
 - **Core version.** The `VERSION` file of a release tarball, else `git describe` of the checkout.
 - **Hub image.** `HUB_IMAGE` from `.env` or the environment, else the default in `docker-compose.yml`, plus the image of the running Hub container if there is one.
 - **Keycloak image.** `KEYCLOAK_IMAGE` from `.env` or the environment, else the default in `docker-compose.yml`, plus the image of the running Keycloak container if there is one.
+- **Runtime.** With an `.env`, `CONTAINER_RUNTIME` and the engine's version (`runtime docker (engine not reachable)` when the engine doesn't answer). A missing `CONTAINER_RUNTIME` is refused, and an engine that contradicts it fails, as for every other command. Without an `.env` no runtime is printed.
 
-`--json` prints `version`, `hub_image`, `hub_image_source` (`HUB_IMAGE` or `default`), `hub_running`, `keycloak_image`, `keycloak_image_source` (`KEYCLOAK_IMAGE` or `default`) and `keycloak_running` (`null` when the container isn't running).
+`--json` prints `version`, `hub_image`, `hub_image_source` (`HUB_IMAGE` or `default`), `hub_running`, `keycloak_image`, `keycloak_image_source` (`KEYCLOAK_IMAGE` or `default`) and `keycloak_running` (`null` when the container isn't running), plus `runtime` and `runtime_version` when there is an `.env`.
 
 | Option | Meaning |
 |--------|---------|
@@ -272,7 +316,7 @@ everything keeps running. It contains:
 - a `pg_dump` of the Keycloak database
 - the LLDAP, Hub and ACME volumes (SQLite via its online backup API)
 - `.env`, `certs/`, `secrets/`, `config/` and the config files
-- `MANIFEST.json` with the sha256 of every file
+- `MANIFEST.json` with the sha256 of every file, and the runtime it was taken on (`runtime: {name, version}`)
 
 It keeps the newest `BACKUP_KEEP_LOCAL` (default 7) local backups.
 
@@ -317,7 +361,17 @@ portcullis backup schedule --systemd [--on-calendar SPEC] [--output DIR]
 Prints, or writes to `DIR`, a systemd service and timer. They run
 `portcullis backup --offsite` (just `backup` while `BACKUP_REPOSITORY` is
 unset) as the current user, followed by `portcullis status --textfile`. The
-user must be able to run docker.
+user must be able to run docker. It needs an `.env` with `CONTAINER_RUNTIME`,
+because the units depend on the runtime:
+
+- **Docker:** system units (`/etc/systemd/system`) with `User=` set to the
+  current user.
+- **Podman:** **user** units for the operator's own systemd manager
+  (`~/.config/systemd/user`), with `Requires=` and `After=podman.socket`,
+  `WantedBy=default.target` and no `User=`. They run while the operator isn't
+  logged in because lingering is on (a host preparation step). Install them
+  with `systemctl --user daemon-reload` and
+  `systemctl --user enable --now portcullis-backup.timer`.
 
 | Option | Meaning |
 |--------|---------|
@@ -352,6 +406,16 @@ The current `.env`, `secrets/` and `certs/` are saved to
 `BACKUP_REPOSITORY`. On a new host without `.env`, export `BACKUP_REPOSITORY`,
 `BACKUP_PASSWORD` and the provider credentials first. The `.env` comes from
 the backup.
+
+**The runtime keys stay the host's.** `CONTAINER_RUNTIME` and
+`PORTCULLIS_ENGINE_SOCKET` are never taken from the backup: the restore reads
+them from the `.env` it replaces and writes them back into the restored one
+(under Docker it removes a `PORTCULLIS_ENGINE_SOCKET` the backup carried).
+`restore --from-offsite` without a current `.env` (a new host) detects the
+runtime as `init` does, before its first engine call, and writes the detected
+keys. A directory restore needs `init` first. So a backup taken on Docker
+restores onto a Podman host and the other way round; see
+[Rootless Podman → Moving between runtimes](rootless-podman.md#moving-between-runtimes).
 
 | Option | Meaning |
 |--------|---------|

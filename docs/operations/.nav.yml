@@ -1,6 +1,7 @@
 nav:
   - CLI Reference: cli.md
   - Upgrading & Releases: upgrading.md
+  - Rootless Podman: rootless-podman.md
   - Backups: backups.md
   - Monitoring: monitoring.md
   - Security & Hardening: hardening.md
