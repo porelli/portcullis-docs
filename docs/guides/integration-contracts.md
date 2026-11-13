@@ -3471,7 +3471,7 @@ Restores don't apply these refusals; they clear values naming a missing folder i
 
 An unknown kind is refused, listing the catalog; `kind: lan_only` is refused with the hint "set lan_only: true on the port"; a parameter the kind doesn't take is refused.
 
-**`ports[].lan_only`** (boolean, default `false`): the port should be reachable only from the local networks (LAN, VPN). It changes nothing in how the port is bound; the doctor judges its binding (§14.7). A Hub without §14 ignores it. Ports without it are never an exposure finding.
+**`ports[].lan_only`** (boolean, default `false`): the port should be reachable only from the local networks (LAN, VPN). It changes nothing in how the port is bound; the doctor judges its binding (§14.7). A Hub without §14 ignores it. Ports without it are never an exposure finding. **NEW (VPN):** VPN provider addresses overlapping Local networks can reach `lan_only` ports (§14.7), but those addresses never satisfy VPN binding for VPN-only apps or core hosts (§4, §5).
 
 **Example** (`jellyfin`, as converted):
 
