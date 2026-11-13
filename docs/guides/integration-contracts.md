@@ -3142,7 +3142,7 @@ hooks:
     service: <service>
     command: [<argv>]
     user: <user>
-    when: [start, settings_change, membership_change, credential_change]   # or exactly [ai]
+    when: [start, settings_change, membership_change, credential_change]   # or exactly [ai] or [vpn]
     timeout: <duration>
 ```
 
@@ -3153,7 +3153,10 @@ hooks:
 - `command`: a non-empty argv list of non-empty strings without control characters
 - `when`: list of triggers (at least one). `start` runs after every successful start; `settings_change` after a save; `membership_change` after a membership-driven delivery (people joining or leaving, person-entered values) changed its input, or after any run changed a data file with `on_membership_change: hook`; `credential_change` (**NEW**, file sharing) after a `person_secret` credential was created, regenerated, revoked or voided (§13.16), immediately (never debounced)
 - `timeout`: Go duration (e.g. `60s`). Default 30s, **at most 10m**
-- **`ai` (NEW, AI support).** A hook with `when: [ai]` is run **only** by the AI machinery (§15.5: `mint`, `revoke`, `revoke_all`, `on_change`), never by the settings delivery engine: not on any settings trigger, not on a retry from the panel (`POST …/settings/retry`), not by a forced or start run, and its input is never built. `ai` can't be combined with another trigger, and no option delivery `{hook: …}` and no `reload: {hook: …}` may name an `ai` hook (refused). Every hook an `ai:` block names must be an `ai` hook (§3.2). An `ai` hook gets the AI stdin of §15.5 instead of the HookInput, its stdout is never stored and its output is split (§6, §15.5). The validators' refusal texts name all five triggers (`start`, `settings_change`, `membership_change`, `credential_change`, `ai`)
+- **`ai` (NEW, AI support).** A hook with `when: [ai]` is run **only** by the AI machinery (§15.5: `mint`, `revoke`, `revoke_all`, `on_change`), never by the settings delivery engine: not on any settings trigger, not on a retry from the panel (`POST …/settings/retry`), not by a forced or start run, and its input is never built. `ai` can't be combined with another trigger, and no option delivery `{hook: …}` and no `reload: {hook: …}` may name an `ai` hook (refused). Every hook an `ai:` block names must be an `ai` hook (§3.2). An `ai` hook gets the AI stdin of §15.5 instead of the HookInput, its stdout is never stored and its output is split (§6, §15.5).
+- **`vpn` (NEW, VPN).** A hook with `when: [vpn]` is run **only** by the VPN machinery when its marketplace instance is wired as a VPN provider (§3.3, §4, §16) and the Hub triggers a devices or DNS refresh. The VPN machinery never runs hooks with any other trigger. `vpn` can't be combined with another trigger, and no option delivery `{hook: …}` and no `reload: {hook: …}` may name a `vpn` hook (refused). Every hook a `vpn:` block names must be a `vpn` hook (§3.3).
+
+The validators' refusal texts name all six triggers (`start`, `settings_change`, `membership_change`, `credential_change`, `ai`, `vpn`)
 
 The Hub runs the command verbatim (never through a shell) with Docker exec in a running container of the hook's service in this instance (replica 1 preferred) and sends the full desired state as JSON on stdin, the **HookInput**: the data-file document (§13.7) of the options delivered to that hook, plus `trigger` and `secrets`. It is never a diff.
 
@@ -3194,7 +3197,24 @@ Hooks must be idempotent. Exit 0 means applied. Any other exit code (or the time
 - the Hub stores the last accepted report with the time it received it (`<data>/settings/<id>/hook-report.json`) for the File sharing tab and the doctor (§14.5). A report never drives revocation or authorization;
 - the line is removed from op records and logs (after redaction, §13.16).
 
-A hook runs when its `when` has the trigger and its input changed (a hash of the document and the secrets' `updated_at`, never their values) or its last run failed; every `start` hook runs on every start, and every hook on a retry (except `ai` hooks, which the engine never runs). Runs per instance are serialised. A hook that timed out (Docker can't kill an exec) blocks the next run until it ends: meanwhile the hooks are skipped `previous run still running` and re-queued with backoff. With no running container the hook is skipped `not running` and the next start delivers it. The admin can retry from the panel.
+**VPN hook input (NEW, VPN).** A `vpn` hook gets VPN-specific stdin instead of HookInput. The Hub sends one of two operations:
+
+```json
+{"version": 1, "trigger": "vpn", "instance": "<id>", "op": "devices", "ranges": ["<cidr>", ...]}
+```
+
+or
+
+```json
+{"version": 1, "trigger": "vpn", "instance": "<id>", "op": "dns", "records": [{"name": "<fqdn>", "type": "A", "value": "<ip>"}, ...]}
+```
+
+- **`devices` operation:** the hook returns device list stdout (§6.1 of the VPN spec, version 1) with at most **4 MiB** of output and at most **10 000** devices. Devices outside the `ranges`, duplicates, expired devices, IPv6 addresses and the gateway's own address are dropped with a reason. Stdout over 4 MiB or over 10 000 devices is refused. The Hub stores the validated output (redacted) in `state.yaml` (§11.7) and publishes it to `vpn.json` (§4). A `devices` hook is triggered when the provider is wired and its refresh interval has passed.
+- **`dns` operation:** the hook applies the given DNS records and returns exit 0 when applied. Stdout is ignored. The Hub sends the records when a VPN-only app's hostnames or address changes, or when an admin acknowledges stale DNS (§11.7). DNS hooks never return records.
+- **Timeout:** the hook's `timeout` (default 30 s). Never run by the settings delivery engine, never shown in the settings delivery panel, never run by a retry from that panel.
+- **Stdout limits:** hook stdout is never stored raw. Op records redact it (§13.16). For `devices`, the validated device list is stored (redacted). For `dns`, stdout is discarded after the hook succeeds.
+
+A hook runs when its `when` has the trigger and its input changed (a hash of the document and the secrets' `updated_at`, never their values) or its last run failed; every `start` hook runs on every start, and every hook on a retry (except `ai` and `vpn` hooks, which the engine never runs). Runs per instance are serialised. A hook that timed out (Docker can't kill an exec) blocks the next run until it ends: meanwhile the hooks are skipped `previous run still running` and re-queued with backoff. With no running container the hook is skipped `not running` and the next start delivers it. The admin can retry from the panel.
 
 **Reload:**
 
