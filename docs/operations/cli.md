@@ -211,7 +211,8 @@ Prints a health overview:
   `PORTCULLIS_PUBLIC_IPV4` in `.env` the domains service doesn't know the
   server's addresses, so the main domain's A/AAAA are `unknown`: a warning
   line, not a failure.
-  A DNSSEC state `bogus` or `ds_mismatch` fails too. While the domains
+  A DNSSEC state `bogus` or `ds_mismatch` fails too; `insecure` (signed
+  under a parent zone that isn't validated) is a ✓ line. While the domains
   service isn't running the block is one line, "DNS checks unavailable"
 
 Exits 1 if a core service is down or unhealthy, if Vault is not active, if

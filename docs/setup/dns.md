@@ -366,7 +366,8 @@ step that is left:
 | `unsigned` | No signing key, no DS | Info | Turn on signing at the provider (Cloudflare: `./portcullis dns setup --dnssec`, or one click in the Hub for an added domain), then publish the DS |
 | `ds_missing` | Signed, but no DS at the parent | Warning | Add the DS the plan shows (key tag, algorithm, digest type 2, digest) at your registrar |
 | `ds_mismatch` / `bogus` | A DS that matches no key, or validation fails | **Problem** | Validating resolvers can't reach the domain. Fix the DS at the registrar to the values the plan shows, or remove the DS |
-| `unknown` | The lookups failed, or the chain can't be checked | Warning | Retry; the plan shows the resolver error |
+| `insecure` | Signed and the DS matches, but the resolvers don't validate the parent zone above it | Info | Nothing in this zone: the chain above it isn't signed or validated |
+| `unknown` | The lookups failed | Warning | Retry; the plan shows the resolver error |
 
 !!! danger "Never turn signing off while a DS record is published"
     **Never turn signing off while a DS record is published**: validating
