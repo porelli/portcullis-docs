@@ -1076,12 +1076,14 @@ removes existing AAAA records at `<d>` and `*.<d>`.
 The lookups run whether or not a domain is added: the main domain's DNS check
 compares its A/AAAA records with these addresses too. The last detected address
 (`secrets/domains/last-public-ipv4` / `last-public-ipv6`) is saved, and a failed
-detection keeps it (because "no IPv6" removes the AAAA records), only while a
-domain is added and the running domains service confirms it. When
-`./portcullis` can't tell (the service isn't running yet, or doesn't answer),
-it counts as no domain: a failed detection then gives no address. So a
-`secrets/` restored on a new server never hands the old server's address to the
-first added domain. The addresses reach the
+detection keeps it (because "no IPv6" removes the AAAA records), unless the
+running domains service confirms that no domain is added. When `./portcullis`
+can't tell (the service isn't running yet, as during `up` after a `down`, or
+doesn't answer), the last address is kept, so a transient IPv6 failure never
+removes the AAAA records. These two files belong to the host, not the install:
+`./portcullis backup` leaves them out and `./portcullis restore` deletes them,
+so a `secrets/` restored on a new server never hands the old server's address
+to the first added domain (a failed detection there gives no address). The addresses reach the
 service through `secrets/domains/public-ips.env` (mode 0600, compose
 `env_file`), never through the compose `environment:`. A server that may not
 reach the lookup services sets `PORTCULLIS_PUBLIC_IPV4` / `_IPV6` in `.env`.
