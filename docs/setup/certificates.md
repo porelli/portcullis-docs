@@ -62,11 +62,35 @@ Browser workarounds for staging certs: start Chrome with
 
 1. Set `ACME_STAGING=true` or `false` in `.env`.
 2. Run `./portcullis config apply && ./portcullis up`. `config apply` notices
-   the flip and clears Traefik's `acme.json`, so Traefik requests a new
-   certificate; `up` restarts the forward-auth services, which now trust the
-   new bundle.
+   the flip, stops Traefik and **relaxes** the main domain's
+   [CAA](dns.md#caa) to the CA-only form (`letsencrypt.org`, DNS-01 only, no
+   account) **before** it clears Traefik's `acme.json`: Traefik then
+   registers a new account, and a CAA still pinned to the old one would make
+   every order fail. It waits up to 2 minutes for the public resolvers to
+   see the relaxed CAA (resolvers, the CA's included, may hold the old pin
+   for up to its TTL, 5 minutes). If relaxing fails it only warns ("issuance
+   will fail on CAA until ./portcullis dns setup"). `up` restarts the forward-auth
+   services, which now trust the new bundle.
 3. Wait about 2 minutes for the DNS-01 challenge:
    `docker compose logs -f traefik 2>&1 | grep -i acme`.
+4. Once Traefik's resolver is running, `up` **tightens** the CAA again: it
+   reads the new account's URI (waiting up to 3 minutes for the
+   registration), writes it to `secrets/domains/main-domain.env` and pins the
+   CAA to it. A failure there only warns; `./portcullis dns setup` pins it
+   later.
+
+Relaxing and tightening need an automated DNS provider and `DNS_CAA=true`.
+With a provider whose records you create by hand, change the CAA yourself:
+CA-only before the flip, the new pin (`./portcullis dns plan` shows it) after.
+
+**Lost account.** If Traefik's `acme.json` is lost without a flip (its volume
+deleted or recreated), Traefik registers a new account by itself and its
+renewals then fail on CAA. `./portcullis status` reports the Problem "CAA
+allows another ACME account than Traefik's — fix: ./portcullis dns setup"
+when `secrets/domains/main-domain.env` names a different account; run that
+command to pin the new account. A missing `main-domain.env` is only a
+Warning (`dns plan`, `dns setup` and `dns check` write it once they read
+Traefik's account).
 
 ---
 
