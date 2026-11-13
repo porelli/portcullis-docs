@@ -42,6 +42,7 @@ Do this once, as root. Use a dedicated account for Portcullis (here
 | User units | `podman.socket` and `podman-restart.service` enabled for the operator | yes |
 | Low ports | `net.ipv4.ip_unprivileged_port_start=80`, so Traefik can publish 80 and 443 | yes |
 | Versions | Podman 5.4 or later, passt, the Docker CLI and its compose plugin (no Docker daemon) | yes |
+| AppArmor (Ubuntu) | pasta's profile accepts SIGTERM from the `podman` profile (`signal (receive) set=(term) peer=podman,`), checked only where both profiles exist. Without it Podman can't stop its network process when the last container leaves a network, and `down` / `restore` / `upgrade` fail with "rootless netns: kill network process: permission denied" ([Launchpad #2154379](https://bugs.launchpad.net/ubuntu/+source/apparmor/+bug/2154379)) | yes |
 | Client addresses | `nft` or `iptables` installed, so forwarded TCP keeps the client's address | recommended |
 | SELinux | enforcing is supported | — |
 
@@ -80,6 +81,15 @@ loginctl enable-linger portcullis
 # Let unprivileged accounts publish ports from 80.
 echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/80-portcullis.conf
 sysctl --system
+
+# Ubuntu only (its AppArmor profiles for podman and pasta): let Podman stop
+# pasta, its network process. The rule goes into the profile's local file;
+# if usr.bin.pasta has no `include if exists <local/usr.bin.pasta>` line,
+# add it inside the profile itself instead.
+if [ -f /etc/apparmor.d/usr.bin.pasta ] && [ -f /etc/apparmor.d/podman ]; then
+  echo 'signal (receive) set=(term) peer=podman,' >> /etc/apparmor.d/local/usr.bin.pasta
+  apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
+fi
 ```
 
 ### Fedora and RHEL
