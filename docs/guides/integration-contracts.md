@@ -504,7 +504,7 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
     1. **The provider.** `p` is the one provider whose `ranges` contain `a`; ranges are disjoint across the file, so there is at most one. Deny when:
         - there is no such `p`, or `vpn.json` is missing or invalid (the `/vpn-required` text, §5);
         - `via` doesn't accept `p` (the `/vpn-required` text; `*` accepts every provider);
-        - `p` is stale: `stale: true`, or a non-built-in `p` at or past its `stale_after` by group-gate's own clock (reason "your VPN's device list is out of date; try again in a minute").
+        - `p` is stale: `stale: true`, or a hook provider `p` at or past its `stale_after` by group-gate's own clock (reason "your VPN's device list is out of date; try again in a minute").
     2. **A device of that provider.** The device with `ip` = `a` **and** `provider` = `p.id`, not past its `expires`; for `builtin`, also with its matching unexpired peer. A device of another provider never counts. None → deny (the `/vpn-required` text).
     3. **The owner.** The device's `user` equals the session's `preferred_username`, lowercased. Otherwise deny with "this device isn't yours; sign in on your own device". The owner's name is never shown.
 
@@ -556,9 +556,9 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
     - **`builtin`**: present exactly when there is a `builtin` provider: the people role's `subnet`, its `server_public_key`, the `domains` its resolver rewrites (the main domain and the added ones, §16) and its `peers`. Each peer has `ip` (in `subnet`, unique), `public_key` (32 bytes of base64, unique), `device_id` (non-empty) and `expires` (RFC 3339 UTC or `null`). Every reader checks `expires` against its own clock: `wg` removes a peer past it and group-gate denies it, with no new file needed.
     - **`providers`**: at most 48 (the built-in plus 47 slots). Each `id` is `builtin` or an instance id, and ids are unique.
         - **The built-in provider:** `ranges` exactly `[builtin.subnet]`, `edge_port` 0, `gateway_ip` `""`, no `refreshed_at` / `stale_after`.
-        - **Every other provider:** `edge_port` 9001–9047, unique; `gateway_ip` its IPv4 address on `portcullis-vpn`; `label` (the template's `vpn.label`); `refreshed_at` and `stale_after`.
-        - **`stale_after` is required for every provider but `builtin`.** A non-built-in provider (hook or static) without `refreshed_at` or `stale_after`, or with a `stale_after` that isn't after its `refreshed_at`, makes the whole file invalid, and every VPN request is denied by the edge and group-gate. A reader never treats a missing `stale_after` as fresh. For a hook provider, `refreshed_at` is the last good run and `stale_after` is `refreshed_at + max(3 × refresh, 3 min)`. The built-in provider carries neither field; its devices end at their own `expires`.
-        - **`stale: true`** denies the provider's addresses whatever `stale_after` says. After a start, the Hub publishes every marketplace provider with `stale: true` until its first good run.
+        - **Every other provider:** `edge_port` 9001–9047, unique; `gateway_ip` its IPv4 address on `portcullis-vpn`; `label` (the template's `vpn.label`).
+        - **Freshness fields.** A **hook** provider (`identity.source: hook`) carries `refreshed_at` (its last good run) and `stale_after` = `refreshed_at + max(3 × refresh, 3 min)`; `stale_after` must be after `refreshed_at` and at most 30 min after it. A hook provider without either field, or with a span outside that, makes the whole file invalid, and every VPN request is denied by the edge and group-gate; a reader never treats a missing `stale_after` as fresh. A **static** provider (an admin's map) and the built-in provider carry neither field: a static provider with `refreshed_at` or `stale_after` makes the file invalid. Built-in devices end at their own `expires`.
+        - **Before the first good run.** Until a hook provider's first successful hook run, the Hub leaves it out of the file: its addresses match no provider and are denied, and nothing else is affected. **`stale: true`** denies a listed provider's addresses whatever `stale_after` says.
         - **`ranges`**: 1–8 IPv4 prefixes, /8–/30, disjoint across the **whole file**.
     - **`devices`**:
         - `ip`: IPv4, unique across the whole file, inside its provider's ranges;
@@ -573,7 +573,7 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
     - **Fail closed.** Every VPN request is denied by the edge and group-gate when the file:
         - is missing (while anything needs it), unreadable or not one JSON document;
         - has an unknown key or version, or a malformed timestamp;
-        - breaks any rule above (overlapping ranges, a duplicate or out-of-range address, a non-built-in provider without `stale_after`, and so on).
+        - breaks any rule above (overlapping ranges, a duplicate or out-of-range address, a hook provider without `stale_after`, a static provider with it, and so on).
 
         A provider past its `stale_after`, or with `stale: true`, denies its own addresses only. Readers compare with their own clock, so a stopped Hub ends in deny. The Hub never writes a file its own reader refuses. The edge's and group-gate's readers and the Hub's reference reader run the same vectors file, `vpn_json_vectors.json` (the Hub's `internal/vpn/testdata/`, byte-copied to core's `tests/`).
 
