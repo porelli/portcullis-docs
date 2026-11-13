@@ -168,8 +168,8 @@ has registered:
   skips the question and is required without a terminal). It applies the
   `address` and `caa` sets (plus `nomail` with `DNS_NOMAIL=true`, or one set
   with `--only address|caa|nomail`), waits up to 5 minutes for the public
-  resolvers, then runs `dns check`. `--dnssec` also turns on DNSSEC signing,
-  see [DNSSEC](#dnssec). With a provider it can't write to, it prints the
+  resolvers, then runs `dns check`. `--dnssec` also turns on DNSSEC signing
+  (the question then says so: signing is zone-wide), see [DNSSEC](#dnssec). With a provider it can't write to, it prints the
   records to create by hand and exits 0.
 - **`dns check`** asks only the public resolvers (1.1.1.1 and 8.8.8.8), so it
   needs no credentials. It exits 1 when a record or the DNSSEC state is a
@@ -325,7 +325,11 @@ when it orders, so the order of steps matters:
 - **Lost account.** When Traefik's `acme.json` is gone (the volume deleted or
   recreated), Traefik registers a new account by itself, and its renewal then
   fails on CAA. `./portcullis status` shows the Problem "CAA allows another
-  ACME account than Traefik's — fix: ./portcullis dns setup". Backup and
+  ACME account than Traefik's — fix: ./portcullis dns setup" when
+  `secrets/domains/main-domain.env` names a different account than
+  Traefik's current one. A missing `main-domain.env` (Traefik hadn't
+  registered yet when `up` ran) is only a Warning; `dns plan`, `dns setup`
+  and `dns check` write it as soon as they read Traefik's account. Backup and
   restore keep both accounts, so a restore doesn't cause this.
 
 **Settings** (`.env`):
@@ -406,8 +410,8 @@ zone lives:
 
 | Provider | Zone at | `.env` credential | Hub field |
 |----------|---------|-------------------|-----------|
-| `hetzner` | the legacy DNS console (dns.hetzner.com) | `HETZNER_API_KEY` | DNS API token |
-| `hetzner-cloud` | a Hetzner Cloud project (console.hetzner.com) | `HETZNER_API_TOKEN` (a Cloud API token with Read & Write) | Hetzner Cloud API token |
+| `hetzner` | the legacy DNS console (dns.hetzner.com) | `HETZNER_API_KEY` | DNS API token (legacy dns.hetzner.com) |
+| `hetzner-cloud` | a Hetzner Cloud project (console.hetzner.com) | `HETZNER_API_TOKEN` (a Cloud API token with Read & Write) | Hetzner Cloud API token (Read & Write) |
 
 The main domain's certificate works with both: Traefik's lego provider
 `hetzner` uses the Cloud API when `HETZNER_API_TOKEN` is set, and the legacy
@@ -424,6 +428,14 @@ Portcullis writes DigitalOcean records through DigitalOcean's own API
 client, so CAA records get their flags and tag. DigitalOcean has **no
 DNSSEC**: the plan's step for an unsigned zone is "digitalocean can't sign:
 move the zone to sign it".
+
+Portcullis' DigitalOcean support is tested only against a stand-in for
+DigitalOcean's API, not yet on a real account. In particular, whether
+DigitalOcean accepts the null MX `0 .` of the `nomail` set, and stores CAA
+flags and tags exactly as written, is unverified. After `dns setup` (or a Fix
+in the Hub), run `./portcullis dns check` and look at the `caa` and `nomail`
+rows. If DigitalOcean refuses a record, the tool exits with the provider's
+(redacted) error.
 
 ## Other providers
 
@@ -538,4 +550,5 @@ directory, enroll (setup links), traefik, metrics and `mcp` endpoints are never 
 **Removing an added domain** is allowed only when no app instance has a
 hostname on it. The domains service removes the DNS records it created, its
 CAA entries included (only the exact values it wrote; other CAs' entries
-stay), and retries once on failure.
+and your own records stay, also on Porkbun and the legacy Hetzner API, where
+it deletes each record by its ID), and retries once on failure.

@@ -66,8 +66,10 @@ Browser workarounds for staging certs: start Chrome with
    [CAA](dns.md#caa) to the CA-only form (`letsencrypt.org`, DNS-01 only, no
    account) **before** it clears Traefik's `acme.json`: Traefik then
    registers a new account, and a CAA still pinned to the old one would make
-   every order fail. If relaxing fails it only warns ("issuance will fail on
-   CAA until ./portcullis dns setup"). `up` restarts the forward-auth
+   every order fail. It waits up to 2 minutes for the public resolvers to
+   see the relaxed CAA (resolvers, the CA's included, may hold the old pin
+   for up to its TTL, 5 minutes). If relaxing fails it only warns ("issuance
+   will fail on CAA until ./portcullis dns setup"). `up` restarts the forward-auth
    services, which now trust the new bundle.
 3. Wait about 2 minutes for the DNS-01 challenge:
    `docker compose logs -f traefik 2>&1 | grep -i acme`.
@@ -84,8 +86,11 @@ CA-only before the flip, the new pin (`./portcullis dns plan` shows it) after.
 **Lost account.** If Traefik's `acme.json` is lost without a flip (its volume
 deleted or recreated), Traefik registers a new account by itself and its
 renewals then fail on CAA. `./portcullis status` reports the Problem "CAA
-allows another ACME account than Traefik's — fix: ./portcullis dns setup";
-run that command to pin the new account.
+allows another ACME account than Traefik's — fix: ./portcullis dns setup"
+when `secrets/domains/main-domain.env` names a different account; run that
+command to pin the new account. A missing `main-domain.env` is only a
+Warning (`dns plan`, `dns setup` and `dns check` write it once they read
+Traefik's account).
 
 ---
 

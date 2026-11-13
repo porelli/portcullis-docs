@@ -70,7 +70,7 @@ added domain), from the same plans as the
 | Metric | Labels | Value |
 |--------|--------|-------|
 | `portcullis_dns_check` | `name`, `check` (`address`, `caa`, `dnssec`, `foreign`) | `1` when that check of the name has no Warning or Problem, else `0`. `caa` is also `0` when the CA wouldn't issue to the pinned account; `dnssec` is `1` only for `secure` or `unsigned` |
-| `portcullis_dnssec_state` | `name`, `state` (`secure`, `unsigned`, `ds_missing`, `ds_mismatch`, `bogus`, `unknown`) | `1` for the name's current state |
+| `portcullis_dnssec_state` | `name`, `state` (`secure`, `unsigned`, `ds_missing`, `ds_mismatch`, `bogus`, `unknown`) | `1` for the name's current state; absent for a name with no plan yet |
 
 Both are absent while the DNS checks are unavailable (the domains service
 not running). No alert rule uses them yet; a DNS Problem already counts in

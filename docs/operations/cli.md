@@ -96,7 +96,7 @@ generated. Every step is idempotent, so you can re-run `init` after a failure.
 |--------|---------|
 | `--domain DOMAIN` | Base domain (default: `$PORTCULLIS_DOMAIN`, otherwise a prompt) |
 | `--email EMAIL` | Let's Encrypt account email (default: `admin@DOMAIN`) |
-| `--dns-provider NAME` | `cloudflare`, `porkbun`, `route53`, `digitalocean`, `hetzner`, `none`, or another lego provider name (default: `cloudflare`) |
+| `--dns-provider NAME` | `cloudflare`, `porkbun`, `route53`, `digitalocean`, `hetzner`, `hetzner-cloud`, `none`, or another lego provider name (default: `cloudflare`) |
 | `--non-interactive` | Never prompt. DNS credentials must be in the environment (e.g. `CLOUDFLARE_API_TOKEN=...`) |
 | `--env-only` | Only write or complete `.env`, then stop |
 | `--skip-dns` | Do not create DNS records |
@@ -206,7 +206,11 @@ Prints a health overview:
   name that aren't Portcullis'. For the main domain it also compares the CAA
   pin with Traefik's current ACME account: when the CA wouldn't issue to it,
   or `main-domain.env` names another account, it fails with
-  `CAA allows another ACME account than Traefik's — fix: ./portcullis dns setup`.
+  `CAA allows another ACME account than Traefik's — fix: ./portcullis dns setup`
+  (a missing `main-domain.env` is only a warning). With nothing added and no
+  `PORTCULLIS_PUBLIC_IPV4` in `.env` the domains service doesn't know the
+  server's addresses, so the main domain's A/AAAA are `unknown`: a warning
+  line, not a failure.
   A DNSSEC state `bogus` or `ds_mismatch` fails too. While the domains
   service isn't running the block is one line, "DNS checks unavailable"
 
