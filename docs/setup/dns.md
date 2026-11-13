@@ -362,12 +362,16 @@ re-serving an old pin with an almost fresh TTL minutes after the change).
 So `./portcullis status` right after `dns setup` normally shows the CAA as
 planned. The tighten after `up` / `upgrade` / `init` isn't a safety step, so
 it waits for stable answers at most 3 minutes, then goes on with a "written;
-not yet stable at <resolver>" warning: `status` may show the CAA as not yet
-as planned until the plan's next rebuild (within 5 minutes). `dns setup`
-keeps the 15-minute bound, and the relax on a flip is never shortened. The relax on a flip also waits out the TTL itself, since
+not yet stable at <resolver>" warning: `status`, which builds a fresh plan
+each run, may show the CAA as not yet as planned until those caches have
+cleared (the time the warning gives); the Hub's DNS panel shows its cached
+plan, rebuilt within 5 minutes. `dns setup` keeps the 15-minute bound, and
+the relax on a flip is never shortened. The relax on a flip also waits out the TTL itself, since
 the CA's resolvers can't be asked. When a wait hits its bound, the records
 **were written**: the warning says "written; not yet stable at
-<resolver>", how long it may still serve the old records and until when,
+<resolver>", how long it may still serve the old records and until when
+(every time Portcullis prints is rounded up to the minute and dated:
+`2026-11-14 07:19 UTC`),
 and `./portcullis status` shows the CAA as planned once that has passed. A
 write that failed is a separate message.
 

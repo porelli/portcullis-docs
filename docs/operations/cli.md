@@ -472,9 +472,13 @@ writes the caa set over a live Portcullis pin — removing it with
 `DNS_CAA=false`, or replacing it — it saves a settle point
 (`secrets/domains/acme-relax.env`: the write + the old pin's TTL + 1 min,
 never earlier than a saved one) that every later `ACME_STAGING` flip waits
-for. When it can't read that TTL first (a pin made by hand with an "auto"
-or zone-default TTL, or the read failed), it saves 24 hours from now
-instead, and says so. The providers and their variables:
+for. Only then does it read the caa set's TTL first (the other sets'
+TTLs say nothing about a pin, and its message is shown); when it can't
+(a pin made by hand with an "auto" or zone-default TTL, or the read
+failed), it saves 24 hours from now instead, and says so. That point is
+saved before the write: if the write then fails, the flip still waits
+it out; when no pin was actually replaced (check with `./portcullis dns
+plan`), you may delete `secrets/domains/acme-relax.env` by hand. The providers and their variables:
 
 | Provider | Variables |
 |----------|-----------|
