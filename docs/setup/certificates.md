@@ -95,7 +95,8 @@ Browser workarounds for staging certs: start Chrome with
 4. Once Traefik's resolver is running, `up` **tightens** the CAA again: it
    reads the new account's URI (waiting up to 3 minutes for the
    registration), writes it to `secrets/domains/main-domain.env` and pins the
-   CAA to it. A failure there only warns; `./portcullis dns setup` pins it
+   CAA to it, waiting at most 3 minutes for stable answers (past that it
+   only warns "written; not yet stable at <resolver>"). A failure there only warns; `./portcullis dns setup` pins it
    later.
 
 Relaxing and tightening need an automated DNS provider (with its credentials) and `DNS_CAA=true`. Without them, every flip still checks the public CAA first and refuses while a pin would stop Traefik's new account (the refusal names the pin and its TTL), and honours a settle point a `dns setup` saved when it removed or replaced a pin. A failed lookup refuses too ("couldn't check … (DNS lookups failed)"): run it again when the resolvers answer.

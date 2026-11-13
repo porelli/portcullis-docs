@@ -359,8 +359,12 @@ the records as visible only when both resolvers showed them in 4 rounds in
 a row (10 s apart, at least 30 s), and every remaining TTL a resolver
 reported for an old CAA answer has run out (Google Public DNS has been seen
 re-serving an old pin with an almost fresh TTL minutes after the change).
-So `./portcullis status` right after `dns setup` or `up` normally shows the
-CAA as planned. The relax on a flip also waits out the TTL itself, since
+So `./portcullis status` right after `dns setup` normally shows the CAA as
+planned. The tighten after `up` / `upgrade` / `init` isn't a safety step, so
+it waits for stable answers at most 3 minutes, then goes on with a "written;
+not yet stable at <resolver>" warning: `status` may show the CAA as not yet
+as planned until the plan's next rebuild (within 5 minutes). `dns setup`
+keeps the 15-minute bound, and the relax on a flip is never shortened. The relax on a flip also waits out the TTL itself, since
 the CA's resolvers can't be asked. When a wait hits its bound, the records
 **were written**: the warning says "written; not yet stable at
 <resolver>", how long it may still serve the old records and until when,
