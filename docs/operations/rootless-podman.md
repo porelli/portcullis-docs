@@ -302,3 +302,11 @@ Time Machine settings ([File Sharing](file-sharing.md)).
   host preparation. Manual `docker compose ...` commands bypass both
   `DOCKER_HOST` and the Podman overlays, so use `./portcullis` instead (or
   export what `runtime_export` sets).
+- **A restarted `podman.socket`.** The two socket proxies keep the socket
+  they started with. After `podman.socket` restarts they can't reach the
+  engine and turn unhealthy; `./portcullis status` says so, and
+  `./portcullis up` (or `upgrade`) restarts an unhealthy proxy.
+- **`lldap-ui`.** Container addresses aren't reachable from the host under
+  rootless Podman, so `./portcullis lldap-ui` starts a short-lived forwarder
+  published on `127.0.0.1:17170` (`LLDAP_UI_PORT` changes it) and prints the
+  SSH tunnel to that port; the forwarder is removed when the command ends.
