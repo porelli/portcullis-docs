@@ -282,8 +282,8 @@ CI fails if any of these is missing.
 - the volume helper (instance backups and restores): fully qualified, pinned
   `alpine`, uid 65534, `--network none`, no capabilities, never started (the
   daemon copies through the archive endpoints). Volumes are mounted at
-  `/vol`, a path the helper image doesn't have, so an empty named volume is
-  never given the helper image's mountpoint owner
+  `/data`, a path the `alpine` image doesn't have, so an empty named volume
+  is never given an image mountpoint's owner
 - the shared-folder fixer: the Hub's own image by image ID, `hub folderfix
   <mode>` as uid 0 with only its mode's capabilities, no network, read-only
   root filesystem, one bind mount of the folder. See
