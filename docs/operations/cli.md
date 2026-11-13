@@ -67,6 +67,12 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`cert revoke`](#cert-revoke) | Revoke a YubiKey or browser certificate (enforced by group-gate) |
 | | [`cert list`](#cert-list) | List issued YubiKey and browser certificates |
 | | [`cert sync`](#cert-sync) | Rewrite the revoked-serial list from Vault |
+| VPN | [`vpn init`](#vpn-init) | Set up the VPN service (`wg`) and the built-in WireGuard VPN |
+| | [`vpn mode`](#vpn-mode) | Which core surfaces are VPN-only: `apps`, `admin` or `server` (break-glass: `apps`) |
+| | [`vpn builtin`](#vpn-builtin) | Switch the built-in VPN on or off |
+| | [`vpn add-device`](#vpn-add-device) | Make a built-in VPN device for a person (config + QR, shown once) |
+| | [`vpn devices`](#vpn-devices) | List VPN devices of every provider |
+| | [`vpn revoke`](#vpn-revoke) | Remove a built-in VPN device |
 
 ---
 
@@ -240,6 +246,12 @@ Prints a health overview:
 - LLDAP and Traefik
 - containers on `portcullis-proxy` answering to a core service name or an AI
   companion name they don't own ([hardening](hardening.md#ai-support-mcp-gate))
+- **VPN** ([VPN-only access](vpn.md)): the mode (with the break-glass
+  `./portcullis vpn mode apps` whenever it isn't `apps`), whether `wg` is set
+  up and up (its edge, and the built-in VPN's port, subnet and peers), and per
+  provider its label, ranges, devices and map age; a stale provider is a
+  failing line ("its devices are denied"). With a mode other than `apps`,
+  `wg` down is a Problem: the VPN-only core surfaces are unreachable
 - mcp-gate refusing every AI request (`503`) and why, for example AI
   credentials it can't decrypt with `secrets/mcp-gate/age.key`
   ([AI support → Residuals](ai.md#residuals))
@@ -270,13 +282,13 @@ Prints a health overview:
 
 Exits 1 if a host check fails, if a core service is down or unhealthy, if Vault is not active, if
 the passkey policy drifted, if such a container exists, if mcp-gate
-refuses every AI request, or if a DNS check is a Problem.
+refuses every AI request, or if a DNS check is a Problem, or if `wg` is down while the VPN mode isn't `apps`.
 Otherwise it exits 0.
 
 | Option | Meaning |
 |--------|---------|
-| `--json` | Machine-readable output (same exit status). The runtime is in `runtime` (`{name, version, rootless, uid, subuid_start, subuid_count, subgid_start, subgid_count, port_start, checks: [{status, text}]}`). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used), the DNS block in `dns` (`{main, domains: {<name>: …}}`, each `{name, address_ok, address_unknown, caa_ok, would_issue, dnssec, foreign, problems, checks}` (`address_unknown`: the address set couldn't be judged — e.g. the server's IPv4 isn't known — a warning, never a problem), the main domain also `lost_account`; `null` while the DNS checks are unavailable) |
-| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, the passkey policy (`portcullis_keycloak_passkey_policy_ok`, absent when not checked), CA expiry and per-person YubiKey / browser certificate expiry (label `kind`), the DNS checks (`portcullis_dns_check`, `portcullis_dnssec_state`). Run it after every scheduled backup (the systemd unit does) |
+| `--json` | Machine-readable output (same exit status). The runtime is in `runtime` (`{name, version, rootless, uid, subuid_start, subuid_count, subgid_start, subgid_count, port_start, checks: [{status, text}]}`). Expiring certs are in `vault.certs_expiring` (each with `kind`: `yubikey` / `browser`), name takeovers in `dns_shadows` (`container`, `name`), the VPN in `vpn` (`{enabled, mode, public_enrol, builtin, port, subnet, up, status, providers, problem}`: `status` is `wg`'s `status.json` while it is fresh, `providers` its provider view), mcp-gate's refusal in `mcp_gate.refusing` (`null` while it serves), the passkey policy in `keycloak.passkey_policy` (`{ok, problems}`, `null` when Keycloak's admin API couldn't be used), the DNS block in `dns` (`{main, domains: {<name>: …}}`, each `{name, address_ok, address_unknown, caa_ok, would_issue, dnssec, foreign, problems, checks}` (`address_unknown`: the address set couldn't be judged — e.g. the server's IPv4 isn't known — a warning, never a problem), the main domain also `lost_account`; `null` while the DNS checks are unavailable) |
+| `--textfile` | Write the same data as Prometheus metrics to `monitoring/textfile/status.prom` for the [monitoring profile](monitoring.md): service health, Vault active, the passkey policy (`portcullis_keycloak_passkey_policy_ok`, absent when not checked), CA expiry and per-person YubiKey / browser certificate expiry (label `kind`), the DNS checks (`portcullis_dns_check`, `portcullis_dnssec_state`), and `portcullis_vpn_mode_restricted` (1 in the `admin` and `server` modes; the [`PortcullisVPNDown`](monitoring.md#alerts) alert reads it). Run it after every scheduled backup (the systemd unit does) |
 
 ### version
 
@@ -877,3 +889,139 @@ of revoked serials of both CAs (`pki_int` and `pki_file`, the union). If
 either cannot be queried (sealed, bad token, unreachable),
 the file is left unchanged and the command fails. It never "un-revokes" by
 writing an empty list.
+
+---
+
+## VPN
+
+The VPN service `wg` and the built-in WireGuard VPN, the VPN mode of the
+core pages, and built-in devices from the host. The guide is
+[VPN-only access](vpn.md); the interfaces are in
+[contracts §16](../guides/integration-contracts.md#16-vpn-and-the-wg-service-new-vpn).
+
+```
+Usage: portcullis vpn <subcommand>
+
+  init          Set up the VPN service (wg) and the built-in VPN
+  mode          Which core surfaces are VPN-only: apps, admin or server
+  builtin       Switch the built-in VPN on or off (the edge keeps running)
+  add-device    Make a built-in VPN device for a person (config + QR here)
+  devices       List VPN devices (every provider)
+  revoke        Remove a built-in VPN device
+```
+
+`vpn init`, `vpn mode admin|server` without `--force`, `vpn add-device`,
+`vpn devices` and `vpn revoke` talk to the Hub (inside the Hub container, over its control socket; the audit actor is
+`host`). It waits up to 120 s for a Hub that was just restarted to answer,
+refuses at once a Hub that is missing, stopped or unhealthy, and changes
+nothing when the Hub never answers.
+
+### vpn init
+
+```
+portcullis vpn init [--builtin on|off] [--port N] [--subnet CIDR]
+```
+
+Sets up the VPN service (compose profile `wg`): the edge that wired VPN
+providers reach Traefik through, and the built-in WireGuard VPN for people
+(userspace WireGuard: no capability, no TUN device). Adds `wg` to
+`COMPOSE_PROFILES`, writes `PORTCULLIS_VPN_BUILTIN`, `PORTCULLIS_VPN_PORT`
+and `PORTCULLIS_VPN_SUBNET`, generates the built-in VPN's key (once;
+`secrets/wg/people.key`, never printed) and starts `wg`, Traefik and the Hub.
+The Hub must be running (`./portcullis up` first): it answers which Local
+networks and provider ranges the subnet must not overlap. `vpn init` waits up
+to 120 s for that answer (a Hub that just restarted), and refuses, writing
+nothing, when it doesn't come.
+
+The subnet must not overlap a Docker network, Docker's default address pools
+`172.16.0.0/12` and `192.168.0.0/16` (Docker allocates networks, app
+instances' too, from them), under rootless Podman Podman's pools
+`10.88.0.0/16` and `10.89.0.0/16`, Portcullis' core and VPN networks, the
+reserved link subnet `10.214.0.0/24`, a Local network you entered in the Hub
+or a wired provider's range; a free /22 in `10.213.0.0/16` is suggested
+(`Try: ./portcullis vpn init --subnet …`). A subnet inside the Hub's default
+Local networks only warns: those never count for VPN-only access.
+
+| Option | Meaning |
+|--------|---------|
+| `--builtin on\|off` | The built-in VPN (default `on`) |
+| `--port N` | Its UDP port (default `51820`; open it in your firewall) |
+| `--subnet CIDR` | Its tunnel network (default `10.213.0.0/22`; an IPv4 network /8–/30 without host bits) |
+
+Re-running it is safe: the key is generated only when the key file is
+empty, and the current port and subnet are kept unless you pass new ones.
+
+### vpn mode
+
+```
+portcullis vpn mode apps|admin|server [--force] [--public-enrol true|false]
+```
+
+Which core surfaces answer only over the VPN (Traefik's `vpnsecure`):
+
+| Mode | VPN-only |
+|------|----------|
+| `apps` | none (the default; apps choose per instance in the Hub) |
+| `admin` | the Hub, Keycloak's console, LLDAP, the Traefik dashboard, Grafana and the MCP endpoints |
+| `server` | everything but the enrolment surfaces (sign-in pages, setup links, people.&lt;domain&gt;/vpn/), and those too with `--public-enrol false` |
+
+Writes `PORTCULLIS_VPN_MODE`, `PORTCULLIS_VPN_PUBLIC_ENROL` and the routers'
+entrypoint classes (`PORTCULLIS_EP_*` and `PORTCULLIS_WEB_*`), then recreates
+core. A VPN-only core page answers `/vpn-required` on the internet. `admin`
+and `server` refuse unless an administrator's VPN device was online in the
+last 10 minutes (the Hub checks; on the built-in VPN or a hook provider);
+`--force` skips that check. Without `--public-enrol` the current value is kept
+(default `true`).
+
+`vpn mode apps` is the break-glass: it works with `wg`, every VPN provider and
+the Hub down. See [VPN-only access → Break-glass](vpn.md#break-glass-and-the-lock-out-guard).
+
+| Option | Meaning |
+|--------|---------|
+| `--force` | Skip the check for an administrator's device |
+| `--public-enrol true\|false` | In `server` mode, keep the enrolment surfaces on the internet (still behind sign-in) |
+
+### vpn builtin
+
+```
+portcullis vpn builtin on|off
+```
+
+Switches the built-in VPN on (a key is generated if there is none) or off
+(the key file is emptied: its devices stop working). The edge, and every
+wired VPN provider, keeps running. Recreates and restarts `wg`. Refused
+before `vpn init` ("the VPN service isn't set up").
+
+### vpn add-device
+
+```
+portcullis vpn add-device <user> <name>
+```
+
+Makes a built-in VPN device for `<user>` named `<name>` (one line of 1–64
+characters): the key pair is generated in the `wg` container, only the public
+key goes to the Hub (which assigns the address), and the WireGuard config and
+a QR code are printed here, once. The private key is never stored and never
+on a command line. The person must be an enabled person in the VPN users
+group, under the devices-per-person limit; the device expires after the
+Hub's device expiry. `wg` must be running.
+
+### vpn devices
+
+```
+portcullis vpn devices [--user U] [--json]
+```
+
+Lists VPN devices of every provider (or one person's), with no key material:
+ID, user, name, provider, address, last seen and expiry. `--json` prints the
+Hub's answer as is.
+
+### vpn revoke
+
+```
+portcullis vpn revoke <device-id>
+```
+
+Removes a built-in VPN device; `wg` drops its peer at once and closes its
+open connections. Its address is quarantined for 7 days. Marketplace devices
+are removed in their app.

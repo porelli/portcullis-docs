@@ -59,6 +59,7 @@ All images:
 | `portcullis` | `textfile-exporter:9100` | `backup_local.prom` / `backup_offsite.prom` (from `portcullis backup`) and `status.prom` (from `portcullis status --textfile`: service health, Vault active, CA expiry of the root and both intermediates, the newest YubiKey and browser certificate per person and kind, and the [DNS checks](#dns-metrics)) |
 | `vault_health` | blackbox → `http://vault:8200/v1/sys/health` | 200 only when initialised, unsealed and active |
 | `services`, `services_tcp` | blackbox → enroll, forward-auth, Hub, LLDAP (HTTP); Postgres, LLDAP LDAP (TCP) | Services without a metrics endpoint |
+| `wg` | `wg-metrics:9100` (file discovery `secrets/monitoring/prometheus/wg-targets.json`) | Only while the `wg` profile is on (an empty target list otherwise, so no `TargetDown`); over the internal network `portcullis-metrics-wg` (exactly `wg` and Prometheus). The [VPN](vpn.md) edge: `wg_edge_accepted_total{provider}`, `wg_edge_rejected_total{provider,reason}`, `wg_edge_closed_total{provider,reason}`, `wg_provider_stale{provider}`, `wg_role_up{role}`, `wg_people_peers` (configured built-in peers), `wg_mode_restricted` |
 | `tls` | blackbox → `auth.<domain>:443` | Goes through the host's published port, so it sees the certificate browsers see. Verified against the system roots |
 
 ### DNS metrics
@@ -98,6 +99,8 @@ The Vault metrics token is an orphan token without the default policy, with a
 | `BackupNeverRan` | No backup metric at all for 6 h | warning |
 | `ClientCertExpiring` | A person's newest YubiKey or browser certificate (label `kind`: `yubikey` / `browser`) expires in < 7 days (renew the YubiKey certificate, or make a new browser certificate, on the Sign-in page, `https://people.<domain>/signin`) | info |
 | `CaExpiring` | The root, the YubiKey certificate CA (`ca="intermediate"`) or the browser certificate CA (`ca="browser"`) expires in < 90 days | critical |
+| `PortcullisVPNDown` | The VPN mode is `admin` or `server` (`portcullis_vpn_mode_restricted == 1`, from `status --textfile`) and `wg` can't be scraped, for 2 min: the VPN-only core surfaces are unreachable. Break-glass: `./portcullis vpn mode apps` | critical |
+| `PortcullisVPNProviderStale` | A VPN provider's device list is stale (`wg_provider_stale == 1`) for 5 min: its devices are denied (the identity hook fails or the gateway is down; see the instance's VPN tab) | warning |
 | `PortcullisStatusStale` / `PortcullisStatusProblems` | `status --textfile` did not run for 36 h / reported problems for 1 h | warning |
 
 Core CI runs `promtool test rules monitoring/prometheus/tests/alerts_test.yml`,

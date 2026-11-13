@@ -58,6 +58,7 @@ field.
 | `hosts` | object | No | Per-host properties by host router name; today only `immutable`. See [hosts.immutable](#hostsimmutable) |
 | `jobs` | list of compose service names | No | **NEW (apps).** One-off setup services that exit when done. See [jobs](#jobs) |
 | `ai` | object | Yes | **NEW (AI support).** `mcp` (companions) or `unsupported` (the reason). See [ai](#ai) |
+| `vpn` | object | No | **NEW (VPN).** The app is a VPN the Hub can wire as a VPN provider. See [vpn](#vpn) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
 `networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
@@ -939,7 +940,7 @@ settings on standard input
 | `service` | service | Yes | Where it runs (a running container of this instance) |
 | `command` | non-empty list of non-empty strings, no control characters | Yes | argv, run directly (never through `sh -c`) |
 | `user` | string | No | User to run as (default: the container's) |
-| `when` | list of `start`, `settings_change`, `membership_change`, `credential_change` (at least one), or exactly `[ai]` | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input; `credential_change`: right after a file-share password was created, regenerated, revoked or voided (also how a revocation is applied live: within 8 s). A hook whose last run failed runs again at its next trigger. **NEW (AI support)** `ai`: run only by AI support (`mint`, `revoke`, `on_change` of the [ai](#ai) block), never by settings deliveries or a retry; it gets the AI stdin instead of the settings and its stdout is never stored ([contracts §15.5](integration-contracts.md#155-identity-modes-tool-policy-and-hook-io)). `ai` can't be combined with another trigger, and no delivery `{hook}` or `reload: {hook}` may name such a hook |
+| `when` | list of `start`, `settings_change`, `membership_change`, `credential_change` (at least one), or exactly `[ai]`, or exactly `[vpn]` | Yes | `start`: after every successful start; `settings_change`: after a save that changed its input; `membership_change`: after people joining or leaving changed its input; `credential_change`: right after a file-share password was created, regenerated, revoked or voided (also how a revocation is applied live: within 8 s). A hook whose last run failed runs again at its next trigger. **NEW (AI support)** `ai`: run only by AI support (`mint`, `revoke`, `on_change` of the [ai](#ai) block), never by settings deliveries or a retry; it gets the AI stdin instead of the settings and its stdout is never stored ([contracts §15.5](integration-contracts.md#155-identity-modes-tool-policy-and-hook-io)). `ai` can't be combined with another trigger, and no delivery `{hook}` or `reload: {hook}` may name such a hook. **NEW (VPN)** `vpn`: run only by the VPN machinery, as the [vpn](#vpn) block's identity or DNS hook, with the VPN stdin; the same rules as `ai` (alone, named by the block, never a delivery or reload hook) |
 | `timeout` | Go duration, e.g. `60s` | No (default `30s`) | At most `10m` |
 
 A hook of a template with `person_secret` options also gets `credentials` on
@@ -1203,6 +1204,79 @@ ai:
     name: paperless-mcp
     source: https://github.com/nloui/paperless-mcp
     note: "community, 248★, last change Nov 2025, API token per person"
+```
+
+## vpn
+
+**NEW (VPN), optional.** The template is a VPN (a mesh, a WireGuard server)
+that the admin may wire as a **VPN provider** for
+[VPN-only access](../operations/vpn.md)
+([contracts §3.3](integration-contracts.md#33-vpn-only-access-the-vpn-block-new-vpn)).
+Installing the template doesn't make it a provider: the admin turns that on
+per instance on its VPN tab. Without the block an instance can't be a
+provider, but any instance can still be made VPN-only.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | single line, 1–64 chars | Yes | Shown on Settings → VPN, the instance and the device lists |
+| `ranges` | list of 1–8 IPv4 prefixes | Yes | The addresses the app hands to its clients, each /8–/30, no overlaps. Each entry is a literal prefix or exactly `{{setting:<key>}}`, naming a `string` option with `format: cidr` and `scope: instance`; the Hub resolves it per instance, and an unset or invalid value refuses the wiring |
+| `ingress` | `{service, proxy_protocol}` | Yes | `service`: the compose service the Hub joins to `portcullis-vpn` (the gateway); `proxy_protocol`: exactly `v2` |
+| `identity` | `{source, hook, owner, refresh}` | Yes | How the device list is built: `source: hook` (with `hook` and `owner`) or `source: static` (no `hook`, no `owner`; the admin assigns addresses on the VPN tab). `refresh`: a Go duration, `15s`–`10m`, default `60s` |
+| `dns` | `{hook}` or `{manual: true}` | Yes | Exactly one: a hook that receives the A records to apply, or the VPN tab shows them for the admin to configure (doctor `vpn_dns_manual` until acknowledged) |
+| `control_routers` | list of host router names | No (default `[]`) | Routers clients need to connect (coordination, signal, relay). They stay on `websecure,vpnsecure` with no allowlist whatever the instance's access or the mode. Never a router of an admin UI (`auth.admin_paths`, or any router of a `group_admin` template) |
+
+**`identity.hook`** names a hook with exactly `when: [vpn]`; **`owner`** is
+`oidc_sub` (the hook reports Keycloak user ids, resolved to LLDAP usernames
+through Keycloak's LDAP link, never an email) or `username` (LLDAP usernames,
+exact lowercase). The hook gets
+`{"version": 1, "trigger": "vpn", "instance": "<id>", "op": "devices", "ranges": [...]}`
+on stdin and prints one JSON document (at most 4 MiB and 10 000 devices,
+unknown keys refused):
+
+```json
+{"version": 1, "gateway": "100.64.0.1",
+ "devices": [{"id": "12", "name": "laptop", "address": "100.64.0.7", "owner": "<sub or username>",
+              "online": true, "last_seen": "2026-11-12T10:00:00Z", "expires": null}]}
+```
+
+`gateway` (required, inside the ranges) is the gateway node's tunnel address,
+the DNS target, never a device. A refused document keeps the last good list
+until it is stale (`max(3 × refresh, 3 min)`). Single devices are left out
+(IPv6, outside the ranges, the gateway's address, expired, a shared address,
+an owner who isn't a Portcullis person), each shown on the VPN tab.
+
+**`dns.hook`** names a hook with exactly `when: [vpn]` that gets
+`{"version": 1, "trigger": "vpn", "instance": "<id>", "op": "dns", "records": [{"name": "<fqdn>", "type": "A", "value": "<gateway>"}, ...]}`
+(one record per Portcullis hostname served from this server) after a devices
+run that changed `gateway` and after any hostname change. It exits 0 once
+they are applied; its output is ignored.
+
+**The ingress namespace.** `ingress.service` has no `network_mode`, isn't a
+job or a `kind: companion` AI service, and has no Traefik router or
+`traefik.*` label: the gateway is reached only over `portcullis-vpn`. The only
+other service allowed in its network namespace (`network_mode:
+service:<ingress.service>`) is core's forwarder image
+`ghcr.io/porelli/portcullis-forwarder`, pinned by digest (for clients with a
+real tunnel interface, which can't send PROXY v2 themselves; it needs
+`cap_add: [NET_BIND_SERVICE]` for `:443`). Every service in the namespace
+follows the same rules and publishes no `ports`. With a `vpn:` block no
+service uses `pid: host`, and `network_mode: host` is allowed only outside
+the ingress namespace on a service with no Traefik router or label.
+
+**`PORTCULLIS_VPN_EDGE`.** The Hub sets it (`<wg ip>:<9001 + slot>`) on the
+ingress service and every service sharing its namespace. Read it only as
+`$$PORTCULLIS_VPN_EDGE` in a container shell: `${PORTCULLIS_VPN_*}` is
+reserved (core's and the Hub's) and refused anywhere in a template.
+
+```yaml
+# manifest.yaml (excerpt, headscale)
+vpn:
+  label: Headscale tailnet
+  ranges: ["100.64.0.0/10"]
+  ingress: {service: gateway, proxy_protocol: v2}
+  identity: {source: hook, hook: vpn-devices, owner: oidc_sub, refresh: 60s}
+  dns: {hook: vpn-dns}
+  control_routers: [headscale]
 ```
 
 ## config_files
@@ -1510,6 +1584,17 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - `PORTCULLIS_AI_*` and `PORTCULLIS_MCP_GATE_IP` never declared; `PORTCULLIS_AI_ENABLED` / `PORTCULLIS_AI_READONLY_<NAME>` only as `${…:-false}` / `${…:-true}`, `PORTCULLIS_MCP_GATE_IP` only as `${PORTCULLIS_MCP_GATE_IP:-172.31.250.3}`; `PORTCULLIS_AI_PROVIDER_*` never referenced, and no service sets one (an `environment` key or list item, any case); no `environment` variable name built by interpolation; no `PORTCULLIS_AI_` in a `${…}` default or alternate value; `ai-providers` not a `files[]` name
 - an `ai_client` entry has `secret_env`; `ai.chat.file.mount` doesn't collide with a `files[]` mount on that service; AI hooks don't run on a `kind: companion` service
 - companion images pinned `tag@sha256:digest` like every image
+
+**VPN** (`check_vpn`, the Hub's `ValidateVPN` rule for rule, with the same
+refusal texts in the same order through the shared vectors
+`tests/vpn_vectors.json`; **NEW**)
+
+- the field rules of [vpn](#vpn): `vpn.label: a single line of 1–64 characters`, `vpn.ranges: 1–8 IPv4 prefixes`, `vpn.ranges[<i>]: <v> is not an IPv4 prefix between /8 and /30`, `vpn.ranges: <a> overlaps <b>`, `vpn.ranges[<i>]: {{setting:<k>}} must name a cidr setting`, `vpn.ingress.proxy_protocol: only v2`, `vpn.identity.source: hook or static`, `vpn.identity.owner: oidc_sub or username`, `vpn.identity: source static takes no hook or owner`, `vpn.identity.refresh: between 15s and 10m`, `vpn.dns: exactly one of hook and manual: true`
+- the ingress service and its namespace: `vpn.ingress.service: <s> is not a service of compose.yml`, `… has network_mode`, `… is a job`, `… is an AI companion`, `… has a Traefik router`, `… publishes ports`, `… shares <s>'s network namespace: only the pinned ghcr.io/porelli/portcullis-forwarder image may`; `vpn: service <n> uses network_mode: host`, `vpn: service <n> uses pid: host`
+- hooks: `vpn.identity.hook` / `vpn.dns.hook: <h> is not a hook with exactly when: [vpn]`, `hooks[<n>]: when: [vpn] needs a vpn: block that names it`, `hooks[<n>]: vpn can't be combined with other triggers`
+- `vpn.control_routers: <r> is not a host router of the template`, `vpn.control_routers: <r> serves an admin UI`
+- every template router, with or without a `vpn:` block: `router <r>: entrypoints must be 'websecure'` (the Hub adds `vpnsecure` per instance)
+- reserved: `${PORTCULLIS_VPN_*}` anywhere (`$$PORTCULLIS_VPN_EDGE` in a shell is fine) and as a `settings`/`env` key; the prefix `portcullis-vpn` anywhere in `compose.yml`; the core names `wg` (service), `wg_data` and `vpn_doc` (volumes), `portcullis-vpn`, `portcullis-vpn-edge`, `portcullis-metrics-wg` and `wg-egress` (networks). `strip-client-forwarded@file` may be listed in a router's middlewares (core runs it first anyway)
 
 **Cross-template**
 
