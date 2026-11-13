@@ -62,8 +62,8 @@
 *[extra domains]: Additional domains served alongside the primary Portcullis domain
 *[people page]: Users & Groups interface at people.<domain> (any signed-in user)
 *[People page]: Users & Groups interface at people.<domain> (any signed-in user)
-*[socket proxy]: Docker API gateway that exposes only the endpoints a service needs
-*[socket proxies]: Docker API gateways that expose only the endpoints services need
+*[socket proxy]: Engine API gateway that exposes only the endpoints a service needs
+*[socket proxies]: Engine API gateways that expose only the endpoints services need
 *[instance]: An independent deployment of a template with its own data, settings, and groups
 *[instances]: Independent deployments of a template with their own data, settings, and groups
 *[default instance]: The instance of a template whose id equals the template id
@@ -126,3 +126,6 @@
 *[added domains]: Extra domains added in Hub Settings → Domains (the domains service manages their records and website certificates)
 *[impersonation]: An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)
 *[pc_imp]: Token claim of an impersonated session: the impersonation's id and end time
+*[rootless Podman]: Podman run by an unprivileged account: container root is that account, not host root
+*[Rootless Podman]: Podman run by an unprivileged account: container root is that account, not host root
+*[engine socket]: The container engine's API socket (Docker's, or the operator's Podman socket), mounted only by the two socket proxies

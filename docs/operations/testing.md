@@ -33,7 +33,9 @@ exactly as on a real install. Every step drives the stack through
     - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else
     - `cert list --all` (stub `vault`) shows KIND `YubiKey` / `Browser` and revoked rows; `cert revoke` finds a `pki_file` serial after `pki_int`, revokes it there and rotates `pki_file`'s CRL; `cert enroll`'s renewal hint names `https://people.<domain>/signin`
     - `signin reset-core` (stubbed `docker compose`): without `--yes` and a terminal it refuses (exit 2, nothing run); `--yes` runs `stop hub`, `run --rm --no-deps -T --user 10001:10001 --label traefik.enable=false --entrypoint /usr/local/bin/hub hub signin reset-core`, `start hub` and shows the Hub's output; a failed run still starts the Hub and exits 1 with the exit status, the Hub's own message and "the Hub was started again" (never "nothing was reset"); a failed stop starts the Hub again and runs nothing; a failed start says so
-- **`tests/test_shell_libs.sh`.** Shell-library tests against stub `docker`/`vault`:
+    - the runtime: every `--help` works with no engine (a stub that fails any call is never called), `init --help` documents `--runtime`, no `ct_own "$(id -u)…"` is left in the CLI, and the engine-socket mount string appears exactly twice in `docker-compose.yml`
+- **`tests/test_shell_libs.sh`.** Shell-library tests against stub `docker`/`podman`/`vault`:
+    - the runtime ([Rootless Podman](rootless-podman.md)): detection (Docker without a Podman component, both present, `--runtime podman`, Podman as root refused, nothing answering), a missing `CONTAINER_RUNTIME` refused naming the variable, a contradicting engine refused, the Podman socket path (falling back to `/run/user/<uid>` without `XDG_RUNTIME_DIR`), the SELinux overlay kept beside `docker-compose.override.yml`, the id-map and host checks, local images built with `podman build` and `up --no-build`, init never switching the runtime, restore keeping the host's runtime keys, the ownership helpers (container 0 is the operator, host ids through the map, unmapped owners), restic as `0:0` with no capabilities, and the backup timer as user units
     - `.env` handling and secret generation
     - network validation
     - `cert sync`, which writes the union of both CAs' revoked serials and must never empty or change the list when either list fails
@@ -81,7 +83,10 @@ exactly as on a real install. Every step drives the stack through
 - **Compose validity and wiring**, against a generated `.env`. `docker compose config -q` must pass for the core, apps and test compose files. It also checks:
     - `HUB_PROXY_SECRET` is generated, and an empty one is rejected
     - the public default forward-auth secret is gone
-    - only the two socket proxies mount `docker.sock`; Traefik and the Hub use their proxies, and each proxy network has exactly its two members
+    - only the two socket proxies mount the engine socket, as exactly `${PORTCULLIS_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro` (checked on the default config and on a Podman config with a rootless `PORTCULLIS_ENGINE_SOCKET`); Traefik and the Hub use their proxies, and each proxy network has exactly its two members
+    - the Hub's `HUB_CONTAINER_RUNTIME` equals the runtime given, and `docker compose config` fails with `CONTAINER_RUNTIME` empty
+    - the SELinux overlay `docker-compose.podman-selinux.yml`: merged, every project bind (inside the checkout) has `bind.selinux: z` with the base's targets and `read_only`, and the engine-socket bind has none; without it, no bind has a `selinux` option; it names no service the base lacks; `label=disable` sits on exactly the two proxies, each keeping `no-new-privileges:true`; the hardening baseline below also holds on the merged config
+    - no core service adds `NET_ADMIN` or `SYS_ADMIN`
     - the Hub router carries `hub-proxy-secret@docker` with the right secret, and the people router carries the same middleware
     - token headers: `portcullis-auth` and `portcullis-auth-ext` list `X-Forwarded-Access-Token` and `Authorization` in `authResponseHeaders` (Traefik deletes a client's copies; group-gate reads amr only from that token); `portcullis-auth-console` lists the access token but not `Authorization` (the Keycloak console keeps its own bearer)
     - every core image is pinned by digest, and `enroll/Dockerfile` + `group-gate/Dockerfile` bases too
@@ -138,7 +143,9 @@ the internal PKI) and verifies:
   dropped, and group-gate's path rules see `X-Forwarded-Uri`.
 - **Socket proxies.** A real `docker compose` project runs through
   `socket-proxy-hub`, and the denied sections (build, swarm, plugins, secrets,
-  system, ...) fail. Traefik's proxy is read-only.
+  system, ...) fail. Traefik's proxy is read-only. Both proxies answer `403`
+  to Podman's own API (`/libpod/info`, `/libpod/play/kube`,
+  `/v5.0.0/libpod/containers/json`) and to `/build`.
 - **Domains service (Pebble e2e).** The image is built with `GO_TAGS=testprovider`
   (adds provider `fake` with records in memory + a DNS server on `:8053`). CI
   runs Pebble (`-dnsserver domains:8053`) and configures the service to use
@@ -954,6 +961,39 @@ build-summary / build-record uploads are off (`DOCKER_BUILD_SUMMARY`,
 artifact service once kept a finished `e2e-settings` job retrying them for
 over 30 minutes.
 
+### `e2e-podman` (rootless Podman)
+
+The whole stack under rootless Podman on `ubuntu-26.04`, with the runner user
+as the operator ([Rootless Podman](rootless-podman.md)). No artifact carries
+`.env`, `secrets/` or a backup.
+
+- **Docker phase** (while Docker still runs): `init --runtime docker` with the
+  CI override, one LLDAP person created, `./portcullis backup` copied aside
+  (mode `0700`), the sha256 of `certs/ca-chain.crt` recorded, then `down` and
+  everything removed (volumes, `.env`, `secrets/`, `certs/`).
+- **Setup.** The local, Hub and Keycloak images are built and moved into
+  Podman (`docker save | podman load`). Docker is stopped and disabled, and
+  the job checks its socket no longer answers. Then podman, passt and uidmap
+  are installed, the runner gets 65536 subuids and subgids,
+  `ip_unprivileged_port_start` is set to 80, lingering is on and the user
+  `podman.socket` and `podman-restart.service` are enabled, and
+  `ACME_STAGING=true ./portcullis init --runtime podman` runs with the CI
+  override. The Hub's local template sources hold echo, folder-writer and
+  scrutiny; `/srv/e2e-pod` is operator-owned with one root-owned child.
+- **Checks**, each failing with `FAIL: <what>`:
+    - `status --json` has no problems, `runtime.name` is `podman` and `runtime.port_start` is at most 80
+    - every pinned network's subnet and range round-trip as in `.env`, and Traefik, Keycloak, the Hub and mcp-gate sit at their pinned addresses
+    - every core container has a memory and a pids limit
+    - the socket checks of `build-and-test`, the Podman API denials included
+    - Traefik's Docker provider lists the `hub@docker` and `people@docker` routers
+    - `secrets/hub/core.env` is the operator's on the host and `0:10001` inside the namespace (`podman unshare stat`)
+    - the mTLS sign-in and the portal, as in `build-and-test`
+    - forward-auth reaches `auth.<domain>` through `host-gateway`
+    - `tests/e2e/e2e_podman.py`: `/api/runtime` says `podman`, verified, with the runner's uid as container 0's host id; an echo instance goes through create, enable, disable, backup and restore; the fixer applies on the operator-owned `/srv/e2e-pod` and refuses the root-owned child with `is owned by a host account outside Portcullis' id range` and its path; creating scrutiny answers `409` naming `SYS_RAWIO`
+    - **reboot:** after `systemctl restart user@<uid>.service` (every container dies with the user manager), `podman-restart.service` brings the stack back and `status` is clean within 180 s
+    - **Docker → Podman round trip:** after a wipe, `init --runtime podman` and `./portcullis restore --yes` of the Docker phase's backup: `.env` keeps `CONTAINER_RUNTIME=podman` and the rootless socket, `status` is clean, `certs/ca-chain.crt` has the recorded sha256, the Docker phase's LLDAP person exists, and the secrets are the operator's on the host
+- On failure it uploads the container logs only.
+
 ### Caching
 
 Core CI caches what it safely can. Caches are written only on pushes to `main`.
@@ -1059,7 +1099,16 @@ every contributor gets this feedback:
 - `python -m unittest discover -s tests`: the validator's own tests, including
   `AITests` (the `ai:` block rule for rule with the Hub's `ValidateAI`: both
   forms, companions, identity modes, reserved names and variables, trust
-  networks, the `ai.chat` rules).
+  networks, the `ai.chat` rules) and `RootlessTests` (the shared rootless
+  vectors, the committed classification, `PORTCULLIS_UNPRIVILEGED_PORT_START`
+  refused in templates, the expected refusals and limits).
+- **Rootless classification.** `python tests/validate.py --rootless` prints
+  each template's rootless Podman status and reasons at port start 80; it
+  must equal the committed `tests/rootless.txt`, so a change to the
+  classification shows up in review. "Rootless vectors match the Hub"
+  compares `tests/rootless_vectors.json` byte for byte with the Hub's
+  `internal/templates/testdata/rootless_vectors.json` on the same-named Hub
+  branch, else main.
 - `tests/trust/test_grafana_trust.sh`: Grafana's `trust.sh` (the AI trust
   network allowlist) against stubbed `ip` output, including the ambiguous
   layouts it must refuse.
@@ -1264,6 +1313,7 @@ pinned by commit SHA.
     The settings code is tested per package: the template settings validator, the setting types (parsing, rendering, resolution), the delivery engine (data files, claims, headers, hooks, reload, debounce, stale runs), person-entered values (uniqueness, population, purges, the refused-save limit) and the settings API (admins only, secrets never returned).
     A build-tagged harness (`go test -tags harness -run TestHarness -timeout 0 ./internal/httpapi`) serves the UI on `127.0.0.1:18888` (and the people page on `:18889`) against in-memory fakes, for checking the panels in a browser.
     **Branding.** `TestBrandingCopies` (`web/web_test.go`) pins each embedded icon, the web manifest and `mark.svg` (= `concept-1-mark-dark.svg`) to its branding-source sha256; `TestPagesCarryBranding` checks that each HTML page links the favicon set and the manifest and has the mark in its `<h1>`; `TestStaticContentTypes` checks the `.svg`, `.png`, `.ico` and `.webmanifest` content types (with `nosniff`) on both listeners.
+    **Rootless Podman** is tested in `internal/idmap` (the `uid_map` parser and its shapes), `internal/docker` (the runtime guard: retries until verified, a mismatch is permanent, the guarded transport passes only `/_ping` and `/version` before that, Podman's extra event actions are ignored), `internal/compose` (refuses while unverified, its own version check passes), `internal/folderfix` (the consistent mapping allowed, host ids in reports, unmapped owners counted and refused per path, the SELinux label), `internal/hub` (the fixer gate per runtime, the Podman container-id roots, the create, enable and restore-as refusals, the SELinux relabel of template binds), `internal/templates` (`RootlessCompat` against the shared vectors; with `PORTCULLIS_TEMPLATES_DIR` set, every real template against `tests/rootless.txt`), `internal/doctor` (the five kinds, silent under Docker) and `internal/httpapi` (`GET /api/runtime`, `get_runtime` in `TestAdminToolsSameAsHTTP`, the `503` mapping, the Marketplace badges).
     **DNS hardening** is tested in `internal/domains` (the plan, apply and DNSSEC client calls against the fake domains service), `internal/hub` (`DomainPlan`, `MainDNSPlan`, `ApplyDomainDNS` and `EnableDomainDNSSEC`: sets validated, audit `domain.dns_apply` / `domain.dnssec_enable`, an AI caller needs the confirmation for signing; op keys `_domain.<name>` fail closed and DNS names never reach op paths, `TestDNSNamesNeverReachOpPaths`), `internal/httpapi` (the four routes and their MCP twins, `TestAdminToolsSameAsHTTP`) and `internal/doctor` (every DNS kind and its fingerprint's stability; the unknown-CA item is never `dns_caa_missing`, `TestDNSUnknownCANotCAAMissing`; `dns_unavailable` when the plans can't be read). The harness (`harness_dns_test.go`) seeds a fake domains service with every DNS panel row kind.
     `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
 

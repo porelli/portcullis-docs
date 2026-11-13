@@ -184,7 +184,7 @@ existing network has different IPAM:
 
 ## Docker socket proxies
 
-No service mounts `/var/run/docker.sock` except two
+No service mounts the engine socket except two
 [linuxserver/socket-proxy](https://github.com/linuxserver/docker-socket-proxy)
 containers (HAProxy, pinned by digest). Each sits on its own internal network,
 shared with exactly one client (integration contract
@@ -194,6 +194,7 @@ shared with exactly one client (integration contract
 |-------|--------|---------|---------------------|---------|
 | `socket-proxy-traefik` | Traefik (`TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy-traefik:2375`) | `socket-proxy-traefik` | `CONTAINERS`, `NETWORKS`, `EVENTS`, `VERSION`, `PING` | `GET`/`HEAD` only (`POST=0`) |
 | `socket-proxy-hub` | Hub (`DOCKER_HOST=tcp://socket-proxy-hub:2375`) | `socket-proxy-hub` | `CONTAINERS`, `IMAGES`, `NETWORKS`, `VOLUMES`, `EXEC`, `EVENTS`, `INFO`, `VERSION`, `PING`, `ALLOW_LOGS`, `ALLOW_ARCHIVE` (instance backups / restores: the archive endpoints of never-started helper containers) | All. `POST=1` also allows `PUT`/`DELETE` on the allowed sections |
+| **Socket source** (both proxies) | — | — | `${PORTCULLIS_ENGINE_SOCKET:-/var/run/docker.sock}`, mounted read-only at `/var/run/docker.sock`: Docker's socket, or under [rootless Podman](rootless-podman.md) the operator's `/run/user/<uid>/podman/podman.sock` | — |
 
 The Hub's set is what `docker compose up/down/ps/logs` and the Hub's own Engine
 API calls (status, logs, exec, events) need:
@@ -205,14 +206,18 @@ API calls (status, logs, exec, events) need:
 
 Everything else is denied: `BUILD`, `COMMIT`, `SWARM`, `NODES`, `SERVICES`,
 `TASKS`, `SECRETS`, `CONFIGS`, `PLUGINS`, `SYSTEM` (df / prune), `AUTH`,
-`DISTRIBUTION`, `SESSION`, and container `archive` / `export`. CI runs a real
-`docker compose` project through `socket-proxy-hub` and checks the denials.
+`DISTRIBUTION`, `SESSION`, and container `archive` / `export`. Podman's own
+API (`/libpod/…`, with or without a version prefix: `play kube`, `generate`,
+`machine`) never matches an allowed section, so both proxies deny it on both
+runtimes. CI runs a real `docker compose` project through `socket-proxy-hub`
+and checks the denials, the Podman ones and `/build` included.
 
 **Limits of a socket proxy.** The Hub can still create containers with any
 `HostConfig` (privileged, host bind mounts): that is inherent to "runs compose
 for arbitrary templates". The proxy removes the rest of the API surface (swarm,
 plugins, image builds, system prune, secrets). Treat the Hub as
-host-root-equivalent and keep it behind `lldap_admin` and the
+host-root-equivalent (under [rootless Podman](#rootless-podman):
+operator-equivalent) and keep it behind `lldap_admin` and the
 [proxy secret](#hub-proxy-secret).
 
 ## Container hardening
@@ -412,7 +417,9 @@ folder group; `FOWNER` sets modes and ACLs on others' files; `FSETID` keeps
 the setgid bit (uid 0 isn't in the folder's group). `SETFCAP` is never
 granted. The Hub refuses every run (`503`) under **userns-remap or rootless
 Docker**, where ids inside the helper are translated and owners and ACL
-entries would be wrong.
+entries would be wrong. Under **rootless Podman** it runs, because every
+container shares one mapping and the fixer checks it has exactly that shape
+([below](#rootless-podman)).
 
 **What it never does.** It never follows a symlink, never leaves the
 folder's filesystem or enters another mount, and never opens a device or
@@ -461,6 +468,61 @@ not by relying on the mount's read-only flag alone.
   the same filesystem (a host process, another container with a broader
   bind mount) can still move an entry out in the instant between that
   check and the change.
+
+## Rootless Podman
+
+Under [rootless Podman](rootless-podman.md) every hardening item above holds
+unchanged: the socket proxies and their allowlists, internal networks,
+pinned addresses, `no-new-privileges`, `cap_drop: ALL`, read-only roots,
+memory and pids limits, pinned digests. CI checks the same baseline against
+both the compose file and the SELinux overlay. What changes:
+
+- **Container root is the operator.** Every container shares the
+  operator's user namespace: container uid 0 is the operator, container
+  uid `n` (1–65535) is `subuid start + n − 1` on the host, and host ids
+  outside that mapping appear as `65534` (nobody). A container escape, or
+  the Hub's power to create any container, lands as the unprivileged
+  operator, not host root.
+- **The Hub is operator-equivalent** instead of host-root-equivalent: it
+  still creates containers with any `HostConfig`, but the most those
+  containers reach is what the operator account reaches (its files, its
+  subordinate ids, the ports the sysctl allows).
+- **Traefik and the proxies own the operator-owned files mounted into
+  them.** They run as container root, which is now the operator, so they
+  are the owner of operator-owned files mounted into them, not just readers
+  by mode (under rootful Docker, root without `DAC_OVERRIDE` reads by mode
+  only). The mounts don't change, and they set the blast radius: Traefik
+  sees `certs/`, its dynamic config and the ACME volume; the proxies see
+  only the engine socket. Both keep `no-new-privileges`, all capabilities
+  dropped (Traefik adds back `NET_BIND_SERVICE`, the proxies `SYS_CHROOT`,
+  meaningful only inside the namespace) and read-only roots.
+- **The secrets stay the operator's.** The CLI gives secrets to
+  container id 0 (the operator) with the reading container's group, so on
+  the host they belong to the operator, as under Docker (giving them to the
+  operator's host uid inside the namespace would hand them to a subordinate
+  id instead).
+- **Limits are refused, not dropped.** Without the `memory` and `pids`
+  cgroup controllers delegated to the operator's user manager, `init`,
+  `up`, `upgrade` and `restore` refuse to run.
+- **The shared-folder fixer** runs under exactly one mapping shape:
+  container 0 → the operator, container 1 onwards → one subordinate range
+  of at least 65536 ids. Any other mapping, userns-remap and rootless Docker
+  stay refused. A folder entry owned by a host account outside the range
+  (it reads as 65534) refuses the fix for that folder, with the
+  `sudo chown -R <operator> <path>` step. The fixer never works around it.
+- **The proxies' `label=disable` is the only SELinux exception.** On an
+  SELinux host a confined container can't connect to the operator's Podman
+  socket, so the two socket proxies (and nothing else) run unconfined, through
+  `docker-compose.podman-selinux.yml`, which the CLI adds only under Podman
+  with SELinux enforcing. The same overlay relabels core's own bind mounts
+  inside the checkout with the shared `z` label. Nothing relabels user data
+  (`/srv`, `/mnt`, `/media`, home directories) or the engine socket.
+- **Low ports.** `net.ipv4.ip_unprivileged_port_start=80` lets any local
+  account bind ports 80–1023. Keep the host dedicated to Portcullis.
+- **Client addresses.** Remote TCP keeps the client's address (with `nft` or
+  `iptables`); UDP and loopback connections see a rewritten source. Header
+  trust never depended on the gateway: identity headers are trusted only
+  from Traefik's pinned address, and Keycloak only from its pinned peers.
 
 ## File sharing
 

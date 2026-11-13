@@ -263,6 +263,26 @@ the same notes in its `CHANGELOG.md`.
   app's sign-in reset to the default template and its native-login choices
   dropped.
 
+### Rootless Podman support (Hub, core, templates)
+
+- **Add `CONTAINER_RUNTIME=docker` to `.env` before you upgrade.** Core now
+  runs on Docker or on [rootless Podman](rootless-podman.md), and `.env`
+  must say which. `./portcullis init` writes the key on new installs, but no
+  other command ever adds it, and every command that talks to the engine
+  refuses while it is missing (`CONTAINER_RUNTIME is not set in .env`). An
+  install made before rootless support adds it once, by hand, after
+  `git pull` and before `./portcullis upgrade`:
+
+    ```bash
+    grep -c '^CONTAINER_RUNTIME=' .env || printf 'CONTAINER_RUNTIME=docker\n' >> .env
+    ./portcullis upgrade
+    ```
+
+- Nothing else changes for a Docker install: the compose file differs only
+  by the Hub's `HUB_CONTAINER_RUNTIME`, and no file is relabelled.
+- The Hub refuses to start without `HUB_CONTAINER_RUNTIME`, which core's
+  compose sets from `CONTAINER_RUNTIME`: upgrade the Hub and core together.
+
 ## Changing settings during an upgrade
 
 | You changed | Run |
