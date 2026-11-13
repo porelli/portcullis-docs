@@ -80,7 +80,9 @@ Browser workarounds for staging certs: start Chrome with
    1, saying when to run it again. An old pin stored with a TTL above 15
    minutes can't settle in one run: the message names that TTL and the time
    after which a rerun goes through (lowering the CAA TTL at the provider
-   first shortens it). So Traefik never orders against the old pin, also
+   first shortens it). The settle point is a wall-clock time: a clock step
+   forward between runs (an NTP correction after a reboot) shortens it by
+   that step; keep the server's clock in sync. So Traefik never orders against the old pin, also
    when the flip happens inside `./portcullis up` (which runs `config
    apply` first). `up` restarts the forward-auth services, which now trust
    the new bundle.
