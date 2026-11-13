@@ -395,8 +395,9 @@ Stops Portcullis and restores a backup made by `portcullis backup` or
 - the Keycloak database: `pg_restore` into a fresh Postgres
 - the LLDAP, Hub and ACME volumes
 
-Then everything is started again — unless LLDAP has no users while the
-restored Keycloak database has some: then it stops with Postgres and Vault up
+The local images are built on both runtimes (Docker and rootless Podman), then
+everything is started again — unless LLDAP has no users while the restored
+Keycloak database has some: then it stops with Postgres and Vault up
 (Keycloak would delete those users' copies and passkeys at their next lookup;
 see [Backups](backups.md#restore)). The backup's checksums are verified first.
 The current `.env`, `secrets/` and `certs/` are saved to
