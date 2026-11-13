@@ -323,9 +323,15 @@ when it orders, so the order of steps matters:
   but isn't visible everywhere yet says so ("was written, but it is not
   visible yet at 8.8.8.8: those caches clear within …"), never "could not
   pin". `./portcullis config apply` on an `ACME_STAGING` flip relaxes the
-  CAA to CA-only, waits until no cache can still hold the old pin, and only
-  then clears `acme.json`; if the relax fails or hasn't settled it stops
-  there, fail safe (see [Certificates → Switching](certificates.md#switching)).
+  CAA to CA-only with Traefik still running, waits until no cache can still
+  hold the old pin (saving that point, so a rerun waits for it too), and
+  only then stops Traefik, clears `acme.json` and starts it again; if the
+  relax fails or hasn't settled it stops there, fail safe (see
+  [Certificates → Switching](certificates.md#switching)).
+- **Changes made elsewhere.** `./portcullis status` has the main domain's
+  plan rebuilt for it (at most once per 30 s), so a CAA changed at the
+  provider shows at once; when the rebuild fails it says the lines may be
+  stale.
 
 - **Lost account.** When Traefik's `acme.json` is gone (the volume deleted or
   recreated), Traefik registers a new account by itself, and its renewal then
@@ -341,8 +347,10 @@ when it orders, so the order of steps matters:
 provider may store more: **Porkbun raises every TTL under 600 s to 600**.
 Resolvers then keep the old CAA for up to 10 minutes. So every wait after a
 write (`dns setup`, the tighten after `up`, the relax on a flip) follows the
-TTL the provider actually stored, read back from it before and after the
-write: up to that TTL + 1 minute, longer while a resolver's answer shows it
+TTL caches got, read before and after the write: the TTL the provider
+stores (a stored 0 or 1 — Cloudflare's "auto", Hetzner's zone default —
+counts as unknown) or the one the zone's authoritative nameservers serve,
+whichever is longer: up to that TTL + 1 minute, longer while a resolver's answer shows it
 keeps its copy longer (its remaining TTL; for a record that didn't exist,
 the zone's negative-caching TTL from its SOA), at most 15 minutes. The relax
 on a flip also waits out the TTL itself, since the CA's resolvers can't be
