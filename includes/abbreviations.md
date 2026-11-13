@@ -129,8 +129,7 @@
 *[rootless Podman]: Podman run by an unprivileged account: container root is that account, not host root
 *[Rootless Podman]: Podman run by an unprivileged account: container root is that account, not host root
 *[engine socket]: The container engine's API socket (Docker's, or the operator's Podman socket), mounted only by the two socket proxies
-*[VPN-only]: An app that is reachable only through a Portcullis VPN, not from the internet (its reach is VPN-only)
-*[reach]: Whether an app is internet-reachable (the default) or VPN-only
+*[VPN-only]: An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet
 *[vpnsecure]: Traefik entrypoint for VPN traffic (port 8443, trust PROXY v2 from wg only)
-*[built-in provider]: The Hub's own WireGuard server (the wg service) that gives each person VPN devices
-*[wg service]: Core's WireGuard service that runs the built-in VPN provider and marketplace gateways
+*[built-in provider]: The people role of core's wg service: Portcullis's own WireGuard VPN, whose devices people add on its VPN page
+*[wg service]: Core's userspace WireGuard service: the edge for every VPN provider and the built-in people VPN
