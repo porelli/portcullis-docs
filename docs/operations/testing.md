@@ -98,7 +98,7 @@ exactly as on a real install. Every step drives the stack through
     - the session store: `sessions` is `valkey/valkey` pinned, `999:1000`, read-only with a tmpfs `/data`, no ports, environment or routers, mounts only `secrets/sessions/valkey.conf` read-only (and nobody else mounts `secrets/sessions/`), has the `NOAUTH` healthcheck and only the network `portcullis-sessions`, which is internal with exactly `sessions`, `forward-auth` and `forward-auth-ext` (like `portcullis-mcp`'s members); both oauth2-proxies use the `redis` store at `redis://sessions:6379` with their own user and a generated 40-character password (different, in no other service's environment), wait for `sessions` healthy, and keep the cookie name / domain; an empty `FORWARD_AUTH_REDIS_PASSWORD` or `FORWARD_AUTH_EXT_REDIS_PASSWORD` is rejected
     - the one-shot `dns-tool` (contract §12.1, on the `--profile '*'` config): image `portcullis-domains`, profile `tools`, entrypoint `domains dns`, user `10004:10004`, read-only, networks exactly `domains-egress`, no volumes, `environment`, `env_file`, ports or Traefik labels, and `domains` and `dns-tool` the only members of `domains-egress`; the pin check lets `dns-tool` use the locally built domains image
     - impersonation: the four forward-auth middlewares list `X-Forwarded-Impersonator` and `X-Forwarded-Impersonation`; Keycloak has `--features-disabled=impersonation` and no `--features`/`KC_FEATURES` enabling it; `PORTCULLIS_PORTAL_URL` = `https://<domain>/`; group-gate's `GATE_IMPERSONATION_FILE` = `/hub-data/impersonation.json`; the Hub's `HUB_IMPERSONATION_MAX_MINUTES` = 30
-- **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases, the image constants the CLI runs itself (`*_IMAGE=` in `scripts/lib`, e.g. the restic and helper images), and inline images in the workflows. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
+- **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases and the pinned refs (`name:tag@sha256:<64 hex>`) the CLI (`scripts/lib/*.sh`: the helper, restic, lldap-ui forwarder constants) and the workflows / actions run inline, and inline images in the workflows. `tests/lint_images.sh` checks the Dockerfiles, the compose files (core and the CI templates `tests/e2e/apps/*/compose.yml`), and every pinned ref the CLI and workflows run. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
     - `amtool check-config` for a generated Alertmanager config with no receiver, a webhook, ntfy and SMTP
@@ -112,6 +112,8 @@ exactly as on a real install. Every step drives the stack through
 
 It boots the stack with a CI override (no ACME; self-signed server cert from
 the internal PKI) and verifies:
+
+- **Rebuild and recreate.** After an `upgrade` that rebuilds a locally built service (`portcullis-enroll`), the running container uses the new image, and unchanged services (mcp-gate, postgres) keep their containers.
 
 - **Vault**
     - server-mode init and unseal, and the permissions on `secrets/`
@@ -990,6 +992,7 @@ as the operator ([Rootless Podman](rootless-podman.md)). No artifact carries
     - the mTLS sign-in and the portal, as in `build-and-test`
     - forward-auth reaches `auth.<domain>` through `host-gateway`
     - `tests/e2e/e2e_podman.py`: `/api/runtime` says `podman`, verified, with the runner's uid as container 0's host id; an echo instance goes through create, enable, disable, backup and restore; the fixer applies on the operator-owned `/srv/e2e-pod` and refuses the root-owned child with `is owned by a host account outside Portcullis' id range` and its path; creating scrutiny answers `409` naming `SYS_RAWIO`
+    - **Rebuild and recreate.** After an `up` that rebuilds enroll, the running container uses the new image, and unchanged services aren't recreated
     - **reboot:** after `systemctl restart user@<uid>.service` (every container dies with the user manager), `podman-restart.service` brings the stack back and `status` is clean within 180 s
     - **Docker → Podman round trip:** after a wipe, `init --runtime podman` and `./portcullis restore --yes` of the Docker phase's backup: `.env` keeps `CONTAINER_RUNTIME=podman` and the rootless socket, `status` is clean, `certs/ca-chain.crt` has the recorded sha256, the Docker phase's LLDAP person exists, and the secrets are the operator's on the host
 - On failure it uploads the container logs only.

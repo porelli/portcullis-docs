@@ -260,7 +260,7 @@ CI fails if any of these is missing.
 
 **Throwaway containers the CLI starts:**
 
-- the chown helper: pinned `alpine`, `--network none`, only `CAP_CHOWN`
+- the chown helper: fully qualified, pinned `alpine`, `--network none`, only `CAP_CHOWN`
 - `traefik-account-uri` (reading Traefik's ACME account for the CAA pin): the
   `portcullis-domains` image as root (to read the root-owned `acme.json`),
   `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, the
@@ -269,17 +269,21 @@ CI fails if any of these is missing.
   URI), never anything else from the file, which holds private keys
 - for backups, the volume snapshot and LLDAP check: the `portcullis-group-gate`
   image (built first if missing), the volume owner's uid, `--network none`,
-  read-only, no capabilities
-- `restic`: pinned, the operator's uid, read-only, no capabilities;
-  `--network none` for a local repository
-- for `backup verify`, a `postgres` without network
+  read-only, no capabilities. Each volume is mounted at `/vol`, a path the
+  group-gate image doesn't have, so an empty named volume is never given the
+  helper image's mountpoint owner
+- `restic`: fully qualified and pinned, the operator's uid, read-only, no
+  capabilities; `--network none` for a local repository
+- for `backup verify`, a fully qualified, pinned `postgres` without network
 
 **Helper containers the Hub starts** (contract §6; labelled
 `io.portcullis.hub.helper`, removed after each use and at every Hub start):
 
-- the volume helper (instance backups and restores): pinned `alpine`, uid
-  65534, `--network none`, no capabilities, never started (the daemon copies
-  through the archive endpoints)
+- the volume helper (instance backups and restores): fully qualified, pinned
+  `alpine`, uid 65534, `--network none`, no capabilities, never started (the
+  daemon copies through the archive endpoints). Volumes are mounted at
+  `/data`, a path the `alpine` image doesn't have, so an empty named volume
+  is never given an image mountpoint's owner
 - the shared-folder fixer: the Hub's own image by image ID, `hub folderfix
   <mode>` as uid 0 with only its mode's capabilities, no network, read-only
   root filesystem, one bind mount of the folder. See
@@ -311,8 +315,8 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `appfiles/` | owner 10001 | 0750 | Hub (writes settings data files, see [below](#settings-data-files-and-secrets)) |
 
 Without root, the CLI changes owner/group through a throwaway container
-(pinned `alpine`, `--network none`, `--cap-drop ALL --cap-add CHOWN`). Anyone
-who can run docker is root-equivalent anyway.
+(fully qualified, pinned `alpine`, `--network none`, `--cap-drop ALL --cap-add CHOWN`).
+Anyone who can run docker is root-equivalent anyway.
 
 **The Hub never sees the core `.env`.** It gets `secrets/hub/core.env`, which
 holds only what templates may reference: `PORTCULLIS_DOMAIN`,
