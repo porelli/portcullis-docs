@@ -3853,6 +3853,22 @@ Under a non-identity map, `apply`, `restore` and `childfix` refuse (exit `2`, no
     - `dns_shadowed`: a `foreign` `address` item with severity `info` that isn't an `_acme-challenge` TXT (an address that isn't the server's: the name doesn't reach Portcullis) → Info;
     - `dns_nomail_recommended`: a `nomail` item `missing` → Info, one-click `dns_apply` (`sets=nomail`; not the main domain).
 
+- **VPN (NEW, VPN)** registers fourteen more kinds through the same check interface (Hub `internal/doctor/vpn.go`). All are explain-only:
+    - `vpn_down` (Problem): VPN-only hosts or mode ≠ apps while `wg` (edge) is unhealthy. Steps: `./portcullis up`, check logs.
+    - `vpn_provider_stale` (Problem): a wired provider's device map is stale (older than 3× its refresh interval), or its gateway container is down. Shows the hook's last error (redacted).
+    - `vpn_provider_invalid` (Problem for duplicates, Info otherwise): duplicate device addresses, devices outside the provider's ranges, or device owners that don't resolve to a person.
+    - `vpn_range_overlap` (Warning or Problem): a provider range overlaps Local networks (Warning: those addresses also reach `lan_only` ports but never count for VPN binding), or overlaps a Docker network (Problem: the provider can't be wired).
+    - `vpn_via_dead` (Problem): a VPN-only instance's *Through* setting names only unwired or stale providers.
+    - `vpn_dns_failed` (Problem): a VPN provider's DNS hook failed.
+    - `vpn_dns_manual` (Info): a VPN provider has `dns: manual` (DNS records applied by hand).
+    - `vpn_gateway_privileged` (Info): a wired gateway service (or a service sharing its network namespace) has NET_ADMIN capability, `privileged`, or host devices. Explains the trust note (§4).
+    - `vpn_static_mapping` (Info): a `source: static` provider is wired (addresses assigned by admin).
+    - `vpn_single_provider` (Warning): mode `admin` or `server` with only one provider wired (no fallback).
+    - `vpn_public_links` (Warning): a VPN-only instance has "public links stay on the internet" turned on.
+    - `vpn_no_admin_device` (Problem): mode `admin` or `server`, and no admin has a device with a handshake in the last 30 days on any non-static provider.
+    - `vpn_device_stale` (Info): a built-in device with no handshake in 90 days. Offers one-click `remove_vpn_device`.
+    - `vpn_expiring` (Info): a built-in device expiring within 14 days. Shown to the device owner.
+
 - **Rootless Podman (NEW, rootless)** registers five more kinds through the same check interface (Hub `internal/doctor/engine.go`). They run only under `HUB_CONTAINER_RUNTIME=podman` (under Docker they never fire) and are all explain-only:
     - `runtime_mismatch` (Problem): the engine contradicts `HUB_CONTAINER_RUNTIME` (§6); every engine operation answers `503` until the Hub restarts against the right engine;
     - `limits_not_enforced` (Warning): an instance container whose inspect shows no memory or pids limit although its compose sets one (cgroup controllers not delegated to the operator's user manager), naming the instance and service;
