@@ -41,6 +41,8 @@ Do this once, as root. Use a dedicated account for Portcullis (here
 | Lingering | `loginctl enable-linger`: healthchecks and the start at boot need the user manager running while nobody is logged in | yes |
 | User units | `podman.socket` and `podman-restart.service` enabled for the operator | yes |
 | Low ports | `net.ipv4.ip_unprivileged_port_start=80`, so Traefik can publish 80 and 443 | yes |
+| Network pool | the operator's `~/.config/containers/containers.conf` says, under `[network]`, exactly `default_subnet_pools = [{"base" = "10.89.0.0/16", "size" = 24}]`, and no file in `containers.conf.d` sets `default_subnet_pools`. Portcullis reserves `10.88.0.0/16` (Podman's default network) and `10.89.0.0/16` against [VPN](vpn.md) ranges, so every network Podman creates must come from there: an address in a VPN provider's range could otherwise be a container's | yes |
+| `tun` module | loaded at boot, only for marketplace VPN gateways that use a TUN device ([below](#vpn-under-rootless-podman)) | — |
 | Versions | Podman 5.4 or later, passt, the Docker CLI and its compose plugin (no Docker daemon) | yes |
 | AppArmor (Ubuntu) | pasta's profile accepts SIGTERM from the `podman` profile (`signal (receive) set=(term) peer=podman,`), checked only where both profiles exist. Without it Podman can't stop its network process when the last container leaves a network, and `down` / `restore` / `upgrade` fail with "rootless netns: kill network process: permission denied" ([Launchpad #2154379](https://bugs.launchpad.net/ubuntu/+source/apparmor/+bug/2154379)) | yes |
 | Client addresses | `nft` or `iptables` installed, so forwarded TCP keeps the client's address | recommended |
@@ -86,6 +88,19 @@ loginctl enable-linger portcullis
 echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/80-portcullis.conf
 sysctl --system
 
+# Pin Podman's network pool in the operator's own containers.conf (not a
+# containers.conf.d drop-in): Portcullis reserves 10.88.0.0/16 and
+# 10.89.0.0/16 against VPN ranges. If the file already has a [network]
+# section, put the line there instead.
+install -d -o portcullis -g portcullis ~portcullis/.config ~portcullis/.config/containers
+printf '[network]\ndefault_subnet_pools = [{"base" = "10.89.0.0/16", "size" = 24}]\n' \
+  >> ~portcullis/.config/containers/containers.conf
+chown portcullis:portcullis ~portcullis/.config/containers/containers.conf
+
+# Only for marketplace VPN gateways with a TUN device (NetBird, WireGuard
+# servers): load the tun module now and at boot.
+modprobe tun && echo tun > /etc/modules-load.d/tun.conf
+
 # Ubuntu only (its AppArmor profiles for podman and pasta): let Podman stop
 # pasta, its network process. The rule goes into the profile's local file;
 # if usr.bin.pasta has no `include if exists <local/usr.bin.pasta>` line,
@@ -117,6 +132,19 @@ loginctl enable-linger portcullis
 
 echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/80-portcullis.conf
 sysctl --system
+
+# Pin Podman's network pool in the operator's own containers.conf (not a
+# containers.conf.d drop-in): Portcullis reserves 10.88.0.0/16 and
+# 10.89.0.0/16 against VPN ranges. If the file already has a [network]
+# section, put the line there instead.
+install -d -o portcullis -g portcullis ~portcullis/.config ~portcullis/.config/containers
+printf '[network]\ndefault_subnet_pools = [{"base" = "10.89.0.0/16", "size" = 24}]\n' \
+  >> ~portcullis/.config/containers/containers.conf
+chown portcullis:portcullis ~portcullis/.config/containers/containers.conf
+
+# Only for marketplace VPN gateways with a TUN device (NetBird, WireGuard
+# servers): load the tun module now and at boot.
+modprobe tun && echo tun > /etc/modules-load.d/tun.conf
 ```
 
 SELinux can stay enforcing. Core's own files are handled for you
@@ -142,7 +170,16 @@ podman unshare cat /proc/self/uid_map        # 0 <your uid> 1, then 1 <subuid st
 cat /sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/cgroup.controllers
                                              # must list memory and pids
 loginctl show-user "$USER" -p Linger         # Linger=yes
+grep default_subnet_pools ~/.config/containers/containers.conf
+                                             # default_subnet_pools = [{"base" = "10.89.0.0/16", "size" = 24}]
 ```
+
+Without the pool line `init`, `up`, `upgrade` and `restore` refuse with
+"containers.conf: Podman's network pools aren't pinned (…): add under
+[network] in ~/.config/containers/containers.conf: default_subnet_pools =
+[{"base" = "10.89.0.0/16", "size" = 24}]", and `status` shows the same line.
+Set it before the first `init`: networks Podman made earlier keep their
+addresses.
 
 ## Install
 
@@ -211,10 +248,30 @@ The app templates at the default port start (80):
 | Scrutiny | not available | needs `SYS_RAWIO` for raw disk access (even with no disk set) |
 | ESPHome, motionEye, Zigbee2MQTT | limited | their device slots can't pass host devices: use a network device (an ESPHome device over the network, network cameras, a network Zigbee coordinator) |
 | NetBird | limited | host networking for the relay, and its STUN and relay ports are UDP |
+| Headscale | works | its VPN gateway runs in userspace, with no TUN device or capability |
 | Every other template | works | |
 
 The templates repository commits this classification in `tests/rootless.txt`,
 so any change to it shows up in review.
+
+## VPN under rootless Podman
+
+Core's VPN service `wg` ([VPN-only access](vpn.md)) is the same on both
+runtimes: userspace WireGuard, no capability, no TUN device, no `sysctls`.
+Its UDP port (51820) goes through Podman's port forwarder, which rewrites
+the outer source address; that is harmless, because WireGuard authenticates
+peers by key and replies go back the same way.
+
+A **marketplace VPN gateway** that uses a TUN device and `NET_ADMIN` (NetBird,
+plain WireGuard servers) is **limited** ("uses TUN/NET_ADMIN inside the
+rootless network namespace (prefer a userspace mode)"). It works:
+`NET_ADMIN` in a rootless container acts only inside the container's own
+network namespace, where the client makes its tunnel device and routes, and
+nothing reaches host networking. The host needs the `tun` module loaded
+(`modprobe tun`, and `/etc/modules-load.d/tun.conf` for boot, as in
+[Host preparation](#host-preparation)). The doctor still shows such gateways
+(`vpn_gateway_privileged`). Headscale's gateway runs in userspace and needs
+neither.
 
 ## Moving between runtimes
 

@@ -22,6 +22,7 @@ exactly as on a real install. Every step drives the stack through
 ### `unit-tests` (no containers)
 
 - **shellcheck** of `portcullis`, `scripts/lib/*.sh`, `tests/*.sh` and `vault/entrypoint.sh`.
+- **ci.yml size.** `tests/lint_ci_size.sh` keeps `ci.yml` under 450,000 bytes (GitHub refuses a workflow over 500 KB with a startup failure and no jobs); long step scripts live in `.github/ci/*.sh`, which shellcheck and the image greps cover too.
 - **CLI help.** Every command listed by `./portcullis help` must print a `Usage: portcullis <cmd>` line for `--help`.
 - **`tests/test_cli.sh`.** Argument parsing, dispatch and `init --env-only`, with a stub `docker`. Also:
     - `init --env-only` generates `FORWARD_AUTH_REDIS_PASSWORD` and `FORWARD_AUTH_EXT_REDIS_PASSWORD` (40 `[A-Za-z0-9]`, different), both core secrets (never shared with the Hub) and rotatable (`upgrade` generates them); `init`, `up` and `upgrade` run the session store's restart check before `docker compose up`
@@ -98,6 +99,13 @@ exactly as on a real install. Every step drives the stack through
     - the session store: `sessions` is `valkey/valkey` pinned, `999:1000`, read-only with a tmpfs `/data`, no ports, environment or routers, mounts only `secrets/sessions/valkey.conf` read-only (and nobody else mounts `secrets/sessions/`), has the `NOAUTH` healthcheck and only the network `portcullis-sessions`, which is internal with exactly `sessions`, `forward-auth` and `forward-auth-ext` (like `portcullis-mcp`'s members); both oauth2-proxies use the `redis` store at `redis://sessions:6379` with their own user and a generated 40-character password (different, in no other service's environment), wait for `sessions` healthy, and keep the cookie name / domain; an empty `FORWARD_AUTH_REDIS_PASSWORD` or `FORWARD_AUTH_EXT_REDIS_PASSWORD` is rejected
     - the one-shot `dns-tool` (contract §12.1, on the `--profile '*'` config): image `portcullis-domains`, profile `tools`, entrypoint `domains dns`, user `10004:10004`, read-only, networks exactly `domains-egress`, no volumes, `environment`, `env_file`, ports or Traefik labels, and `domains` and `dns-tool` the only members of `domains-egress`; the pin check lets `dns-tool` use the locally built domains image
     - impersonation: the four forward-auth middlewares list `X-Forwarded-Impersonator` and `X-Forwarded-Impersonation`; Keycloak has `--features-disabled=impersonation` and no `--features`/`KC_FEATURES` enabling it; `PORTCULLIS_PORTAL_URL` = `https://<domain>/`; group-gate's `GATE_IMPERSONATION_FILE` = `/hub-data/impersonation.json`; the Hub's `HUB_IMPERSONATION_MAX_MINUTES` = 30
+- **VPN** ([VPN-only access](vpn.md), contract §16):
+    - **The VPN wiring check** (on the `--profile '*'` config, on Docker, Podman and the SELinux overlay): `wg` is `portcullis-wg`, profile `wg`, `10006:10006` with group `10007` only, read-only, no `cap_add` / `devices` / `sysctls` / `privileged` / `network_mode` / engine socket, exactly the volumes `vpn_doc` (ro), `wg_data` and the `people.key` bind (ro), the networks `portcullis-vpn`, `portcullis-vpn-edge`, `wg-egress` and `portcullis-metrics-wg` (alias `wg-metrics`), the edge caps' defaults and no secret in its environment but the key path; Traefik's `vpnsecure` on its `portcullis-vpn-edge` address, `PROXYPROTOCOL_TRUSTEDIPS` = `wg`'s edge address `/32`, `aliasHeadersStrategy: delete`, `strip-client-forwarded@file`, websecure's TLS domains and no other `vpnsecure` key; Traefik not on `portcullis-vpn`; `portcullis-vpn` = `wg`, `portcullis-vpn-edge` = `wg` + Traefik, `wg-egress` = `wg`; `wg_data` mounted by `wg` and (ro) the Hub, `vpn_doc` by the Hub (rw), `wg` and group-gate (ro), and group 10007 held by exactly those three; `people-vpn-enrol` = people's chain on `` PathPrefix(`/vpn/`) ``; the `-vpn` group-gate middlewares only on `vpnsecure`-only routers.
+    - **No `NET_ADMIN` / `SYS_ADMIN`** in any core service (core stays userspace).
+    - **wg unit tests** (`cd wg && go vet && go test -race`): the strict `vpn.json` reader on the shared vectors, real userspace WireGuard tunnels on loopback UDP (no TUN), the edge's accept rules, re-checks, caps and pressure eviction, the people role and the resolver. **forwarder** and **`tests/e2e/vpn-client`** unit tests the same way.
+    - **Shared `vpn.json` vectors match the Hub**: `tests/vpn_json_vectors.json` is a byte copy of the same-named Hub branch's (else main's) `internal/vpn/testdata/vpn_json_vectors.json`; group-gate's reader runs them too (`tests/test_group_gate.py`).
+    - `tests/test_cli.sh`: `vpn` argument parsing and help; `vpnsecure` trusts PROXY v2 only from `wg`'s edge address and never gets `forwardedHeaders.trustedIPs` / `insecure`; every core router uses its entrypoint variable.
+    - `tests/test_shell_libs.sh`: the mode's entrypoint variables, `vpn init`'s subnet refusals and suggestion, `vpn add-device` (the config and QR from one config on stdin, no key on any logged command line, nothing run without the Hub), and the reserved ranges in `core.env` (`172.16.0.0/12 192.168.0.0/16 10.214.0.0/24` plus the core networks, and Podman's pools under Podman).
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases and the pinned refs (`name:tag@sha256:<64 hex>`) the CLI (`scripts/lib/*.sh`: the helper, restic, lldap-ui forwarder constants) and the workflows / actions run inline, and inline images in the workflows. `tests/lint_images.sh` checks the Dockerfiles, the compose files (core and the CI templates `tests/e2e/apps/*/compose.yml`), and every pinned ref the CLI and workflows run. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
@@ -227,6 +235,15 @@ the internal PKI) and verifies:
     - `backup --offsite` twice to a local restic repository. The second run must be incremental, and retention must collapse same-day snapshots under `keep-daily`.
     - `backup verify` (off-host). A wrong `BACKUP_PASSWORD` must fail, and neither the root token nor the `.env` secrets may appear in the encrypted repository.
     - **Restore into a fresh stack.** Containers, volumes, `.env`, `secrets/`, `certs/` and local backups are all deleted, as on a new host. Then `restore --yes --from-offsite` must bring back an active Vault, the Keycloak realm, the forward-auth client and the LLDAP user.
+
+The step **"Test the VPN service"** (`.github/ci/build-and-test-vpn-service.sh`) runs `./portcullis vpn init` on Docker and checks:
+
+- `wg` is added to `COMPOSE_PROFILES`, runs healthy as 10006 with group 10007 only, no capability, device, privilege or socket; `wg_data` is 2750 `10006:10001`, `status.json` 0640 group 10001, the people role is on, and `secrets/wg/people.key` is 0640 group 10006; the Hub reads `wg_data` and writes `vpn_doc`;
+- a whoami on both entrypoints: forged forwarding headers (23 of them) never reach the backend, `X-Forwarded-For` holds exactly one address (the real peer) and `X-Real-Ip` is the peer; group-gate never logs a forged value;
+- a PROXY header from a container on `portcullis-vpn` can't reach `vpnsecure` at all, and one from another `portcullis-vpn-edge` address is ignored; no edge port answers while no provider is wired;
+- `vpn add-device` and `tests/e2e/vpn-client` through the tunnel: the backend sees exactly the device's tunnel address and Traefik's own forwarding headers.
+
+`wg` then stays on for the rest of the job (`up`, `upgrade`, backup and restore).
 
 The step "Test the public guard (public exceptions) through Traefik" routes a test host through `portcullis-public-guard@docker` only and checks: no version-3 entry → 403; published prefix / static paths → 200; other paths, encoded `/` or `#`, dot-segment escapes → 403; `Authorization`, `Proxy-Authorization`, a credential header, credential cookies and query keys in PHP-mangled spellings → 403. The guard's unit tests are in `tests/test_group_gate.py` (`PublicGuardTest`, `PhpVarNameTest`).
 
@@ -993,9 +1010,34 @@ as the operator ([Rootless Podman](rootless-podman.md)). No artifact carries
     - forward-auth reaches `auth.<domain>` through `host-gateway`
     - `tests/e2e/e2e_podman.py`: `/api/runtime` says `podman`, verified, with the runner's uid as container 0's host id; an echo instance goes through create, enable, disable, backup and restore; the fixer applies on the operator-owned `/srv/e2e-pod` and refuses the root-owned child with `is owned by a host account outside Portcullis' id range` and its path; creating scrutiny answers `409` naming `SYS_RAWIO`
     - **Rebuild and recreate.** After an `up` that rebuilds enroll, the running container uses the new image, and unchanged services aren't recreated
+    - **The VPN service** (`.github/ci/e2e-podman-vpn-service-on-rootless-podman.sh`): `vpn init` rootless, `wg` as 10006 without capabilities, `vpn add-device` for an LLDAP person, a `tests/e2e/vpn-client` handshake over the published UDP port and a GET of people.&lt;domain&gt; through the edge and `vpnsecure` (forward-auth's redirect). The host prep writes the operator's `containers.conf` pool line, and the job checks a new network lands in `10.89.0.0/16`
     - **reboot:** after `systemctl restart user@<uid>.service` (every container dies with the user manager), `podman-restart.service` brings the stack back and `status` is clean within 180 s
     - **Docker → Podman round trip:** after a wipe, `init --runtime podman` and `./portcullis restore --yes` of the Docker phase's backup: `.env` keeps `CONTAINER_RUNTIME=podman` and the rootless socket, `status` is clean, `certs/ca-chain.crt` has the recorded sha256, the Docker phase's LLDAP person exists, and the secrets are the operator's on the host
 - On failure it uploads the container logs only.
+
+### `e2e-vpn` (VPN-only access)
+
+The whole stack with the VPN service (`COMPOSE_PROFILES=wg`, `./portcullis vpn init`, `ACME_STAGING=true`, 45 min), the Hub (same-named Hub branch) with one local template source: the CI template echo (instance `echo-vpn`, VPN-only) and the templates repo's headscale (same-named templates branch, else main; the job fails without its `vpn:` block), wired as a provider with a 15 s refresh. A CoreDNS stub is the built-in resolver's upstream. Clients have no privileges: `tests/e2e/vpn-client` (a Go WireGuard client on the same wireguard-go / gVisor / miekg/dns pins, through a netstack tunnel, one JSON line per call) for the built-in VPN, and userspace `tailscaled` containers for the tailnet. `tests/e2e/e2e_vpn.py` (Playwright for setup links, the `/vpn/` fresh sign-in and Headscale's OIDC registration) runs these cases, each failing with `FAIL: <what>`:
+
+| Case | Checks |
+|------|--------|
+| `websecure_vpn_required` | echo-vpn on `websecure` answers only `/vpn-required` |
+| `builtin_signin_demanded` | alice's built-in device without a session: redirected to sign in |
+| `builtin_opens` | alice's device with alice's session opens echo-vpn |
+| `builtin_not_yours` | bob's device (made with the host CLI) with alice's session: "this device isn't yours" |
+| `builtin_dns` | the built-in resolver: echo-vpn.&lt;d&gt; A `10.213.0.1`, AAAA no data, no AD |
+| `tailnet_register` | a tailscaled node registered as alice through Keycloak |
+| `tailnet_opens`, `tailnet_dns` | through the Headscale gateway with alice's session; MagicDNS points echo-vpn.&lt;d&gt; at the gateway |
+| `via_builtin` | *Through* only the built-in VPN: the tailnet device 403, the built-in one opens |
+| `tailnet_local_denied` | a node of a local (non-OIDC) Headscale user never opens |
+| `gateway_claims_builtin`, `gateway_wrong_source`, `gateway_wrong_port` | a gateway claiming a built-in address is closed (`outside_ranges`); a valid header from another address is closed (`wrong_gateway`); nothing listens on other edge ports |
+| `valid_until_expired` | the Hub stopped and `vpn.json` past its `valid_until`: open connections closed, no new ones |
+| `builtin_revoked` | bob's device revoked: an open connection closed, the handshake fails within 5 s |
+| `tailnet_node_deleted` | alice's node deleted in Headscale: an open connection closed, denied within refresh + 10 s |
+| `gateway_stopped`, `identity_hook_broken`, `wg_stopped` | only that path fails; once stale the tailnet is denied and the built-in VPN isn't; with `wg` down echo-vpn is unreachable on both paths, never on the internet |
+| `server_mode` | `vpn mode server --force`: on `websecure` only the public set answers; `vpn mode apps` with `wg` stopped restores everything |
+
+Keys, configurations and cookies live only in a 0700 temp directory; setup links are masked and there are no Playwright traces. The artifacts are logs and `wg`'s status, never `vpn.json`'s keys, `.env`, `secrets/` or configurations.
 
 ### Caching
 

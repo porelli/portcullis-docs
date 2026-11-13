@@ -4,7 +4,7 @@ This page covers what the core stack (`docker-compose.yml` in the core repo)
 does to limit the damage a compromised component can do, and where it can't:
 the threat model, network layout, Docker socket proxies, per-service container
 settings, the secrets containers read, the shared-folder fixer, LAN-only
-ports, and header trust.
+ports, header trust and the VPN service.
 
 ## Threat model summary
 
@@ -27,6 +27,7 @@ ports, and header trust.
 | AI clients (MCP, [AI support](ai.md)) | A token replayed at another app, an AI acting beyond the person, injected instructions in app content, a secret leaking into the model | `mcp-gate` checks every request: signature, issuer, the exact audience and scope of that one resource (a token for two resources works nowhere), the client, the resource's sign-in rule (certificate methods never count) and the person's population **on every request**. It never forwards the person's token; destructive tools need a confirmation in the person's browser; no tool takes or returns a secret. See [AI support](#ai-support-mcp-gate) |
 | An LLDAP account deleted and re-created under the same name | The newcomer inherits the previous holder's Keycloak user (passkeys, sessions, consents, AI connections) | Keycloak links LLDAP accounts by LLDAP's immutable `entryUUID`: the newcomer is a new Keycloak user (new `sub`); the old copy and its passkeys, sessions and consents are removed at the next lookup |
 | Password guessing (only while the password method is on) | Online guessing of a person's LLDAP password at `auth.<domain>` | Keycloak's brute-force protection (realm, `keycloak configure`): after 10 failures each further one adds 60 s of wait, at most 15 min, never a permanent lockout (so nobody can lock an account out for good); Traefik's `rate-limit-auth@file`; `admin` and `portcullis-hub` never sign in with a password (refused before any check, not counted) |
+| VPN-only apps ([VPN](vpn.md)) | Reached from the internet, from a LAN or Docker address, from another person's device, or through a gateway claiming another VPN's addresses | A VPN-only router never exists on `websecure`; Traefik's `vpnsecure` honours PROXY v2 only from `wg` on a network of exactly `wg` and Traefik; the edge admits a provider's connection only on its own port, from its own gateway, from an address in its own ranges that is one of its fresh devices; an allowlist on the connection's address; then the normal sign-in and the device ↔ person binding in group-gate, which counts only on its VPN paths. Missing, invalid, expired or stale device lists deny. See [VPN](#vpn-wg-the-edge-and-gateways) |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
 
@@ -161,11 +162,21 @@ graph LR
 | `monitoring` (profile `monitoring`, `internal: true`) | Prometheus, Alertmanager, Grafana, blackbox, textfile exporter | Docker default | Scraping and dashboards. Prometheus and blackbox also join `portcullis`, Grafana joins `portcullis-proxy` (routed at `metrics.<domain>`) |
 | `alerting` (profile `monitoring`) | Alertmanager | Docker default | Alertmanager's only network with egress, for the receivers |
 | `portcullis-<app>_default` | One app's services | Docker default | App-internal traffic (databases, caches). Isolated from other apps and from core |
+| `portcullis-vpn` (`internal: true`) | `wg` and the wired VPN providers' gateways only; **never Traefik** | `PORTCULLIS_VPN_NET` (`172.31.254.0/26`), range `PORTCULLIS_VPN_IP_RANGE` (`172.31.254.8/29`), `wg` at `PORTCULLIS_VPN_WG_IP` (`.3`), gateways pinned by the Hub at `.16`–`.62` (slot `n` → `.16 + n`) | The gateways' only path to the edge ports (`9001 + slot`). Traefik isn't on it, so a gateway can't reach `vpnsecure` or spoof `wg` there |
+| `portcullis-vpn-edge` (`internal: true`) | exactly Traefik and `wg` | `PORTCULLIS_VPN_EDGE_SUBNET` (`172.31.254.64/28`), range `PORTCULLIS_VPN_EDGE_IP_RANGE` (`172.31.254.72/29`), Traefik at `PORTCULLIS_VPN_EDGE_TRAEFIK_IP` (`.66`), `wg` at `PORTCULLIS_VPN_EDGE_WG_IP` (`.67`) | Traefik's `vpnsecure` (`.66:8443`) listens only here and trusts PROXY v2 only from `.67` |
+| `wg-egress` | `wg` only | Docker default | Publishes the built-in VPN's UDP port and carries the resolver's upstream queries |
+| `portcullis-metrics-wg` (`internal: true`) | `wg` (alias `wg-metrics`) and Prometheus only | Docker default | `wg`'s metrics (`wg-metrics:9100`), bound to that address only |
 
 CI checks that exactly `keycloak` and `traefik` are on `portcullis-auth`,
 that each socket-proxy network has exactly its two members, and that
 `portcullis-sessions` has exactly `sessions`, `forward-auth` and
-`forward-auth-ext`.
+`forward-auth-ext`. For the VPN it checks, over every profile and on Docker,
+Podman and the SELinux overlay, that `portcullis-vpn` has exactly `wg` in
+core, `portcullis-vpn-edge` exactly `wg` and Traefik, `wg-egress` exactly
+`wg`, and that Traefik isn't on `portcullis-vpn`. `./portcullis up` validates
+the VPN networks' addresses (a /26 at least, `wg` and the dynamic range
+outside the gateway window, no overlaps) and refuses a mismatch with an
+existing network.
 
 **Changing the ranges.** Only do this if the defaults collide with a host, LAN
 or VPN network, ideally before `./portcullis init`. The rules:
@@ -255,6 +266,7 @@ CI fails if any of these is missing.
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002. Generates browser certificates' keys in memory, answers the `.p12` and its password once to the Hub, clears them and never stores or logs them |
 | dns-tool (profile `tools`) | 10004:10004 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains dns`, built if missing, never pulled). Only `./portcullis dns …` starts it (`docker compose run --rm --no-deps -T`); the image's health check is disabled for it. Network `domains-egress` only; no volumes, no `environment`, no `env_file`, no ports, no Traefik labels; `mem_limit` 128m, `pids_limit` 64. The provider credentials arrive as JSON on stdin ([The dns tool](#the-dns-tool)) |
 | mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps one person's requests in flight and the memory request bodies hold, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps); results and aggregate refreshes aren't budgeted, so many people at once can still exhaust it and the container restarts, one person can't), `pids_limit` 256 |
+| wg (profile `wg`) | 10006:10006 + group 10007 (`group_add`) | read-only | — | `wg healthcheck` | Image `portcullis-wg`, built from `wg/` (Go; wireguard-go and the gVisor netstack: userspace WireGuard). **No `cap_add`, `devices`, `sysctls`, `/dev/net/tun`, `privileged`, `network_mode` or engine socket, on any runtime** (CI's VPN wiring check and the no-`NET_ADMIN` / `SYS_ADMIN` lint). The internet-exposed service, so never the Hub's group 10001 and no `hub_data`: reads `vpn_doc` read-only (group 10007), writes `wg_data` (`status.json`), reads `secrets/wg/people.key` read-only. `mem_limit` 128m, `pids_limit` 128. See [VPN](#vpn-wg-the-edge-and-gateways) |
 | prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
 | grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
 
@@ -307,6 +319,7 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/mcp-gate/age.key` | 10005 | 0640 (dir 0700) | mcp-gate (decrypts the AI credentials the Hub wrote) |
 | `secrets/mcp-gate/{age.pub,hub-secret}` | 10001 | 0640 | Hub (encrypts to `age.pub`; holds no identity) and mcp-gate (`hub-secret`, through group 10001) |
 | `secrets/sessions/valkey.conf` | 1000 | 0640 (dir 0700) | sessions (its config and ACL users: the SHA-256 of `FORWARD_AUTH_REDIS_PASSWORD` / `FORWARD_AUTH_EXT_REDIS_PASSWORD`, never the passwords; rewritten from `.env` on every run) |
+| `secrets/wg/people.key` | 10006 | 0640 (dir 0750) | wg (the built-in VPN's private key, written by `./portcullis vpn init` inside a throwaway `wg` container, never printed; an empty file means the built-in VPN is off) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
 | `secrets/monitoring/alertmanager/alertmanager.yml` | 65534 | 0640 (dir 0750) | Alertmanager (receivers incl. SMTP password / webhook URLs) |
 | `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
@@ -530,6 +543,11 @@ both the compose file and the SELinux overlay. What changes:
   `/mnt`, `/media`, home directories) or the engine socket.
 - **Low ports.** `net.ipv4.ip_unprivileged_port_start=80` lets any local
   account bind ports 80–1023. Keep the host dedicated to Portcullis.
+- **The VPN service** is identical on both runtimes (userspace, no
+  capability); see the [runtime matrix](#runtime-matrix). The operator's
+  `containers.conf` pins Podman's network pool to `10.89.0.0/16`, and
+  Portcullis reserves `10.88.0.0/16` and `10.89.0.0/16` against VPN ranges
+  ([Rootless Podman → Host preparation](rootless-podman.md#host-preparation)).
 - **Client addresses.** Remote TCP keeps the client's address (with `nft` or
   `iptables`); UDP and loopback connections see a rewritten source. Header
   trust never depended on the gateway: identity headers are trusted only
@@ -604,6 +622,17 @@ and your router or host firewall.
 
 ## Header spoofing protections
 
+- **Client-sent forwarding headers.** Both entrypoints, `websecure` and
+  `vpnsecure`, run `strip-client-forwarded@file` first on every router. It
+  removes the client's `Forwarded` and the other address and scheme headers
+  Traefik doesn't manage itself (`Forwarded-For`, `X-Forwarded`,
+  `X-Forwarded-Prefix`, `X-Forwarded-Uri`, `X-Forwarded-Method`,
+  `X-Forwarded-Scheme`, `X-Forwarded-Ssl`, `X-Forwarded-Protocol`,
+  `X-Url-Scheme`, `X-Original-Forwarded-For`, `X-Client-Ip`,
+  `True-Client-Ip`, `Cf-Connecting-Ip`, `Fastly-Client-Ip`,
+  `X-Cluster-Client-Ip`); Traefik replaces `X-Forwarded-For`, `X-Real-Ip`
+  and the other `X-Forwarded-*` it manages itself. So no backend sees a
+  client-chosen address. CI sends 23 forged headers on both entrypoints.
 - **Entrypoint.** The `websecure` entrypoint has no
   `forwardedHeaders.trustedIPs`, so Traefik deletes client-supplied
   `X-Forwarded-*` and `X-Forwarded-Tls-Client-Cert(-Info)` headers.
@@ -611,8 +640,10 @@ and your router or host firewall.
   `X_Forwarded_Tls_Client_Cert`. The certificate headers that group-gate, the Hub and
   Keycloak see therefore always describe a certificate Traefik verified.
   Never add `forwardedHeaders.insecure` or `forwardedHeaders.trustedIPs` on
-  `websecure`: the certificate headers can be trusted only because Traefik
-  deletes client copies.
+  `websecure` or `vpnsecure`: the certificate headers can be trusted only
+  because Traefik deletes client copies. `vpnsecure` also sets
+  `aliasHeadersStrategy: delete`; it trusts the PROXY v2 header (the client
+  address) only from `wg`'s address, never a forwarded header.
 - **Forward-auth headers.** Traefik's `forwardAuth` deletes every
   `authResponseHeaders` entry from the upstream request and re-adds only the
   values oauth2-proxy and group-gate return. A client can't send its own
@@ -1009,6 +1040,124 @@ Every MCP request goes through core's `mcp-gate`
   networking themselves; run other host-network apps you trust only.
 - More residuals (disconnect, `app_oauth` apps, the AI page) are listed in
   [AI support → Residuals](ai.md#residuals).
+
+## VPN (wg, the edge and gateways)
+
+The [VPN](vpn.md) adds one core service, `wg`, with two roles: the **edge**,
+the only PROXY v2 client of Traefik's `vpnsecure`, and the **people** role,
+the built-in WireGuard VPN. They share code and nothing else: each tunnel has
+its own WireGuard device, network stack, key, port and subnet, and there is
+no forwarding between stacks (the people role's only way out is the edge).
+Interfaces: [contracts §16](../guides/integration-contracts.md#16-vpn-and-the-wg-service-new-vpn).
+
+**Trust chain.**
+
+- **Traefik.** `vpnsecure` listens on `portcullis-vpn-edge` only (exactly
+  Traefik and `wg`), trusts PROXY v2 only from `wg`'s address there
+  (`PROXYPROTOCOL_TRUSTEDIPS` = that `/32`), and has no
+  `forwardedHeaders.trustedIPs` or `insecure`. A gateway's own PROXY header
+  sent straight to `vpnsecure` can't arrive (gateways aren't on that network)
+  and would never be honoured.
+- **The edge.** Each wired provider has one TCP port on `wg`'s
+  `portcullis-vpn` address (`9001 + slot`). A connection on it is admitted
+  only when it comes from that provider's gateway address, starts with a
+  PROXY v2 header (TCP over IPv4) within 5 s, claims a source in **that**
+  provider's ranges, the provider's device list is fresh by the edge's own
+  clock, and the source is one of its unexpired devices. Anything else is
+  closed and counted in `wg_edge_rejected_total{provider,reason}`
+  (`wrong_port`, `wrong_gateway`, `no_header`, `slow_header`,
+  `outside_ranges`, `stale`, `not_in_map`, `no_doc`, `expired` for a
+  `vpn.json` past its `valid_until`, `busy`). The edge then
+  re-originates the connection to `vpnsecure` with a new header carrying the
+  same address. The built-in VPN's connections are handed over in-process
+  with their tunnel address, fixed by WireGuard's key routing.
+- **Open connections are re-checked** on every change of `vpn.json` and
+  every 2 s, and closed when the file is gone, invalid or past its
+  `valid_until`, the provider no longer owns the address or is stale, or the
+  device is gone, expired or has another owner. They also end after 12 h
+  (`lifetime`) and 1 h without traffic (`idle`); closes are counted in
+  `wg_edge_closed_total{provider,reason}` (also `revoked`, `pressure`, and
+  `rebound` when the Hub moves a provider to another slot).
+- **The allowlist.** VPN-only routers carry `portcullis-vpnallow-<id>`
+  first: an `ipAllowList` of the accepted providers' ranges with no
+  `ipStrategy`, so it matches the connection's address (the PROXY source),
+  never a header. An empty set is `0.0.0.0/32` (matches nobody).
+- **The binding counts only on the VPN paths.** group-gate evaluates the
+  device ↔ person binding only on `/auth/vpn`, `/public-guard/vpn` and
+  `/portal/vpn`, whose middlewares sit only on `vpnsecure`-only routers. On
+  its normal paths it denies every VPN-only host with the `/vpn-required`
+  page before looking at the address, so a `websecure` request with a LAN,
+  Docker or CGNAT address never satisfies a binding.
+- **Ranges are disjoint and reserved ranges refused.** No provider range may
+  overlap another provider's, the built-in subnet, the reserved link subnet
+  `10.214.0.0/24`, the core networks, `172.16.0.0/12` or `192.168.0.0/16`
+  (Docker's default pools, from which app networks are allocated), or under
+  Podman `10.88.0.0/16` and `10.89.0.0/16`: an address there could be a
+  container's. The Hub refuses to wire or publish such a provider; `wg` and
+  group-gate refuse a `vpn.json` with overlapping or reserved ranges as a
+  backstop (every VPN request denied).
+
+**The device lists (`vpn_doc`).** `vpn.json` is written by the Hub only, to
+the core volume `vpn_doc` (owned `10001:10007`, setgid, 2750; the file 0640,
+group 10007), mounted read-write in the Hub and read-only in `wg` and
+group-gate; exactly those three are in group 10007. It holds public data only
+(addresses, owners, public keys), never a private key. It carries a
+`valid_until` one hour ahead and is republished every 10 minutes, so a Hub
+that stops publishing fails closed within the hour; a missing, unreadable or
+invalid file denies every VPN request. `vpn_doc` isn't backed up: the Hub
+rewrites it from its state. `wg_data` (`10006:10001`, 2750) holds only `wg`'s
+`status.json` (0640, group 10001), which the Hub reads read-only: `wg` never
+touches the engine socket.
+
+**Edge caps.** Open connections, counted from accept (connections still
+waiting for their PROXY header included), are capped per provider (1024),
+per person across all their devices and providers (128) and per client
+address (32); a connection over a cap is closed (`busy`). Above 90% of a
+provider's cap a new connection first closes the heaviest person's sessions
+on that provider that have been idle for at least 2 min (`pressure`); active
+sessions and other people's never. Filling a provider therefore takes at
+least 8 different people. `.env` sets them: `PORTCULLIS_VPN_EDGE_MAX_PER_PROVIDER`,
+`_MAX_PER_USER`, `_MAX_PER_CLIENT`, `_PRESSURE_PERCENT`, `_PRESSURE_IDLE`
+(`wg` refuses to start unless per client ≤ per person ≤ per provider).
+
+**Gateways.** A wired provider's ingress service (its gateway) joins
+`portcullis-vpn` at its slot address through the Hub's override, and gets
+`PORTCULLIS_VPN_EDGE` (`<wg ip>:<9001 + slot>`). The Hub refuses a template
+whose ingress service, or any service sharing its network namespace, is a job,
+an AI companion, has a Traefik router or label or publishes ports; only core's
+pinned forwarder image (`ghcr.io/porelli/portcullis-forwarder`, uid 65534, for
+clients with a real tunnel interface) may share that namespace; `pid: host` is
+refused on every service of a VPN template and `network_mode: host` on the
+ingress namespace and every routed service. Templates may never use the
+`vpnsecure` entrypoint themselves (the Hub adds it per instance) or names with
+the reserved `portcullis-vpn` prefix.
+
+!!! warning "What the edge can't stop"
+    The edge contains a buggy or misconfigured gateway: one can't claim
+    another provider's addresses. A **malicious template** is outside this
+    model, as every template source is trusted with the host: a gateway with
+    `NET_ADMIN` on `portcullis-vpn` could spoof another gateway's address
+    there. The doctor shows wired gateways (and services in their namespace)
+    with `NET_ADMIN`, `privileged` or host devices
+    (`vpn_gateway_privileged`). Headscale's gateway runs in userspace without
+    them.
+
+**Keys.** A client's private key never reaches the Hub, the server, a log,
+the audit or an AI transcript: the people page makes key pairs in the browser,
+and `./portcullis vpn add-device` keeps the pair in shell variables and on
+stdin only (CI greps every logged command line). No AI tool creates a device
+or a configuration. The Hub's host control socket (`/tmp/hub-host.sock`,
+0600, inside the Hub's tmpfs; never on a TCP listener) answers only the Hub's
+own uid, which the CLI uses through `docker compose exec`.
+
+### Runtime matrix
+
+| | Docker (rootful) | Rootless Podman |
+|---|---|---|
+| core `wg` | userspace network stack; no `cap_add`, no devices, no `sysctls`, no `/dev/net/tun`, not privileged; the UDP port published by the engine | identical. The UDP port goes through Podman's port forwarder, which rewrites the outer source: harmless, WireGuard authenticates by key. `restart: always` from `docker-compose.podman.yml`, the key bind labelled `Z` by the SELinux overlay |
+| kernel or TUN WireGuard in core | refused | refused |
+| marketplace gateway with TUN + `NET_ADMIN` (NetBird, WireGuard servers) | allowed; doctor `vpn_gateway_privileged` (Info) | **limited** ("uses TUN/NET_ADMIN inside the rootless network namespace"): `NET_ADMIN` acts only in the container's own network namespace; the host needs the `tun` module ([Rootless Podman](rootless-podman.md#vpn-under-rootless-podman)) |
+| Headscale gateway (`tailscale/tailscale`, userspace) | works, no capabilities | works |
 
 ## Hub proxy secret
 

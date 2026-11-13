@@ -129,3 +129,14 @@
 *[rootless Podman]: Podman run by an unprivileged account: container root is that account, not host root
 *[Rootless Podman]: Podman run by an unprivileged account: container root is that account, not host root
 *[engine socket]: The container engine's API socket (Docker's, or the operator's Podman socket), mounted only by the two socket proxies
+*[VPN-only]: An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet
+*[vpnsecure]: Traefik entrypoint for VPN traffic (port 8443, trust PROXY v2 from wg only)
+*[built-in provider]: The people role of core's wg service: Portcullis's own WireGuard VPN, whose devices people add on its VPN page
+*[wg service]: Core's userspace WireGuard service: the edge for every VPN provider and the built-in people VPN
+*[VPN provider]: A path through which people's devices reach VPN-only apps: the built-in WireGuard VPN, or a Marketplace VPN app (Headscale) an admin wired on its VPN tab
+*[VPN providers]: Paths through which people's devices reach VPN-only apps: the built-in WireGuard VPN, and Marketplace VPN apps (Headscale) an admin wired on their VPN tab
+*[VPN edge]: The wg service's edge role: one TCP port per wired VPN provider; it checks every connection's address against that provider's ranges and fresh device list, then passes it to Traefik's vpnsecure with PROXY v2
+*[edge port]: A wired VPN provider's own TCP port on the wg service (9001 + slot), reachable only from that provider's gateway
+*[device binding]: group-gate's VPN check: the client's VPN address must be a current device of its provider, owned by the signed-in person
+*[public set]: What stays on the internet in VPN server mode: the HTTP redirect, VPN UDP ports, VPN control routers, opted-in public links and (with public enrolment) the sign-in and enrolment pages
+*[people role]: The wg service's built-in WireGuard VPN for people (UDP 51820, tunnel 10.213.0.0/22, split tunnel to Portcullis only)
