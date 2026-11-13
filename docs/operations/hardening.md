@@ -188,7 +188,7 @@ No service mounts `/var/run/docker.sock` except two
 [linuxserver/socket-proxy](https://github.com/linuxserver/docker-socket-proxy)
 containers (HAProxy, pinned by digest). Each sits on its own internal network,
 shared with exactly one client (integration contract
-[§6](../guides/integration-contracts.md#6-docker-access)):
+[§6](../guides/integration-contracts.md#6-engine-access)):
 
 | Proxy | Client | Network | Allowed API sections (`1`) | Methods |
 |-------|--------|---------|---------------------|---------|

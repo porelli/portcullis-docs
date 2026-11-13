@@ -166,7 +166,7 @@ backup that was never restored is a hope, not a backup.
 The backup has to drive Docker on the host (`docker exec`, throwaway
 containers), so it runs from a **systemd timer**, not from a container. A
 scheduler container would need the Docker socket, which only the socket
-proxies may mount ([contract §6](../guides/integration-contracts.md#6-docker-access)).
+proxies may mount ([contract §6](../guides/integration-contracts.md#6-engine-access)).
 
 ```bash
 ./portcullis backup schedule --systemd --output /tmp/units
