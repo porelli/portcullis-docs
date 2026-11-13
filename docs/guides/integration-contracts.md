@@ -354,7 +354,7 @@ A template that is a VPN app (a mesh, a WireGuard server) may declare a `vpn:` b
     - **Stale.** A map is stale `max(3 × refresh, 3 min)` after its last good run (`stale_after`, §4), which is never more than 30 min (3 × the 10 min refresh maximum). A hook failure, a timeout or a refused document keeps the last good map until then. The edge and group-gate deny a stale map's addresses, and the next good run recovers it.
     - **Address reuse.** A mesh may hand a removed node's address to another person's node within one refresh. The binding then fails (the owner isn't the signed-in person) until the next run: it fails closed, never open.
 - **Several providers.** Provider ranges never overlap. The Hub refuses to wire a provider (`409`, §11.7) whose ranges overlap the built-in subnet, the reserved link subnet, a **reserved range**, a Docker network or another wired provider, and refuses to publish one; every reader refuses a `vpn.json` with overlapping ranges or with a range that overlaps a reserved range (§4).
-    - **Reserved ranges** are the configured core subnets (`portcullis-proxy`, `portcullis-auth`, the domains and MCP networks, `portcullis-vpn`, `portcullis-vpn-edge`), the reserved link subnet `${PORTCULLIS_LINK_SUBNET:-10.214.0.0/24}`, plus `172.16.0.0/12` and `192.168.0.0/16`: Docker's default address pools allocate app-instance networks from both, so a provider there could claim an app's own container addresses. Core passes them to the Hub as `PORTCULLIS_VPN_RESERVED_RANGES` in `core.env` (space-separated prefixes).
+    - **Reserved ranges** are the configured core subnets (`portcullis-proxy`, `portcullis-auth`, the domains and MCP networks, `portcullis-vpn`, `portcullis-vpn-edge`), the reserved link subnet `${PORTCULLIS_LINK_SUBNET:-10.214.0.0/24}`, plus `172.16.0.0/12` and `192.168.0.0/16`: Docker's default address pools allocate app-instance networks from both, so a provider there could claim an app's own container addresses. With rootless Podman, the operator's `containers.conf` pins `default_subnet_pools = [{"base" = "10.89.0.0/16", "size" = 24}]`, and the reserved ranges also include `10.88.0.0/16` and `10.89.0.0/16` (Podman's default network and that pool). Core passes them to the Hub as `PORTCULLIS_VPN_RESERVED_RANGES` in `core.env` (space-separated prefixes).
 
     So an address belongs to at most one provider. An overlap with Local networks is allowed (doctor `vpn_range_overlap`, Warning, §14.7).
 
@@ -504,6 +504,7 @@ Example: main domain `portcullis.example.com`, two Grafana instances (`grafana-t
 
     The Hub copies `server_mode`, `admin_only` and `public_enrol` from `core.env`; it never sets them on its own (§11.7).
 
+- **The MCP endpoints (VPN).** In the `admin` and `server` modes, `mcp`, `hub-mcp` and `people-mcp` answer only over the VPN (`vpnsecure`, §5), but they never reach group-gate, so they aren't bound to the device's owner. The MCP OAuth token is still required (§15).
 - **The client address (VPN).** It is the **last** entry of `X-Forwarded-For`, which Traefik appends from the connection's remote address (on `vpnsecure`, the PROXY v2 source, §5). group-gate splits on `,`, trims spaces, takes the last entry and parses it as IPv4. An IPv6 or malformed value means "no VPN address" (step 1 denies). Client-sent copies are discarded on both entrypoints.
 - **The binding steps (VPN).** For a VPN-only host with `via` = `<providers>`, and `a` = the client address:
     1. **The provider.** `p` is the one provider whose `ranges` contain `a`; ranges are disjoint across the file, so there is at most one. Deny when:
@@ -4906,6 +4907,15 @@ Core's **`wg` service** is one Go binary (`wg/` in core) running WireGuard on a 
 
     With no valid `vpn.json` every connection is refused (`no_doc`). Refusals are counted in `wg_edge_rejected_total{provider,reason}`, admissions in `wg_edge_accepted_total{provider}`. A built-in connection skips steps 1–3: the people tunnel hands it over in-process with its tunnel source address.
 
+- **Edge connection limits.** The edge caps open connections, each counted from accept (connections still waiting for their PROXY header included):
+    - per provider: 1024;
+    - per person: 128, across all of that person's devices and providers (keyed by the device's `user` in `vpn.json`);
+    - per client address: 32.
+
+    A connection over any cap is closed and counted as `wg_edge_rejected_total{reason="busy"}`.
+
+- **Pressure eviction.** Above 90% of a provider's cap, a new connection on it first closes the heaviest person's sessions on that provider that have been idle for at least 2 min (on a tie, the alphabetically smallest username), counted as `wg_edge_closed_total{reason="pressure"}`. Active sessions, and other people's sessions, are never closed this way. With the per-person cap, filling a provider takes at least 8 different people.
+- **Limit settings.** Core's `.env` keys `PORTCULLIS_VPN_EDGE_MAX_PER_PROVIDER` (default 1024), `PORTCULLIS_VPN_EDGE_MAX_PER_USER` (128), `PORTCULLIS_VPN_EDGE_MAX_PER_CLIENT` (32), `PORTCULLIS_VPN_EDGE_PRESSURE_PERCENT` (90) and `PORTCULLIS_VPN_EDGE_PRESSURE_IDLE` (`2m`), passed to `wg` as `WG_EDGE_MAX_PER_PROVIDER`, `WG_EDGE_MAX_PER_USER`, `WG_EDGE_MAX_PER_CLIENT`, `WG_EDGE_PRESSURE_PERCENT` and `WG_EDGE_PRESSURE_IDLE`. `wg` refuses to start unless per client ≤ per person ≤ per provider, the percentage is 1–100 and the idle time is at least 1 s.
 - **Admitted connections are re-checked.** The edge keeps every admitted (spliced) connection with the facts it was admitted on: provider, client address, device id and owner. On every `vpn.json` reload, and every **2 s**, it re-runs the admission check against the current file and its own clock, and closes the connection when:
     - the file is missing or invalid, a past `valid_until` included (this closes every connection: `no_doc`);
     - the provider is gone or no longer owns the address (`outside_ranges`), or is stale (`stale`);
