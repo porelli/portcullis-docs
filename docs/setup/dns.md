@@ -533,10 +533,7 @@ Each added domain:
 
 **Server addresses.** The records point at the server's public IPv4 (and
 IPv6), from `PORTCULLIS_PUBLIC_IPV4` / `_IPV6` in `.env` or detected by
-`./portcullis up`. While no domain is added, `./portcullis` doesn't look them
-up and publishes no address unless `.env` sets them: the first added domain
-may need one more `./portcullis up` (or set `PORTCULLIS_PUBLIC_IPV4` / `_IPV6`
-in `.env`) (see
+`./portcullis up` (see
 [Security & Hardening](../operations/hardening.md#public-ip-detection)).
 
 **Added subdomains of the main domain** (e.g. `team-a.<main domain>`) are
