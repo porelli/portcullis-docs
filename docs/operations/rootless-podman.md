@@ -56,6 +56,10 @@ item first and refuse while one fails, listing each failure.
     to Portcullis. Apps that publish a port below the value (the DNS apps on
     53) are refused unless you lower it further ([Limits](#limits)).
 
+Portcullis requires Podman ≥ 5.4. Supported host releases: Ubuntu 26.04 or
+later, Debian 13 or later, current Fedora, RHEL 10 or later. Older LTS
+releases (Ubuntu 24.04, Debian 12) ship Podman 4.x and are not supported.
+
 ### Debian and Ubuntu
 
 ```bash
@@ -189,7 +193,7 @@ limited one runs with the limits named. Under Docker no badge is shown
 | Core stack, sign-in methods, people, sessions, domains and certificates, AI support, monitoring | works |
 | Socket proxies, Traefik's Docker provider | works (Podman's own API is always denied) |
 | App backups and restores, core `backup` and `restore` | works (archives are the same on both runtimes) |
-| Shared folders and the fixer | works, with conditions: folders owned by a host account outside the operator's id range are refused per path (run `sudo chown -R <operator> <path>` once), and on SELinux hosts each folder needs a label |
+| Shared folders and the fixer | works, with conditions: folders owned by a host account outside the operator's id range are refused per path (run `sudo chown -R '<uid>:<gid>' '<path>'` once), and on SELinux hosts each folder needs a label |
 | File sharing (Samba, Time Machine) on 445 | works; [Time Machine discovery](#time-machine-discovery) is unverified |
 | Apps that trust identity headers | works (they trust Traefik's pinned address, as on Docker) |
 | Host networking (NetBird's relay) | limited: published ports must stay at or above the sysctl |
@@ -237,18 +241,25 @@ backups in the Hub, as after any restore ([Backups](backups.md#moving-between-ru
 ## SELinux
 
 Under Podman with SELinux enforcing, the CLI adds a small compose overlay,
-`docker-compose.podman-selinux.yml`, on its own:
+`docker-compose.podman-selinux.yml`, on its own. It relabels bind mounts of
+core's files with the narrowest label that works:
 
-- it relabels core's own bind mounts (inside the checkout) with the shared
-  `z` label, so containers can read them;
-- it sets `label=disable` on the two socket proxies only, because a confined
-  container can't connect to the operator's Podman socket. This is the only
-  SELinux exception.
+- `Z` (private) when one service mounts the path;
+- `z` (shared) only when several services mount it or a path above or below
+  it, and on `templates/` and `appfiles/` (app instances mount subdirectories
+  of them, which the Hub labels `z` too).
 
-The Hub adds the same `z` label to the template files it mounts into apps.
-It never relabels user data: shared folders under `/srv`, `/mnt`, `/media`
-or home directories, and the engine socket, keep their labels. Label shared
-folders yourself (`semanage fcontext` and `restorecon`,
+Nothing labels the checkout itself, `secrets/`, `backups/` or `.env` (or a
+parent of them). The Hub's `.:/project:ro` becomes a 1 MiB tmpfs there, with
+`group-gate/group-gate-map.conf` bound into it. The two socket proxies run
+with `label=disable` because a confined container can't connect to the
+operator's Podman socket, and the CLI's own short-lived helpers that
+bind-mount host files (`restore`, `backup --offsite`) also run with
+`label=disable` under Podman: those helpers are not SELinux-confined.
+
+The Hub never relabels user data: shared folders under `/srv`, `/mnt`,
+`/media` or home directories, and the engine socket, keep their labels.
+Label shared folders yourself (`semanage fcontext` and `restorecon`,
 [above](#fedora-and-rhel)); the Hub's doctor reports a folder without the
 `container_file_t` label (`selinux_label_missing`) with those two commands.
 
@@ -284,5 +295,10 @@ Time Machine settings ([File Sharing](file-sharing.md)).
 - **Only rootless Podman.** Rootful Podman and rootless Docker are not
   supported. The Hub's shared-folder fixer refuses rootless Docker and
   userns-remap.
-- **Restarts.** Containers come back after a reboot through
-  `podman-restart.service` and lingering, both part of the host preparation.
+- **Restarts.** Under Podman, core and instance services run with `restart:
+  always`, because `podman-restart.service` starts only that policy. A core
+  container stopped by hand comes back at boot. Containers come back after a
+  reboot through `podman-restart.service` and lingering, both part of the
+  host preparation. Manual `docker compose ...` commands bypass both
+  `DOCKER_HOST` and the Podman overlays, so use `./portcullis` instead (or
+  export what `runtime_export` sets).

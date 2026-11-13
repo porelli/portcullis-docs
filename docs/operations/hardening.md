@@ -251,7 +251,7 @@ CI fails if any of these is missing.
 | forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client. Sessions in `sessions` (user `forward-auth`), starts once it is healthy |
 | forward-auth-ext (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Same image, provider config, client and cookie secret as forward-auth; serves extra-domain hosts only (contract §5): relative callback `/oauth2/callback` built from the request host (`X-Forwarded-Host`, trusted from `OAUTH2_PROXY_TRUSTED_PROXY_IPS` only), host-only cookie `__Host-portcullis_ext` (`Secure`, no `Domain`, `Path=/`), no redirect whitelist (only relative redirects are accepted). Both oauth2-proxies send PKCE S256 and the `portcullis-forward-auth` client requires it (`pkce.code.challenge.method`), so a code delivered to a stale callback URI is useless without the verifier. Routed only by the Hub's per-host `Host(<h>) && PathPrefix(/oauth2/)` routers. Its middleware `portcullis-auth-ext` lists the same `authResponseHeaders` / `authResponseHeadersRegex` as `portcullis-auth` (CI compares them) |
 | group-gate | 10003:10003 + group 10001 (`group_add`) | read-only (`tmpfs /tmp`) | — | `/healthz` | Image `portcullis-group-gate`: pinned `python` alpine base + `cryptography` (CRL and CA-file parsing) and `PyJWT` (token claims) + the script. Mounts `certs/yubikey-ca.crt` and `certs/browser-ca.crt` read-only (`/etc/group-gate/ca/`). Writes only `group_gate_data` (`/data`, owned `10003:10001`): the opened log `opened/` (mode 2770, group 10001; files 0640) for sign-in history. A write failure never denies a request |
-| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub`) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
+| hub | 10001:10001 (image) | read-only (`tmpfs /tmp`, `/home/hub` (1777: Podman's compat API refuses uid=/gid=)) | — | image `HEALTHCHECK` (`/healthz`) | Writes `/data` (volume) and `/project/templates` (chowned to 10001 by `./portcullis up`). Mounts `group_gate_data` read-write at `/group-gate-data` only to read the opened log and delete day files older than the history limit (never today's). Go; libraries: yaml.v3, alecthomas/participle/v2 (custom-override and rule parser), go-ldap/ldap/v3, hasura/go-graphql-client, Nerzal/gocloak/v14, moby/moby/client + api |
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002. Generates browser certificates' keys in memory, answers the `.p12` and its password once to the Hub, clears them and never stores or logs them |
 | dns-tool (profile `tools`) | 10004:10004 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains dns`, built if missing, never pulled). Only `./portcullis dns …` starts it (`docker compose run --rm --no-deps -T`); the image's health check is disabled for it. Network `domains-egress` only; no volumes, no `environment`, no `env_file`, no ports, no Traefik labels; `mem_limit` 128m, `pids_limit` 64. The provider credentials arrive as JSON on stdin ([The dns tool](#the-dns-tool)) |
 | mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps one person's requests in flight and the memory request bodies hold, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps); results and aggregate refreshes aren't budgeted, so many people at once can still exhaust it and the container restarts, one person can't), `pids_limit` 256 |
@@ -509,14 +509,21 @@ both the compose file and the SELinux overlay. What changes:
   of at least 65536 ids. Any other mapping, userns-remap and rootless Docker
   stay refused. A folder entry owned by a host account outside the range
   (it reads as 65534) refuses the fix for that folder, with the
-  `sudo chown -R <operator> <path>` step. The fixer never works around it.
-- **The proxies' `label=disable` is the only SELinux exception.** On an
-  SELinux host a confined container can't connect to the operator's Podman
-  socket, so the two socket proxies (and nothing else) run unconfined, through
-  `docker-compose.podman-selinux.yml`, which the CLI adds only under Podman
-  with SELinux enforcing. The same overlay relabels core's own bind mounts
-  inside the checkout with the shared `z` label. Nothing relabels user data
-  (`/srv`, `/mnt`, `/media`, home directories) or the engine socket.
+  `sudo chown -R '<uid>:<gid>' '<path>'` step. The fixer never works around it.
+- **SELinux overlay.** Under Podman with SELinux enforcing, the CLI adds
+  `docker-compose.podman-selinux.yml`, which relabels bind mounts of core's
+  files with the narrowest label that works: `Z` (private) when one service
+  mounts the path, `z` (shared) only when several services mount it or a
+  path above or below it (and on `templates/` and `appfiles/`, whose
+  subdirectories app instances mount). Nothing labels the checkout itself,
+  `secrets/`, `backups/` or `.env` (or a parent of them): the Hub's
+  `.:/project:ro` becomes a 1 MiB tmpfs there, with `group-gate/group-gate-map.conf`
+  bound into it. The two socket proxies run with `label=disable` because a
+  confined container can't connect to the operator's Podman socket, and the
+  CLI's own short-lived helpers that bind-mount host files (`restore`,
+  `backup --offsite`) also run with `label=disable` under Podman: those
+  helpers are not SELinux-confined. Nothing relabels user data (`/srv`,
+  `/mnt`, `/media`, home directories) or the engine socket.
 - **Low ports.** `net.ipv4.ip_unprivileged_port_start=80` lets any local
   account bind ports 80–1023. Keep the host dedicated to Portcullis.
 - **Client addresses.** Remote TCP keeps the client's address (with `nft` or

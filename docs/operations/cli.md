@@ -401,9 +401,10 @@ the backup.
 `PORTCULLIS_ENGINE_SOCKET` are never taken from the backup: the restore reads
 them from the `.env` it replaces and writes them back into the restored one
 (under Docker it removes a `PORTCULLIS_ENGINE_SOCKET` the backup carried).
-Without a current `.env` (a new host) it detects the runtime as `init` does,
-before its first engine call, and writes the detected keys. So a backup taken
-on Docker restores onto a Podman host and the other way round; see
+`restore --from-offsite` without a current `.env` (a new host) detects the
+runtime as `init` does, before its first engine call, and writes the detected
+keys. A directory restore needs `init` first. So a backup taken on Docker
+restores onto a Podman host and the other way round; see
 [Rootless Podman → Moving between runtimes](rootless-podman.md#moving-between-runtimes).
 
 | Option | Meaning |

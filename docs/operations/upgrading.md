@@ -278,8 +278,13 @@ the same notes in its `CHANGELOG.md`.
     ./portcullis upgrade
     ```
 
-- Nothing else changes for a Docker install: the compose file differs only
-  by the Hub's `HUB_CONTAINER_RUNTIME`, and no file is relabelled.
+- The compose file also changes on Docker: the Hub's `/home/hub` tmpfs
+  becomes `mode=1777` (Podman's compat API refuses uid=/gid=), keycloak's
+  and group-gate's healthchecks become CMD-SHELL (Podman's compat API
+  re-splits exec-form arguments with whitespace), and every image name is
+  fully qualified (so Podman never depends on `registries.conf` short names).
+  The Hub stores instance backups re-encoded in the `data/...` form (the
+  internal archive layout; cross-runtime restores work). No file is relabelled.
 - The Hub refuses to start without `HUB_CONTAINER_RUNTIME`, which core's
   compose sets from `CONTAINER_RUNTIME`: upgrade the Hub and core together.
 
