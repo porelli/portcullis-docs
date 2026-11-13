@@ -250,13 +250,23 @@ Prints a health overview:
   pin with Traefik's current ACME account: when the CA wouldn't issue to it,
   or `main-domain.env` names another account, it fails with
   `CAA allows another ACME account than Traefik's — fix: ./portcullis dns setup`
-  (a missing `main-domain.env` is only a warning). With nothing added and no
-  `PORTCULLIS_PUBLIC_IPV4` in `.env` the domains service doesn't know the
-  server's addresses, so the main domain's A/AAAA are `unknown`: a warning
-  line, not a failure.
+  (a missing `main-domain.env` is only a warning). When the server's addresses
+  couldn't be detected (and `.env` sets no `PORTCULLIS_PUBLIC_IPV4`), the main
+  domain's A/AAAA are `unknown`: a warning line, not a failure.
   A DNSSEC state `bogus` or `ds_mismatch` fails too; `insecure` (signed
   under a parent zone that isn't validated) is a ✓ line. While the domains
-  service isn't running the block is one line, "DNS checks unavailable"
+  service isn't running the block is one line, "DNS checks unavailable".
+  The main domain's plan is rebuilt for each `status` (public lookups only;
+  at most once per 30 s, and `status` waits at most 20 s for it), so a CAA
+  changed outside Portcullis — at the provider, or through the dns tool —
+  shows at once, not after the hourly recheck. If the rebuild fails,
+  `status` shows the cached plan with a warning that it may be stale ("the
+  lines below are from <time>"), and each of that domain's ✓ lines says
+  "(as of <time>, may be stale)"; `--json` has `dns.main.fresh` and
+  `dns.main.checked_at`. A running domains image older than the CLI (it
+  refuses the refresh) is named: "the domains image is older than this CLI
+  (run ./portcullis up)", with the cached plan marked stale. `status --textfile` runs once after each scheduled
+  backup, so this adds no steady lookups
 
 Exits 1 if a host check fails, if a core service is down or unhealthy, if Vault is not active, if
 the passkey policy drifted, if such a container exists, if mcp-gate
@@ -428,7 +438,7 @@ Applies the ACME toggle in `.env` and rebuilds `certs/ca-bundle.crt`:
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip it stops Traefik, relaxes the main domain's CAA to CA-only (automated providers with `DNS_CAA=true`; a failure only warns), then clears Traefik's `acme.json` so Traefik registers again |
+| `ACME_STAGING=true\|false` | `false` | Let's Encrypt staging vs production. Sets `ACME_CA_SERVER` in `.env`. On a flip where Portcullis manages the CAA (`DNS_CAA=true` and an automated provider with its credentials) it first rebuilds the domains image (so the dns tool matches the CLI), relaxes the main domain's CAA to CA-only **while Traefik keeps running** (CA-only lets its current account renew) and waits until no cache can still hold the old pin: the TTL caches got (the stored or the served one, whichever is longer) + 1 minute, at most 15 minutes per run (Porkbun: about 11). Only then it stops Traefik, clears its `acme.json`, writes the new CA server and starts Traefik again if it was running, so Traefik registers a new account. Interrupted after the stop, it starts Traefik again. The settle point is saved before the first write and moved to the tool's own point the moment the write is accepted (`secrets/domains/acme-relax.env`, 0600; read as the later of its NOT_BEFORE and WRITTEN_AT + OLD_TTL + 60 s; never backed up, and a `restore` keeps the live one: it describes DNS caches, not the host): a rerun waits for it, and never settles earlier because it only sees the CA-only records. A TTL that can't be read, or that the provider reports as 0 / 1 ("auto", the zone default) and no nameserver serves, refuses the relax before anything is written (exit 1, nothing changed): set an explicit CAA TTL at the provider. With a saved point that exists but can't be read, or with none saved while the CAA is already CA-only (or has none of Portcullis' entries), how long caches may hold the old pin can't be known: it assumes 24 h from now and says until when (so a first flip of a domain that was never pinned — Traefik never registered — waits a day; the message says so and when it can go ahead). When `main-domain.env` never held an account URI (Portcullis never pinned), there is no old pin to wait out and no 24 h point. Where Portcullis doesn't manage the CAA (`DNS_CAA=false`, `DNS_PROVIDER=none` or a manual provider, or no credentials) a flip does no relax, no settle and no wait. **Every flip**, managed or not, first runs a public, credential-free check — would the new CA let a *new* account order at every resolver? — and refuses before anything changes when it wouldn't (it names the live pin; for an unmanaged setup: remove that pin at the provider, or run `dns setup` with `DNS_CAA=false`, then run it again after its TTL), when the lookup fails, or when a saved settle point is still in the future. A Traefik with no container at all (after `down`) needs no stop. The saved point is deleted only once a flip has finished: ACME_STAGING reverted mid-flip keeps it, and a pin written again (`up`'s tighten, `dns setup`) only moves it later (now + the old pin's TTL + 1 min), since caches may still hold the original pin. A stale point can delay a later flip, never hurry it. Traefik that won't stop fails the flip before the clear. The CA bundle is built before Traefik stops; the sentinel (`certs/.acme-staging-last`) is written only once Traefik runs on the new CA server, so any failure or interrupt (INT, TERM, HUP) before that starts Traefik again and leaves the flip pending. If the relax fails, hasn't settled, or the clear fails, it stops fail safe (exit 1, the flip stays pending, Traefik runs on its old account) and says when to run it again; an old pin stored with a TTL above 15 minutes is named as the cause, with the time after which a rerun goes through (or lower the CAA TTL at the provider first) |
 
 It also writes `ACME_DNS_PROVIDER` (Traefik's lego provider: `hetzner-cloud`
 becomes lego's `hetzner`), and refuses `DNS_PROVIDER=hetzner` with
@@ -507,8 +517,32 @@ portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail]
 
 Shows the plan, asks to apply it (`--yes`: don't ask; required without a
 terminal), writes the record sets through `DNS_PROVIDER`'s API with its
-credentials from `.env`, waits for the public resolvers (up to 5 minutes),
-then runs [`dns check`](#dns-check):
+credentials from `.env`, waits until the public resolvers show the new
+records **stably**, then runs [`dns check`](#dns-check). Each public
+resolver is a pool of caches, so one clean answer isn't enough: the wait
+ends when both resolvers showed the new records in 4 rounds in a row (10 s
+apart, so at least 30 s) and every remaining TTL a resolver reported for an
+old CAA answer has run out. It is bounded by the TTL the provider actually
+stored (Porkbun raises 300 s to 600 s): up to that TTL + 1 minute, longer
+while a resolver's answer shows it caches the old records longer, at most
+15 minutes. When the bound is hit, the records **were written**: the
+warning says "written; not yet stable at <resolver>", how long it may still
+serve the old records and until when; `dns setup` then skips the check (a
+stale cache would report Problems for records that are fine), says when to
+run `dns check`, and exits 0. A failed write is a separate error (exit 1).
+Right after the write it prints how long it will wait at most ("written;
+waiting up to 11m0s for 1.1.1.1:53, 8.8.8.8:53 (TTL 600 s)"). When it
+writes the caa set over a live Portcullis pin — removing it with
+`DNS_CAA=false`, or replacing it — it saves a settle point
+(`secrets/domains/acme-relax.env`: the write + the old pin's TTL + 1 min,
+never earlier than a saved one) that every later `ACME_STAGING` flip waits
+for. Only then does it read the caa set's TTL first (the other sets'
+TTLs say nothing about a pin, and its message is shown); when it can't
+(a pin made by hand with an "auto" or zone-default TTL, or the read
+failed), it saves 24 hours from now instead, and says so. That point is
+saved before the write: if the write then fails, the flip still waits
+it out; when no pin was actually replaced (check with `./portcullis dns
+plan`), you may delete `secrets/domains/acme-relax.env` by hand. The providers and their variables:
 
 | Provider | Variables |
 |----------|-----------|
