@@ -62,15 +62,31 @@ Browser workarounds for staging certs: start Chrome with
 
 1. Set `ACME_STAGING=true` or `false` in `.env`.
 2. Run `./portcullis config apply && ./portcullis up`. `config apply` notices
-   the flip, stops Traefik and **relaxes** the main domain's
+   the flip and **relaxes** the main domain's
    [CAA](dns.md#caa) to the CA-only form (`letsencrypt.org`, DNS-01 only, no
    account) **before** it clears Traefik's `acme.json`: Traefik then
    registers a new account, and a CAA still pinned to the old one would make
-   every order fail. It waits up to 2 minutes for the public resolvers to
-   see the relaxed CAA (resolvers, the CA's included, may hold the old pin
-   for up to its TTL, 5 minutes). If relaxing fails it only warns ("issuance
-   will fail on CAA until ./portcullis dns setup"). `up` restarts the forward-auth
-   services, which now trust the new bundle.
+   every order fail. Traefik keeps running through the relax (CA-only lets
+   its current account renew). Before clearing, `config apply` waits until
+   no resolver can still hold the old pin — the CA's own included, which
+   nobody can ask: the relax's write + the TTL caches got (the stored or
+   the served one, whichever is longer) + 1 minute (Porkbun stores 600 s, so
+   about 11 minutes), at most 15 minutes per run, and at least until 1.1.1.1
+   and 8.8.8.8 show the CA-only form. Then it stops Traefik, clears
+   `acme.json` and starts Traefik again. The settle point is saved before
+   the first write (`secrets/domains/acme-relax.env`), so a rerun waits for
+   the old pin's TTL too; it is deleted only once a flip has finished (a
+   re-pin in between only moves it later). If the relax fails or hasn't settled, `config
+   apply` stops **without** clearing `acme.json` (Traefik runs on) and exits
+   1, saying when to run it again. An old pin stored with a TTL above 15
+   minutes can't settle in one run: the message names that TTL and the time
+   after which a rerun goes through (lowering the CAA TTL at the provider
+   first shortens it). The settle point is a wall-clock time: a clock step
+   forward between runs (an NTP correction after a reboot) shortens it by
+   that step; keep the server's clock in sync. So Traefik never orders against the old pin, also
+   when the flip happens inside `./portcullis up` (which runs `config
+   apply` first). `up` restarts the forward-auth services, which now trust
+   the new bundle.
 3. Wait about 2 minutes for the DNS-01 challenge:
    `docker compose logs -f traefik 2>&1 | grep -i acme`.
 4. Once Traefik's resolver is running, `up` **tightens** the CAA again: it
@@ -79,7 +95,7 @@ Browser workarounds for staging certs: start Chrome with
    CAA to it. A failure there only warns; `./portcullis dns setup` pins it
    later.
 
-Relaxing and tightening need an automated DNS provider and `DNS_CAA=true`.
+Relaxing and tightening need an automated DNS provider (with its credentials) and `DNS_CAA=true`. Without them, every flip still checks the public CAA first and refuses while a pin would stop Traefik's new account (remove it at the provider and wait its TTL), and honours a settle point a `dns setup` saved when it removed or replaced a pin.
 With a provider whose records you create by hand, change the CAA yourself:
 CA-only before the flip, the new pin (`./portcullis dns plan` shows it) after.
 
