@@ -18,7 +18,8 @@
 *[mTLS]: Mutual TLS: a certificate presented at the TLS handshake (Portcullis calls them YubiKey and browser certificates)
 *[LoA]: Keycloak's Level of Authentication; Portcullis doesn't use levels (sign-in templates decide)
 *[acr]: OIDC Authentication Context Class Reference; Portcullis doesn't use it (amr and sign-in templates decide)
-*[amr]: Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)
+*[amr]: Authentication Methods Reference - the sign-in methods used in the session (pwd, otp, spk, dpk, hwk, mtls, file; inv for a setup link)
+*[TOTP]: Time-based one-time password (RFC 6238): the 6-digit code of an authenticator app, Portcullis's totp sign-in method (amr otp)
 *[hwk]: amr of a security key passkey (a YubiKey touch)
 *[group-gate]: Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template
 *[LLDAP]: Light LDAP directory server storing users and groups
