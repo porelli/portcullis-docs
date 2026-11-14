@@ -1,0 +1,4299 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/setup/certificates/">
+      
+      
+      
+        <link rel="prev" href="../dns/">
+      
+      
+        <link rel="next" href="../../apps/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Certificates - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Certificates
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#website-certificates-https" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Website certificates (HTTPS)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Website certificates (HTTPS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#acme-staging-vs-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ACME staging vs production
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ACME staging vs production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#production-acme_stagingfalse-the-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Production (<code>ACME_STAGING=false</code>, the default)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#staging-acme_stagingtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Staging (<code>ACME_STAGING=true</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Switching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yubikey-and-browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        YubiKey and browser certificates
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="YubiKey and browser certificates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TLS tiers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issuing-yubikey-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Issuing YubiKey certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Browser certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifetime-and-renewal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lifetime and renewal
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#certificate-login-through-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate login through Keycloak
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Certificate login through Keycloak">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trusted-proxy-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Trusted proxy address
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sign-in-methods-keycloak-browser-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in methods (Keycloak browser flow)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#certificate-binding-group-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate binding (group-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revocation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#internal-certificate-authority" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Internal certificate authority
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Internal certificate authority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vault-server-mode-auto-unseal-and-approle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vault: server mode, auto-unseal and AppRole
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#without-yubikey-or-browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Without YubiKey or browser certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common scenarios
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-connection-is-not-private-neterr_cert_authority_invalid" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        "Your connection is not private" / <code>NET::ERR_CERT_AUTHORITY_INVALID</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-shows-unable-to-get-local-issuer-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App shows "unable to get local issuer certificate"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#err_bad_ssl_client_auth_cert" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ERR_BAD_SSL_CLIENT_AUTH_CERT</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#err_ssl_client_auth_cert_needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ERR_SSL_CLIENT_AUTH_CERT_NEEDED</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-the-certificate-has-been-revoked" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403: the certificate has been revoked
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-the-certificate-revocation-list-is-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403: the certificate revocation list is unavailable
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#certificate-login-in-keycloak-does-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate login in Keycloak does nothing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#website-certificates-https" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Website certificates (HTTPS)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Website certificates (HTTPS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#acme-staging-vs-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ACME staging vs production
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ACME staging vs production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#production-acme_stagingfalse-the-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Production (<code>ACME_STAGING=false</code>, the default)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#staging-acme_stagingtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Staging (<code>ACME_STAGING=true</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switching" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Switching
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yubikey-and-browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        YubiKey and browser certificates
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="YubiKey and browser certificates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TLS tiers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issuing-yubikey-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Issuing YubiKey certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Browser certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifetime-and-renewal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lifetime and renewal
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#certificate-login-through-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate login through Keycloak
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Certificate login through Keycloak">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trusted-proxy-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Trusted proxy address
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sign-in-methods-keycloak-browser-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in methods (Keycloak browser flow)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#certificate-binding-group-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate binding (group-gate)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revocation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#internal-certificate-authority" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Internal certificate authority
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Internal certificate authority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vault-server-mode-auto-unseal-and-approle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vault: server mode, auto-unseal and AppRole
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#without-yubikey-or-browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Without YubiKey or browser certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common scenarios
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-connection-is-not-private-neterr_cert_authority_invalid" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        "Your connection is not private" / <code>NET::ERR_CERT_AUTHORITY_INVALID</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-shows-unable-to-get-local-issuer-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App shows "unable to get local issuer certificate"
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#err_bad_ssl_client_auth_cert" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ERR_BAD_SSL_CLIENT_AUTH_CERT</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#err_ssl_client_auth_cert_needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ERR_SSL_CLIENT_AUTH_CERT_NEEDED</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-the-certificate-has-been-revoked" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403: the certificate has been revoked
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-the-certificate-revocation-list-is-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        403: the certificate revocation list is unavailable
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#certificate-login-in-keycloak-does-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate login in Keycloak does nothing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="certificates">Certificates<a class="headerlink" href="#certificates" title="Permanent link">&para;</a></h1>
+<p>Portcullis uses three kinds of certificates, each with its own name everywhere
+(the Hub, the CLI, the pages and these docs):</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>What it is</th>
+<th>Where it comes from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Website certificate (HTTPS)</strong></td>
+<td>The certificate browsers check for <code>https://&lt;anything&gt;.&lt;domain&gt;</code></td>
+<td>Let's Encrypt: <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> for the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr>, the domains service for <a href="../dns/"><abbr title="Extra domains added in Hub Settings → Domains (the domains service manages their records and website certificates)">added domains</abbr></a></td>
+</tr>
+<tr>
+<td><strong><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></strong> / <strong>Browser certificate</strong></td>
+<td>A person's sign-in certificate: on a YubiKey, or a <code>.p12</code> file installed in a browser</td>
+<td>Portcullis's <strong><abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">internal certificate authority</abbr></strong> (Vault)</td>
+</tr>
+<tr>
+<td><strong><abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">Internal certificate authority</abbr></strong></td>
+<td>The CA that issues YubiKey and <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr> (admins and troubleshooting only)</td>
+<td>Vault's PKI, created by <code>./portcullis pki setup</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="website-certificates-https">Website certificates (HTTPS)<a class="headerlink" href="#website-certificates-https" title="Permanent link">&para;</a></h2>
+<p>Portcullis has one TLS toggle in <code>.env</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th><code>.env</code> variable</th>
+<th>Default</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Certificate source</strong></td>
+<td><code>ACME_STAGING</code></td>
+<td><code>false</code></td>
+<td>Staging (test) vs production (trusted) Let's Encrypt certs</td>
+</tr>
+</tbody>
+</table>
+<p>After changing it, run:</p>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>config<span class="w"> </span>apply
+./portcullis<span class="w"> </span>up
+</code></pre></div>
+<p><code>config apply</code> sets <code>ACME_CA_SERVER</code> in <code>.env</code> and rebuilds
+<code>certs/ca-bundle.crt</code>. <code>up</code> recreates <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> when its environment changed.</p>
+<p>Whether browsers are asked for a <strong>YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr></strong> is not an
+<code>.env</code> setting: it follows the <abbr title="The six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), each switched on or off for the whole server">sign-in methods</abbr> switched on in the Hub and each
+app's template (<a href="#tls-tiers">TLS tiers</a>).</p>
+<h3 id="acme-staging-vs-production"><abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> staging vs production<a class="headerlink" href="#acme-staging-vs-production" title="Permanent link">&para;</a></h3>
+<h4 id="production-acme_stagingfalse-the-default">Production (<code>ACME_STAGING=false</code>, the default)<a class="headerlink" href="#production-acme_stagingfalse-the-default" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Uses the Let's Encrypt <strong>production</strong> CA, which all browsers trust.</li>
+<li>Rate limits apply: 50 certificates per registered domain per week.</li>
+<li>One <abbr title="TLS certificate valid for all subdomains (*.domain)">wildcard certificate</abbr> (<code>&lt;domain&gt;</code> + <code>*.&lt;domain&gt;</code>) covers every app, so
+  individual subdomains never appear in Certificate Transparency logs.</li>
+</ul>
+<h4 id="staging-acme_stagingtrue">Staging (<code>ACME_STAGING=true</code>)<a class="headerlink" href="#staging-acme_stagingtrue" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Uses the Let's Encrypt <strong>staging</strong> CA. There are no rate limits, but
+  <strong>browsers will not trust the certificate</strong>. Use it while you iterate on DNS
+  setup.</li>
+<li>App containers that call <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> over HTTPS mount <code>certs/ca-bundle.crt</code>.
+  <code>config apply</code> builds it from the system CAs, the internal Portcullis PKI
+  chain, and the Let's Encrypt staging root (only when <code>ACME_STAGING=true</code>).
+  <code>init</code>, <code>up</code> and <code>upgrade</code> rebuild it too, and restart the two <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>
+  services when it changed: they read it only at start-up, and with a stale
+  bundle every sign-in callback fails (<code>x509: certificate signed by unknown
+  authority</code>).</li>
+</ul>
+<p>Browser workarounds for staging certs: start Chrome with
+<code>--ignore-certificate-errors</code>, accept the risk in Firefox, or use <code>curl -k</code>.</p>
+<h4 id="switching">Switching<a class="headerlink" href="#switching" title="Permanent link">&para;</a></h4>
+<ol>
+<li>Set <code>ACME_STAGING=true</code> or <code>false</code> in <code>.env</code>.</li>
+<li>Run <code>./portcullis config apply &amp;&amp; ./portcullis up</code>. <code>config apply</code> notices
+   the flip and <strong>relaxes</strong> the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr>'s
+   <a href="../dns/#caa"><abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr></a> to the CA-only form (<code>letsencrypt.org</code>, <abbr title="ACME challenge proving domain control via DNS TXT records">DNS-01</abbr> only, no
+   account) <strong>before</strong> it clears <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s <code>acme.json</code>: <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> then
+   registers a new account, and a <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> still pinned to the old one would make
+   every order fail. <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> keeps running through the relax (CA-only lets
+   its current account renew). Before clearing, <code>config apply</code> waits until
+   no resolver can still hold the old pin — the CA's own included, which
+   nobody can ask: the relax's write + the TTL caches got (the stored or
+   the served one, whichever is longer) + 1 minute (Porkbun stores 600 s, so
+   about 11 minutes), at most 15 minutes per run, and at least until 1.1.1.1
+   and 8.8.8.8 show the CA-only form. Then it stops <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>, clears
+   <code>acme.json</code> and starts <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> again. The settle point is saved before
+   the first write (<code>secrets/domains/acme-relax.env</code>), so a rerun waits for
+   the old pin's TTL too; it is deleted only once a flip has finished (a
+   re-pin in between only moves it later). If the relax fails or hasn't settled, <code>config
+   apply</code> stops <strong>without</strong> clearing <code>acme.json</code> (<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> runs on) and exits
+   1, saying when to run it again. When the settle point is past what one
+   run waits (15 minutes), the message names the cause and the time after
+   which a rerun goes ahead: the old pin's stored TTL is above 15 minutes
+   (lowering the <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> TTL at the provider first shortens it), a resolver
+   still serves the old pin with N seconds left (public resolvers can
+   re-serve an old answer after its TTL; the settle point follows them), or
+   the settle point an earlier run saved is later. The settle point is a wall-clock time: a clock step
+   forward between runs (an NTP correction after a reboot) shortens it by
+   that step; keep the server's clock in sync. So <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> never orders against the old pin, also
+   when the flip happens inside <code>./portcullis up</code> (which runs <code>config
+   apply</code> first). <code>up</code> restarts the <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr> services, which now trust
+   the new bundle.</li>
+<li>Wait about 2 minutes for the <abbr title="ACME challenge proving domain control via DNS TXT records">DNS-01</abbr> challenge:
+   <code>docker compose logs -f traefik 2&gt;&amp;1 | grep -i acme</code>.</li>
+<li>Once <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s resolver is running, <code>up</code> <strong>tightens</strong> the <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> again: it
+   reads the new account's URI (waiting up to 3 minutes for the
+   registration), writes it to <code>secrets/domains/main-domain.env</code> and pins the
+   <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> to it, waiting at most 3 minutes for stable answers (past that it
+   only warns "written; not yet stable at <resolver>"). A failure there only warns; <code>./portcullis dns setup</code> pins it
+   later.</li>
+</ol>
+<p>Relaxing and tightening need an automated DNS provider (with its credentials) and <code>DNS_CAA=true</code>. Without them, every flip still checks the public <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> first and refuses while a pin would stop <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s new account (the refusal names the pin and its TTL), and honours a settle point a <code>dns setup</code> saved when it removed or replaced a pin. A failed lookup refuses too ("couldn't check … (DNS lookups failed)"): run it again when the resolvers answer.
+With a provider whose records you create by hand, change the <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> yourself:
+CA-only before the flip, the new pin (<code>./portcullis dns plan</code> shows it) after.</p>
+<div class="admonition warning">
+<p class="admonition-title">After removing a pin by hand, wait its TTL before flipping</p>
+<p>Portcullis can't see when you changed the <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr> at the provider. Once
+1.1.1.1 and 8.8.8.8 show the CA-only form the flip's check passes, but
+the CA's own resolvers may still cache the old pin for up to its TTL
+(the refusal before the change printed it, e.g. "its TTL (600 s,
+10 min)"; <code>dig CAA &lt;domain&gt; @&lt;an authoritative nameserver&gt;</code> shows it
+too). Wait that long after the change before you run <code>config apply</code>,
+or <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s new account may be refused.</p>
+</div>
+<p><strong>Lost account.</strong> If <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s <code>acme.json</code> is lost without a flip (its volume
+deleted or recreated), <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> registers a new account by itself and its
+renewals then fail on <abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr>. <code>./portcullis status</code> reports the Problem "<abbr title="Certification Authority Authorization: DNS records naming which CA (and, with accounturi, which ACME account) may issue certificates for a name">CAA</abbr>
+allows another <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> account than <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s — fix: ./portcullis dns setup"
+when <code>secrets/domains/main-domain.env</code> names a different account; run that
+command to pin the new account. A missing <code>main-domain.env</code> is only a
+Warning (<code>dns plan</code>, <code>dns setup</code> and <code>dns check</code> write it once they read
+<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s account).</p>
+<hr />
+<h2 id="yubikey-and-browser-certificates">YubiKey and <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr><a class="headerlink" href="#yubikey-and-browser-certificates" title="Permanent link">&para;</a></h2>
+<p>Two <abbr title="The six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), each switched on or off for the whole server">sign-in methods</abbr> are certificates (<a href="../../operations/auth-policies/#methods">Sign-in methods</a>):</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></th>
+<th>Browser certificate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Strength</td>
+<td>4.0</td>
+<td>2.5</td>
+</tr>
+<tr>
+<td>Lives</td>
+<td>on a YubiKey (<abbr title="Personal Identity Verification - YubiKey smartcard standard">PIV</abbr> slot 9a); the key never leaves it</td>
+<td>in a <code>.p12</code> file the person installs in a browser or the OS</td>
+</tr>
+<tr>
+<td>Issued by</td>
+<td>the YubiKey CA (<code>pki_int</code>)</td>
+<td>the browser CA (<code>pki_file</code>)</td>
+</tr>
+<tr>
+<td>Issued through</td>
+<td>an admin: <code>./portcullis cert enroll</code>, or a CSR on the person's Sign-in tab</td>
+<td>the person, on the <a href="../../operations/auth-policies/#the-sign-in-page"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a></td>
+</tr>
+<tr>
+<td>Renewed</td>
+<td>by the person on the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr>, or <code>./portcullis cert renew</code></td>
+<td>not renewed: the person creates a new one</td>
+</tr>
+<tr>
+<td><abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> at sign-in</td>
+<td><code>mtls</code></td>
+<td><code>file</code></td>
+</tr>
+<tr>
+<td>Starts</td>
+<td>on</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p>The two kinds are always told apart by their <strong>issuer</strong>, never by their
+name: a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> never counts as a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>, in
+<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> or in <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>.</p>
+<h3 id="tls-tiers">TLS tiers<a class="headerlink" href="#tls-tiers" title="Permanent link">&para;</a></h3>
+<p>Core's <code>traefik/dynamic/tls.yml</code> is static (<code>config apply</code> never writes it)
+and defines four TLS option sets:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> option</th>
+<th>Trusts</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>protected</strong></td>
+<td><code>RequireAndVerifyClientCert</code></td>
+<td><code>certs/ca-chain-yubikey.crt</code> (the YubiKey CA alone)</td>
+<td>A <strong>YubiKey</strong> certificate is <strong>required</strong>. Without one, the TLS handshake fails; a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> never passes</td>
+</tr>
+<tr>
+<td><strong>protected-any</strong></td>
+<td><code>RequireAndVerifyClientCert</code></td>
+<td><code>certs/ca-chain.crt</code> (root + both CAs)</td>
+<td>A YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> is <strong>required</strong></td>
+</tr>
+<tr>
+<td><strong>authaware</strong></td>
+<td><code>VerifyClientCertIfGiven</code></td>
+<td><code>certs/ca-chain.crt</code></td>
+<td>A certificate is <strong>optional</strong>, verified if present</td>
+</tr>
+<tr>
+<td><strong>public</strong></td>
+<td>no <code>clientAuth</code></td>
+<td>—</td>
+<td>No certificate requested</td>
+</tr>
+</tbody>
+</table>
+<p>Which method a certificate counts as decides <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> and <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> by its
+issuer.</p>
+<p><strong>Certificate requests follow the switches.</strong> All core routers (<code>auth</code>,
+<code>hub</code>, <code>people</code>, the portal, <code>enroll-invite</code>, <code>traefik</code>, <code>directory</code>,
+<code>metrics</code>, <code>mcp</code>) always use <code>authaware</code>: core pages always offer an optional
+certificate, and a browser without one shows nothing. For apps, the Hub picks
+the tier from the app's
+<a href="../../operations/auth-policies/#traefik-tls-tier"><abbr title="A named rule over sign-in methods (all of / any of, nested), with a score out of 5">sign-in template</abbr></a> and the
+certificate methods that are switched on, and writes it into a per-app
+compose override:</p>
+<ul>
+<li>an <code>mtls</code> app always gets <code>protected</code> (<abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr> only);</li>
+<li>every alternative of the template needs the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> →
+  <code>protected</code>;</li>
+<li>every alternative needs a certificate, and at least one accepts the
+  <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> → <code>protected-any</code>;</li>
+<li>some alternative has one → <code>authaware</code>;</li>
+<li>none has one (for example both certificate methods are off), or the app
+  has no Portcullis sign-in → <code>public</code>, so the browser is never asked.</li>
+</ul>
+<p>While an app has open <a href="../../operations/auth-policies/#public-exceptions"><abbr title="Unauthenticated paths for share links (off by default)">public exceptions</abbr></a>,
+<code>protected</code> and <code>protected-any</code> become <code>authaware</code> for all of its routers.</p>
+<p>You change it in the Hub (Settings → Sign-in, or the app's template), not in
+the template's <code>compose.yml</code>.</p>
+<h3 id="issuing-yubikey-certificates">Issuing <abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr><a class="headerlink" href="#issuing-yubikey-certificates" title="Permanent link">&para;</a></h3>
+<p><abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr> come from the <abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">internal certificate authority</abbr>'s
+<code>pki_int</code> (role <code>client-cert</code>). The key is generated on the YubiKey and never
+leaves it.</p>
+<ul>
+<li><strong>On the host:</strong> <code>./portcullis cert enroll &lt;user&gt; [email]</code> makes the key
+  and the request on the attached YubiKey, has Vault sign it and imports the
+  certificate (<a href="../../operations/cli/#cert-enroll">CLI</a>).</li>
+<li><strong>In the Hub:</strong> an administrator opens the person's <strong>Sign-in</strong> tab on
+  people.&lt;domain&gt;, pastes a CSR made on the YubiKey with <code>ykman</code>, and
+  confirms with a fresh sign-in. Administrators' own certificates are issued
+  and revoked only from the server.</li>
+<li><strong>What Vault signs:</strong> the role takes the CN from the caller (the person's
+  username), never from the CSR, and enroll only signs CSRs whose subject is
+  exactly the user. The certificate has the <code>clientAuth</code> EKU.</li>
+</ul>
+<h3 id="browser-certificates">Browser certificates<a class="headerlink" href="#browser-certificates" title="Permanent link">&para;</a></h3>
+<p>A person creates a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> on their
+<a href="../../operations/auth-policies/#browser-certificates"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a>, once an
+admin has switched the method on. Portcullis (enroll) generates the key
+(ECDSA P-256), has the browser CA (<code>pki_file</code>, role <code>browser-cert</code>) sign it
+with the person's username as CN, and packs key and certificate into a
+<code>.p12</code> encrypted with a generated password:</p>
+<ul>
+<li>the password is shown <strong>once</strong>, next to the download; Portcullis doesn't
+  keep it and can't show it again;</li>
+<li>the private key is never stored, so the file can't be downloaded again;</li>
+<li>the lifetime is at most the <strong><abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> lifetime</strong> limit (30 days
+  by default, never more than <code>CLIENT_CERT_TTL</code>), and each person has at most
+  3 active ones (Hub → Settings → Sign-in → Limits);</li>
+<li>creating one needs a fresh <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> or YubiKey sign-in that
+  people.&lt;domain&gt;'s template accepts, never a password or another
+  <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>.</li>
+</ul>
+<p>The <code>.p12</code> imports into <strong>Firefox</strong> (Settings → Privacy &amp; Security →
+Certificates → View Certificates → Your Certificates → Import), <strong>Chrome /
+Edge on Windows 10 or newer</strong> (open the file: the Windows certificate
+import wizard), and <strong>macOS Keychain Access</strong>.</p>
+<div class="admonition note">
+<p class="admonition-title">macOS 14 or newer</p>
+<p>The <code>.p12</code> is encrypted with AES-256 (PBKDF2-SHA256, SHA-256 MAC).
+Keychain Access imports it on macOS 14 or newer; older macOS versions
+only read the legacy encryption and refuse the file.</p>
+</div>
+<h3 id="lifetime-and-renewal">Lifetime and renewal<a class="headerlink" href="#lifetime-and-renewal" title="Permanent link">&para;</a></h3>
+<p><abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr> live <strong><code>CLIENT_CERT_TTL</code></strong>, default <code>720h</code> (30 days).
+Browser certificates live at most that long, and at most the Hub's browser
+certificate lifetime limit.</p>
+<p><strong>Why 30 days.</strong> A very short lifetime (say 24 hours) would mean renewing with
+the YubiKey every day; in practice certificates expire and users fall back to
+weaker factors. A short lifetime would only be standing in for revocation, and
+Portcullis enforces revocation everywhere a certificate is accepted (see
+<a href="#revocation">Revocation</a>), so the lifetime just sets how often people renew.
+90 days (<code>2160h</code>) is reasonable if you revoke lost keys promptly.</p>
+<p><code>./portcullis pki setup</code> (also run by <code>upgrade</code>) rewrites both Vault roles
+with the current value. Only certificates issued afterwards are affected.</p>
+<p><strong>Renewing a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> yourself</strong> on the
+<a href="../../operations/auth-policies/#the-sign-in-page"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a>: the page
+shows the <code>ykman</code> commands that make a CSR for the key already on the
+YubiKey (<code>ykman piv keys export 9a</code> + <code>ykman piv certificates request</code>); you
+paste it. Renewal succeeds only if all of these hold:</p>
+<ul>
+<li>the browser presents the person's <strong>current, valid, unrevoked</strong> YubiKey
+  certificate on that request (<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> passes it to the Hub via
+  <code>client-cert-pem@file</code> on the people router)</li>
+<li>its CN is the signed-in user</li>
+<li>Vault issued exactly that certificate</li>
+<li>the pasted CSR is for <strong>the same public key</strong></li>
+</ul>
+<p>An expired or revoked certificate cannot be renewed this way. An admin
+issues a new one instead.</p>
+<p><strong>CLI renewal</strong> on the host, with the YubiKey attached:
+<code>./portcullis cert renew &lt;user&gt;</code>.</p>
+<p><strong>Expiry warnings.</strong> These list users whose newest <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> has
+fewer than <code>CERT_EXPIRY_WARN_DAYS</code> (default 7) days left:</p>
+<ul>
+<li><code>./portcullis status</code> (and <code>vault.certs_expiring</code> in <code>status --json</code>)</li>
+<li><code>./portcullis cert list</code>, which marks them <code>expiring</code></li>
+<li>the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr> and the person's Sign-in tab, which show <code>expiring</code> for
+  any certificate with fewer than <code>CERT_EXPIRY_WARN_DAYS</code> (default 7) days left</li>
+</ul>
+<h3 id="certificate-login-through-keycloak">Certificate login through <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr><a class="headerlink" href="#certificate-login-through-keycloak" title="Permanent link">&para;</a></h3>
+<p><code>auth.&lt;domain&gt;</code> uses the <strong>authaware</strong> tier, so the browser can present a
+YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> to <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>:</p>
+<ol>
+<li><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> verifies the certificate against <code>certs/ca-chain.crt</code>.</li>
+<li><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> forwards it PEM-encoded in <code>X-Forwarded-Tls-Client-Cert</code> (middleware <code>client-cert-pem@file</code>).</li>
+<li><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> reads the header with its built-in <strong><code>traefik</code> x509 lookup provider</strong> (<code>--spi-x509cert-lookup--provider=traefik</code>). The provider understands <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s <code>passTLSClientCert</code> <code>pem: true</code> format.</li>
+</ol>
+<p>The realm's sign-in flow has two certificate steps, both the sign-in
+extension's <code>portcullis-x509</code>, which runs <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s stock X.509 code:</p>
+<table>
+<thead>
+<tr>
+<th>Step (config)</th>
+<th>Method</th>
+<th>Accepts a certificate issued by</th>
+<th>CRLs</th>
+<th><abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x509-config</code></td>
+<td><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></td>
+<td>the YubiKey CA (<code>portcullis-yubikey-ca.pem</code>)</td>
+<td><code>pki_int/crl</code>, <code>pki_int/crl/delta</code></td>
+<td><code>mtls</code></td>
+</tr>
+<tr>
+<td><code>x509-browser-config</code></td>
+<td>Browser certificate</td>
+<td>the browser CA (<code>portcullis-browser-ca.pem</code>)</td>
+<td><code>pki_file/crl</code>, <code>pki_file/crl/delta</code></td>
+<td><code>file</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each step runs only while its method is on, and only for a certificate whose
+issuer <strong>and</strong> signature match its own CA; otherwise it steps aside. It
+reads its CA file only when a certificate is presented, and logs an ERROR if
+the file is missing. Each step then:</p>
+<ul>
+<li>maps the Subject CN to the <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> username, without a confirmation page
+  (<code>x509-cert-auth.confirmation-page-disallowed</code>)</li>
+<li><strong>re-validates</strong> the chain against <code>certs/truststore/</code> (written by <code>pki setup</code>, mounted as <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s truststore), and checks the validity period and the <code>clientAuth</code> EKU</li>
+<li><strong>checks its CA's CRLs</strong> at <code>http://vault:8200/v1/&lt;mount&gt;/crl</code> and <code>.../crl/delta</code> (<code>##</code>-separated in <code>crl-relative-path</code>). <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> caches each for at most 60 s. Both intermediates have <code>auto_rebuild=true</code> (keeps the full <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> from going stale) and therefore <code>enable_delta=true</code>: Vault does <strong>not</strong> rebuild the full <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> on revoke. New revocations land in the <abbr title="Incremental CRL containing only changes since the last full CRL">delta CRL</abbr>, rebuilt every minute, until the next full rebuild. <code>./portcullis cert revoke</code> and a revocation on the web also rotate the full <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> immediately</li>
+<li><strong>fails closed on the <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr></strong>: if the <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> cannot be fetched, the certificate login fails. <code>x509-cert-auth-crl-abort-if-non-updated=true</code> (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s actual key, with a dash) also rejects a <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> past its <code>nextUpdate</code>. Vault never lets it get that stale: <code>pki setup</code> sets each mount's <code>config/crl</code> to <code>expiry=72h auto_rebuild=true auto_rebuild_grace_period=12h</code></li>
+</ul>
+<p><code>./portcullis keycloak configure</code> pushes each config from
+<code>keycloak/realm-export.json</code> onto its <code>portcullis-x509</code> execution, by alias.</p>
+<h4 id="trusted-proxy-address">Trusted proxy address<a class="headerlink" href="#trusted-proxy-address" title="Permanent link">&para;</a></h4>
+<p>A cert header carries only the public certificate, so anyone who could put one
+in front of <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> could log in as that user. Three things prevent it:</p>
+<ul>
+<li><strong><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> only trusts the header from <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>.</strong> <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s header-based
+  lookup providers (<code>traefik</code> included) return no certificate unless the
+  request comes from a trusted proxy (<code>HttpRequest.isProxyTrusted()</code>). With
+  <code>--proxy-trusted-addresses=${PORTCULLIS_AUTH_TRAEFIK_IP}</code>, <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> (Quarkus)
+  decides that <strong>from the TCP peer address of each request</strong>, and overwrites
+  any <code>X-Forwarded-Trusted-Proxy</code> header the client sent (<code>ForwardedParser</code>,
+  run before routing). The only trusted address is <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s
+  fixed IP on the internal <code>portcullis-auth</code> network. That IP is outside the
+  network's dynamic range, so no other container can get it. These sources are
+  untrusted, so the cert header and their <code>X-Forwarded-*</code> are ignored:<ul>
+<li>requests via <code>127.0.0.1:8080</code> (the CLI's admin API access; it arrives from the Docker gateway)</li>
+<li>requests from the <code>portcullis</code> network</li>
+<li>requests from any other container attached to <code>portcullis-auth</code></li>
+</ul>
+</li>
+<li><strong><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> strips client-supplied cert headers.</strong> It deletes
+  <code>X-Forwarded-Tls-Client-Cert*</code> sent by the client on the entrypoint, also
+  for requests without a certificate, and drops their <code>_</code>/<code>.</code> aliases
+  (<code>aliasHeadersStrategy=delete</code>).</li>
+<li><strong>CI tests it.</strong> The <code>build-and-test</code> job logs in through <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> with a real
+  <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> (<code>pc_method=yubikey_cert</code>), which must succeed. Then it sends the same cert as a forged header
+  straight to <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> from the <code>portcullis</code> and <code>portcullis-auth</code> networks and
+  from <code>127.0.0.1:8080</code>, with the realm's HTTPS requirement temporarily off so
+  only the proxy gate can stop it. None may yield an authorization code.</li>
+</ul>
+<p>See <a href="../../operations/hardening/#header-spoofing-protections">Security &amp; Hardening</a>.</p>
+<h3 id="sign-in-methods-keycloak-browser-flow">Sign-in methods (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> browser flow)<a class="headerlink" href="#sign-in-methods-keycloak-browser-flow" title="Permanent link">&para;</a></h3>
+<p>The realm's browser flow <code>portcullis-universal</code> (kept equal to
+<code>keycloak/realm-export.json</code> by <code>./portcullis keycloak configure</code>) offers
+exactly the <a href="../../operations/auth-policies/#methods"><abbr title="The six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), each switched on or off for the whole server">sign-in methods</abbr></a> that are
+switched on: the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> and the <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> (automatic
+when the browser presents one), a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> of any kind, or a password. Each
+records its own <code>amr</code> value:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th><abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></td>
+<td><code>mtls</code></td>
+</tr>
+<tr>
+<td>Security key</td>
+<td><code>hwk</code></td>
+</tr>
+<tr>
+<td>Device-bound <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr></td>
+<td><code>dpk</code></td>
+</tr>
+<tr>
+<td>Synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr></td>
+<td><code>spk</code></td>
+</tr>
+<tr>
+<td>Browser certificate</td>
+<td><code>file</code></td>
+</tr>
+<tr>
+<td>Password</td>
+<td><code>pwd</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>mtls</code> is emitted <strong>only</strong> for a YubiKey (<code>pki_int</code>) certificate; a browser
+(<code>pki_file</code>) certificate emits <code>file</code>. A <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> asks <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> for one method
+(<code>pc_method</code>), and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> asks only for that method. The flow ends with a
+check of the app's template for apps that sign in with <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> themselves.</p>
+<p>A user's first <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> comes from a one-time <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr>
+(<code>./portcullis invite &lt;user&gt;</code>, or the Hub). The <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> signs the user in
+through the hidden identity provider <code>portcullis-invite</code> (enroll) after the
+<abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> registration it requires, with <code>amr</code> <code>inv</code>: a session that meets no
+template, so the person touches their new <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> once more to open apps.
+Details: <a href="../../operations/hardening/#setup-links-enroll">Security &amp; Hardening</a>
+and <a href="../../operations/auth-policies/">Sign-in Methods and Templates</a>.</p>
+<h3 id="certificate-binding-group-gate">Certificate binding (<abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>)<a class="headerlink" href="#certificate-binding-group-gate" title="Permanent link">&para;</a></h3>
+<p>A token with <code>amr=mtls</code> or <code>amr=file</code> proves that a certificate was used
+<strong>at login</strong>. <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> counts a certificate method only while the
+<strong>current request</strong> carries a certificate of that kind that is not revoked
+and whose CN equals the session's <code>preferred_username</code>. It tells the kinds
+apart by the certificate's issuer, compared with the two CA files it mounts
+(<code>certs/yubikey-ca.crt</code> and <code>certs/browser-ca.crt</code>); if the two CAs had the
+same name, or either file can't be read, no certificate counts. A template
+that needs the certificate then shows the present-certificate page, the
+<abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> page or the needs-stronger page.</p>
+<p>So a session opened with a certificate that is revoked later stops working
+normally within a minute. So does a session replayed from another browser without it.</p>
+<h3 id="revocation">Revocation<a class="headerlink" href="#revocation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>cert<span class="w"> </span>list<span class="w">                </span><span class="c1"># find the serial and its KIND (--all includes revoked)</span>
+./portcullis<span class="w"> </span>cert<span class="w"> </span>revoke<span class="w"> </span>&lt;serial&gt;<span class="w">     </span><span class="c1"># revoke (add --yes to skip the prompt)</span>
+./portcullis<span class="w"> </span>cert<span class="w"> </span>sync<span class="w">                </span><span class="c1"># rewrite the serial list from Vault</span>
+</code></pre></div>
+<p>People revoke their own <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr> on the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr>; admins and
+sign-in helpers revoke anyone's (but an administrator's) on the person's
+Sign-in tab. A revoked certificate <strong>normally stops working within a minute</strong> and
+shows as revoked everywhere (the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr>, the Sign-in tab,
+<code>cert list --all</code>).</p>
+<p><strong><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> does not check CRLs.</strong> A TLS handshake with a revoked but unexpired
+certificate still succeeds. Revocation is enforced in three places:</p>
+<ol>
+<li><strong><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>, on every request</strong> (<code>portcullis-groups@docker</code>).
+   <code>client-headers@file</code> or <code>client-cert-pem@file</code> (<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>
+   <code>passTLSClientCert</code> with <code>serialNumber: true</code>) passes
+   <code>X-Forwarded-Tls-Client-Cert-Info</code> to the backend and to every later
+   <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr> middleware. <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> returns 403 when the certificate's
+   serial is revoked, before any other check. It has two sources:<ul>
+<li><strong>The serial list</strong> <code>certs/revocation/revoked-serials.txt</code>. <code>cert revoke</code>
+  and <code>cert sync</code> rewrite it atomically from Vault's lists of revoked
+  serials of both CAs, and <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> re-reads it when it changes. If
+  Vault can't be queried, the file is left unchanged and the command
+  fails: it never "un-revokes" by writing an empty list. If the file
+  exists but can't be read, <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> denies every request that
+  presents a certificate (fail closed).</li>
+<li><strong>Vault's full and delta CRLs of both CAs</strong> (<code>GATE_CRL_URLS</code> =
+  <code>http://vault:8200/v1/pki_int/crl http://vault:8200/v1/pki_file/crl</code>,
+  <code>GATE_DELTA_CRL_URLS</code> = the two <code>.../crl/delta</code>), re-fetched every
+  60 s (<code>GATE_CRL_REFRESH_SECONDS</code>). The union is enforced. A revocation
+  on the web or with <code>cert revoke</code> rotates its CA's full <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> at once, so
+  it is enforced within 60 s. Revocations made directly through the Vault
+  API or UI reach the <abbr title="Incremental CRL containing only changes since the last full CRL">delta CRL</abbr> within about 2 minutes (Vault's periodic
+  rebuild runs once a minute) and are denied at <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>'s next
+  refresh. If Vault is unreachable, the last good copy of each <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> is
+  kept and the serial list still applies.</li>
+</ul>
+</li>
+<li><strong><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> certificate login</strong>: each certificate step checks its own CA's
+   CRLs (above). It fails closed when the <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> is unavailable or stale.</li>
+<li><strong>Certificate binding</strong>: sessions on templates that need a certificate
+   need the unrevoked certificate on every request.</li>
+</ol>
+<p><strong>Coverage.</strong> Revocation covers:</p>
+<ul>
+<li>every router whose middleware chain has <code>client-headers@file</code> or <code>client-cert-pem@file</code> <strong>before</strong> <code>portcullis-groups@docker</code> (all core routers and the default templates)</li>
+<li>new <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> certificate logins</li>
+<li>sessions on templates that need a certificate</li>
+</ul>
+<p><strong>Not covered.</strong> Routers that rely on the TLS handshake alone, e.g. a
+<code>protected</code>-tier router without <code>portcullis-groups@docker</code>. There the
+certificate works until it expires. Password and <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> sessions of the same
+user are also not affected; sign them out in the <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> admin console if
+needed.</p>
+<hr />
+<h2 id="internal-certificate-authority"><abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">Internal certificate authority</abbr><a class="headerlink" href="#internal-certificate-authority" title="Permanent link">&para;</a></h2>
+<p>Vault holds the <abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">internal certificate authority</abbr>: a root (<code>pki</code>) and two
+intermediates signed by it, one per certificate kind:</p>
+<table>
+<thead>
+<tr>
+<th>Mount</th>
+<th>CN</th>
+<th>Issues</th>
+<th>Role</th>
+<th>Exported as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pki</code></td>
+<td><code>&lt;domain&gt; Root CA</code></td>
+<td>the two intermediates</td>
+<td>—</td>
+<td><code>certs/root-ca.crt</code></td>
+</tr>
+<tr>
+<td><code>pki_int</code></td>
+<td><code>&lt;domain&gt; Intermediate CA</code> (the YubiKey CA)</td>
+<td><abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr></td>
+<td><code>client-cert</code></td>
+<td><code>certs/yubikey-ca.crt</code> (also <code>certs/intermediate-ca.crt</code>)</td>
+</tr>
+<tr>
+<td><code>pki_file</code></td>
+<td><code>&lt;domain&gt; Browser Certificate CA</code></td>
+<td><abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr></td>
+<td><code>browser-cert</code></td>
+<td><code>certs/browser-ca.crt</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>./portcullis pki setup</code> creates them and keeps them in place:</p>
+<ul>
+<li><code>pki_file</code> has a 43800 h (5-year) lifetime and the same URL and <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr>
+  configuration as <code>pki_int</code> (<code>expiry=72h auto_rebuild=true
+  auto_rebuild_grace_period=12h enable_delta=true delta_rebuild_interval=1m</code>).</li>
+<li>The <code>browser-cert</code> role copies the <code>client-cert</code> role's settings (client
+  certificates only, EC P-256 keys, the CN never taken from a request,
+  <code>max_ttl=$CLIENT_CERT_TTL</code>) and is rewritten on every run.</li>
+<li><code>certs/ca-chain.crt</code> is root + <code>pki_int</code> + <code>pki_file</code>, in that order (the
+  <code>protected-any</code> and <code>authaware</code> TLS options), <code>certs/ca-chain-yubikey.crt</code>
+  is <code>pki_int</code> alone, without the root (the <code>protected</code> option, so a browser
+  certificate never passes it: <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> trusts every certificate in that file
+  as an anchor and uses the intermediates the browser sends, and a browser
+  certificate's <code>.p12</code> carries <code>pki_file</code> and the root), and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s truststore (<code>certs/truststore/</code>) gets
+  <code>portcullis-ca-chain.pem</code>, <code>portcullis-yubikey-ca.pem</code> and
+  <code>portcullis-browser-ca.pem</code>. Whenever <code>pki_file</code> is created or either chain
+  on disk is out of date, <code>pki setup</code> rewrites both chain files and the
+  truststore, and the next <code>./portcullis up</code> restarts <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> so
+  they load them.</li>
+<li>It refuses (exit 1) when the two intermediates would have the same CN:
+  every reader tells the kinds apart by issuer.</li>
+<li>It creates <code>pki_file</code> when it is missing, even while <code>pki_int</code> exists.</li>
+<li><code>--force</code> destroys both CAs.</li>
+</ul>
+<h3 id="vault-server-mode-auto-unseal-and-approle">Vault: server mode, auto-unseal and AppRole<a class="headerlink" href="#vault-server-mode-auto-unseal-and-approle" title="Permanent link">&para;</a></h3>
+<p>Vault runs in <strong>server mode</strong> with integrated (raft) storage on the
+<code>vault_data</code> volume (<code>vault/vault.hcl</code>, data in <code>/vault/file</code>), so the CA
+survives restarts. The listener is plain HTTP on the internal <code>portcullis</code>
+network, and on <code>127.0.0.1:8200</code> on the host only. The container runs as the
+image's non-root <code>vault</code> user (100:1000).</p>
+<p><code>./portcullis vault init</code> is idempotent and is run by <code>init</code>, <code>upgrade</code> and
+<code>restore</code>. It does three things:</p>
+<ol>
+<li><strong>Init</strong>, on the first run only, with <strong>one key share, threshold 1</strong>. It
+   writes to <code>secrets/</code> (dir <code>0700</code>, gitignored):<ul>
+<li><code>secrets/vault-init.json</code>: the root token and unseal key (<code>0600</code>)</li>
+<li><code>secrets/vault-unseal/unseal-key</code>: mounted read-only into the vault
+  container. Owned by you, group 1000, <code>0640</code> (dir <code>0750</code>)</li>
+</ul>
+</li>
+<li><strong>Unseal.</strong> After that, <code>vault/entrypoint.sh</code> unseals automatically on every
+   container start: <code>up</code>, restart, host reboot.</li>
+<li><strong>Least privilege for enroll.</strong> It creates the AppRole <code>portcullis-enroll</code>
+   with policy <code>vault/policies/enroll.hcl</code>, which allows only signing
+   (<code>pki_int/sign/client-cert</code>, <code>pki_file/sign/browser-cert</code>), listing
+   (<code>pki_int/certs</code>, <code>pki_file/certs</code>) and reading (<code>pki_int/cert/*</code>,
+   <code>pki_file/cert/*</code>) certificates, revoking (<code>pki_int/revoke</code>,
+   <code>pki_file/revoke</code>) and rotating the CRLs (<code>pki_int/crl/rotate</code>,
+   <code>pki_file/crl/rotate</code>). The credentials in <code>secrets/enroll/</code> (group 10002 = the
+   enroll user, <code>0640</code>) are mounted read-only into enroll. Enroll logs in for
+   1-hour tokens and logs in again before expiry or on a 403. There is no
+   static or root token in <code>.env</code>. Rotate the secret-id with
+   <code>./portcullis vault rotate-enroll-secret</code>.</li>
+</ol>
+<p>The admin commands (<code>pki setup</code>, <code>cert enroll|renew|revoke|list|sync</code>,
+<code>status</code>) use the root token from <code>secrets/vault-init.json</code>, or <code>VAULT_TOKEN</code>
+if exported. They use the host <code>vault</code> CLI if it is installed, otherwise the CLI
+inside the vault container. The token is passed by environment-variable name,
+never on the command line. <code>secrets/</code> and <code>backups/</code> are masked from the Hub
+container with empty tmpfs mounts.</p>
+<p><code>pki setup</code> is idempotent and never replaces an existing CA: it only recreates
+missing pieces such as <code>pki_file</code>, the <code>client-cert</code> and <code>browser-cert</code> roles
+or the exported CA files. If it
+finds an incomplete PKI (an earlier run aborted before the intermediate was
+signed), it wipes and recreates it; any Vault error aborts instead of being
+mistaken for "no PKI". If Vault has no CA but <code>certs/ca-chain.crt</code> exists
+(Vault data lost), it refuses to create a new one. Restore a backup, or pass
+<code>--force</code> and issue every certificate again. See the
+<a href="../../operations/cli/#pki-setup">CLI Reference</a>.</p>
+<p><code>certs/server.key</code> is written <code>0640</code> with group 0 (<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> runs as root but
+without <code>CAP_DAC_OVERRIDE</code>). When the CLI is not run as root, it changes group
+ownership through a throwaway root container (pinned <code>alpine</code>, only
+<code>CAP_CHOWN</code>, no network).</p>
+<p><strong>Trade-off of auto-unseal.</strong> The unseal key lives on the same host as the
+encrypted data. Root on the host, or anyone who can read <code>secrets/</code>, can unseal
+Vault. What it does protect: a copy of the <code>vault_data</code> volume alone is useless.
+Several Shamir shares on the same disk would add nothing, hence one share.</p>
+<p>For stronger guarantees, remove the <code>secrets/vault-unseal</code> mount and unseal by
+hand after each restart (<code>docker compose exec vault vault operator unseal</code>), or
+use a cloud KMS auto-unseal.</p>
+<p><strong>Keep an offline copy of <code>secrets/vault-init.json</code>.</strong> Backups made by
+<code>portcullis backup</code> and <code>upgrade</code> include <code>secrets/</code> (and a raft snapshot of
+Vault), so protect them like the keys themselves. Off-host copies are encrypted
+with <code>BACKUP_PASSWORD</code> (see <a href="../../operations/backups/">Backups</a>).</p>
+<hr />
+<h2 id="without-yubikey-or-browser-certificates">Without YubiKey or <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr><a class="headerlink" href="#without-yubikey-or-browser-certificates" title="Permanent link">&para;</a></h2>
+<p>Switch the <strong><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></strong> method off (and leave <strong>Browser
+certificate</strong> off) in Hub → Settings → Sign-in (once no enabled template
+needs them: Standard, for <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>, still accepts any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>). Then no app
+asks for a certificate any more: every app whose template has no certificate
+method left gets the <code>public</code> tier, and sign-in is passkeys only (plus
+passwords, if you switch them on). Core pages keep the optional certificate
+request; a browser without a certificate shows nothing. You don't need
+<code>ykman</code> or <abbr title="Personal Identity Verification - YubiKey smartcard standard">PIV</abbr> setup.</p>
+<div class="admonition danger">
+<p class="admonition-title"><code>mtls</code> apps rely on the certificate alone</p>
+<p>An app with <code>auth.method: mtls</code> has no <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>: the YubiKey
+certificate at the TLS handshake <strong>is</strong> its sign-in, and it always keeps
+the <code>protected</code> tier, which trusts only the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>
+authority (a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> is refused at the handshake). Without
+issued <abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr> nobody reaches it.</p>
+</div>
+<hr />
+<h2 id="common-scenarios">Common scenarios<a class="headerlink" href="#common-scenarios" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th><code>ACME_STAGING</code></th>
+<th><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First DNS/<abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> experiments</td>
+<td><code>true</code></td>
+<td>off</td>
+<td>Untrusted certs, passkeys only</td>
+</tr>
+<tr>
+<td>Production, passkeys only</td>
+<td><code>false</code></td>
+<td>off</td>
+<td>Trusted certs, no certificate management</td>
+</tr>
+<tr>
+<td>Production, with <abbr title="Sign-in certificates on YubiKeys (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificates</abbr></td>
+<td><code>false</code></td>
+<td>on</td>
+<td><abbr title="Personal Identity Verification - YubiKey smartcard standard">PIV</abbr> certificates for browsers and CLI/API, passkeys too; <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr> optional</td>
+</tr>
+<tr>
+<td>Development / CI</td>
+<td><code>true</code></td>
+<td>on</td>
+<td>Everything, including certificate flows</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="your-connection-is-not-private-neterr_cert_authority_invalid">"Your connection is not private" / <code>NET::ERR_CERT_AUTHORITY_INVALID</code><a class="headerlink" href="#your-connection-is-not-private-neterr_cert_authority_invalid" title="Permanent link">&para;</a></h3>
+<p>You are on staging certificates. Switch to <code>ACME_STAGING=false</code>, or launch
+Chrome with <code>--ignore-certificate-errors</code>.</p>
+<h3 id="app-shows-unable-to-get-local-issuer-certificate">App shows "unable to get local issuer certificate"<a class="headerlink" href="#app-shows-unable-to-get-local-issuer-certificate" title="Permanent link">&para;</a></h3>
+<p>The app container cannot verify <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s TLS cert. Check that:</p>
+<ul>
+<li><code>certs/ca-bundle.crt</code> exists (<code>./portcullis config apply --bundle-only</code>)</li>
+<li>the container mounts it (<code>./certs/ca-bundle.crt:&lt;path&gt;:ro</code> in the template's <code>compose.yml</code>)</li>
+<li>the runtime uses it: <code>NODE_EXTRA_CA_CERTS</code> for Node.js, <code>SSL_CERT_FILE</code> for Go</li>
+</ul>
+<h3 id="err_bad_ssl_client_auth_cert"><code>ERR_BAD_SSL_CLIENT_AUTH_CERT</code><a class="headerlink" href="#err_bad_ssl_client_auth_cert" title="Permanent link">&para;</a></h3>
+<p>The YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> is invalid, expired, or not issued by the
+<abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">internal certificate authority</abbr>. Renew a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> on the
+<a href="../../operations/auth-policies/#the-sign-in-page"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a> while it is
+still valid (otherwise an admin issues a new one); create a new browser
+certificate there.</p>
+<h3 id="err_ssl_client_auth_cert_needed"><code>ERR_SSL_CLIENT_AUTH_CERT_NEEDED</code><a class="headerlink" href="#err_ssl_client_auth_cert_needed" title="Permanent link">&para;</a></h3>
+<p>The router is on the <code>protected</code> tier (a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> required; a
+<abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> is never accepted there) or <code>protected-any</code> (a YubiKey or
+<abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> required). Get a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> (or, on
+<code>protected-any</code>, create a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>), or move the app to a template
+that doesn't need a certificate in every alternative (Hub → the app's
+Settings).</p>
+<h3 id="403-the-certificate-has-been-revoked">403: the certificate has been revoked<a class="headerlink" href="#403-the-certificate-has-been-revoked" title="Permanent link">&para;</a></h3>
+<p><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> found the certificate's serial in the revoked list or a <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr>.
+Remove it from the browser/keychain; then create a new <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> on
+the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr>, or have an admin issue a new <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>.</p>
+<h3 id="403-the-certificate-revocation-list-is-unavailable">403: the certificate revocation list is unavailable<a class="headerlink" href="#403-the-certificate-revocation-list-is-unavailable" title="Permanent link">&para;</a></h3>
+<p><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> cannot read <code>certs/revocation/revoked-serials.txt</code> and therefore
+denies requests that present a cert. Run <code>./portcullis cert sync</code> and check the
+file's permissions.</p>
+<h3 id="certificate-login-in-keycloak-does-nothing">Certificate login in <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> does nothing<a class="headerlink" href="#certificate-login-in-keycloak-does-nothing" title="Permanent link">&para;</a></h3>
+<p>Check the <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> logs:</p>
+<ul>
+<li><code>HTTP header "X-Forwarded-Tls-Client-Cert" is not trusted</code> means the request
+  did not come from <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s <code>portcullis-auth</code> address. Check
+  <code>PORTCULLIS_AUTH_TRAEFIK_IP</code> and that <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> is attached to <code>portcullis-auth</code>.</li>
+<li>A <abbr title="Certificate Revocation List - lists revoked YubiKey or browser certificates (one per certificate authority)">CRL</abbr> error means Vault is sealed or unreachable (<code>./portcullis status</code>).</li>
+<li><code>portcullis</code> ERROR naming a CA file: <code>certs/truststore/portcullis-yubikey-ca.pem</code>
+  or <code>portcullis-browser-ca.pem</code> is missing or not a CA. Run
+  <code>./portcullis pki setup &amp;&amp; ./portcullis up</code>.</li>
+<li>No certificate attempt at all: that certificate's method is off (Settings →
+  Sign-in), or <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> has no valid <code>signin-keycloak.json</code> from the Hub
+  (every method off, see <a href="../../operations/auth-policies/#sign-in-flows-in-keycloak">Sign-in flows in <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr></a>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

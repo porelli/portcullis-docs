@@ -1,0 +1,3577 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/vpn/">
+      
+      
+      
+        <link rel="prev" href="../rootless-podman/">
+      
+      
+        <link rel="next" href="../backups/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>VPN - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              VPN
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built-in setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings → VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wiring-a-marketplace-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Wiring a marketplace VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#several-vpns-and-through" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Several VPNs and <em>Through</em>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes-and-the-public-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Modes and the public set
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#devices-on-the-built-in-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Devices on the built-in VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revocation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dns-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DNS caveats
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#break-glass-and-the-lock-out-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Break-glass and the lock-out guard
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-isnt-covered" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What isn't covered
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built-in setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings → VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wiring-a-marketplace-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Wiring a marketplace VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#several-vpns-and-through" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Several VPNs and <em>Through</em>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes-and-the-public-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Modes and the public set
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#devices-on-the-built-in-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Devices on the built-in VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#revocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revocation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dns-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DNS caveats
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#break-glass-and-the-lock-out-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Break-glass and the lock-out guard
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-isnt-covered" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What isn't covered
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="vpn-only-access"><abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> Access<a class="headerlink" href="#vpn-only-access" title="Permanent link">&para;</a></h1>
+<p>An app <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> can be made <strong><abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr></strong>: it then answers only to devices
+connected through a VPN that Portcullis knows, and only after the normal
+Portcullis sign-in, from a device that belongs to the person who signed in.
+The whole server can go the same way (<code>./portcullis vpn mode server</code>), or
+only its admin surfaces (<code>admin</code>).</p>
+<p>Portcullis has its own VPN, the <strong>built-in</strong> WireGuard VPN, and can also use
+VPN apps from the Marketplace (Headscale) as <strong><abbr title="Paths through which people's devices reach VPN-only apps: the built-in WireGuard VPN, and Marketplace VPN apps (Headscale) an admin wired on their VPN tab">VPN providers</abbr></strong>. Several can
+be used at once. The interfaces are in
+<a href="../../guides/integration-contracts/#33-vpn-only-access-the-vpn-block-new-vpn">contracts §3.3</a>,
+<a href="../../guides/integration-contracts/#4-policy-file-hub-group-gate">§4</a> and
+<a href="../../guides/integration-contracts/#16-vpn-and-the-wg-service-new-vpn">§16</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">A VPN never replaces sign-in</p>
+<p>Being on a VPN is an extra condition, never a <abbr title="One of six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), switched on or off for the whole server">sign-in method</abbr> or a factor.
+A <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> app still asks for the sign-in its
+<a href="../auth-policies/">template</a> needs, its groups and path rules still
+apply, and a <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> is never skipped. A VPN app's own sign-in (Headscale's
+<abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr>) never stands in for the Portcullis sign-in.</p>
+</div>
+<h2 id="the-model">The model<a class="headerlink" href="#the-model" title="Permanent link">&para;</a></h2>
+<p>Core's <strong><code>wg</code> service</strong> (one Go binary, userspace WireGuard on a gVisor
+network stack: no capabilities, no TUN device, no kernel module) has two
+roles:</p>
+<ul>
+<li><strong>The edge</strong> (the <abbr title="The wg service's edge role: one TCP port per wired VPN provider; it checks every connection's address against that provider's ranges and fresh device list, then passes it to Traefik's vpnsecure with PROXY v2">VPN edge</abbr>): every VPN's traffic to Portcullis goes through it. Each
+  wired marketplace provider has its own TCP port on the edge, and the
+  built-in VPN hands its connections over in-process. The edge checks every
+  connection's client address against the provider's ranges and its
+  current device list, then passes it to <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s VPN entrypoint
+  <code>vpnsecure</code> with a PROXY v2 header. <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> trusts PROXY headers only
+  from <code>wg</code>.</li>
+<li><strong>The <abbr title="The wg service's built-in WireGuard VPN for people (UDP 51820, tunnel 10.213.0.0/22, split tunnel to Portcullis only)">people role</abbr></strong>: the built-in VPN (one WireGuard tunnel, UDP 51820 by
+  default, tunnel <code>10.213.0.0/22</code>). Its clients reach exactly one thing:
+  Portcullis over HTTPS (plus HTTP, which redirects, and its DNS resolver).
+  It is a split tunnel, not a general VPN.</li>
+</ul>
+<p>A <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> app has <strong>five gates</strong>, all of which must pass:</p>
+<ol>
+<li><strong>No internet route.</strong> The app's routers exist only on <code>vpnsecure</code>. On
+   the internet entrypoint (<code>websecure</code>) its hostnames answer only a static
+   page: "This app is only reachable over a Portcullis VPN. Connect your
+   device and reload."</li>
+<li><strong>The edge.</strong> The connection came in through a provider's own path (its
+   <abbr title="A wired VPN provider's own TCP port on the wg service (9001 + slot), reachable only from that provider's gateway">edge port</abbr> from its gateway's address, or the built-in tunnel), from an
+   address in that provider's ranges that is one of its current devices,
+   and the provider's device list is fresh.</li>
+<li><strong><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s allowlist.</strong> The app's routers accept only the ranges of the
+   providers the app accepts (<em>Through</em>, below), matched on the connection's
+   address, never a header.</li>
+<li><strong>Portcullis sign-in</strong>, unchanged.</li>
+<li><strong>The <abbr title="group-gate's VPN check: the client's VPN address must be a current device of its provider, owned by the signed-in person">device binding</abbr>.</strong> <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> looks the address up in the provider's
+   device list: the device must exist, be unexpired, and belong to the
+   signed-in person. Otherwise it answers "this device isn't yours; sign in
+   on your own device" (the owner's name is never shown), or, for a stale
+   list, "your VPN's device list is out of date; try again in a minute".</li>
+</ol>
+<p>Everything <strong>fails closed</strong>. With <code>wg</code> down, the Hub not publishing the
+device lists (<code>vpn.json</code>, valid one hour and republished every 10 minutes), a
+list that can't be read, or a provider whose list is stale, the affected
+<abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> apps are unreachable. They never fall back to the internet.</p>
+<p><strong>Local networks never count.</strong> Being on a <a href="../hub/#local-networks">Local
+network</a> (your LAN, a tailnet range you entered there)
+is never a VPN address: only the binding above opens a <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> app.</p>
+<h2 id="built-in-setup">Built-in setup<a class="headerlink" href="#built-in-setup" title="Permanent link">&para;</a></h2>
+<p>The VPN service is off on a new install (compose profile <code>wg</code>). The Hub must
+be running.</p>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>vpn<span class="w"> </span>init<span class="w">                          </span><span class="c1"># wg + the built-in VPN on UDP 51820, 10.213.0.0/22</span>
+./portcullis<span class="w"> </span>vpn<span class="w"> </span>init<span class="w"> </span>--port<span class="w"> </span><span class="m">51821</span><span class="w">             </span><span class="c1"># another UDP port</span>
+./portcullis<span class="w"> </span>vpn<span class="w"> </span>init<span class="w"> </span>--subnet<span class="w"> </span><span class="m">10</span>.213.4.0/22<span class="w">   </span><span class="c1"># another tunnel network</span>
+./portcullis<span class="w"> </span>vpn<span class="w"> </span>init<span class="w"> </span>--builtin<span class="w"> </span>off<span class="w">            </span><span class="c1"># only the edge, for marketplace VPNs</span>
+</code></pre></div>
+<p><code>vpn init</code> adds <code>wg</code> to <code>COMPOSE_PROFILES</code>, writes <code>PORTCULLIS_VPN_BUILTIN</code>,
+<code>PORTCULLIS_VPN_PORT</code> and <code>PORTCULLIS_VPN_SUBNET</code> into <code>.env</code>, generates the
+built-in VPN's key once (<code>secrets/wg/people.key</code>, never printed) and starts
+<code>wg</code>, <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> and the Hub. It refuses, writing nothing, a subnet that
+overlaps a Docker network, Docker's default address pools (<code>172.16.0.0/12</code>,
+<code>192.168.0.0/16</code>), under Podman Podman's pools (<code>10.88.0.0/16</code>,
+<code>10.89.0.0/16</code>), Portcullis' core and VPN networks, the reserved link subnet
+<code>10.214.0.0/24</code>, a Local network you entered in the Hub or a wired provider's
+range, and suggests a free /22 in <code>10.213.0.0/16</code>. The Hub's default Local
+networks only give a warning. Details: <a href="../cli/#vpn-init">CLI → vpn init</a>.</p>
+<p>Then:</p>
+<ul>
+<li><strong>Open the UDP port</strong> (51820 unless you changed it) in the server's
+  firewall and your cloud provider's firewall. Clients use the <abbr title="The primary Portcullis domain (PORTCULLIS_DOMAIN)">main domain</abbr>
+  as the endpoint (<code>&lt;domain&gt;:51820</code>), so its A record must point at this
+  server, which the <a href="../../setup/dns/"><abbr title="The records Portcullis wants for a name (address, caa, nomail sets), their live values and status, and the zone's DNSSEC state (dns plan, the Hub's DNS panel)">DNS plan</abbr></a> already does.</li>
+<li><strong>Who may have devices</strong>: Hub → <strong>Settings → VPN</strong> (below).</li>
+<li><strong>Add your own device</strong> on <code>https://people.&lt;domain&gt;/vpn/</code>
+  (<a href="#devices-on-the-built-in-vpn">below</a>), or from the host with
+  <code>./portcullis vpn add-device &lt;you&gt; &lt;name&gt;</code>.</li>
+<li><strong>Make apps <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr></strong> on their <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page (<strong>Overview → Access</strong>).</li>
+</ul>
+<p><code>./portcullis vpn builtin off</code> switches the built-in VPN off later (its key
+file is emptied, so its devices stop working) and <code>vpn builtin on</code> back on
+(a new key when there is none). The edge, and every marketplace provider,
+keeps running either way.</p>
+<h3 id="settings-vpn">Settings → VPN<a class="headerlink" href="#settings-vpn" title="Permanent link">&para;</a></h3>
+<p>The Hub's <strong>Settings → VPN</strong> shows the mode and public enrolment (read-only:
+they are set on the host, <a href="#modes-and-the-public-set">below</a>), whether the VPN
+service is up, the built-in VPN's subnet, port and device count, any <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>
+stopped because a narrowing failed, and every provider (source, wired, ranges,
+devices, map fresh or stale, each linking to its VPN tab). It sets:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VPN users group</td>
+<td>empty (every person)</td>
+<td>Who may use any Portcullis VPN. It gates every provider's devices: a person outside it can't add built-in devices, their built-in devices are revoked, and their marketplace devices drop out of the device lists</td>
+</tr>
+<tr>
+<td>Devices per person</td>
+<td>10 (1–100)</td>
+<td>Built-in devices only</td>
+</tr>
+<tr>
+<td>Device expiry</td>
+<td><code>1y</code></td>
+<td>Built-in devices: <code>30d</code>, <code>90d</code>, <code>1y</code> or <code>never</code> (the API also takes a duration of at least 30 days)</td>
+</tr>
+</tbody>
+</table>
+<p>Saving is audited <code>vpn.settings</code>.</p>
+<h2 id="wiring-a-marketplace-vpn">Wiring a marketplace VPN<a class="headerlink" href="#wiring-a-marketplace-vpn" title="Permanent link">&para;</a></h2>
+<p>A Marketplace app whose template has a <a href="../../guides/manifest-reference/#vpn"><code>vpn:</code> block</a>
+(today: <a href="../../apps/headscale/">Headscale</a>) can be wired as a <strong><abbr title="A path through which people's devices reach VPN-only apps: the built-in WireGuard VPN, or a Marketplace VPN app (Headscale) an admin wired on its VPN tab">VPN provider</abbr></strong>:
+a second way into <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> apps. Installing it doesn't do that; you turn it on
+per <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>. With Headscale:</p>
+<ol>
+<li>Run <code>./portcullis vpn init</code> first (<code>--builtin off</code> if you want only the
+   tailnet): wiring is refused with "the VPN service isn't running: run
+   ./portcullis vpn init on the host" while <code>wg</code> is down.</li>
+<li>Create and enable a Headscale <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>, then do its post-start step (its
+   app page and the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s notes): create a Headscale API key and paste
+   it into the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <strong>Headscale API key</strong> setting. Without the key the
+   gateway node doesn't register and the device list goes stale.</li>
+<li>On the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page, open the <strong>VPN</strong> tab, tick <strong>Use for Portcullis
+   access</strong>, set the <strong>refresh</strong> if you want (how often the Hub asks the app
+   for its devices, <code>15s</code>–<code>10m</code>, default <code>60s</code>) and <strong>Save</strong>. The Hub gives
+   the provider a slot (its own <abbr title="A wired VPN provider's own TCP port on the wg service (9001 + slot), reachable only from that provider's gateway">edge port</abbr> and gateway address) and restarts
+   it with its gateway joined to the VPN network.</li>
+<li>People register their Tailscale clients with Headscale, signing in
+   through Portcullis. Only nodes of Headscale users who signed in through
+   Portcullis count; nodes of local Headscale users never do.</li>
+</ol>
+<p>The <strong>VPN tab</strong> then shows the ranges, the devices (and how many are
+online), whether the map is fresh and when it was last refreshed, the hook's
+last error, and every device <strong>left out</strong> with the reason:</p>
+<table>
+<thead>
+<tr>
+<th>Reason</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ipv6</code></td>
+<td>An IPv6 address: Portcullis matches IPv4 tunnel addresses only</td>
+</tr>
+<tr>
+<td><code>outside_ranges</code></td>
+<td>Not in the provider's ranges</td>
+</tr>
+<tr>
+<td><code>gateway</code></td>
+<td>The gateway node's own address</td>
+</tr>
+<tr>
+<td><code>expired</code></td>
+<td>Its expiry is past</td>
+</tr>
+<tr>
+<td><code>duplicate</code></td>
+<td>Two devices share the address: both are left out (doctor Problem)</td>
+</tr>
+<tr>
+<td><code>not a Portcullis person</code></td>
+<td>Its owner isn't an enabled person in the VPN users group</td>
+</tr>
+</tbody>
+</table>
+<p>Owners are matched by <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> username, or by the <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> user id mapped to
+the <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> username, never by email. A provider of <code>source: static</code> (plain
+WireGuard servers) has no device hook: the tab has <strong>Static assignments</strong>
+where you assign an address to a person and a device name ("Traffic from
+&lt;address&gt; counts as &lt;person&gt;'s device &lt;name&gt;"); the doctor reminds
+you that such devices aren't proven to exist (<code>vpn_static_mapping</code>).</p>
+<p><strong>DNS.</strong> The tab lists the A records that point the Portcullis hostnames at
+the provider's gateway. Headscale's DNS hook writes them into its MagicDNS
+records, so tailnet clients reach this server through the gateway. A
+provider with <code>dns: manual</code> asks you to configure them in the app by hand
+and to click <strong>I configured them</strong>.</p>
+<p><strong>Refusals when wiring</strong> (<code>409</code>): a range that overlaps the built-in subnet,
+the reserved link subnet, a reserved range (the core networks,
+<code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>, and under Podman <code>10.88.0.0/16</code> and
+<code>10.89.0.0/16</code>), a Docker network or another wired provider. An overlap with
+your Local networks is accepted, with a doctor Warning (those addresses also
+reach LAN-only ports).</p>
+<p><strong>Unwiring</strong> asks first and lists the apps that accept only this provider:
+they become unreachable (an empty, deny-all allowlist; doctor
+<code>vpn_via_dead</code>), never reachable from the internet.</p>
+<p><strong>What wiring opens.</strong> Nothing that wasn't public: the provider's control
+routers (Headscale's coordination and DERP, which clients need to connect)
+stay on the internet in every mode, and its admin UI (Headplane) follows the
+<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s access like any app. A provider's <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> runs on this server
+(its gateway joins the VPN network). Gateways that hold <code>NET_ADMIN</code>, run
+privileged or get host devices are shown by the doctor
+(<code>vpn_gateway_privileged</code>); Headscale's gateway runs in userspace without
+them.</p>
+<h2 id="several-vpns-and-through">Several VPNs and <em>Through</em><a class="headerlink" href="#several-vpns-and-through" title="Permanent link">&para;</a></h2>
+<p>Every live provider (the built-in VPN when on, every wired marketplace
+provider) is a way into every <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> app by default. People use whichever
+VPN they have; the binding is per device whatever the provider.</p>
+<p>An <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <strong>Access</strong> section (<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page, <strong>Overview</strong>) sets:</p>
+<ul>
+<li><strong>Reachable from</strong>: <em>the internet (default)</em> or <em>only Portcullis VPNs</em>.</li>
+<li><strong>Through</strong>: <em>every <abbr title="A path through which people's devices reach VPN-only apps: the built-in WireGuard VPN, or a Marketplace VPN app (Headscale) an admin wired on its VPN tab">VPN provider</abbr></em>, or a subset (for example only
+  <em>Portcullis VPN (built-in)</em>). Only providers that are live can be picked.</li>
+<li>In server mode, for an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> with <a href="../hub/#public-exceptions"><abbr title="Unauthenticated paths for share links (off by default)">public exceptions</abbr></a>:
+  <em>Public links stay on the internet (server mode)</em> (doctor
+  <code>vpn_public_links</code>).</li>
+</ul>
+<p><strong>Save access</strong> asks first and restarts the app. Making an app <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr>, or
+narrowing <em>Through</em>, takes effect at once. Making it reachable from the
+internet widens access, so AI tools need a confirmation for it. Choosing VPN
+with no live provider is refused ("wire a VPN first"); choosing VPN with no
+provider at all leaves the app unreachable (doctor <code>vpn_no_providers</code>).</p>
+<p>When the Hub can't apply a change that narrows an app's access (to <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr>,
+fewer providers, fewer ranges), it <strong>stops the app</strong> (data kept), raises
+doctor <code>vpn_reach_failed_closed</code> and starts it again after the next
+successful render. Settings → VPN lists such apps.</p>
+<h2 id="modes-and-the-public-set">Modes and the <abbr title="What stays on the internet in VPN server mode: the HTTP redirect, VPN UDP ports, VPN control routers, opted-in public links and (with public enrolment) the sign-in and enrolment pages">public set</abbr><a class="headerlink" href="#modes-and-the-public-set" title="Permanent link">&para;</a></h2>
+<p>Which <strong>core</strong> pages answer only over the VPN is a host setting, never a Hub
+setting:</p>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>vpn<span class="w"> </span>mode<span class="w"> </span>apps<span class="w">     </span><span class="c1"># the default: core as usual; apps choose per instance</span>
+./portcullis<span class="w"> </span>vpn<span class="w"> </span>mode<span class="w"> </span>admin<span class="w">    </span><span class="c1"># the admin surfaces VPN-only</span>
+./portcullis<span class="w"> </span>vpn<span class="w"> </span>mode<span class="w"> </span>server<span class="w">   </span><span class="c1"># everything VPN-only but the public set</span>
+./portcullis<span class="w"> </span>vpn<span class="w"> </span>mode<span class="w"> </span>server<span class="w"> </span>--public-enrol<span class="w"> </span><span class="nb">false</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th><abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr></th>
+<th>Still on the internet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apps</code></td>
+<td>the <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> you set to <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr></td>
+<td>every core page</td>
+</tr>
+<tr>
+<td><code>admin</code></td>
+<td>those, plus the Hub, the <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> admin console, <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>, the <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> dashboard, Grafana (<code>metrics.&lt;domain&gt;</code>) and the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> endpoints</td>
+<td>the portal, people.&lt;domain&gt;, sign-in pages, <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr></td>
+</tr>
+<tr>
+<td><code>server</code></td>
+<td>every <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> and every core page, except the <abbr title="What stays on the internet in VPN server mode: the HTTP redirect, VPN UDP ports, VPN control routers, opted-in public links and (with public enrolment) the sign-in and enrolment pages">public set</abbr></td>
+<td>the <abbr title="What stays on the internet in VPN server mode: the HTTP redirect, VPN UDP ports, VPN control routers, opted-in public links and (with public enrolment) the sign-in and enrolment pages">public set</abbr></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The <abbr title="What stays on the internet in VPN server mode: the HTTP redirect, VPN UDP ports, VPN control routers, opted-in public links and (with public enrolment) the sign-in and enrolment pages">public set</abbr> in server mode:</strong></p>
+<ul>
+<li>the HTTP → HTTPS redirect on port 80 (certificates use <abbr title="ACME challenge proving domain control via DNS TXT records">DNS-01</abbr>, so nothing
+  else is needed for <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr>);</li>
+<li>the built-in VPN's UDP port;</li>
+<li>every wired provider's control routers and the ports its template
+  publishes (Headscale's coordination and DERP);</li>
+<li>the public links of <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> with <em>Public links stay on the internet</em>;</li>
+<li>with public enrolment on (<code>PORTCULLIS_VPN_PUBLIC_ENROL=true</code>, the
+  default): the enrolment surfaces, still behind sign-in: <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s sign-in
+  pages and the sign-in callback on <code>auth.&lt;domain&gt;</code> (never the admin
+  console), <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr> on <code>enroll.&lt;domain&gt;</code>, and people.&lt;domain&gt;'s
+  <code>/vpn/</code> page, so a person can add a first device. Public enrolment never
+  means unauthenticated.</li>
+</ul>
+<p>With <code>--public-enrol false</code> only the UDP ports, the control routers and those
+public links stay public. New built-in devices then come from an existing
+device or from the host (<code>./portcullis vpn add-device</code>).</p>
+<p>A <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> core page answers <code>/vpn-required</code> on the internet. <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> also
+denies those hosts on its internet paths, as a second layer.</p>
+<div class="admonition note">
+<p class="admonition-title">The <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> endpoints</p>
+<p>In the <code>admin</code> and <code>server</code> modes the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> endpoints (<code>mcp.&lt;domain&gt;</code>,
+<code>hub.&lt;domain&gt;/mcp</code>, <code>people.&lt;domain&gt;/mcp</code>) answer only over the VPN,
+but they never go through <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>, so they aren't bound to the
+device's owner: any device on a Portcullis VPN reaches them. The <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>
+OAuth token is still required (<a href="../ai/">AI support</a>).</p>
+</div>
+<p>The mode change writes <code>PORTCULLIS_VPN_MODE</code>, <code>PORTCULLIS_VPN_PUBLIC_ENROL</code>
+and the core routers' entrypoint variables into <code>.env</code>, then recreates core.
+The Hub shows the mode read-only and copies it into the policy. In <code>admin</code>
+or <code>server</code> mode with one provider only, the doctor recommends the built-in
+VPN as a second path (<code>vpn_single_provider</code>).</p>
+<h2 id="devices-on-the-built-in-vpn">Devices on the built-in VPN<a class="headerlink" href="#devices-on-the-built-in-vpn" title="Permanent link">&para;</a></h2>
+<p>People add their own devices on <strong><code>https://people.&lt;domain&gt;/vpn/</code></strong> (also
+linked from the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr>'s <strong>VPN devices</strong> card). The page needs a
+signed-in person in the VPN users group.</p>
+<p><strong>Adding a device:</strong></p>
+<ol>
+<li>Name it (1–64 characters) and click <strong>Add device</strong>.</li>
+<li>Sign in again in the small window that opens (a fresh sign-in, at most
+   5 minutes old, that the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr>'s template accepts).</li>
+<li>The browser makes the WireGuard key pair itself (X25519, WebCrypto).
+   Only the <strong>public key</strong> is sent; the Hub picks the device's address in the
+   built-in subnet and answers the server's public key, endpoint, DNS and
+   MTU.</li>
+<li>The page shows the WireGuard configuration <strong>once</strong>, as text and as a
+   QR code, both made in the browser. Import it into the WireGuard app now
+   (scan the QR on a phone), then click <strong>Done: I saved it</strong>: the private key
+   is overwritten and the panel emptied. Nothing is stored in the browser,
+   and the Hub never sees the private key or the configuration.</li>
+</ol>
+<p>The configuration is a split tunnel: <code>AllowedIPs = 10.213.0.1/32</code>,
+<code>DNS = 10.213.0.1</code>, MTU 1280, <code>PersistentKeepalive = 25</code>. Only Portcullis
+traffic goes through it.</p>
+<p><strong>WireGuard apps.</strong> Use the official WireGuard client: the WireGuard app on
+Windows, macOS (App Store), iOS and Android (scan the QR code or import the
+file), and on Linux <code>wg-quick</code> or NetworkManager (import the saved
+configuration as a <code>.conf</code> file).</p>
+<p><strong>Renew, rename, remove.</strong> Each built-in device has <strong>Renew</strong> (a fresh sign-in
+and a new key pair: the same device and address with a new key; the old
+configuration stops working), <strong>Rename</strong> and <strong>Remove</strong>. A device expires
+after the Settings expiry (one year by default); the doctor tells its owner
+14 days before (<code>vpn_expiring</code>). Marketplace devices are listed too, read-only
+("managed in Headscale tailnet"): manage them in their app.</p>
+<p>Limits and refusals: at most the Settings' devices per person ("at most
+&lt;n&gt; devices"), a public key another device uses, no fresh sign-in, a
+person outside the VPN users group, or the built-in VPN off.</p>
+<p><strong>From the host.</strong> <code>./portcullis vpn add-device &lt;user&gt; &lt;name&gt;</code> makes a device
+for any enabled person in the VPN users group: the key pair is made in the
+<code>wg</code> container, only the public key goes to the Hub, and the configuration
+and a terminal QR code are printed once. The private key is never on a
+command line or in a file. Nobody can make a configuration for someone else
+in the Hub's UI, and no AI tool creates one.</p>
+<h2 id="revocation">Revocation<a class="headerlink" href="#revocation" title="Permanent link">&para;</a></h2>
+<p>A removed device stops working, and its open connections are closed: the
+edge re-checks every open connection against the current device lists on
+every change and every 2 seconds. How soon a removal takes effect depends on
+where the device lives:</p>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>How it is removed</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Built-in VPN</td>
+<td><strong>Remove</strong> on <code>/vpn/</code>, People → person → <strong>Sign-in</strong> → <em>VPN devices</em> (administrators and holders of <code>sign_in_help</code>), <code>./portcullis vpn revoke &lt;id&gt;</code>, the AI tool <code>remove_vpn_device</code>, or expiry</td>
+<td>Within seconds: the Hub publishes at once, <code>wg</code> drops the peer and closes its connections. The address is quarantined for 7 days before it is given out again</td>
+</tr>
+<tr>
+<td>Built-in VPN, the person left</td>
+<td>Disabled or deleted in <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>, removed from the VPN users group, or deleted and re-created under the same name</td>
+<td>At the Hub's next check (every 10 s): audited <code>vpn.device_removed</code> with the reason</td>
+</tr>
+<tr>
+<td>Hook provider (Headscale)</td>
+<td>Delete the node in the app</td>
+<td>At the provider's next refresh (60 s by default), then within seconds</td>
+</tr>
+<tr>
+<td>Hook provider, list stale</td>
+<td>The hook fails, times out or the gateway is down</td>
+<td>After <code>max(3 × refresh, 3 min)</code> (never more than 30 min) every device of that provider is denied, until the next good run</td>
+</tr>
+<tr>
+<td>Static provider</td>
+<td><strong>Remove</strong> under Static assignments</td>
+<td>Within seconds</td>
+</tr>
+</tbody>
+</table>
+<p>A mesh may hand a removed node's address to another person's node within
+one refresh. The binding then fails (the owner isn't the signed-in person)
+until the next refresh: it fails closed, never open. Open connections also
+end after 12 hours, and after 1 hour without traffic.</p>
+<p>The edge also caps connections: 1024 per provider, 128 per person across
+their devices, 32 per client address; under pressure it closes the heaviest
+person's idle sessions first (<a href="../hardening/#vpn-wg-the-edge-and-gateways">hardening</a>).</p>
+<h2 id="dns-caveats">DNS caveats<a class="headerlink" href="#dns-caveats" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Built-in VPN.</strong> The configuration sets <code>DNS = 10.213.0.1</code>, the people
+  role's resolver. It forwards every query (upstream <code>1.1.1.1</code> and <code>9.9.9.9</code>
+  unless <code>PORTCULLIS_VPN_DNS_UPSTREAM</code> says otherwise) and rewrites only
+  answers for Portcullis names that point at this server: A → <code>10.213.0.1</code>,
+  AAAA → no data. So Portcullis names go through the tunnel and everything
+  else resolves as usual.</li>
+<li><strong><abbr title="DNS Security Extensions: signed DNS records that validating resolvers check">DNSSEC</abbr>-validating clients.</strong> A rewritten answer can't validate: the
+  resolver strips its signatures and never claims it validated. A device that
+  validates <abbr title="DNS Security Extensions: signed DNS records that validating resolvers check">DNSSEC</abbr> itself (for example <code>systemd-resolved</code> with <code>DNSSEC=yes</code>)
+  fails on rewritten names when your zone is signed
+  (<a href="../../setup/dns/#dnssec"><abbr title="DNS Security Extensions: signed DNS records that validating resolvers check">DNSSEC</abbr></a>). Let the tunnel's resolver answer for
+  those names unvalidated (<code>DNSSEC=allow-downgrade</code> or <code>no</code> for the WireGuard
+  interface).</li>
+<li><strong>Browser DNS-over-HTTPS.</strong> A browser with its own secure DNS (Firefox's
+  DNS over HTTPS, Chrome's secure DNS) asks its own resolver, not the
+  tunnel's: Portcullis names then resolve to the public address, and
+  <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> apps show <code>/vpn-required</code>. Turn it off, or let it fall back to
+  the system resolver.</li>
+<li><strong>IPv6.</strong> Portcullis matches IPv4 tunnel addresses only.</li>
+<li><strong>Marketplace providers.</strong> A failed DNS hook (doctor <code>vpn_dns_failed</code>)
+  leaves the names resolving publicly: <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> apps then show
+  <code>/vpn-required</code> on the tailnet too.</li>
+</ul>
+<h2 id="break-glass-and-the-lock-out-guard">Break-glass and the lock-out guard<a class="headerlink" href="#break-glass-and-the-lock-out-guard" title="Permanent link">&para;</a></h2>
+<p>In <code>admin</code> and <code>server</code> mode the Hub itself answers only over the VPN, so
+losing every VPN would lock you out. Two things guard against it:</p>
+<ul>
+<li><strong>The lock-out guard.</strong> <code>vpn mode admin</code> and <code>vpn mode server</code> refuse
+  unless an administrator's (<code>lldap_admin</code>) device was online in the last
+  10 minutes on the built-in VPN or a hook provider (static providers don't
+  count). Connect a device first, or pass <code>--force</code>. The doctor reports
+  <code>vpn_no_admin_device</code> when no administrator's device was seen in 30 days.</li>
+<li><strong>The break-glass.</strong> On the host, <code>./portcullis vpn mode apps</code> puts every
+  core page back on the internet. It works with <code>wg</code>, every <abbr title="A path through which people's devices reach VPN-only apps: the built-in WireGuard VPN, or a Marketplace VPN app (Headscale) an admin wired on its VPN tab">VPN provider</abbr> and
+  the Hub down. <code>./portcullis status</code> names it whenever the mode isn't
+  <code>apps</code>.</li>
+</ul>
+<p>Provider control routers stay public in every mode, so marketplace clients
+can always reconnect, and <code>./portcullis vpn add-device</code> on the host can
+always make a built-in device for an administrator.</p>
+<h2 id="what-isnt-covered">What isn't covered<a class="headerlink" href="#what-isnt-covered" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Not a general-purpose VPN.</strong> The built-in VPN gives no LAN access, no
+  exit node and no mesh: peers reach Portcullis' VPN entrypoint only.
+  Marketplace VPNs keep doing what they do for people; Portcullis only uses
+  their path to its gateway.</li>
+<li><strong>Non-HTTP ports</strong> (Samba, Time Machine) over the VPN.</li>
+<li><strong>IPv6</strong> inside the tunnels.</li>
+<li><strong>The LAN as equal to the VPN.</strong> Local networks never open a <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> app.</li>
+<li><strong>Shared devices</strong> (a tablet several people use): a device has one owner.</li>
+<li><strong>Marketplace VPN <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> on another server</strong>: a provider runs on this
+  server. Server-to-server tunnels (the reserved <code>link</code> role, UDP 51821,
+  <code>10.214.0.0/24</code>) aren't built yet.</li>
+<li><strong>Kubernetes</strong>: not supported yet.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,4012 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/ai/">
+      
+      
+      
+        <link rel="prev" href="../file-sharing/">
+      
+      
+        <link rel="next" href="../testing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>AI Support - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AI Support
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-fits-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How it fits together
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-start-reachability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Before you start: reachability
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings → AI
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switching-an-app-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Switching an app on
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Switching an app on">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identity-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Identity modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-use-it-and-leaving" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Who can use it, and leaving
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confirmations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Confirmations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-logged" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is logged
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prompt-injection-what-limits-the-damage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prompt injection: what limits the damage
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-portcullis-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Portcullis MCP
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-ai-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The AI page
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#residuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Residuals
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#app-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App notes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-gitea" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Gitea
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-grafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Grafana
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-nextcloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nextcloud
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-homeassistant" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Home Assistant
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-ai-chat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI Chat
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-gitlab" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        GitLab
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-mattermost" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mattermost
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-netbird" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        NetBird
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Manual checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-fits-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How it fits together
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-start-reachability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Before you start: reachability
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings → AI
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switching-an-app-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Switching an app on
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Switching an app on">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identity-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Identity modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-use-it-and-leaving" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Who can use it, and leaving
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confirmations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Confirmations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-logged" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is logged
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prompt-injection-what-limits-the-damage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prompt injection: what limits the damage
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-portcullis-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Portcullis MCP
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-ai-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The AI page
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#residuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Residuals
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#app-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App notes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-gitea" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Gitea
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-grafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Grafana
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-nextcloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nextcloud
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-homeassistant" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Home Assistant
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-ai-chat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI Chat
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-gitlab" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        GitLab
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-mattermost" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mattermost
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-netbird" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        NetBird
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Manual checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="ai-support">AI Support<a class="headerlink" href="#ai-support" title="Permanent link">&para;</a></h1>
+<p>People can use their Portcullis apps from Claude, Claude Code or another <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>
+client, and from an <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>, <strong>as themselves</strong>: the AI gets exactly the
+person's rights in each app, signs in with the person's <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>, and every
+request is checked and logged by core's <strong><abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr></strong>. This page is the
+administrator's guide. What people see is in
+<a href="../../guides/connect-your-ai/">Connect your AI</a>; the interfaces are in
+<a href="../../guides/integration-contracts/#15-ai-support-mcp-new-ai-support">contracts §15</a>.</p>
+<p>AI support is <strong>off</strong> on a new install. Nothing reaches an app through <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>
+until you switch the master switch on <em>and</em> switch AI support on for that app.</p>
+<h2 id="how-it-fits-together">How it fits together<a class="headerlink" href="#how-it-fits-together" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>graph LR
+    C[Claude, Claude Code,&lt;br/&gt;other MCP clients] --&gt;|OAuth 2.1 + PKCE| KC[Keycloak&lt;br/&gt;auth.&amp;lt;domain&amp;gt;]
+    C --&gt;|Bearer token| T[Traefik]
+    P[AI page&lt;br/&gt;LibreChat] --&gt;|each person's token| T
+    T --&gt; G[mcp-gate]
+    G --&gt;|person's credential&lt;br/&gt;or identity headers| CO[App companions]
+    CO --&gt; A[Apps]
+    G --&gt;|X-Portcullis-MCP-Secret| H[Hub :8890&lt;br/&gt;Portcullis MCP]
+    H --&gt;|gate files| G</code></pre>
+<p>Each <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> endpoint is its own OAuth resource with its own scope:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Who</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>https://&lt;app host&gt;/mcp</code> (an app's <strong><abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr></strong>)</td>
+<td>the app's users (its settings population)</td>
+<td>the app, as the person</td>
+</tr>
+<tr>
+<td><code>https://mcp.&lt;domain&gt;/mcp</code> (<strong><abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr></strong>)</td>
+<td>every signed-in person</td>
+<td>every <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> they can use plus their Portcullis account tools, one connection</td>
+</tr>
+<tr>
+<td><code>https://people.&lt;domain&gt;/mcp</code> (<strong>Portcullis</strong>)</td>
+<td>every signed-in person</td>
+<td>their own account and apps; delegated people management for delegates</td>
+</tr>
+<tr>
+<td><code>https://hub.&lt;domain&gt;/mcp</code> (<strong>Portcullis (admin)</strong>)</td>
+<td><code>lldap_admin</code> members, only through clients you enable it for</td>
+<td>the Hub: <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>, settings, users and groups, backups, the doctor</td>
+</tr>
+</tbody>
+</table>
+<p>A token is minted for exactly one of them: a token whose audience names two
+resources is refused at both, so an <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> client asks for one resource's scope
+per token (checked by core's <code>e2e-ai</code> job on <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> 26.8.1).</p>
+<p>A <strong><abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr></strong> is the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server the AI talks to for one app: the app's
+built-in <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server or the upstream project's (or a vetted community
+project's) published image, pinned by digest. Portcullis never writes <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>
+servers for apps; templates declare their <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr> in the
+<a href="../../guides/manifest-reference/#ai"><code>ai:</code> block</a>, and each app's catalog page
+has an <strong>AI support</strong> section.</p>
+<h2 id="before-you-start-reachability">Before you start: reachability<a class="headerlink" href="#before-you-start-reachability" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Claude desktop, claude.ai and Claude mobile connect from Anthropic's
+  servers</strong> (<code>160.79.104.0/21</code>), not from the person's device. For them,
+  <code>auth.&lt;domain&gt;</code> and every app host people connect to must be reachable from
+  the internet. Settings → AI says so. Claude Code and other local clients
+  connect from the person's machine, so a LAN-only install works for them.</li>
+<li><strong>No certificates.</strong> No <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> client can present the person's YubiKey or
+  <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>, so certificate methods never count for AI, and an app whose
+  <a href="../auth-policies/"><abbr title="A named rule over sign-in methods (all of / any of, nested), with a score out of 5">sign-in template</abbr></a> needs a certificate in every
+  alternative can't get AI support (the switch is refused with "needs a YubiKey
+  or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> on every sign-in"). A sign-in change that would make it so
+  switches AI support off on that app first, and the preview lists it.</li>
+<li><strong>Rate limits are per person</strong>, not per IP: every hosted Claude user comes
+  from Anthropic's range. Core's <code>rate-limit@file</code> (per source IP) still
+  stays in front of every <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> router and is shared by everyone whose client
+  runs in Anthropic's cloud.</li>
+</ul>
+<h2 id="settings-ai">Settings → AI<a class="headerlink" href="#settings-ai" title="Permanent link">&para;</a></h2>
+<p><img alt="Settings → AI" src="../../assets/ai/settings-ai.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AI support</strong> (master switch)</td>
+<td>off</td>
+<td>Off: the gate answers every AI request <code>503</code> "AI support is off on this Portcullis", the apps' AI switches are greyed out and people's "Connect your AI" cards are hidden; the AI clients and scopes are kept. Switching it on or off restarts every enabled app whose AI support is switched on</td>
+</tr>
+<tr>
+<td><strong>AI clients offered</strong></td>
+<td>all three, admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> off</td>
+<td>Each offered client is a <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> client people's assistants sign in with: <code>portcullis-ai-claude</code> (claude.ai, Claude desktop, mobile), <code>portcullis-ai-claude-code</code> (loopback <code>localhost</code> / <code>127.0.0.1</code> port 33418), <code>portcullis-ai-generic</code> (other <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> clients, same loopback URIs). All are public clients with <abbr title="Proof Key for Code Exchange - binds an OAuth authorization code to the client that asked for it">PKCE</abbr> S256, consent and a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> sign-in. Unticking one deletes it, and everyone's connections through it end. The <strong>Portcullis admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr></strong> column is off for every client until you tick it, client by client</td>
+</tr>
+<tr>
+<td><strong><abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr></strong></td>
+<td>both on</td>
+<td>For administrators (<code>hub.&lt;domain&gt;/mcp</code>) and for people (<code>people.&lt;domain&gt;/mcp</code>)</td>
+</tr>
+<tr>
+<td><strong>Connection length</strong></td>
+<td>unused 7 days, at most 30</td>
+<td><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s offline-session idle (1–30 days) and maximum (1–90 days, ≥ idle) for the AI clients. After that the person signs in again in their assistant</td>
+</tr>
+<tr>
+<td><strong>Rate limits</strong></td>
+<td>120 requests/min per person and app (burst 30), 600/min per person across apps, 60 tool calls/min per person and app, 10 confirmations started per person per hour, 10 app credentials created per person per minute, 4 parallel app calls per "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>" request</td>
+<td>Over a limit: <code>429</code> with <code>Retry-After</code></td>
+</tr>
+<tr>
+<td><strong>Allowed origins</strong></td>
+<td>empty</td>
+<td>Browser origins (<code>https://&lt;host&gt;[:port]</code>) allowed to call; empty: a request with an <code>Origin</code> header is refused. Desktop and command-line clients send none</td>
+</tr>
+</tbody>
+</table>
+<p>Access tokens last 5 minutes. <strong>Refresh tokens don't rotate</strong>: <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> 26.8
+has no per-client switch, and rotating realm-wide breaks every <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>
+session. What ends a connection is the connection length above, the person's
+Disconnect on the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">People page</abbr>, and every removal the Hub makes (which signs
+the person out of <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>). A stolen AI refresh token stays usable until one
+of those happens.</p>
+<p><strong>A Hub without the gate</strong> (no readable <code>HUB_MCP_GATE_RECIPIENT_FILE</code> or
+gate secret) shows "This core has no <abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr>": the gate file says AI support
+is off and every AI request is refused. The settings are kept.</p>
+<p><strong>Unhealthy AI clients.</strong> If the Hub can't set up an AI client in <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> (an
+untagged client with that id exists, or <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> refuses the scopes), the
+client is left out of the gate file and off the People cards. Settings → AI
+doesn't show this yet: <code>GET /api/ai/settings</code> has no health field. Check the
+Hub's log when a client is missing from people's cards.</p>
+<h2 id="switching-an-app-on">Switching an app on<a class="headerlink" href="#switching-an-app-on" title="Permanent link">&para;</a></h2>
+<p>Each <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page has an <strong>AI</strong> tab (deep link
+<code>#apps/&lt;id&gt;/ai</code>):</p>
+<p><img alt="The AI support tab" src="../../assets/ai/ai-support-tab.png" /></p>
+<ul>
+<li><strong>The <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s facts</strong>: its <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> URL, whether it is built into the app or
+  a <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> container, <code>official</code> or <code>community</code>, the <abbr title="How a person's identity reaches an app's MCP companion: app_token, identity_headers or app_oauth">identity mode</abbr>, the
+  number of people who can use it (the app's settings population), active
+  app credentials, and the template's "asks to confirm" and "never allowed"
+  tool patterns.</li>
+<li><strong>AI support</strong> and the <strong>mode</strong>: <em>read and write</em> or <em>read only</em>, where the
+  template offers both. Read-only hides and refuses the template's write tools
+  at the gate, and, where the app supports it, the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> is started
+  read-only too (<code>PORTCULLIS_AI_READONLY_&lt;NAME&gt;</code>, read-only credential
+  scopes). Nextcloud supports neither: there the gate alone enforces
+  read-only (see <a href="#residuals">Residuals</a>).</li>
+<li><strong>Switching on or off, or changing the mode, restarts a running app</strong>
+  (its router labels change); the tab says so before you save. On a disabled
+  app the switch only saves the state.</li>
+<li><strong>Status</strong>: <em>on</em>, <em>off</em>, <em>failed</em> (with the last error), <em>unavailable</em>
+  (switched on but refused now: master off, a template that needs a certificate), <em>revoking</em> (off, a
+  <code>revoke_all</code> is owed — at the next start, or after a template update, see
+  the Doctor) and <em>revoke pending</em> (on, but kept off until the app's next
+  start revokes its earlier credentials).</li>
+<li><strong>Refused</strong> while the master switch is off, the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> is being deleted
+  or restored, the template says <code>ai.unsupported</code>, the sign-in needs a YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>, the
+  <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> alias would be longer than one DNS label, another container
+  already answers to the alias, or a template update's revocation is still
+  owed.</li>
+<li><strong>Revoke AI credentials now</strong> (not for identity-header <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr>, which
+  hold none): one person's, or everyone's (<code>revoke_all</code>). People's assistants
+  get new credentials on their next request while AI support is on.</li>
+<li><strong>Recent AI activity</strong>: the newest 20 lines of the gate's access log for the
+  app (never arguments or results).</li>
+</ul>
+<p>Switching on first revokes every app credential the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s earlier life
+left (<code>revoke_all</code>): a failure is a <code>502</code> and nothing changes. A failure after
+the state is saved is an operation error (op <code>ai</code>) and saving the same again
+re-applies every step.</p>
+<p>An <strong><abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr></strong> <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (the <code>ai-chat</code> template) has no <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>; its AI
+support tab chooses its <a href="#the-ai-page">model providers</a>.</p>
+<h3 id="identity-modes">Identity modes<a class="headerlink" href="#identity-modes" title="Permanent link">&para;</a></h3>
+<p>How the person's identity reaches the app is the template's choice, shown on
+the tab:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>How</th>
+<th>Leaving</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app_token</code></td>
+<td>The Hub mints a per-person app credential (<code>portcullis-ai-&lt;random&gt;</code>) in the app on the person's first request, through the template's <code>mint</code> hook; it is encrypted to the gate and injected on every call. Someone who never signed in to the app gets "Open <app> in your browser once, then try again"</td>
+<td>The credential is marked revoking at once (the gate stops using it within seconds) and revoked in the app through the <code>revoke</code> hook, retried until it succeeds</td>
+</tr>
+<tr>
+<td><code>identity_headers</code></td>
+<td>The gate sends the person's username, email, groups and attribute headers plus a caller secret only the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> knows; the app trusts identity headers only from its <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>, on a private trust network</td>
+<td>Nothing to revoke: the gate refuses the person from their next request</td>
+</tr>
+<tr>
+<td><code>app_oauth</code></td>
+<td>The app is its own <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> OAuth server and signs people in through Portcullis (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>). <strong>The gate is not in the path</strong>: Portcullis doesn't log, confirm, rate-limit or filter these AI actions; the app's own rules apply</td>
+<td>The Hub runs the template's <code>revoke</code> hook for the person (below)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="who-can-use-it-and-leaving">Who can use it, and leaving<a class="headerlink" href="#who-can-use-it-and-leaving" title="Permanent link">&para;</a></h2>
+<p>The people who can use a <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> are the app's <strong>settings population</strong>: the
+access group's members (minus expired memberships), or every signed-in person
+when the app has no group access. The gate checks this <strong>on every request</strong>,
+so a person removed from the group is refused from their next request, not at
+token expiry. Expiries in <code>expiring</code> are refused from their time on.</p>
+<p>When someone leaves:</p>
+<ul>
+<li>their <code>app_token</code> credentials are revoked (above);</li>
+<li>their upstream <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> sessions are closed;</li>
+<li>once they can use <strong>no AI resource at all</strong> (deleted, or in no population),
+  the Hub deletes their consents and offline sessions for every AI client;</li>
+<li>a person's own <strong>Disconnect</strong> on the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">People page</abbr> does the same for one
+  client. <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> then refuses that client's refresh tokens (offline and
+  online) at once, but <strong>access tokens already issued stay valid for up to 5
+  minutes</strong>. The gate's per-request population check still refuses a person
+  who left.</li>
+</ul>
+<p><strong><code>app_oauth</code> apps (Home Assistant).</strong> The Hub records who could use the app
+while its AI support was on (<code>&lt;data&gt;/ai/oauth-seen.json</code>): each person's <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>
+uuid and every <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> user id seen for them. A person who leaves:</p>
+<ul>
+<li>with a <strong>verified</strong> record (uuid and at least one <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> id) gets the
+  template's <code>revoke</code> with their <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> id (<code>sub</code>), which ends the AI
+  tokens of exactly that app account;</li>
+<li>with an <strong>unverifiable</strong> record (no uuid, the uuid changed, the id lookup
+  failed three passes, or their record couldn't be written) makes the
+  <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s <code>revoke_all</code> run, which ends <strong>every</strong> person's AI-client tokens
+  in that app (people reconnect), and the person is listed on the AI tab and
+  in the Doctor as <em>left before their account could be matched</em>. Their web,
+  Companion-app and long-lived tokens remain: deactivate or delete them in the
+  app (Home Assistant: Settings &gt; People), then <strong>Dismiss</strong> them.</li>
+</ul>
+<p>Switching an <code>app_oauth</code> <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> off runs <code>revoke_all</code> only. A disabled
+<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>, a policy or sign-in change are not leaving.</p>
+<h2 id="confirmations">Confirmations<a class="headerlink" href="#confirmations" title="Permanent link">&para;</a></h2>
+<p>Destructive actions need the person, in their browser, signing in again with
+a method the governing template accepts (the <code>hub</code> core page's template for
+admin tools, the <code>people</code> one for people tools, the app's for a <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>;
+<a href="../auth-policies/#fresh-sign-in-for-sensitive-actions">Fresh sign-in</a>):</p>
+<p><img alt="A confirmation page" src="../../assets/ai/confirmation-page.png" /></p>
+<ul>
+<li><strong>What needs one:</strong> <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> tools matching the template's <code>confirm</code>
+  patterns, tools the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> marks destructive, and the destructive (D)
+  tools of the <abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr> — deleting, restoring over, revoking, running
+  code, and every call that widens access (adding someone to an
+  administrator or permission group, a weaker policy, public access on, …).</li>
+<li>The AI gets a link (<code>https://people.&lt;domain&gt;/confirm/&lt;id&gt;</code>, or
+  <code>https://hub.&lt;domain&gt;/confirm/&lt;id&gt;</code> for admin tools) or a URL elicitation
+  its client opens. The page shows what the Hub renders from the stored
+  request — the action, its target, consequences and the exact arguments —
+  never text the model wrote. Values taken from the request are quoted, and
+  every invisible or reordering character (bidi controls, zero-width
+  characters, unusual spaces) shows as <code>\u…</code>, so nothing on the page can be
+  hidden. A request whose user, group or field names aren't valid is
+  refused before any confirmation is created.</li>
+<li>The person types the check (the app's name for <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> tools; the
+  <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> id, the person's or group's name, or the domain for admin tools)
+  and touches their <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>. A sign-in from before the request never
+  approves it. Only the person it was created for can open it.</li>
+<li>Valid 10 minutes, single use, bound to the exact arguments: any change
+  needs a new one. At most 10 created per person per hour and 20 pending.
+  Kept in memory: a Hub restart expires them.</li>
+<li>The AI then retries the call. Declining needs no <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>.</li>
+</ul>
+<h2 id="what-is-logged">What is logged<a class="headerlink" href="#what-is-logged" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The access log</strong> (<code>mcp_gate_data/access.jsonl</code>): one line per <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> request
+  through the gate — time, person, AI client, resource, <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> and
+  <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>, <code>direct</code> or <code>aggregate</code>, the method, the tool, the SHA-256 of the
+  arguments, the decision (<code>allow</code>, <code>deny:&lt;reason&gt;</code>, <code>confirm:&lt;id&gt;</code>,
+  <code>rate_limited</code>), the upstream status and duration. <strong>Never the arguments,
+  a result, a token or a credential.</strong> Kept 90 days. When the log can't be
+  written for more than 30 s, tool calls are refused ("AI activity can't be
+  logged right now").</li>
+<li><strong>The audit log</strong>: every change made through the <abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr> is audited
+  exactly like its HTTP twin, plus <code>via: ai</code> and the AI client. AI actions
+  (<code>ai.enable</code>, <code>ai.disable</code>, <code>ai.mode</code>, <code>ai.providers</code>, <code>ai.credential.mint</code>,
+  <code>ai.credential.revoke</code>, <code>ai.connection.revoke</code>, <code>ai.confirm</code>, <code>settings.ai</code>,
+  <code>ai.provider.*</code>) are audited too. Users &amp; Groups → Setup → Audit log has a
+  filter: <em>all changes</em>, <em>changes made via AI</em>, or <em>via AI, with the AI
+  requests</em> (the access log merged in; the last 100 of each).</li>
+<li><strong>People</strong> see their own connections and their last access-log lines on the
+  <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">People page</abbr>.</li>
+<li><code>app_oauth</code> apps are not in either log.</li>
+</ul>
+<h2 id="prompt-injection-what-limits-the-damage">Prompt injection: what limits the damage<a class="headerlink" href="#prompt-injection-what-limits-the-damage" title="Permanent link">&para;</a></h2>
+<p>Content the AI reads — issues, documents, dashboards, chat messages, entity
+names — can carry instructions. Portcullis doesn't try to detect that; it
+limits what such instructions can achieve:</p>
+<ul>
+<li>the AI has exactly the person's rights in each app, and nothing in apps
+  they can't use;</li>
+<li>destructive tools need the person's <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> in their browser; <code>never</code> tools
+  don't exist for the AI;</li>
+<li>you can make any <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> <strong>read-only</strong>;</li>
+<li>the Portcullis admin tools are only on <code>hub.&lt;domain&gt;/mcp</code>, a separate
+  connector an administrator adds deliberately — never in "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>" or on
+  the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>. Data from an app can't reach admin tools in the same
+  conversation unless the administrator connected both;</li>
+<li>secrets never enter the model's context, so injected text can't exfiltrate
+  them;</li>
+<li><abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr> can't redirect the person to arbitrary URLs (only to the app's
+  own hosts and <code>people.&lt;domain&gt;</code>), and can't use the person's model
+  (sampling) or see their files (roots);</li>
+<li>every call is logged with the tool and the argument digest;</li>
+<li>the People card tells people that what the AI reads goes to their AI
+  provider, and Claude's own controls apply (per-tool "Blocked", approval
+  prompts).</li>
+</ul>
+<p><strong>Residual:</strong> within a person's rights and outside the <code>confirm</code> lists, an
+injected instruction can still make writes (comment on an issue, create a
+task). That is the read-write mode you chose. "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>" and the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>
+apply the same per-app mode as the per-app endpoints. Your lever is the
+per-app read-only mode; the person's is Claude's per-tool "Blocked" and
+approval prompts.</p>
+<h2 id="the-portcullis-mcp">The <abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr><a class="headerlink" href="#the-portcullis-mcp" title="Permanent link">&para;</a></h2>
+<p>The Hub's own <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server, the only one Portcullis writes. Each tool calls the
+same Hub method as its HTTP twin, so permissions, guardrails, locks and audit
+are identical (the tool list is in
+<a href="../../guides/integration-contracts/#1510-the-portcullis-mcp">contracts §15.10</a>).</p>
+<ul>
+<li><strong>Admin</strong> (<code>hub.&lt;domain&gt;/mcp</code>): only <code>lldap_admin</code> members, only through the
+  clients whose admin flag you ticked, and only while "For administrators" is
+  on. Its consent screen says "Manage Portcullis as you — administrator".</li>
+<li><strong>People</strong> (<code>people.&lt;domain&gt;/mcp</code>, also inside "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>" as
+  <code>portcullis__…</code> tools): the person's apps, profile, AI connections, the
+  directory as the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">People page</abbr> shows it. Delegates also get <code>update_person</code>,
+  <code>invite_person</code> and <code>delete_person</code> — only on <code>people.&lt;domain&gt;/mcp</code>, never
+  in "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>" or on the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>.</li>
+<li><strong>Classes:</strong> R read, W write (audited), D needs a confirmation, U needs a
+  secret from the person: the tool returns a link to the Hub's own form
+  (domain tokens, secret settings, passwords, provider keys) and the secret is
+  typed there, never in the chat.</li>
+<li><strong>Secrets never reach the model</strong>: no tool takes a secret argument; results
+  never carry invite links, passwords, <abbr title="Per-person SMB passwords each person creates on My apps after a fresh sign-in; the Hub keeps only their NT hashes">file-share passwords</abbr>, <abbr title="URL tokens granting anonymous access to specific resources">share tokens</abbr>,
+  provider keys or any Hub secret, and every result passes one redactor (if
+  it can't be built, the result is hidden).</li>
+<li><code>save_hub_settings</code> can turn the admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> off, never on. Credential
+  creation and the confirmation routes are never tools: an AI can't approve
+  its own confirmation.</li>
+</ul>
+<h2 id="the-ai-page">The <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr><a class="headerlink" href="#the-ai-page" title="Permanent link">&para;</a></h2>
+<p>An <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr> is an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> of the <code>ai-chat</code> template (LibreChat): people chat
+there with the models you choose, and its one <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server is "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>",
+reached with <strong>each person's own token</strong> of the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <code>ai-chat-mcp</code>
+client (scope <code>mcp:all</code>, consent in <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>). Everyone who can open the
+<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> can use every provider selected for it: to give a group other
+providers, <strong>add another <code>ai-chat</code> <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> with its own access group</strong> (one
+<abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr> per audience).</p>
+<p><strong>Model providers</strong> (Settings → AI → Model providers):</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Fields</th>
+<th>Secrets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LiteLLM (<code>litellm</code>)</td>
+<td>an installed LiteLLM <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (the Hub fills in its URL)</td>
+<td><code>key</code> (a virtual key you create in LiteLLM)</td>
+</tr>
+<tr>
+<td>OpenAI-compatible (<code>openai_compatible</code>): Ollama, vLLM, LocalAI, OpenRouter, Mistral, …</td>
+<td>base URL</td>
+<td><code>key</code> (optional: Ollama needs none)</td>
+</tr>
+<tr>
+<td>Anthropic, OpenAI, Google</td>
+<td>base URL (optional)</td>
+<td><code>key</code></td>
+</tr>
+<tr>
+<td>Azure OpenAI</td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> name or base URL, API version, deployments</td>
+<td><code>key</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>A kind is offered only while an installed <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr> template supports it.
+  The <code>ai-chat</code> template renders all of the above; it doesn't offer AWS
+  Bedrock (SigV4 keys). Google is reached through its OpenAI-compatible API,
+  so a custom Google base URL must be OpenAI-compatible. Anthropic, OpenAI and
+  Google allow one provider each per <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>.</li>
+<li><strong>Secrets are write-only</strong>: typed in password fields, stored in
+  <code>&lt;data&gt;/ai/provider-secrets.json</code> (0600) and in the <code>.env</code> of the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>
+  <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> that selected the provider, never shown again (<code>{set,
+  updated_at}</code>), never in logs, the audit, answers or tool results.</li>
+<li><strong>Credentials:</strong> <em>the secrets here</em> (shared by everyone on the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>) or
+  <em>each person's own key</em> (<code>per_person</code>: people enter it in LibreChat). Azure
+  OpenAI can't use per-person keys: the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr> can't take each person's own
+  Azure key, so the Hub refuses that choice (<code>400</code>); use <em>the secrets here</em>. A
+  provider whose key isn't set is left out until it is.</li>
+<li>Each provider shows the data-egress note people see: "What people send on
+  the <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>, and what their apps return to it, goes to <label>."</li>
+<li>Selecting providers on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s AI support tab, changing a provider,
+  its secret, or moving the LiteLLM <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s host restarts the AI pages
+  that use it (the dialog names them). A provider in use can't be deleted
+  (<code>409</code> naming the <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>); neither can a LiteLLM <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> a provider
+  points at.</li>
+<li>With no provider, the page says "No <abbr title="An LLM endpoint (LiteLLM, OpenAI-compatible, Anthropic, OpenAI, Google, Azure OpenAI) an AI page sends chats to">model provider</abbr> configured; ask your
+  administrator"; when its configuration is refused, "The <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr>'s model
+  configuration was refused; ask your administrator".</li>
+</ul>
+<p>What the <code>ai-chat</code> template locks down: its <code>api</code> service refuses to start
+without a rendered configuration (if even the refusal fallback can't be
+written, nothing starts); OpenID sign-in only (no local accounts), nobody is a LibreChat administrator, nobody can add <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> servers,
+no agent actions, web search, code interpreter, file search or OCR (the
+calculator is the only built-in tool), no shared links, and a link can't
+submit a prompt by itself. Details on the <a href="../../apps/ai-chat/">AI Chat</a> page.</p>
+<h2 id="residuals">Residuals<a class="headerlink" href="#residuals" title="Permanent link">&para;</a></h2>
+<p>What the design does not cover, stated plainly:</p>
+<ul>
+<li><strong>Access tokens outlive a disconnect by up to 5 minutes</strong>; refresh tokens
+  don't rotate (above).</li>
+<li><strong><code>app_oauth</code> apps are outside the gate.</strong> For Home Assistant:<ul>
+<li>Assist exposure is <strong><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>-wide, not per person</strong>: every person's <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>
+  client sees and controls the same exposed entities; the person's account
+  only decides attribution and administrator-only actions;</li>
+<li>an authorization code Home Assistant issued just before someone left can
+  still be exchanged within its <strong>10 minutes</strong>; a later reconcile ends the
+  resulting token only if it runs after that exchange;</li>
+<li>Home Assistant's <code>local_only</code> means its local network (private ranges,
+  the LAN included), not loopback;</li>
+<li>backups of its <code>/config</code> carry the hook user's token, rotated at the next
+  container start after a restore.</li>
+</ul>
+</li>
+<li><strong>Read-only is enforced by the gate alone</strong> where the app can't scope a
+  credential or start its <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> read-only (Nextcloud: its app passwords
+  are full-scope): the gate hides and refuses write tools; the credential
+  itself could write.</li>
+<li><strong>Losing <code>secrets/mcp-gate/age.key</code> takes all AI support down.</strong> The AI
+  credentials the Hub stores are encrypted to that key. <code>./portcullis up</code>
+  (or <code>init</code>, <code>upgrade</code>, <code>restore</code>) generates a new key when it is missing,
+  and from then on the gate can't decrypt the stored credentials, so it
+  refuses the whole credentials file: every AI resource answers <code>503</code>
+  (every app's <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>, the <abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr> and "<abbr title="The one MCP endpoint (https://mcp.&lt;domain&gt;/mcp) that merges every app a person can use with AI, plus their Portcullis account">All my apps</abbr>"), and
+  <code>./portcullis status</code> shows "<abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr>: refusing every AI request (503)"
+  with the reason. Restore the key from a backup of <code>secrets/</code> if you can.
+  Otherwise:<ul>
+<li>the Hub re-encrypts the identity-header <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr>' caller secrets to
+  the new key at its next configuration write, with nothing to do;</li>
+<li>app credentials can't be re-encrypted (the Hub never holds them in
+  clear): on each app's <strong>AI support</strong> tab, switch each <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> that
+  uses app credentials (<code>app_token</code>) off, save, then on again. Switching
+  off revokes its credentials in the app and drops them, and each
+  person's credential is minted again on their next request. Switching
+  the master switch off and on doesn't drop them.</li>
+</ul>
+</li>
+<li><strong>A settings change through the admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> can race a membership change.</strong>
+  <code>save_settings</code> recomputes the preview (<code>plan_hash</code>) just before it saves,
+  which catches a directory change up to then; one landing in the short
+  moment between that recompute and the save isn't caught (the save
+  re-checks the stored inputs, not the directory).</li>
+<li><strong>Nextcloud</strong>: its <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> answers a few routes without a credential to
+  any container on <code>portcullis-proxy</code> (<code>GET /api/v1/status</code> with the version,
+  <code>/app/</code> and its sub-pages, <code>/health/live</code>, <code>/health/ready</code>); they show no
+  person's data but disclose the version. A person whose username is longer
+  than 64 characters can't use Nextcloud's AI support. The AI can't share or
+  read shares. A revoked app password works for up to 10 s (Nextcloud's
+  token cache). The <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> is maintained by one person. Any container on
+  <code>portcullis-proxy</code> can send the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> wrong credentials; Nextcloud's
+  brute-force protection counts them against the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s address, which
+  every AI request comes from, so it can slow everyone's AI requests down
+  (sign-in itself still holds). <strong>Re-used usernames:</strong> Nextcloud keys
+  accounts on the username (user_oidc stores no <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> id, so the mint
+  ignores the <code>sub</code> the Hub sends): a deleted person's username given to
+  someone new gets the former person's Nextcloud account, on the web and
+  through AI alike. Delete the former person's Nextcloud account
+  (<code>occ user:delete</code>) before re-using a username.</li>
+<li><strong>Grafana's trust network</strong>: Grafana trusts identity headers from its
+  <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s private network. A container that runs with host networking
+  <strong>and</strong> <code>NET_RAW</code> (Docker's default capabilities include it) can forge
+  traffic onto that bridge from the host side; templates with an
+  identity-header <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> may not use host networking themselves, but
+  another app's host-network container could. Run host-network apps you
+  trust only.</li>
+<li><strong>The <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr> (LibreChat)</strong>:<ul>
+<li>a provider base URL you enter isn't SSRF-filtered (only URLs people
+  enter are); point it only at hosts you mean;</li>
+<li>accounts are keyed on the person's <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> id (<code>sub</code>): a person deleted
+  and re-created under the same name gets a new <code>sub</code> and LibreChat
+  refuses the sign-in (the old account has another <code>openidId</code>) until you
+  delete the old account in its database;</li>
+<li><code>extra_hosts</code> points <code>auth.&lt;domain&gt;</code> and <code>mcp.&lt;domain&gt;</code> at <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> inside
+  the container, so it works without hairpin NAT; a LiteLLM provider on
+  <code>llm.&lt;domain&gt;</code> or any other Portcullis-hosted provider URL still needs
+  DNS that resolves inside containers;</li>
+<li>the AI client asks for no <code>offline_access</code>: a person reconnects "All my
+  apps" when their token can't be refreshed any more.</li>
+</ul>
+</li>
+<li><strong>Shared fields widen without a confirmation.</strong> A custom field shared with
+  apps (§9.6) reaches every <abbr title="Auth method where apps trust identity headers from Traefik">header-auth</abbr> app as an <code>X-Forwarded-Attr-*</code> header
+  and every app client's tokens as an <code>attr_&lt;field&gt;</code> claim. Creating a field,
+  or turning <code>share_with_apps</code> on, through the admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> is a plain write (W):
+  only changes to a field a guarding group's rule uses need a confirmation.</li>
+<li><strong>Apps that link accounts by username or email.</strong> <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> links <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>
+  accounts by their immutable uuid, so an account deleted and re-created under
+  the same name is a new person with a new <code>sub</code> (no passkeys, sessions,
+  consents or AI connections carry over). An app that matches accounts by
+  <code>preferred_username</code> or email instead of <code>sub</code> would attach the newcomer to
+  the old app account; templates key on <code>sub</code>
+  (<a href="../hardening/#header-spoofing-protections">hardening</a>). Nextcloud is the
+  exception (<a href="#ai-nextcloud">Nextcloud</a>). An AI credential belongs to the
+  <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> account it was minted for: a re-created name gets a new one, and the
+  former holder's is revoked, never reused. The Hub keeps that link in
+  <code>&lt;data&gt;/ai/credential-uuids.json</code>; if the file can't be read, every <abbr title="AI identity mode: the Hub mints a per-person app credential that mcp-gate injects on every call">app_token</abbr>
+  credential counts as unverifiable: the next pass revokes them all and mints
+  fail until the file is fixed or removed (no doctor entry names it yet).</li>
+<li><strong>Local networks through the admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr>.</strong> <code>set_local_networks</code> is a plain
+  write only when every network is inside the current list (narrowing);
+  anything wider needs a confirmation, and so does going back to the defaults
+  (<code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>, <code>fc00::/7</code>,
+  <code>100.64.0.0/10</code>) when they are wider than the current list. Narrowing can
+  still switch file sharing off. Local networks don't gate AI access itself.</li>
+<li><strong>Companions are reachable on <code>portcullis-proxy</code></strong> by their alias from any
+  app container; each serves nothing without its credential or caller
+  secret.</li>
+<li><strong>Template source syncs are plain writes.</strong> <code>sync_sources</code> through the admin <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> needs no confirmation; a changed manifest of an enabled app (for example one that turns public access on by default) takes effect at its next restart. Enabling an app is still classed by its own rules.</li>
+<li><strong>Unhealthy AI clients aren't shown</strong> in the UI (above).</li>
+</ul>
+<h2 id="app-notes">App notes<a class="headerlink" href="#app-notes" title="Permanent link">&para;</a></h2>
+<p>Why each <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> was vetted, and what to know. Every app's catalog page has
+its AI support section; these are the notes behind them.</p>
+<h3 id="ai-gitea">Gitea<a class="headerlink" href="#ai-gitea" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>gitea-mcp</strong> is the official server of the Gitea project (MIT, frequent
+  releases), pinned by digest and tracked by Dependabot.</li>
+<li>Every call runs as the person with their own Gitea access token
+  (<code>portcullis-ai-&lt;random&gt;</code>): read scopes only in read-only mode (where
+  gitea-mcp also hides its write tools); read-write adds write scopes for
+  repositories, issues, organisations, packages and notifications.</li>
+<li>No shared admin identity runs tool calls. The local admin
+  <code>portcullis-hooks</code> only lists and deletes tokens for the mint and revoke
+  hooks; deleting it breaks AI support until the next start recreates it.</li>
+<li>Tokens are revoked when a person leaves, when AI support or its mode
+  changes, and after a restore. Someone who never signed in to Gitea gets
+  "Open Gitea once, then try again".</li>
+<li>Every tool name containing <code>delete</code> asks for a confirmation (also as a
+  method of a consolidated tool); setting repository or organisation Actions
+  secrets is never offered (the value would pass through the model). File
+  deletions through <code>create_or_update_file</code> are commits, without a
+  confirmation.</li>
+<li><strong>Re-used usernames.</strong> The Hub sends the person's checked <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> id
+  (<code>sub</code>) with every mint, and the hook mints only for the Gitea account
+  Gitea signs that id in to. If a person is deleted and their username is
+  given to someone new, the newcomer gets no token for the former person's
+  account: the mint fails (shown on the AI tab), as their web sign-in does.
+  Delete or rename the former person's Gitea account (Site Administration →
+  User Accounts), then the newcomer signs in once.</li>
+<li>While AI support is on, <code>https://&lt;host&gt;/mcp</code> is the AI endpoint, so a Gitea
+  user or organisation named <code>mcp</code> loses its profile page (its repositories
+  stay reachable): don't use that name.</li>
+<li>Git over SSH: a second Gitea <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> needs another host port or none.</li>
+</ul>
+<h3 id="ai-grafana">Grafana<a class="headerlink" href="#ai-grafana" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>mcp-grafana</strong> is the Grafana project's official server (Apache-2.0),
+  pinned by digest, with no service account: identity headers.</li>
+<li>Grafana trusts <code>X-Forwarded-User</code> from <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> and, while AI support is on,
+  from its <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr> on the private trust network <code>mcp-trust</code> (only Grafana
+  and the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>). <code>trust.sh</code> reads that network's prefix from Grafana's
+  own interface at every start, without the gateway, broadcast and Grafana's
+  own address, and refuses to start when it is ambiguous.</li>
+<li>The person's Grafana role comes from the template's Role setting through
+  the header. Read-only (the default) hides the write tools;
+  <code>grafana_api_request</code> and notification routing changes are never offered;
+  deletes and alert rule and silence writes ask for a confirmation.</li>
+</ul>
+<h3 id="ai-nextcloud">Nextcloud<a class="headerlink" href="#ai-nextcloud" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>nextcloud-mcp-server</strong> (cbcoutinho, AGPL-3.0) is a community <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>,
+  pinned by digest. It passed because its multi-user Basic pass-through mode
+  builds a Nextcloud client per request from the caller's credential, checks
+  it against Nextcloud first and holds no credential of its own.</li>
+<li>Each person gets their own app password <code>portcullis-ai-&lt;random&gt;</code> (minted
+  with <code>occ user:auth-tokens:add</code> for their <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> uid), shown in their
+  "Devices &amp; sessions"; deleting it there makes the next request mint a new
+  one. Someone who never signed in gets "Open Nextcloud once, then try again".</li>
+<li>Only files, calendar and contacts tools; deletes and calendar writes
+  (which can send invitations) ask for a confirmation; sharing is never
+  offered.</li>
+<li>It is maintained by one person, so updates are re-vetted. See the residuals
+  above.</li>
+</ul>
+<h3 id="ai-homeassistant">Home Assistant<a class="headerlink" href="#ai-homeassistant" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Home Assistant's built-in <strong><abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> Server</strong> integration, with Home Assistant as
+  its own OAuth server: people connect to <code>https://&lt;host&gt;/api/mcp</code> and sign in
+  through Portcullis. Tools run as their own Home Assistant account and see
+  only Assist-exposed entities. Portcullis doesn't log or confirm these AI
+  actions.</li>
+<li>AI support on adds the integration with <em>administrators only</em> off and the
+  Assist API only; an administrator can change either in Home Assistant.
+  Switching it on or off ends every OAuth client token except Home
+  Assistant's web frontend and Companion apps; long-lived tokens are kept.</li>
+<li>Claude: "Use Claude's published identity" (no Portcullis client id).
+  Claude Code: <code>claude mcp add --transport http --scope user home-assistant
+  https://&lt;host&gt;/api/mcp</code>, without <code>--client-id</code>.</li>
+<li>The hidden "Portcullis hooks" system user can't sign in and is rotated at
+  every start. See the residuals above.</li>
+</ul>
+<h3 id="ai-ai-chat">AI Chat<a class="headerlink" href="#ai-ai-chat" title="Permanent link">&para;</a></h3>
+<p>The <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr> (above). LibreChat minors and Meilisearch are updated by hand;
+MongoDB is 7.0 (8.x refuses some current kernels).</p>
+<h3 id="ai-gitlab">GitLab<a class="headerlink" href="#ai-gitlab" title="Permanent link">&para;</a></h3>
+<p>GitLab's <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server accepts only GitLab's own OAuth tokens, not personal
+access tokens; that per-person OAuth path isn't verified with Portcullis yet.
+An administrator can turn on GitLab's own "Allow access to the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server";
+Portcullis then neither logs nor confirms.</p>
+<h3 id="ai-mattermost">Mattermost<a class="headerlink" href="#ai-mattermost" title="Permanent link">&para;</a></h3>
+<p>The Agents plugin's <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> endpoint needs an Enterprise licence, and Team
+Edition lets people rename their accounts, so Portcullis can't tie an
+account to a person.</p>
+<h3 id="ai-netbird">NetBird<a class="headerlink" href="#ai-netbird" title="Permanent link">&para;</a></h3>
+<p>The official server acts as one shared service user, not as each person:
+network control planes stay out of AI reach until one supports per-person
+access.</p>
+<h2 id="manual-checks">Manual checks<a class="headerlink" href="#manual-checks" title="Permanent link">&para;</a></h2>
+<p>The checks CI can't make (real Claude clients, a hardware <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>, live
+<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>) are on the <a href="../testing/#ai-support-manual-checklist">manual checklist</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

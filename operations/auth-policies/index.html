@@ -1,0 +1,4655 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/auth-policies/">
+      
+      
+      
+        <link rel="prev" href="../groups/">
+      
+      
+        <link rel="next" href="../hub/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Sign-in Methods & Templates - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sign-in Methods & Templates
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Methods
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#passkey-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Passkey kinds
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#password" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Password
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Templates
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Templates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#score" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Score
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#default-per-app-and-core-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Default, per app and core pages
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Default, per app and core pages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-each-app-can-enforce" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What each app can enforce
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apps-with-their-own-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apps with their own login
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#warnings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Warnings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-stronger-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding a stronger method
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-sign-in-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Sign-in page
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Browser certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#help-to-reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Help to reset
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#signing-in-as-someone-else" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Signing in as someone else
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sign-in-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in history
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#locked-out-of-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Locked out of the Hub
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens-when-someone-opens-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What happens when someone opens an app
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What happens when someone opens an app">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-sign-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Single sign-on
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#not-in-the-apps-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Not in the app's groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-up-for-one-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Step-up for one method
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#present-your-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Present your certificate
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#needs-a-stronger-sign-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Needs a stronger sign-in
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-a-setup-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        After a setup link
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fresh-sign-in-for-sensitive-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fresh sign-in for sensitive actions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traefik-tls-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Traefik TLS tier
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-templates-are-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where templates are published
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sign-in-flows-in-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in flows in Keycloak
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Identity
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#certificate-binding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate binding
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vpn-only-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        VPN-only apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Methods
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#passkey-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Passkey kinds
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#password" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Password
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Templates
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Templates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#score" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Score
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#default-per-app-and-core-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Default, per app and core pages
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Default, per app and core pages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-each-app-can-enforce" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What each app can enforce
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apps-with-their-own-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apps with their own login
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#warnings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Warnings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-stronger-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding a stronger method
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-sign-in-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Sign-in page
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#browser-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Browser certificates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#help-to-reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Help to reset
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#signing-in-as-someone-else" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Signing in as someone else
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sign-in-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in history
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#locked-out-of-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Locked out of the Hub
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens-when-someone-opens-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What happens when someone opens an app
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What happens when someone opens an app">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-sign-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Single sign-on
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#not-in-the-apps-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Not in the app's groups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-up-for-one-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Step-up for one method
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#present-your-certificate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Present your certificate
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#needs-a-stronger-sign-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Needs a stronger sign-in
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-a-setup-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        After a setup link
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fresh-sign-in-for-sensitive-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fresh sign-in for sensitive actions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traefik-tls-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Traefik TLS tier
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public exceptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-templates-are-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where templates are published
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sign-in-flows-in-keycloak" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sign-in flows in Keycloak
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Identity
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#certificate-binding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Certificate binding
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vpn-only-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        VPN-only apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="sign-in-methods-and-templates">Sign-in Methods and Templates<a class="headerlink" href="#sign-in-methods-and-templates" title="Permanent link">&para;</a></h1>
+<p>Portcullis decides how people sign in with two things, both set in the Hub
+under <strong>Settings → Sign-in</strong>:</p>
+<ul>
+<li><strong>Sign-in methods</strong>: six ways to sign in, each switched on or off for the
+  whole server.</li>
+<li><strong>Templates</strong>: named rules over those methods ("a security key, or a
+  <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>"). One template is the default; each app and each core
+  page can pick another.</li>
+</ul>
+<p>Every place that checks a sign-in (<abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>, <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, apps that sign in
+with <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> themselves, AI access, fresh sign-ins for sensitive actions) accepts
+exactly the methods a template names, and only while they are switched on.
+The exact formats are in
+<a href="../../guides/integration-contracts/#81-sign-in-methods-new-sign-in">Integration Contracts §8.1</a>.</p>
+<h2 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Strength</th>
+<th>Where it comes from</th>
+<th>Starts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Password</strong></td>
+<td>1.0</td>
+<td>The person's <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> password</td>
+<td>off</td>
+</tr>
+<tr>
+<td><strong>Synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr></strong></td>
+<td>2.5</td>
+<td>A <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> synced by iCloud, Google, 1Password and the like, or any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> whose model Portcullis can't verify</td>
+<td>on</td>
+</tr>
+<tr>
+<td><strong>Browser certificate</strong></td>
+<td>2.5</td>
+<td>A certificate file (<code>.p12</code>) the person creates on the <a href="#the-sign-in-page"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a> and installs in a browser (<a href="#browser-certificates">below</a>)</td>
+<td>off</td>
+</tr>
+<tr>
+<td><strong>Device-bound <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr></strong></td>
+<td>3.0</td>
+<td>Windows Hello, a TPM: the key can't leave the computer or phone</td>
+<td>on</td>
+</tr>
+<tr>
+<td><strong>Security key</strong></td>
+<td>3.5</td>
+<td>A touch on a certified hardware key, e.g. a YubiKey</td>
+<td>on</td>
+</tr>
+<tr>
+<td><strong><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></strong></td>
+<td>4.0</td>
+<td>The certificate stored on a YubiKey (<a href="../../setup/certificates/">Certificates</a>)</td>
+<td>on</td>
+</tr>
+</tbody>
+</table>
+<p>Settings → Sign-in shows each method with its strength and how many people
+have it set up. A method that is off is never offered and never accepted, and
+people can't set it up. You can't switch off a method an enabled template
+needs, i.e. one without which the template would have no way in left: the
+dialog lists the templates and what uses them (the default, apps, core
+pages). Change those first. The <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> starts off; switch it on
+when you want people to be able to create one.</p>
+<p>Some template entries name a <strong>family</strong> of methods: <em>Passkey (any kind)</em>,
+<em>YubiKey (touch or certificate)</em> and <em>Certificate (YubiKey or browser)</em>. A
+family accepts any of its methods that is switched on. No family contains the
+password: a password satisfies only templates that name it.</p>
+<h3 id="passkey-kinds">Passkey kinds<a class="headerlink" href="#passkey-kinds" title="Permanent link">&para;</a></h3>
+<p><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> decides a new <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>'s kind when it is registered, from the
+attestation the authenticator sends, checked against the FIDO Alliance's
+signed list of certified authenticators (the Hub fetches and verifies it
+daily):</p>
+<ul>
+<li><strong>Security key</strong>: a FIDO-certified roaming authenticator whose key is in a
+  secure element, with an attestation that verifies.</li>
+<li><strong>Device-bound</strong>: a certified platform authenticator (Windows Hello, a TPM)
+  whose key can't leave the device.</li>
+<li><strong>Synced</strong>: everything else, including passkeys without attestation
+  (iCloud, Google, 1Password) and models the list doesn't know yet.</li>
+</ul>
+<p><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> keeps each <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>'s attestation. Passkey kinds are reclassified
+<strong>upward</strong> when a newer FIDO list verifies the stored attestation, and
+<strong>downward</strong> only when the list marks that model revoked or compromised. A
+model that simply drops off the list keeps its kind. If the Hub can't get a
+current list for more than 30 days past its due date, new passkeys register as
+synced (stored ones keep their kind) and Settings → Sign-in shows a warning.</p>
+<h3 id="password">Password<a class="headerlink" href="#password" title="Permanent link">&para;</a></h3>
+<p>The sign-in password <strong>is</strong> the person's <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> password: one password for
+Portcullis sign-in, <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>'s own UI and apps that bind to LDAP. <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> checks
+it against <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>. Passwords set in the Hub must be 12–128 characters, not the
+username, and not a common password. Only passwords set through the Hub count
+in the method counts, the warnings and the lockout guard.</p>
+<ul>
+<li>You can set a password while the method is off (LDAP-binding apps use it),
+  but onboarding a new person with a password is refused while it is off.</li>
+<li><strong>Password sign-in is never available for <code>admin</code> and <code>portcullis-hub</code></strong>,
+  whatever the switch says. <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> answers "Password sign-in isn't
+  available for this account" without checking the password, and the attempt
+  doesn't count towards <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s brute-force lockout (so nobody can lock
+  these accounts out by trying passwords).</li>
+</ul>
+<h2 id="templates">Templates<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h2>
+<p>A template is a rule: a tree of groups, each <strong>all of</strong> or <strong>any of</strong>,
+holding methods, families and other groups, nested up to 3 levels. For
+example, <em>((password and a security key) or (a YubiKey and a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>)) and a
+certificate</em>. The editor shows the rule as nested boxes and as one sentence,
+both updated as you type.</p>
+<p>Four templates are built in. You can edit them and switch them on and off, but
+not delete them, and you can add your own (<strong>+ New template</strong>):</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Rule</th>
+<th>Score</th>
+<th>Starts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Basic</strong></td>
+<td>any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>, any certificate, or a password</td>
+<td>1.0 / 5 (2.5 while password is off)</td>
+<td>disabled</td>
+</tr>
+<tr>
+<td><strong>Standard</strong></td>
+<td>any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> or any certificate</td>
+<td>2.5 / 5</td>
+<td>enabled, the default</td>
+</tr>
+<tr>
+<td><strong>Strong</strong></td>
+<td>a security key or a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></td>
+<td>3.5 / 5</td>
+<td>enabled; the Hub and people pages</td>
+</tr>
+<tr>
+<td><strong>YubiKey + certificate</strong></td>
+<td>a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> and a security key</td>
+<td>4.4 / 5</td>
+<td>disabled</td>
+</tr>
+</tbody>
+</table>
+<p>Only enabled templates appear in the drop-downs. A template in use (by the
+default, an app or a core page) can't be switched off or deleted.</p>
+<p>A part of a template that names a method that is off (or a family with none
+on) can't be met. In an <strong>any of</strong> group that part is simply dropped: Basic
+with the password off works like Standard, and the editor greys the dropped
+part out. In an <strong>all of</strong> group it makes the whole group impossible. A
+template left with no way in at all can't be enabled.</p>
+<h3 id="score">Score<a class="headerlink" href="#score" title="Permanent link">&para;</a></h3>
+<p>Each template shows a score out of 5, such as <code>2.9 / 5</code>, with a one-line
+reason. It is computed over the tree, leaving out the parts the switches
+drop:</p>
+<ul>
+<li>a method scores its strength;</li>
+<li>a family scores its weakest method that is on;</li>
+<li>an <strong>any of</strong> group scores its <strong>weakest</strong> part (anyone can pick it);</li>
+<li>an <strong>all of</strong> group scores its strongest part + 0.4 per extra part, at
+  most 5.</li>
+</ul>
+<p>Example, with the <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> off:
+<code>all of [any of [all of [password, security key], all of [YubiKey, passkey]], certificate]</code>
+scores <strong>4.4 / 5</strong>. The two inner <em>all of</em> groups score 3.5 + 0.4 = 3.9 each,
+their <em>any of</em> 3.9; <em>certificate</em> (only the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> is on) 4.0;
+the top <em>all of</em> 4.0 + 0.4. With the password off, its <em>password and security
+key</em> alternative is dropped and the rest still scores 4.4.</p>
+<h2 id="default-per-app-and-core-pages">Default, per app and core pages<a class="headerlink" href="#default-per-app-and-core-pages" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Default.</strong> Settings → Sign-in → <em>Default template</em>. Every app and core
+  page without its own pick uses it. It starts as Standard.</li>
+<li><strong>Per app.</strong> An <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s Settings tab has one drop-down: <em>Default
+  (Standard · 2.5 / 5)</em> or any enabled template (see
+  <a href="../hub/#settings">Hub → Settings</a>). Saving another template restarts the app
+  only when its certificate request changes (<a href="#traefik-tls-tier">below</a>).</li>
+<li><strong>Core pages.</strong> Settings → Sign-in → <em>Core pages</em> gives the portal, the Hub,
+  people.&lt;domain&gt;, directory, metrics and the <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> dashboard
+  each the default or a template. <code>enroll.&lt;domain&gt;</code> only serves <abbr title="One-time invite URLs for enrolling users' first passkeys">setup links</abbr>
+  and takes no template. The Hub and people.&lt;domain&gt; start on
+  <strong>Strong</strong>: they control everything else. <code>auth.&lt;domain&gt;</code> (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> itself)
+  and <code>mcp.&lt;domain&gt;</code> take no template of their own: the <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> admin
+  console's router (<code>auth.&lt;domain&gt;/admin</code>, which also runs <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>) follows
+  the Hub's template (the console is as powerful as the Hub; without one it is
+  denied), and <code>mcp.&lt;domain&gt;</code> never reaches <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> (<abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr>
+  checks it). The portal checks its own template (its router has no group
+  check). A core page the <abbr title="JSON file (version 6) with the sign-in methods and templates, and full hostnames mapped to templates, groups and expiries">policy file</abbr> doesn't list is denied.</li>
+</ul>
+<h3 id="what-each-app-can-enforce">What each app can enforce<a class="headerlink" href="#what-each-app-can-enforce" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Auth method</th>
+<th>Where the template is checked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>forward-auth</code>, <code>header-auth</code>, <code>custom</code> behind Portcullis sign-in</td>
+<td><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>, on every request. A YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> counts only while the request presents it (<a href="#certificate-binding">certificate binding</a>)</td>
+</tr>
+<tr>
+<td><code>native-oidc</code></td>
+<td><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, at every sign-in to the app: the app's <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> clients are listed with their exact template, and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> shows the needs-stronger page when the session doesn't meet it. Never weaker than the template</td>
+</tr>
+<tr>
+<td><code>mtls</code></td>
+<td>The TLS handshake: the certificate is the app's authentication. It takes no template and always requires one</td>
+</tr>
+<tr>
+<td><code>custom</code>, <code>public</code>, own login only</td>
+<td>None: the app handles its own sign-in. No template, no certificate request</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ai-support">AI support<a class="headerlink" href="#ai-support" title="Permanent link">&para;</a></h3>
+<p>AI clients sign in with the template of the app they reach (the Hub's and
+people pages' templates for the <abbr title="The Hub's own MCP server: hub.&lt;domain&gt;/mcp for administrators, people.&lt;domain&gt;/mcp for everyone">Portcullis MCP</abbr> and "all my apps"), but they
+never present a YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>, so certificate methods never
+count for them. An app whose template needs a certificate in every alternative can't
+get AI support, and a sign-in change that would make it so switches its AI
+support off first, after asking. See <a href="../ai/">AI support</a>.</p>
+<h2 id="apps-with-their-own-login">Apps with their own login<a class="headerlink" href="#apps-with-their-own-login" title="Permanent link">&para;</a></h2>
+<p>A <code>custom</code> template whose app has its own login and no SSO declares
+<a href="../../guides/manifest-reference/#authnative_login"><code>auth.native_login</code></a>. Its
+settings then have a <strong>Sign-in</strong> choice:</p>
+<ul>
+<li><strong>Portcullis sign-in, then the app's own login</strong> (default). The Hub's
+  override puts <code>portcullis-auth@docker,portcullis-groups@docker</code> in front of
+  every router's own middlewares; <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> requires the template's
+  <code>access_group</code> and the app's <abbr title="A named rule over sign-in methods (all of / any of, nested), with a score out of 5">sign-in template</abbr> applies per request, as for
+  <code>forward-auth</code>.</li>
+<li><strong>App's own login only (no Portcullis)</strong>, only if the template sets
+  <code>allow_without_gateway: true</code>. The routers keep the template's middlewares
+  without the gateway pair, no certificate is requested and no group
+  is published: anyone on the internet reaches the app's login page. The UI
+  shows a red warning, the switch is audited (<code>app.sign_in</code>) and the Hub logs
+  it.</li>
+</ul>
+<p>The template is never edited; both modes are compose-override labels, which
+the drift check compares with the running containers. If a template stops
+allowing the own-login-only mode, the Hub falls back to Portcullis sign-in.</p>
+<h2 id="warnings">Warnings<a class="headerlink" href="#warnings" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>For admins.</strong> Wherever a template is applied (an app's Settings, the
+  template editor, Settings → Sign-in), the Hub lists the members of the
+  app's users and admins groups who have no method set up that meets it, for
+  example "2 people can't sign in to Nextcloud · family with it: bob (password
+  only), dave (no method yet)". The Hub learns each person's methods from
+  <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> (passkeys), its own password records and enroll (YubiKey and
+  <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr>). A source it can't read counts as nothing set up.</li>
+<li><strong>For people.</strong> Opening an app whose template the session doesn't meet
+  shows a page instead of a failed sign-in (<a href="#what-happens-when-someone-opens-an-app">below</a>).</li>
+</ul>
+<h2 id="adding-a-stronger-method">Adding a stronger method<a class="headerlink" href="#adding-a-stronger-method" title="Permanent link">&para;</a></h2>
+<p>Settings → Sign-in → <em>Add a stronger method from a weaker sign-in</em> is <strong>off</strong>
+at the start. While it is off, a person can add only methods as strong as the
+one they signed in with: a password-only session can't register any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>,
+and someone who signed in with a synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> can add
+another synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>, but registering a security key needs help from an admin
+(a <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr>). The needs-stronger page then
+says "ask your admin" instead of "Set up …". A <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> added this way can't be
+reclassified above that cap later. A <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> is the exception: the <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>
+registered there may be of any kind. Passkey registration offers the security
+key first to administrators.</p>
+<h2 id="the-sign-in-page">The <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr><a class="headerlink" href="#the-sign-in-page" title="Permanent link">&para;</a></h2>
+<p>Every person has one place for their <abbr title="The six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), each switched on or off for the whole server">sign-in methods</abbr>: the <strong><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></strong>,
+<code>https://people.&lt;domain&gt;/signin</code> (the <strong>Sign-in</strong> link in the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr>'s
+top bar, <strong>Sign-in methods</strong> on the portal, and every "Set up …" and
+"Sign-in methods" link on the needs-stronger pages). It shows:</p>
+<ul>
+<li><strong>Each <abbr title="One of six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), switched on or off for the whole server">sign-in method</abbr></strong>, in strength order, with its state (set up, not set
+  up, unknown) and what the person can do with it. A method switched off on
+  the server shows "off on this server".<ul>
+<li><strong>Password:</strong> set, change or remove your own password. Setting one needs
+  a fresh sign-in; it is refused while the password method is off, and for
+  <code>admin</code> and <code>portcullis-hub</code>. Changing or removing it signs you out of
+  <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>.</li>
+<li><strong>Passkeys and security keys:</strong> the list with each one's name, model
+  and date added; <strong>+ Add</strong> opens <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s account page to register
+  one. The name is the one <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> keeps for the <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> (new ones are
+  called "Security key &lt;date time&gt;"); <strong>Rename</strong> changes it (1–64
+  characters on one line, and no two of your <abbr title="The six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), each switched on or off for the whole server">sign-in methods</abbr> may share a
+  name, whatever the case). The model comes from the FIDO Alliance's list
+  of certified authenticators and is only shown, never stored; a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>
+  the list doesn't know (most synced passkeys, older registrations) shows
+  "unknown model".</li>
+<li><strong><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>:</strong> its validity and <strong>Renew</strong>: the page shows the
+  <code>ykman</code> commands that make a new request (CSR) for the key already on
+  the YubiKey; you paste it, and the browser must present your current
+  <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> on that request (only a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>
+  renews; a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> is refused). No fresh sign-in is needed:
+  the certificate and the request both prove you hold the key.</li>
+<li><strong>Browser certificate:</strong> the list and <strong>Create</strong>
+  (<a href="#browser-certificates">below</a>); each one can be revoked.</li>
+</ul>
+</li>
+<li><strong>Apps and what they need:</strong> every app you can use, plus the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr>
+  (and the Hub for administrators), with its template and whether one of
+  your methods meets it (✓ / ✗, or ? while Portcullis doesn't know your
+  methods).</li>
+<li><strong>Sign-in history</strong> (<a href="#sign-in-history">below</a>).</li>
+<li><strong>VPN devices</strong>: your devices on every Portcullis VPN (name, VPN, address,
+  online), read-only, with a link to <code>https://people.&lt;domain&gt;/vpn/</code> where you
+  add, renew, rename and remove built-in ones (<a href="../vpn/#devices-on-the-built-in-vpn"><abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> access</a>).
+  On People → person → <strong>Sign-in</strong>, administrators and holders of
+  <code>sign_in_help</code> see the same card with <strong>Remove</strong> on built-in devices.</li>
+</ul>
+<p>While an administrator is <a href="#signing-in-as-someone-else">signed in as you</a>,
+the page shows everything but offers no action, and says "Changes are off
+while &lt;admin&gt; is signed in as you." (The Hub refuses every change in
+that session anyway.)</p>
+<p>The page works with <strong>any</strong> switched-on method, even one the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr>'s
+own template wouldn't accept: <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> lets a session with any method in
+to exactly <code>/signin</code>, its <code>/api/me/signin…</code> routes and the page's static
+files on people.&lt;domain&gt;, and nothing else. Everything there that adds a
+method needs a fresh sign-in the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr>'s template accepts (or, for a
+renewal, the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> itself); the rest only shows or removes your
+own data. See
+<a href="../../guides/integration-contracts/#51-people-subdomain-new">Integration Contracts §5.1</a>.</p>
+<h2 id="browser-certificates">Browser certificates<a class="headerlink" href="#browser-certificates" title="Permanent link">&para;</a></h2>
+<p>A <strong><abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr></strong> is a certificate file (<code>.p12</code>) that a person
+creates on the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr> and installs in a browser or the OS. It is a
+<abbr title="One of six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), switched on or off for the whole server">sign-in method</abbr> of its own (strength 2.5, like a synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>: it is a
+file, and a file can be copied). It is issued by its own certificate
+authority, <code>pki_file</code> (the <strong><abbr title="Portcullis's own CA in Vault (root, pki_int, pki_file) that issues YubiKey and browser certificates">Internal certificate authority</abbr></strong> of
+<a href="../../setup/certificates/">Certificates</a>), so it never counts as a YubiKey
+certificate, and signing in with it gives <abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> <code>file</code>, never <code>mtls</code>.</p>
+<ol>
+<li>An admin switches <strong>Browser certificate</strong> on in Settings → Sign-in (it
+   starts off).</li>
+<li>On the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr> the person picks <strong>Create</strong>, chooses a lifetime (from
+   1 day up to the limit, 30 days by default; the default is the limit) and
+   confirms with a fresh sign-in in a popup. That sign-in must be a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>
+   or YubiKey method the <abbr title="Users &amp; Groups interface at people.&lt;domain&gt; (any signed-in user)">people page</abbr>'s template accepts: a password or
+   another <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> never creates a certificate. If the template
+   accepts nothing else, the page says "creating a certificate needs a
+   <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> or YubiKey sign-in that people.&lt;domain&gt; accepts".</li>
+<li>The page offers the download (<code>&lt;user&gt;-browser-certificate-&lt;YYYYMMDD&gt;.p12</code>)
+   and, next to it, its password. <strong>The password is shown once: Portcullis
+   doesn't keep it and can't show it again</strong>, and the private key is never
+   kept either, so the file can't be downloaded again. A lost file or
+   password means creating a new certificate (and revoking the old one).</li>
+<li>The person imports the file:<ul>
+<li><strong>Firefox:</strong> Settings → Privacy &amp; Security → Certificates → View
+  Certificates → Your Certificates → Import.</li>
+<li><strong>Chrome / Edge on Windows 10 or newer:</strong> open the <code>.p12</code> (Windows
+  certificate import wizard, Current User).</li>
+<li><strong>macOS:</strong> open it in <strong>Keychain Access</strong> (macOS 14 or newer: the file
+  is encrypted with AES-256, which older versions can't open); Safari and
+  Chrome use the login keychain.</li>
+</ul>
+</li>
+</ol>
+<p>Administrators create and revoke their own <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr> here like
+anyone else; only <code>admin</code>, <code>portcullis-hub</code> and <code>portcullis-*</code> accounts
+can't (their certificates are managed from the server).</p>
+<p>A person can have at most 3 active <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr> (the limit), and
+each one lasts at most the lifetime limit. A certificate <strong>revoked</strong> on the
+<abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr> (or by an admin or helper, or with
+<code>./portcullis cert revoke</code>) <strong>normally stops working within a minute</strong> everywhere,
+and shows as revoked on the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr>, the person's Sign-in tab and
+<code>./portcullis cert list --all</code>.</p>
+<h2 id="help-to-reset">Help to reset<a class="headerlink" href="#help-to-reset" title="Permanent link">&para;</a></h2>
+<p>Someone who lost their passkeys or certificates can get help from an
+administrator or from a <strong>sign-in helper</strong>: a member of the group that holds
+the <abbr title="Permission granted to non-admins to manage people (edit_details, invite, remove, sign_in_help)">delegated permission</abbr> <code>sign_in_help</code> (<a href="../groups/#delegated-permissions">People &amp; groups</a>).
+Both open the person's <strong>Sign-in</strong> tab on their page on people.&lt;domain&gt;:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Administrators</th>
+<th>Holders of <code>sign_in_help</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Send a <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr></td>
+<td>yes (not to another administrator: <code>./portcullis invite &lt;user&gt;</code>)</td>
+<td>yes, also for accounts they didn't create</td>
+</tr>
+<tr>
+<td>Remove passkeys</td>
+<td>yes (another administrator's needs their username typed again)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Revoke a certificate</td>
+<td>yes, except an administrator's, <code>admin</code>'s, <code>portcullis-hub</code>'s or any <code>portcullis-*</code> account's (<code>./portcullis cert revoke &lt;serial&gt;</code>)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Reset the password</td>
+<td>yes (another administrator's needs their username typed again)</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td>Issue a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> (from a CSR)</td>
+<td>yes, after a fresh sign-in; not for an administrator, <code>admin</code>, <code>portcullis-hub</code> or any <code>portcullis-*</code> account (<code>./portcullis cert enroll</code>)</td>
+<td><strong>no</strong></td>
+</tr>
+</tbody>
+</table>
+<p>A helper can never act on themselves, on <code>admin</code> or <code>portcullis-hub</code>, on an
+administrator, or on a member of any delegated-permission group; the check
+uses the current group memberships on every request. Every action is in the
+audit log (as <code>as sign_in_help</code> for a helper) and in the person's sign-in
+history.</p>
+<div class="admonition warning">
+<p class="admonition-title">Grant <code>sign_in_help</code> only to people you'd trust with those accounts</p>
+<p>A <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> hands the account to whoever holds it. A <code>sign_in_help</code>
+holder can send one to anyone in their reach, so grant the permission
+only to people you would trust with those accounts. Administrators are
+never in reach.</p>
+</div>
+<h2 id="signing-in-as-someone-else">Signing in as someone else<a class="headerlink" href="#signing-in-as-someone-else" title="Permanent link">&para;</a></h2>
+<p>An administrator can sign in as another person to see what they see and act
+in their apps, for example to check a problem the person reports. There is
+no approval step, so every <abbr title="An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)">impersonation</abbr> is limited, visible and recorded.</p>
+<p><strong>Who.</strong> Only members of <code>lldap_admin</code>, and never on another administrator,
+on yourself, on <code>admin</code>, on <code>portcullis-hub</code> or on any <code>portcullis-*</code>
+account. One at a time: you can't run two, and nobody can be impersonated
+by two administrators at once. Settings → Sign-in → <strong>Signing in as someone
+else</strong> switches the feature off for everyone (it is on at the start), and
+switching it off ends every <abbr title="An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)">impersonation</abbr> that is running.</p>
+<p><strong>Starting.</strong> On the person's page on people.&lt;domain&gt;, open the
+<strong>Sign-in</strong> tab and choose <strong>Sign in as &lt;person&gt;…</strong>:</p>
+<ol>
+<li>Type a reason (3–200 characters, one line). The person will read it.</li>
+<li>Do a fresh sign-in with a <strong>YubiKey touch</strong>: a security key <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> or a
+   <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>. A synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>, a device-bound <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>, a
+   password or a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> is refused. At least one of the two
+   YubiKey methods must be switched on.</li>
+<li>Your browser opens the person's portal, signed in as them.</li>
+</ol>
+<p><strong>Your own session ends when you start.</strong> <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> signs you out of your
+own account in that browser. After Stop you sign in again as yourself.</p>
+<p><strong>30 minutes at most.</strong> An <abbr title="An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)">impersonation</abbr> ends after 30 minutes (core's
+<code>IMPERSONATION_MAX_MINUTES</code> in <code>.env</code> can only make it shorter), when you
+press <strong>Stop</strong>, when another administrator stops it, or when the switch
+goes off. Every Portcullis page (the portal, <abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr>, People, the Sign-in
+page and the sign-in pages) shows:</p>
+<blockquote>
+<p>You are signed in as alice (by root) · reason “checking quota” · 26 min left · <strong>Stop</strong></p>
+</blockquote>
+<p>Apps can't show this line. Stop is also at
+<code>https://people.&lt;domain&gt;/impersonation/stop</code>. When it ends, the next
+request shows "Your session as alice has ended." with a link to sign out.</p>
+<p><strong>What it can do.</strong> You open the apps the person may open, as them. Your
+own sign-in counts, not theirs: an app opens only when <strong>your</strong> session's
+methods (the fresh touch included) meet its template — in practice the
+YubiKey touch alone, because the fresh sign-in replaces your session's
+other methods; an app that needs more than the touch (a certificate as
+well, for example) shows the needs page — and a certificate
+method counts only with <strong>your</strong> YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>. A session
+as someone else can never add a method, so there is no <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr>: when your
+sign-in doesn't meet an app's template, the page says so; press Stop, sign
+in with the methods it needs and start again.</p>
+<p><strong>What is refused.</strong> Everything on Portcullis's own pages that changes
+something is refused while you are signed in as someone else ("not while
+you are signed in as someone else: Stop first"): app values, file-share
+passwords, AI connections, passwords, certificates, passkeys, confirmations
+and anything you may do in the directory. Reading works. AI tools refuse a
+session as someone else, <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s account console and fresh sign-ins are
+refused, and so is any app sign-in that would need a method. A person with
+an unfinished sign-in step (an unused <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr>, for example) can't be
+signed in as until it is finished or cancelled.</p>
+<p><strong>Apps that keep their own sessions.</strong> A gateway app loses access at once
+when the <abbr title="An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)">impersonation</abbr> ends. An app that signs in through <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> itself
+and keeps its own session (Nextcloud, for example) may stay signed in as the
+person after the end, unless it supports <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s backchannel logout.
+When that matters, sign the person out inside that app. The person's
+history and notice say which apps may have stayed signed in.</p>
+<p><strong>The record.</strong> The audit log has <code>impersonation.start</code> (who, whom, the
+method of the touch and the reason; refused starts too) and
+<code>impersonation.end</code> (how it ended, how long it ran and the apps opened).
+The person's <a href="#sign-in-history"><abbr title="A person's sign-ins, step-ups, failures, apps opened, help received and impersonations, merged from Keycloak events, group-gate's opened log and the Hub's audit">sign-in history</abbr></a> has an entry with who,
+when, the reason and the apps opened. At their next sign-in the person
+sees, once:</p>
+<blockquote>
+<p>root signed in as you on 12 Nov 2026 14:02 UTC for 26 min: checking
+quota. Apps opened: Gitea, Nextcloud. Nextcloud keeps its own session and
+may have stayed signed in longer.</p>
+</blockquote>
+<p>An <abbr title="An administrator signed in as another person (fresh YubiKey touch, typed reason, 30 minutes at most, banner, record and notice)">impersonation</abbr> that was started but never opened (the browser didn't
+follow through within 2 minutes) ends as "not used", and the person gets no
+notice.</p>
+<p>AI tools can list impersonations, stop one and switch the feature off,
+never start one or switch it on (<a href="../ai/">AI support</a>).</p>
+<p><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s own <strong>Impersonate</strong> button is gone on purpose: core switches the
+stock feature off, because it has no fresh touch, no reason, no time limit
+and no record (<a href="../hardening/#keycloak-impersonation">Hardening</a>).</p>
+<h2 id="sign-in-history">Sign-in history<a class="headerlink" href="#sign-in-history" title="Permanent link">&para;</a></h2>
+<p>The <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr> (and, for admins and helpers, the person's Sign-in tab)
+shows the person's <abbr title="A person's sign-ins, step-ups, failures, apps opened, help received and impersonations, merged from Keycloak events, group-gate's opened log and the Hub's audit">sign-in history</abbr>, newest first, with <strong>Show older</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signed in</td>
+<td>a new sign-in, with its methods and their score</td>
+</tr>
+<tr>
+<td>Stepped up</td>
+<td>an existing session that added a method</td>
+</tr>
+<tr>
+<td>Failed</td>
+<td>a sign-in that failed, with the method tried and why ("wrong password", "certificate refused", …)</td>
+</tr>
+<tr>
+<td>Confirmed</td>
+<td>a fresh sign-in for a sensitive action</td>
+</tr>
+<tr>
+<td>Opened</td>
+<td>the first time a session opened an app (per app); "by root" when an administrator opened it while signed in as the person</td>
+</tr>
+<tr>
+<td>Help</td>
+<td>an action someone else took on the account (by whom)</td>
+</tr>
+<tr>
+<td>Certificate</td>
+<td>a certificate the person created, renewed or revoked</td>
+</tr>
+<tr>
+<td>Signed in as you</td>
+<td>an administrator signed in as the person (<a href="#signing-in-as-someone-else">above</a>): who, the reason, how long, how it ended and the apps opened</td>
+</tr>
+</tbody>
+</table>
+<p>Each entry shows the IP address and the browser ("Firefox · macOS"). The
+history is put together when it is shown, from <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s sign-in events,
+<abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>'s log of opened apps (the <code>group_gate_data</code> volume, in
+<a href="../backups/">backups</a>) and the Hub's audit log. When one of them can't be
+read, the page says which, and shows the rest. Entries older than the
+history limit (1 year by default) are never shown and are deleted.</p>
+<h2 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<p>Settings → Sign-in → <strong>Limits</strong> (admins):</p>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Default</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Browser certificate lifetime</td>
+<td>30 days</td>
+<td>1 day to the server's ceiling</td>
+</tr>
+<tr>
+<td>Active <abbr title="Sign-in certificates in .p12 files installed in browsers, issued by the internal certificate authority's pki_file; amr file">browser certificates</abbr> per person</td>
+<td>3</td>
+<td>1–20</td>
+</tr>
+<tr>
+<td>Sign-in history kept</td>
+<td>365 days</td>
+<td>30–3650 days</td>
+</tr>
+</tbody>
+</table>
+<p>The ceiling is core's <code>CLIENT_CERT_TTL</code> (default <code>720h</code>, 30 days) in whole
+days: no certificate lives longer. If you lower <code>CLIENT_CERT_TTL</code> below the
+stored lifetime, the ceiling applies and Settings shows a warning. Changing
+the history limit also changes how long <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> keeps sign-in events. The
+change is audited (<code>signin.limits</code>).</p>
+<h2 id="locked-out-of-the-hub">Locked out of the Hub<a class="headerlink" href="#locked-out-of-the-hub" title="Permanent link">&para;</a></h2>
+<p>The Hub refuses (<code>409</code>, saying why) a save that changes methods, templates,
+the default or the Hub's template when it would leave <strong>no</strong> administrator
+(an unexpired <code>lldap_admin</code> member) able to meet the Hub's template. If none
+can already, the save goes through with the warning "No administrator can meet
+the Hub's template". Only a save that can lower the number of administrators
+able to meet it reads <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, enroll and <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>; when <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> or <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>
+can't be reached, such a save answers <code>503</code>.</p>
+<p>If you are locked out anyway, recover on the server:</p>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>signin<span class="w"> </span>reset-core
+</code></pre></div>
+<p>It stops the Hub, puts the Hub and people.&lt;domain&gt; back on Standard,
+restores and enables the built-in Standard rule, switches its methods back on
+(audited <code>signin.reset_core</code>, actor <code>cli</code>) and starts the Hub. See the
+<a href="../cli/#signin-reset-core">CLI reference</a>.</p>
+<h2 id="what-happens-when-someone-opens-an-app">What happens when someone opens an app<a class="headerlink" href="#what-happens-when-someone-opens-an-app" title="Permanent link">&para;</a></h2>
+<h3 id="single-sign-on">Single sign-on<a class="headerlink" href="#single-sign-on" title="Permanent link">&para;</a></h3>
+<p>A person who signed in with a security key opens an app on Standard. The
+<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> session already holds a method Standard accepts, so the app opens
+with no prompt. <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> remembers every method used in the session (for 10
+hours), so templates with <em>all of</em> can be met step by step.</p>
+<h3 id="not-in-the-apps-groups">Not in the app's groups<a class="headerlink" href="#not-in-the-apps-groups" title="Permanent link">&para;</a></h3>
+<p><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> checks the app's groups (and its admin paths' groups) before its
+template. Someone who isn't in them gets a plain "not authorized" page, never
+a <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> or needs-stronger page that would name the app's rule.</p>
+<h3 id="step-up-for-one-method">Step-up for one method<a class="headerlink" href="#step-up-for-one-method" title="Permanent link">&para;</a></h3>
+<p>When the session is missing exactly one method the person can complete (one
+they have set up, or one the Hub doesn't know about), <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> shows
+"&lt;App&gt; needs &lt;method&gt;" with a <strong>Continue</strong> button. It leads to <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> with
+<code>pc_method=&lt;method&gt;</code>, and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> asks for that method only: a security-key
+<abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> offers only security keys, a certificate <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> only the
+certificate. The page never redirects on its own. When the Hub doesn't know
+which passkeys the person has and several <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> kinds would do, it asks for
+any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>. Apps that sign in with <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> themselves do the same inside
+<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>: an <em>all of</em> template is met step by step.</p>
+<p>After the <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> you land back on the page you asked for (its path and
+query), on the same host. Only a plain page load (<code>GET</code>) returns there; a
+path that is too long (over 2048 bytes) or that a browser could read as
+another host lands on the app's front page instead.</p>
+<h3 id="present-your-certificate">Present your certificate<a class="headerlink" href="#present-your-certificate" title="Permanent link">&para;</a></h3>
+<p>When the session already holds a YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> but the
+browser didn't present it on this request (the key isn't inserted, the
+certificate is installed in another browser, or the browser offered none),
+signing in again can't help: <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> shows "&lt;App&gt; needs your YubiKey
+certificate — insert your YubiKey and reload this page" (or "&lt;App&gt; needs
+your <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> — use the browser it is installed in and reload
+this page"), with no Continue button. A revoked certificate or another
+person's doesn't count, and neither does a certificate of the other kind.</p>
+<h3 id="needs-a-stronger-sign-in">Needs a stronger sign-in<a class="headerlink" href="#needs-a-stronger-sign-in" title="Permanent link">&para;</a></h3>
+<p>Otherwise the page reads "&lt;App&gt; needs a stronger sign-in — You signed in with
+a password. &lt;App&gt; accepts any one of: a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> (you don't have one yet) · a
+<abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> …", with <strong>Set up a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr></strong> / <strong>Set up a security key</strong>
+links and a <strong>Sign-in methods</strong> link, all to the person's
+<a href="#the-sign-in-page"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a> (<code>https://people.&lt;domain&gt;/signin</code>). When adding a
+stronger method from this sign-in isn't allowed, or the missing method is a
+certificate or a password, it says "ask your admin". Apps that sign in with
+<abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> themselves get the same page from <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>. These pages come from
+<abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, not from the app or the Hub, so they are always
+reachable.</p>
+<h3 id="after-a-setup-link">After a <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr><a class="headerlink" href="#after-a-setup-link" title="Permanent link">&para;</a></h3>
+<p>A <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr> signs the person in with a session that meets <strong>no</strong> template.
+Right after it they touch their new <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> once more to open apps. The
+<abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> asks for any <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> when the app's template accepts several <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr>
+kinds, else for the first method the template can complete: the list of who has which method may not show the new <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> yet, so
+it isn't consulted for a setup-link session (no "needs a stronger sign-in"
+page just because it is behind).</p>
+<h3 id="fresh-sign-in-for-sensitive-actions">Fresh sign-in for sensitive actions<a class="headerlink" href="#fresh-sign-in-for-sensitive-actions" title="Permanent link">&para;</a></h3>
+<p>Creating a <abbr title="Per-person SMB password each person creates on My apps after a fresh sign-in; the Hub keeps only its NT hash">file-share password</abbr>, approving an AI confirmation, creating a
+<abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>, issuing a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> and setting your own
+password need a fresh sign-in in a popup, with a method the governing template accepts: the
+strongest method of at least one of the template's ways in (its
+alternatives, counting only the methods switched on now; a tie lets either
+through; a password too). What counts is the method that actually ran in that
+popup sign-in (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> records it in the token's <code>pc_fresh</code> claim), never
+the methods the session used earlier; an SSO session reused or a <abbr title="One-time invite URL for enrolling a user's first passkey">setup link</abbr>
+never counts.</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Governing template</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Creating or regenerating a <abbr title="Per-person SMB password each person creates on My apps after a fresh sign-in; the Hub keeps only its NT hash">file-share password</abbr></td>
+<td>the app's template (its own pick, else the default)</td>
+</tr>
+<tr>
+<td>Approving a <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s confirmation (people.&lt;domain&gt;)</td>
+<td>the <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s app's template</td>
+</tr>
+<tr>
+<td>Approving a Portcullis people tool's confirmation (people.&lt;domain&gt;)</td>
+<td>the <code>people</code> core page's template</td>
+</tr>
+<tr>
+<td>Approving an admin tool's confirmation (hub.&lt;domain&gt;)</td>
+<td>the <code>hub</code> core page's template</td>
+</tr>
+<tr>
+<td>Creating a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>, issuing a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></td>
+<td>the <code>people</code> core page's template, but never with a password or a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> (<a href="#browser-certificates">below</a>)</td>
+</tr>
+<tr>
+<td>Setting your own password on the <abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></td>
+<td>the <code>people</code> core page's template</td>
+</tr>
+<tr>
+<td>Anything else that asks for a fresh sign-in</td>
+<td>the <code>hub</code> core page's template (fail closed)</td>
+</tr>
+</tbody>
+</table>
+<p>So with the core pages on Strong an admin confirmation needs the security key
+or the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>, a synced <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> isn't enough; under Standard any
+<abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> or the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> approves; an app on a password-only
+template is confirmed by typing the password again; a template that needs a
+security key and a password (<code>all[security_key, password]</code>) is confirmed with
+the security key — the password alone never is. A template that is
+disabled, gone or can't be met refuses.</p>
+<h2 id="traefik-tls-tier"><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> TLS tier<a class="headerlink" href="#traefik-tls-tier" title="Permanent link">&para;</a></h2>
+<p>Whether browsers are asked for a certificate (YubiKey or browser) follows the
+method switches and the app's template. Core's <code>traefik/dynamic/tls.yml</code> is static
+and defines four options; the Hub picks one per app and writes it as a
+<code>tls.options</code> label on every router of the app, in
+<code>${HUB_DATA_DIR}/overrides/&lt;app&gt;.override.yml</code>:</p>
+<table>
+<thead>
+<tr>
+<th>The app's template</th>
+<th>Tier</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An <code>mtls</code> app</td>
+<td><code>protected@file</code></td>
+<td>Always: a <strong>YubiKey</strong> certificate required at the TLS handshake</td>
+</tr>
+<tr>
+<td>Every alternative needs the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> (e.g. YubiKey + certificate)</td>
+<td><code>protected@file</code></td>
+<td>A <strong>YubiKey</strong> certificate required at the TLS handshake; a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> never passes it</td>
+</tr>
+<tr>
+<td>Every alternative needs a certificate method that is on, and at least one accepts the <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr></td>
+<td><code>protected-any@file</code></td>
+<td>A YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> required at the TLS handshake</td>
+</tr>
+<tr>
+<td>Some alternative has one (e.g. Standard, Strong)</td>
+<td><code>authaware@file</code></td>
+<td>A certificate asked for, optional</td>
+</tr>
+<tr>
+<td>None has one, or the app has no Portcullis sign-in</td>
+<td><code>public@file</code></td>
+<td>No certificate requested</td>
+</tr>
+</tbody>
+</table>
+<p><code>protected</code> trusts only the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> authority
+(<code>certs/ca-chain-yubikey.crt</code>); <code>protected-any</code> and <code>authaware</code> trust both
+(<code>certs/ca-chain.crt</code>). Core pages (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, the Hub, people.&lt;domain&gt;,
+the portal, the consoles) always use <code>authaware@file</code>: they always offer an
+optional certificate (a browser without one shows nothing). Which method a
+certificate counts as is decided by its issuer
+(<a href="#certificate-binding">certificate binding</a>). Switching a certificate
+method on or off, or a template change that moves an app to another tier,
+restarts only the apps whose tier changed. Base <code>compose.yml</code> files in
+templates are untouched.</p>
+<p><strong>One tier per host.</strong> <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> selects TLS options per SNI host, before it
+knows the path, so every router of a host must share one tier. If two routers
+of a host disagree, <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> falls back to its default TLS options and answers
+<code>421 Misdirected Request</code>. The Hub therefore always writes the same tier for
+all of an app's routers, including its <a href="#public-exceptions">public router</a>.</p>
+<h2 id="public-exceptions">Public exceptions<a class="headerlink" href="#public-exceptions" title="Permanent link">&para;</a></h2>
+<p>Templates can declare share-link paths in
+<a href="../../guides/manifest-reference/#authpublic_access"><code>auth.public_access</code></a>;
+an admin turns them on per app in the <a href="../hub/#public-exceptions">Hub</a>. While
+on, the Hub adds a router <code>portcullis-public-&lt;app&gt;</code> for those paths only:</p>
+<ul>
+<li>higher priority than every router of the app, so it wins for its paths;</li>
+<li>middlewares <code>portcullis-public-strip-&lt;app&gt;@docker,rate-limit@file,security-headers@file</code>
+  only: <strong>no <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>, no <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr></strong>, so no login, no group, no
+  hardware key, no <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> and no <abbr title="A named rule over sign-in methods (all of / any of, nested), with a score out of 5">sign-in template</abbr> apply on these paths;</li>
+<li>the strip middleware deletes client-supplied identity headers (core's
+  <code>X-Forwarded-User</code>, <code>X-Forwarded-Email</code>, <code>X-Forwarded-*</code>, <code>X-Auth-Request-*</code>,
+  <code>Remote-*</code>, plus the template's <code>identity_headers</code>, each also in its
+  <code>_</code> form), so a <abbr title="Auth method where apps trust identity headers from Traefik">header-auth</abbr> app can't be told who the visitor is;</li>
+<li>its first middleware, <code>portcullis-public-guard@docker</code> (<abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>
+  <code>/public-guard</code>), re-checks the path against the published patterns and
+  answers 403 to requests carrying <code>Authorization</code>, <code>Proxy-Authorization</code> or
+  the template's credential headers, cookies or query parameters (names
+  normalised the way PHP does), so a stolen password, API key or session
+  can't get past the sign-in there;</li>
+<li>supporting paths serve static files only (by extension), plus single
+  <code>exact</code> routes the template justifies;</li>
+<li>in mode <code>listed</code>, only the <abbr title="URL tokens granting anonymous access to specific resources">share tokens</abbr> an admin listed are routed; any
+  other token on the same prefix still goes through <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>.</li>
+</ul>
+<p><strong>Exceptions vs a required certificate.</strong> A template that needs a
+certificate in every alternative normally gives the host <code>protected@file</code> or
+<code>protected-any@file</code>.
+Anonymous visitors can't present a certificate, so while the public router
+exists the Hub uses <code>authaware@file</code> for <strong>all</strong> of the app's routers instead
+(<code>policy.HostTier</code>). What still enforces the certificate:</p>
+<table>
+<thead>
+<tr>
+<th>App type</th>
+<th>Gated paths after the downgrade</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>forward-auth</code> / <code>header-auth</code></td>
+<td><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>'s <a href="#certificate-binding">certificate binding</a> requires a valid, unrevoked certificate of the right kind matching the user on <strong>every</strong> request, so the certificate stays enforced per request</td>
+</tr>
+<tr>
+<td><code>native-oidc</code> (no <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> on the host-wide router)</td>
+<td>The certificate is only enforced <strong>at sign-in</strong>, by <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s template check. An existing app session works from a browser without the key</td>
+</tr>
+<tr>
+<td>any router without <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr></td>
+<td>loses the handshake check; the Hub lists such routers in the warning</td>
+</tr>
+</tbody>
+</table>
+<p>In mode <code>listed</code> with no listed share there is no public router and no
+downgrade. Templates that already give <code>authaware@file</code> or <code>public@file</code> are
+unchanged.</p>
+<h2 id="where-templates-are-published">Where templates are published<a class="headerlink" href="#where-templates-are-published" title="Permanent link">&para;</a></h2>
+<p>The Hub compiles each enabled template against the methods that are on and
+publishes it three times, rewritten after every change:</p>
+<ul>
+<li><strong><abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr></strong>: <code>group-gate-policy.json</code> (version 6), with the methods,
+  the templates, the default, each app's own pick keyed by every full
+  hostname it routes, and each core page's template, plus each person's
+  set-up methods and the <abbr title="Settings switch allowing a person to add a stronger sign-in method than the one they signed in with">add-stronger</abbr> switch (these two only word
+  <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>'s pages, they never decide access). A missing file, one
+  <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> can't read, another version, an unknown key, an unknown method
+  or rule shape, a method in a rule that isn't on, or a template a host names
+  but the file lacks makes it deny (fail closed). Format: <a href="../../guides/integration-contracts/#4-policy-file-hub-group-gate">Integration Contracts §4</a>.</li>
+<li><strong><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr></strong>: <code>signin-keycloak.json</code>, with the methods, the templates, the
+  <abbr title="Auth method where apps implement OpenID Connect directly">native-OIDC</abbr> clients and their templates, and the FIDO list's verdicts. If
+  it is missing or invalid every method counts as off and nobody signs in
+  until the Hub writes a good one.</li>
+<li><strong><abbr title="Core service that checks every MCP request (token, population, tool policy, limits, confirmations) and forwards it as the person">mcp-gate</abbr></strong>: <code>mcp-gate.json</code> (version 2), each AI resource with its rule
+  (<a href="../ai/">AI support</a>).</li>
+</ul>
+<h2 id="sign-in-flows-in-keycloak">Sign-in flows in <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr><a class="headerlink" href="#sign-in-flows-in-keycloak" title="Permanent link">&para;</a></h2>
+<p><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> runs Portcullis's own image, <code>ghcr.io/porelli/portcullis-keycloak</code>
+(<code>KEYCLOAK_IMAGE</code>, see <a href="../upgrading/">Upgrading</a>): the official <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> plus
+the sign-in extension that enforces the methods and templates. It reads the
+Hub's <code>signin-keycloak.json</code> from the <code>hub_data</code> volume, mounted read-only at
+<code>/hub-data</code>. The realm's flows (<code>keycloak/realm-export.json</code>, rebuilt by
+<a href="../cli/#keycloak-configure"><code>./portcullis keycloak configure</code></a> whenever they
+change) have no Level-of-Authentication steps any more:</p>
+<ul>
+<li>
+<p><strong>Browser flow <code>portcullis-universal</code></strong>: the SSO cookie, the hidden setup-link
+  identity provider, or one <abbr title="One of six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), switched on or off for the whole server">sign-in method</abbr>, then the <strong>template check</strong>
+  (<code>portcullis-template</code>) for the app that asked. The methods, tried in this
+  order:</p>
+<ul>
+<li>the <strong><abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr></strong> (automatic when the browser presents one
+  issued by the <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr> authority, <code>pki_int</code>; <abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> <code>mtls</code>),</li>
+<li>the <strong><abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr></strong> (automatic when the browser presents one
+  issued by the <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> authority, <code>pki_file</code>, while the
+  method is on; <abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> <code>file</code>). Each of the two certificate steps checks the
+  certificate's issuer and signature against its own authority and its
+  own revocation lists, so a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> never counts as a
+  <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>,</li>
+<li>a <strong><abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr></strong>: <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> offers only the kinds that are on, and the kind
+  that signed in gives the <abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> (<code>hwk</code> security key, <code>dpk</code> device-bound,
+  <code>spk</code> synced),</li>
+<li>a <strong>password</strong> (<abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> <code>pwd</code>), only while the method is on, never for
+  <code>admin</code> and <code>portcullis-hub</code>.</li>
+</ul>
+<p>Each method stays in the session's <abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> for 10 hours. A <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr>
+(<code>pc_method=&lt;method&gt;</code>) makes the other methods step aside, and the SSO
+cookie hands a session that lacks the method back to the sign-in.</p>
+</li>
+<li>
+<p><strong>Setup links</strong> (<code>portcullis-invite-session</code>, the setup-link identity
+  provider's post-login flow): only for <code>portcullis-forward-auth</code>, then the
+  session gets <abbr title="Authentication Methods Reference - the sign-in methods used in the session (pwd, spk, dpk, hwk, mtls, file; inv for a setup link)">amr</abbr> <code>inv</code> (not a method, it meets no template) and the
+  template check.</p>
+</li>
+<li><strong>Brute-force protection</strong> is on for the realm: after 10 failed sign-ins an
+  account waits 60 s more per further failure, at most 15 minutes, and is
+  never locked for good. Refused passwords of <code>admin</code> / <code>portcullis-hub</code> don't
+  count.</li>
+<li><strong>Passkey registration</strong> asks the authenticator for a direct attestation
+  (the extension decides the kind from it; a <abbr title="FIDO2 credential — a YubiKey or another security key, used for passwordless sign-in">passkey</abbr> without one registers as
+  synced), allows any authenticator attachment and requires a resident key and
+  user verification. The browser is given hints in the extension's order: the
+  security key first for <code>lldap_admin</code> members, the device first for everyone
+  else. <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>'s stock two-factor <abbr title="Web Authentication API for FIDO2 passkeys">WebAuthn</abbr> registration is disabled.</li>
+<li><code>portcullis-forward-auth</code> has no default <abbr title="OIDC Authentication Context Class Reference; Portcullis doesn't use it (amr and sign-in templates decide)">acr</abbr>: <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> asks for a method
+  with <code>pc_method</code>, never with <code>acr_values</code>.</li>
+</ul>
+<h2 id="identity">Identity<a class="headerlink" href="#identity" title="Permanent link">&para;</a></h2>
+<p>Templates decide <em>how</em> a person signed in; <em>who</em> they are always comes from
+the immutable <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> username (<code>preferred_username</code>, <code>X-Forwarded-User</code>), never
+from the email. <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr> users can edit their own email, so <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> does not
+trust it (<code>trustEmail=false</code>) and nothing in Portcullis authorises or links
+accounts by it. See <a href="../hardening/#header-spoofing-protections">Security &amp; Hardening</a>.</p>
+<h2 id="certificate-binding">Certificate binding<a class="headerlink" href="#certificate-binding" title="Permanent link">&para;</a></h2>
+<p>A certificate in the session (<code>amr=mtls</code> for a <abbr title="A sign-in certificate on a YubiKey (PIV), issued by the internal certificate authority's pki_int; amr mtls">YubiKey certificate</abbr>, <code>file</code>
+for a <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>) only proves a certificate was used at sign-in.
+<abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> counts a certificate method only while the current request
+presents an unrevoked certificate <strong>of that kind</strong> whose CN equals the
+session's <code>preferred_username</code> (and the token's <code>preferred_username</code> is the
+same user). It tells the kinds apart by the certificate's issuer: the YubiKey
+certificate authority (<code>pki_int</code>) or the <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr> authority
+(<code>pki_file</code>). If the two authorities' names were equal, or <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> can't
+read either file, no certificate counts at all. Without a bound certificate
+the method is missing: a template the certificate would meet shows the
+present-certificate page (<a href="#present-your-certificate">above</a>), any other the
+<abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr> or needs-stronger page. A session opened with a since-revoked
+certificate, or replayed from a browser without it, stops meeting such a
+template at once. See
+<a href="../../setup/certificates/#certificate-binding-group-gate">Certificates</a>.</p>
+<h2 id="vpn-only-apps"><abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> apps<a class="headerlink" href="#vpn-only-apps" title="Permanent link">&para;</a></h2>
+<p>A <a href="../vpn/"><abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr></a> app or core page needs everything above <strong>and</strong> a
+Portcullis VPN. The VPN is an extra condition, never a <abbr title="One of six ways to sign in (password, synced passkey, browser certificate, device-bound passkey, security key passkey, YubiKey certificate), switched on or off for the whole server">sign-in method</abbr> or a
+factor: it never counts as any method, never meets a template, never skips or
+silences a <abbr title="Asking for one more sign-in method (pc_method) when the session doesn't meet the app's template">step-up</abbr>, and a VPN app's own sign-in (Headscale's <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr>) never
+stands in for the Portcullis sign-in. Fresh sign-ins (adding a VPN device
+included) work as anywhere else.</p>
+<p><strong>The binding.</strong> <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr> checks the VPN after the identity checks and
+<strong>before</strong> the group checks, only on its VPN paths (routers on <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s
+<code>vpnsecure</code>):</p>
+<ol>
+<li><strong>The provider.</strong> The client address (the last <code>X-Forwarded-For</code>
+   entry, which <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> sets from the connection's PROXY v2 source; IPv4
+   only) lies in exactly one provider's ranges, the app's <em>Through</em> accepts
+   that provider, and its device list is fresh.</li>
+<li><strong>A device of that provider</strong> with that address, unexpired (for the
+   built-in VPN, with its unexpired peer). A device of another provider never
+   counts.</li>
+<li><strong>The owner.</strong> The device's owner is the signed-in person (the <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>
+   username, lowercased).</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Fails at</th>
+<th>Page (<code>403</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no VPN address, a provider <em>Through</em> doesn't accept, no such device, no valid device list</td>
+<td>"This app is only reachable over a Portcullis VPN. Connect your device and reload."</td>
+</tr>
+<tr>
+<td>a stale device list</td>
+<td>"your VPN's device list is out of date; try again in a minute"</td>
+</tr>
+<tr>
+<td>someone else's device</td>
+<td>"this device isn't yours; sign in on your own device" (the owner is never named)</td>
+</tr>
+</tbody>
+</table>
+<p>Then come the group checks (a non-member gets the plain group <code>403</code>) and the
+template. A request through a VPN to an app that is reachable from the
+internet needs no binding. <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>'s reasons (metric labels and log values)
+are <code>vpn_not_vpn</code>, <code>vpn_stale</code>, <code>vpn_via</code>, <code>vpn_unknown_device</code>,
+<code>vpn_expired</code>, <code>vpn_other_owner</code> and <code>vpn_no_doc</code>; for a request that passed the
+binding, <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>'s opened log (the source of the
+<a href="#sign-in-history"><abbr title="A person's sign-ins, step-ups, failures, apps opened, help received and impersonations, merged from Keycloak events, group-gate's opened log and the Hub's audit">sign-in history</abbr></a>) adds <code>via: "vpn"</code>, the provider and the
+device id. A <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> app's public links (no
+signed-in person) check steps 1 and 2 only; in server mode, the public links
+of an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> with <em>Public links stay on the internet</em> skip the VPN.</p>
+<p>The <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> endpoints never go through <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>: in the <code>admin</code> and <code>server</code>
+modes they answer only over a VPN but aren't bound to the device's owner, and
+the <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> OAuth token is still required.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>"&lt;App&gt; needs …" page from <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr></strong>
+Your session is missing a method the app's template needs. Press
+<strong>Continue</strong>, or set the method up from the page's links.</p>
+<p><strong>Certificate prompt loops indefinitely</strong>
+Your browser may not be sending the YubiKey or <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>. Check
+that the certificate is imported into your OS/keychain (or the browser's own
+store, for Firefox) and that the origin matches the <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> wildcard
+(<code>*.&lt;your-domain&gt;</code>).</p>
+<p><strong>"&lt;App&gt; needs your <abbr title="A sign-in certificate in a .p12 file installed in a browser, issued by the internal certificate authority's pki_file; amr file">browser certificate</abbr>" although it is installed</strong>
+The certificate may be revoked or expired: open the
+<a href="#the-sign-in-page"><abbr title="Each person's page for their sign-in methods, certificates and sign-in history, at people.&lt;domain&gt;/signin">Sign-in page</abbr></a> and check its status. A revoked
+certificate normally stops working within a minute.</p>
+<p><strong><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> sign-in page appears when you expected single sign-on</strong>
+The session cookie expired (8 hours idle / 12 hours max by default), or the
+app's template needs a method your session doesn't have yet.</p>
+<p><strong>Nobody can sign in at all</strong>
+<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> couldn't read <code>signin-keycloak.json</code>: every method counts as off.
+Check the Hub is running (it writes the file at start); if the Hub itself is
+unreachable because of its template, run <code>./portcullis signin reset-core</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>
