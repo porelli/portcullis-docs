@@ -60,7 +60,7 @@ exactly as on a real install. Every step drives the stack through
     - the opened log: `test_opened_log_first_request_per_session_host` (one line per session and host, the exact fields, `act` `""`, `ua` ≤ 256, file mode 0640; an unwritable directory still allows the request and counts `group_gate_opened_log_failures_total`)
     - the host's template: `core` for core hosts (missing → deny; `hosts` entries ignored), the Hub's core template for `auth.<domain>` (missing → deny), the portal checks its own; `enroll` is reserved but not gated (`test_enroll_not_gated_but_reserved`); the Sign-in paths on people.&lt;domain&gt; take any switched-on method only for exactly `/signin`, `/api/me/signin`, `/api/me/signin/…` and `/static/…` after normalising (`test_signin_paths_exact_after_normalising`: `/signin/../api/directory`, `/static/../api/directory`, `/api/me/signinx`, `/api/me/signin%2F..%2Fapps`, `/Signin` and the same paths on `hub.<d>` or an app host get the host's template; `test_signin_paths_any_switched_on_method`); the membership checks first (a non-member with an unmet template gets the plain group 403, no page or `X-Stepup-URL`); the request metric's `result` `stepup` / `needs_stronger` / `present_certificate`
     - the pages: present-certificate for both kinds (no `X-Stepup-URL`; `test_step_up_never_asks_held_cert_method`), the step-up candidate rules (`pc_method` = the first set-up candidate, `passkey` for an unknown person with two or more passkey kinds, never a certificate method whose amr the session holds), links to the Sign-in page (`test_pages_link_to_signin_page`: every "Set up …" and "Sign-in methods" href is `https://people.<d>/signin`; `test_no_enroll_links`: no `enroll.` and no `/self` on the portal), the needs-stronger copy word for word as the Keycloak extension's (`portcullis-needs-stronger.ftl`), every value escaped, no refresh, CSP
-    - `oauth2-proxy/alpha.yaml`: `loginURLParameters` are exactly `pc_method` (the six method ids and `passkey`), `kc_idp_hint`, `prompt`; no `acr_values`
+    - `oauth2-proxy/alpha.yaml`: `loginURLParameters` are exactly `pc_method` (the seven method ids and `passkey`), `kc_idp_hint`, `prompt`; no `acr_values`
     - step-up URLs (`/oauth2/start?pc_method=<method>`): `auth.<domain>` for main-domain and core hosts, the host itself with `rd=/` for extra-domain hosts; attribute headers and the public guard on extra-domain hosts; the portal shows only URLs on the main domain and the portal file's `domains`
     - the step-up returns to the requested page (contract §5 "Step-up URL"): `test_stepup_returns_to_page` (`rd` = `https://<host><path>?<query>`, or `<path>?<query>` on an extra domain, for a `GET`), and `test_stepup_return_rejects_offhost_paths` (`rd` stays the root for a non-`GET`, `//…`, `/\…`, `%5C`, a byte outside `0x21–0x7e` such as a tab or newline, or more than 2048 bytes)
     - the reserved deny group
@@ -748,6 +748,72 @@ and bearer tokens). Setup links are masked in the log (`::add-mask::`) and
 redacted from failure messages; the screenshots / HTML of the setup pages
 show the consumed links (nothing reusable).
 
+#### `e2e_totp` (authenticator codes)
+
+`tests/e2e/e2e_totp.py` runs inside the `e2e-signin` job, as its own step
+("Authenticator codes", run on success or failure), after `e2e_signin.py`, on
+the same stack: its users, pat's password file and the `hr` group. It adds no
+CI job. It sets up what it needs itself, so it also runs alone after the
+job's setup steps, and its setup and `finally` cope with re-runs on the same
+stack. It imports `e2e_signin`'s helpers and `e2e_login` / `e2e_ops`.
+`APP_HOSTS` has `echo-otp`.
+
+- **Codes** come from `pyotp` (RFC 6238; `pyotp==2.9.0`, pinned with the
+  hashes of both published files in `tests/e2e/requirements-totp.txt`,
+  installed with `--require-hashes --only-binary=:all:` in the job's pip
+  step and part of its cache key), never a hand-rolled HMAC.
+- **The secret** is read from Keycloak's own manual-key element. CSS
+  injected into every page before anything is shown hides the setup page's
+  QR code and key. The secret is `::add-mask::`ed, kept in memory only and
+  never printed or written. No screenshot or HTML is taken of a page that
+  holds one, and no Playwright trace is recorded.
+- **State:** `totp` is switched on (a setup link with the authenticator
+  option is refused while it is off) and off again at the end; `password` is
+  switched on for the run and put back as it was. It creates the template
+  `e2e-otp` = `all[password, totp]` and the instance `echo-otp` on it (pat and
+  alice members). The `people` core page is on `e2e-otp` for `fresh_one_code`
+  only (Strong before and after).
+
+The cases, in this order:
+
+| Case | What it checks |
+|---|---|
+| `setup_link_refused_while_off` | an invite with `{"authenticator": true}` → `409` while `totp` is off |
+| `setup` | `totp` and `password` on, `e2e-otp`, `echo-otp`, its members |
+| `policy_read_back` | the realm OTP policy (HmacSHA1, 6 digits, 30 s, look-ahead 1, not reusable, initial counter 0) and the `max_auth_age` of both required actions |
+| `editor_refuses_code_only` | `any[totp, security_key]`: save `400` with the text, preview `200` with `code_only` |
+| `no_code_only_way_in` | a cold sign-in (also with `pc_method=totp`) shows no code field and its "Try another way" offers no code; pat's username with a code typed as the password gets no session, in the app or in Keycloak |
+| `pat_cap_refused` | pat's password-only session: no "+ Add" on the Sign-in page, and a hand-made `kc_action=CONFIGURE_TOTP` refused by the cap |
+| `pat_setup_link_authenticator` | the Hub's setup link with the authenticator option: a passkey, then Keycloak's authenticator setup |
+| `password_then_code` | `echo-otp`: the password, then group-gate's step-up asks for the code; amr `pwd` + `otp`; a `sign_in` `LOGIN` with `password`, then a `step_up` `LOGIN` with `totp` (one `LOGIN` per authentication) |
+| `sso_stepup_only_code` | pat's password session on `echo-basic`, then `echo-otp`: the step-up `pc_method=totp` asks only for the code |
+| `wrong_code_failed` | a wrong code is refused: history "wrong authenticator code", brute-force count 1 |
+| `replay_refused` | the same code on two sign-ins in one time step: the second is refused |
+| `window` | the previous step's code (−30 s) accepted, a −90 s one refused |
+| `fresh_one_code` | under `people` = `e2e-otp` the Hub's `fresh_auth` carries `pc_method=totp`; Keycloak asks for the password, then the code, in one authentication (`LOGIN` `pc_methods` `password,totp`) → `pc_fresh=totp` with `pwd` in `amr`; that proof sets pat's password; a password-only fresh proof → `403` |
+| `add_replace_rename_remove` | the Sign-in page's popups with real Keycloak and a virtual key: **+ Add**, **Replace** (`CONFIGURE_TOTP:<id>`: the new code works, the old one is refused), rename (`404` for a passkey id), **Remove** (`delete_credential:<id>`, whose re-authentication never offers a code alone) |
+| `fourth_refused` | at 3 the page offers no "+ Add"; a hand-made fourth is refused |
+| `history_method_entries` | exactly one added / replaced / removed entry per change (none from `LOGIN` events) |
+| `root_impersonating_pat` | root (his security key from `./portcullis invite root`, then the start route with a fresh security-key proof) signed in as pat: `echo-otp` shows the impersonation's needs page (no step-up), and a hand-made `CONFIGURE_TOTP` is refused ("Not while you are signed in as pat."), nothing stored |
+| `carol_removes_alice` | alice's setup-link authenticator, removed by carol (`sign_in_help`); a `help` entry in alice's history |
+| `admin_no_code_step` | `admin` never gets a code step, and `CONFIGURE_TOTP` is refused (CI only) |
+| `no_secret_anywhere` | every secret, and its lowercase and unpadded forms, is absent from `docker compose logs`, the Hub's audit, the history answers and the artifacts |
+| `finally` | `echo-otp`, `e2e-otp` and every authenticator removed; `totp` off; `password` and the `people` core page back |
+
+Not in the e2e: that a fresh `totp` never approves a certificate (`409`) is a
+Hub unit test (`TestCertFreshNeverTOTP`): under the default people pick a
+`pc_fresh=totp` proof is already refused (`403`) by the governing check. That
+the Hub refuses a `pc_fresh=totp` without a primary method in `amr` is also a
+Hub unit test (a token can't be forged end to end); the e2e checks that every
+`pc_fresh=totp` token it gets carries `pwd`. The restore's lost-devices note
+(authenticator apps and passkeys removed since the backup work again) is
+checked by `build-and-test`'s restore from off-host: the restore's last line
+must be that note.
+
+Right after a setup link, group-gate's `people` may lack the new
+authenticator for up to about 30 s, so the test waits for it before opening
+`echo-otp`.
+
 ### `e2e-settings` (app settings panel)
 
 The whole stack plus the Hub (built from the same-named Hub branch, like
@@ -1382,6 +1448,14 @@ argv or in a log): the answer is `active` and carries `act` and `pc_imp`, and
 its `exp` is at most `pc_imp.until`
 ([contract §8.1](../guides/integration-contracts.md#81-sign-in-methods-new-sign-in)
 "Impersonation").
+The authenticator-code smoke cases (`totp_override_marker`: the
+`CONFIGURE_TOTP` override's operational info `portcullis: totp`;
+`totp_signin`: a password sign-in, `kc_action=CONFIGURE_TOTP`, then a new
+sign-in with the password and a `pyotp` code, amr `pwd` + `otp`;
+`totp_replay_refused`; `totp_pc_method_only_code`) read the manual key from
+Keycloak's page, mask it and take no screenshot while it is shown;
+`PROVIDER_IDS` lists `portcullis-otp` and `CONFIGURE_TOTP`, and `pyotp` is
+pinned with hashes in its own `.github/smoke/requirements-totp.txt`.
 
 ## AI support manual checklist
 
