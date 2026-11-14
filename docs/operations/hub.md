@@ -1359,7 +1359,9 @@ disabling it did before instances existed.
     - **Methods**: the seven sign-in methods, each with its strength, how many
       people have it set up, and an on / off switch. Password, browser
       certificate and authenticator app ("Authenticator app · 1.5 · N of M
-      people set up") start off. Switching the authenticator app off keeps
+      people set up") start off: only the passkey kinds, the security key
+      and the YubiKey certificate start on, and any method added later
+      starts off. Switching the authenticator app off keeps
       people's authenticator apps: they stop counting and work again when it
       is switched back on.
       Switching off a method an enabled template needs is refused and lists the
@@ -2020,7 +2022,7 @@ people (admins see all of it; others the parts their permissions allow).
 | Reset passkeys | Admins, holders of `sign_in_help` | Deletes all passkeys, signs the user out, then creates a new invite (or shows `./portcullis invite <user>` for an administrator). Type the username to confirm |
 | Remove authenticator apps | Admins, holders of `sign_in_help` (Sign-in tab, while the method is on) | Deletes all of the person's authenticator apps (passkeys are kept) and signs them out everywhere, e.g. after a lost phone; audited `user.remove_authenticators`. The same targets and typed confirmation as Reset passkeys |
 | Revoke certificate | Admins, holders of `sign_in_help` (Sign-in tab) | Revokes one YubiKey or browser certificate; it normally stops working within a minute. Refused (409) for an administrator's, and for `admin`, `portcullis-hub` and any `portcullis-*` account: `./portcullis cert revoke <serial>` |
-| Issue YubiKey certificate | Admins (Sign-in tab) | Signs a CSR made on the person's YubiKey, after a fresh sign-in the people page's template accepts (not a password, a browser certificate or an authenticator code). Refused (409) for an administrator, `admin`, `portcullis-hub` and any `portcullis-*` account |
+| Issue YubiKey certificate | Admins (Sign-in tab) | Signs a CSR made on the person's YubiKey, after a fresh sign-in the people page's template accepts, with a passkey, a security key or a YubiKey certificate only (never a password, a browser certificate or an authenticator code). Refused (409) for an administrator, `admin`, `portcullis-hub` and any `portcullis-*` account |
 | Password… | Admins | Fallback: set or generate a password; signs the user out |
 | Sign in as… | Admins (Sign-in tab) | Signs in as the person for at most 30 minutes, after a typed reason and a fresh YubiKey touch; your own session ends. Not for administrators, `admin`, `portcullis-hub` or any `portcullis-*` account. Audited, and shown to the person at their next sign-in |
 | Delete | Admins, delegates with `remove` | Deletes the user from LLDAP and Keycloak. Type the username to confirm |

@@ -234,15 +234,13 @@ says so). It saves the current `.env`, `secrets/` and `certs/` to
 
 Use `--yes` to skip the confirmation.
 
-!!! warning "Re-remove authenticator apps reported lost"
-    Restoring an older backup brings back the authenticator apps that were
-    removed since the backup was taken, so a lost phone works again. The
-    restore ends with "Authenticator apps removed after this backup's date
-    work again: remove the ones reported lost since then (People → person →
-    Sign-in)." After a restore, remove again every authenticator app reported
-    lost after the backup's date (the Hub's audit is restored to the same
-    point, so it can't tell you which). The same goes for passkeys removed
-    since then.
+!!! warning "Re-remove authenticator apps and passkeys reported lost"
+    Restoring an older backup brings back the authenticator apps and
+    passkeys removed since the backup was taken, so a lost phone or key
+    works again. The restore's last line says so. After a restore, remove
+    again every authenticator app and passkey reported lost after the
+    backup's date (People → person → Sign-in; the Hub's audit is restored to
+    the same point, so it can't tell you which).
 
 !!! warning "Restore LLDAP before Keycloak runs"
     Never start the stack with an empty or wrong LLDAP database over a Keycloak

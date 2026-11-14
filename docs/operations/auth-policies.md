@@ -32,8 +32,10 @@ have it set up. A method that is off is never offered and never accepted, and
 people can't set it up. You can't switch off a method an enabled template
 needs, i.e. one without which the template would have no way in left: the
 dialog lists the templates and what uses them (the default, apps, core
-pages). Change those first. The browser certificate and the authenticator
-app start off; switch them on when you want people to be able to set them up.
+pages). Change those first. Only the passkey kinds, the security key and
+the YubiKey certificate start on; every other method (the password, the
+browser certificate, the authenticator app, and any method added later)
+starts off: switch it on when you want people to be able to set it up.
 
 Some template entries name a **family** of methods: *Passkey (any kind)*,
 *YubiKey (touch or certificate)* and *Certificate (YubiKey or browser)*. A
@@ -360,9 +362,9 @@ certificate, and signing in with it gives amr `file`, never `mtls`.
 2. On the Sign-in page the person picks **Create**, chooses a lifetime (from
    1 day up to the limit, 30 days by default; the default is the limit) and
    confirms with a fresh sign-in in a popup. That sign-in must be a passkey
-   or YubiKey method the people page's template accepts: a password, an
-   authenticator code or another browser certificate never creates a
-   certificate. If the template
+   or YubiKey method the people page's template accepts: only those
+   methods can create a certificate, never a password, an authenticator
+   code or another browser certificate. If the template
    accepts nothing else, the page says "creating a certificate needs a
    passkey or YubiKey sign-in that people.&lt;domain&gt; accepts".
 3. The page offers the download (`<user>-browser-certificate-<YYYYMMDD>.p12`)
@@ -651,8 +653,8 @@ never counts.
 | Approving a companion's confirmation (people.&lt;domain&gt;) | the companion's app's template |
 | Approving a Portcullis people tool's confirmation (people.&lt;domain&gt;) | the `people` core page's template |
 | Approving an admin tool's confirmation (hub.&lt;domain&gt;) | the `hub` core page's template |
-| Creating a browser certificate, issuing a YubiKey certificate | the `people` core page's template, but never with a password, a browser certificate or an authenticator code ([below](#browser-certificates)) |
-| Setting your own password on the Sign-in page | the `people` core page's template |
+| Creating a browser certificate, issuing a YubiKey certificate | the `people` core page's template, and only with a passkey (any kind), a security key or a YubiKey certificate: a password, a browser certificate, an authenticator code or any method added later never approves it ([below](#browser-certificates)) |
+| Setting your own password on the Sign-in page | the `people` core page's template; a passkey, security key or YubiKey certificate sets one, a password or an authenticator code only changes an existing one, anything else never |
 | Anything else that asks for a fresh sign-in | the `hub` core page's template (fail closed) |
 
 So with the core pages on Strong an admin confirmation needs the security key

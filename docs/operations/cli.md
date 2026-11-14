@@ -429,9 +429,10 @@ Keycloak database has some: then it stops with Postgres and Vault up
 see [Backups](backups.md#restore)). The backup's checksums are verified first.
 The current `.env`, `secrets/` and `certs/` are saved to
 `backups/pre-restore-<timestamp>/`.
-A successful restore ends with "Authenticator apps removed after this
-backup's date work again: remove the ones reported lost since then (People →
-person → Sign-in)." ([Backups](backups.md#restore)).
+A successful restore ends with a reminder that authenticator apps and
+passkeys removed after the backup's date work again, so the ones reported
+lost since then must be removed again on People → person → Sign-in
+([Backups](backups.md#restore)).
 
 `--from-offsite` restores `SNAPSHOT` (default: latest) from
 `BACKUP_REPOSITORY`. On a new host without `.env`, export `BACKUP_REPOSITORY`,
