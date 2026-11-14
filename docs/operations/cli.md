@@ -272,6 +272,21 @@ Prints a health overview:
   `✗ passkey policy: attestation none (wanted direct) — new passkeys can't be told apart; run ./portcullis keycloak configure`:
   with any other conveyance browsers send no attestation and every new
   passkey, a YubiKey included, counts as synced
+- Keycloak's authenticator-code policy, next to the passkey policy: the
+  realm OTP policy (HmacSHA1, 6 digits, 30 s, look-ahead 1, codes not
+  reusable, initial counter 0) and a 300 s `max_auth_age` on the
+  `CONFIGURE_TOTP` and `delete_credential` required actions. When they hold
+  the line reads
+  `authenticator codes: HmacSHA1, 6 digits, 30 s, one step of drift, no reuse; 5-minute sign-in to add or remove`;
+  otherwise it is a failing line naming each differing setting (run
+  `./portcullis keycloak configure`). `--json`: `keycloak.otp_policy`
+  `{ok, problems}`; `--textfile`: `portcullis_keycloak_otp_policy_ok`
+- the host clock: whether it is synchronised (`timedatectl show -p
+  NTPSynchronized`, else a `chronyc tracking` offset under 5 s), a warning
+  when it isn't, since authenticator codes fail when the server is more than
+  about 30 s off. `--json`: `system.clock_synced` (`true`, `false` or
+  `"unknown"`); `--textfile`: `portcullis_system_clock_synced` (absent when
+  unknown)
 - LLDAP and Traefik
 - containers on `portcullis-proxy` answering to a core service name or an AI
   companion name they don't own ([hardening](hardening.md#ai-support-mcp-gate))
@@ -446,6 +461,10 @@ Keycloak database has some: then it stops with Postgres and Vault up
 see [Backups](backups.md#restore)). The backup's checksums are verified first.
 The current `.env`, `secrets/` and `certs/` are saved to
 `backups/pre-restore-<timestamp>/`.
+A successful restore ends with a reminder that authenticator apps and
+passkeys removed after the backup's date work again, so the ones reported
+lost since then must be removed again on People → person → Sign-in
+([Backups](backups.md#restore)).
 
 `--from-offsite` restores `SNAPSHOT` (default: latest) from
 `BACKUP_REPOSITORY`. On a new host without `.env`, export `BACKUP_REPOSITORY`,
@@ -735,6 +754,7 @@ admin API on `127.0.0.1:8080` (override with `KEYCLOAK_URL`):
 - offline sessions at most 30 days idle / 90 days total (the Hub sets shorter values on its AI clients); refresh-token rotation off
 - rebuilds every top-level flow of the file whose tree changed: the browser flow with the sign-in extension's methods and template check ([Sign-in flows](auth-policies.md#sign-in-flows-in-keycloak)), the invite identity provider's first-login and post-login flows
 - keeps `webauthn-register-passwordless` enabled and the two-factor `webauthn-register` disabled
+- pushes the realm OTP policy for [authenticator apps](auth-policies.md#authenticator-app) (`totp`, `HmacSHA1`, 6 digits, 30 s, look-ahead 1, codes not reusable, initial counter 0), registers the `CONFIGURE_TOTP` and `delete_credential` required actions when the realm lacks them, enables them and sets their `max_auth_age` to 300 s, then reads everything back and fails on any difference
 - the invite identity provider `portcullis-invite` (enroll; URLs and client secret from `secrets/enroll/invite-client-secret`) and the service-account client `portcullis-enroll` (view-users, manage-users)
 - `lldap_admin` = realm-admin of the `portcullis` realm (realm console)
 - pushes each certificate step's settings from the file onto its `portcullis-x509` execution, by alias: `x509-config` (YubiKey certificate, Vault's `pki_int` CRLs) and `x509-browser-config` (browser certificate, `pki_file` CRLs), with trust re-validation and the `clientAuth` EKU
@@ -784,7 +804,7 @@ refuses invites for `admin`; only the server can issue them.
 |--------|---------|
 | `--ttl DURATION` | Go duration, e.g. `30m`, `24h` |
 | `--to` | Where to land afterwards: `hub` (`https://hub.<domain>/`), `portal` (`https://<domain>/`, default) or an https URL on the domain |
-| `--replace-keys` | Lost or stolen key: first delete all of the user's passkeys and security keys in Keycloak (every passkey kind: synced, device-bound and security key) and sign them out everywhere. Without it the new key is added next to the old ones (a spare key) |
+| `--replace-keys` | Lost devices: first delete all of the user's passkeys, security keys and authenticator apps in Keycloak (every passkey kind: synced, device-bound and security key, and every `otp` credential) and sign them out everywhere. Without it the new key is added next to the old ones (a spare key) |
 | `--json` | Print enroll's JSON (`{"url","expires_at"}`) |
 
 ---
