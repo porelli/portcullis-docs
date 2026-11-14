@@ -140,3 +140,18 @@
 *[device binding]: group-gate's VPN check: the client's VPN address must be a current device of its provider, owned by the signed-in person
 *[public set]: What stays on the internet in VPN server mode: the HTTP redirect, VPN UDP ports, VPN control routers, opted-in public links and (with public enrolment) the sign-in and enrolment pages
 *[people role]: The wg service's built-in WireGuard VPN for people (UDP 51820, tunnel 10.213.0.0/22, split tunnel to Portcullis only)
+*[k3s]: A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)
+*[ServiceLB]: k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node
+*[PSA]: Pod Security Admission: Kubernetes's built-in pod security levels (privileged, baseline, restricted) per namespace
+*[PVC]: PersistentVolumeClaim: a Kubernetes volume; Portcullis's take their owner, group and mode from annotations
+*[PVCs]: PersistentVolumeClaims: Kubernetes volumes; Portcullis's take their owner, group and mode from annotations
+*[NetworkPolicy]: A Kubernetes rule that says which pods may connect to which pods and ports
+*[NetworkPolicies]: Kubernetes rules that say which pods may connect to which pods and ports
+*[IngressRoute]: Traefik's Kubernetes object for one router (rule, entrypoints, middlewares, TLS options)
+*[IngressRoutes]: Traefik's Kubernetes objects, one per router (rule, entrypoints, middlewares, TLS options)
+*[helper pod]: A short-lived pod from the Hub's own image that copies a volume or runs the folder fixer over exec; no network, no token
+*[helper pods]: Short-lived pods from the Hub's own image that copy volumes or run the folder fixer over exec; no network, no token
+*[admission self-test]: The Hub's dry run of a forbidden pod and deployment: it must be denied by a portcullis-apps-guard binding, or every runtime operation is refused
+*[cluster guard]: The Hub's checks on Kubernetes (namespace, exact Role, admission self-test, NetworkPolicy probe); until they hold every runtime operation answers 503
+*[Kubernetes baseline]: The capabilities an app may add on Kubernetes: AUDIT_WRITE, CHOWN, DAC_OVERRIDE, FOWNER, FSETID, KILL, MKNOD, NET_BIND_SERVICE, SETFCAP, SETGID, SETPCAP, SETUID, SYS_CHROOT
+*[forbidden roots]: Host paths no shared folder or path setting may touch: Docker's data root, or on Kubernetes the containerd root and the volume storage directory
