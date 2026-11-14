@@ -259,8 +259,13 @@ Prints a health overview:
   each cluster check that warns or fails ([Kubernetes → Install](kubernetes.md#install)).
   A failed required check is a failing line. Under Kubernetes status also
   fails while the NetworkPolicy probe isn't proven, an admission binding is
-  missing, or an app Service is named like a core one; `--json` adds
-  `netpol`, `netpol_proven_at`, `admission` and `kube_api_public`
+  missing, an app Service is named like a core one, or a Deployment of the
+  core or apps namespace is crashing (a container in `CrashLoopBackOff`,
+  `Error` or an image-pull backoff, or restarted in the last 10 minutes and
+  not ready again; the line names the `kubectl logs --previous` command; a
+  pod list it can't read fails closed); `--json` adds `netpol`,
+  `netpol_proven_at`, `admission`, `kube_api_public` and `crashing` (`null`
+  when the pods can't be read)
 - compose services
 - Vault: sealed/active, CA expiry (root, YubiKey certificate CA, browser certificate CA), issued certs (both mounts), and YubiKey and browser certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days (each person's newest of each kind; renewed or replaced on the Sign-in page)
 - Keycloak: realm, users, forward-auth client, and the passkey policy: the

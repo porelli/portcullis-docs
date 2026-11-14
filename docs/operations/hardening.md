@@ -562,7 +562,10 @@ policies and NetworkPolicies take their place. The full rules are in
 
 - **Traefik reads one namespace.** Its CRD provider lists every Secret of
   each namespace it watches, so it watches only `portcullis-edge`, which
-  holds the IngressRoutes and Middlewares and never a Secret. Its one
+  holds the IngressRoutes, the Middlewares and the apps' pinned
+  ExternalName Services, and never a Secret. Cross-namespace references are
+  off: an app's backend is an ExternalName Service in the edge namespace
+  pinned to exactly its own Service in the apps namespace. Its one
   read-only Role is there: nothing in the core or apps namespace, nothing
   cluster-scoped, no nodes. The CLI refuses to deploy while
   `portcullis-edge` holds a Secret.
@@ -570,7 +573,7 @@ policies and NetworkPolicies take their place. The full rules are in
   the apps namespace (workloads, Services, PVCs, ConfigMaps, Secrets,
   NetworkPolicies, pods without `patch` or `update`, `pods/log`,
   `pods/exec` `create` only, events) and one in `portcullis-edge`
-  (IngressRoutes and Middlewares only). There is nothing in the core
+  (IngressRoutes, Middlewares and Services only). There is nothing in the core
   namespace and nothing cluster-scoped. The Hub checks at start, every
   60 s and before every deploy that it holds exactly these rules, and
   refuses every runtime operation (`503`) while it holds more or less.
@@ -592,11 +595,15 @@ policies and NetworkPolicies take their place. The full rules are in
     - in `portcullis-edge`, for every identity but the CLI's: objects
       other than the Hub's IngressRoutes and Middlewares (`owner: hub`,
       written only by the Hub's ServiceAccount; core's `owner: core`
-      objects can't be changed), entrypoints other than `websecure` and
+      objects can't be changed), a Service other than the pinned
+      ExternalName shape (`<instance>--<svc>` →
+      `<instance>--<svc>.portcullis-apps.svc.cluster.local`, no selector,
+      address or load balancer, `tcp-<port>` ports), entrypoints other than `websecure` and
       `vpnsecure`, a VPN-only instance's route off `vpnsecure`, a route
       match other than `Host(…)` with an optional path, a route on a core
       hostname, a priority above core's, a route without TLS, a service
-      outside the apps namespace or the three core services, a core
+      other than the instance's own edge Service or the three core
+      services, a core
       Middleware or any `@file` name outside the allowlist, TLS options
       outside the four tiers, a TLS secret or store, `forwardAuth` and
       other Middleware types outside the Hub's allowlist, and an

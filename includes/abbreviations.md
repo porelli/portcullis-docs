@@ -156,5 +156,5 @@
 *[cluster guard]: The Hub's checks on Kubernetes (apps namespace, exact Role, admission self-test, NetworkPolicy probe) at start, every 60 s and before every deploy; until they hold every runtime operation answers 503
 *[Kubernetes baseline]: The capabilities an app may add on Kubernetes: AUDIT_WRITE, CHOWN, DAC_OVERRIDE, FOWNER, FSETID, KILL, MKNOD, NET_BIND_SERVICE, SETFCAP, SETGID, SETPCAP, SETUID, SYS_CHROOT
 *[forbidden roots]: Host paths no shared folder or path setting may touch: Docker's data root, or on Kubernetes the containerd root and the volume storage directory
-*[edge namespace]: portcullis-edge on Kubernetes: the only namespace Traefik watches; it holds every IngressRoute and Middleware and never a Secret
+*[edge namespace]: portcullis-edge on Kubernetes: the only namespace Traefik watches; it holds every IngressRoute and Middleware and the apps' pinned ExternalName Services, never a Secret
 *[params generation]: The hash of the admission params on Kubernetes: each change gets new params and bindings, proved live before the old ones are removed

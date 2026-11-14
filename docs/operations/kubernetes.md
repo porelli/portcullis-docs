@@ -30,7 +30,7 @@ the cluster guard, the admission policies), §11.2 (object names), §11.10
 |-----------|-------|--------------------|
 | `portcullis` (`PORTCULLIS_NAMESPACE`) | core's services, its Secrets and ConfigMaps, the admission params | `restricted` |
 | `portcullis-apps` (`PORTCULLIS_APPS_NAMESPACE`) | the app instances' Deployments, Jobs, Services, PVCs, Secrets, ConfigMaps and NetworkPolicies, and the Hub's helper and probe pods | `enforce: privileged`, `warn` and `audit: baseline`; the admission policies enforce the baseline instead (built-in PSA can't allow `hostPath` under a prefix) |
-| `portcullis-edge` | every IngressRoute and Middleware, core's and the apps'. It is the only namespace Traefik watches, and it holds no Secret | `restricted` |
+| `portcullis-edge` | every IngressRoute and Middleware, core's and the apps', and the apps' pinned ExternalName Services. It is the only namespace Traefik watches, and it holds no Secret | `restricted` |
 | `portcullis-storage` | the volume provisioner and its helper pods | `enforce: privileged`, `warn` and `audit: baseline`, plus core's own admission policy `portcullis-storage-pods` |
 
 Portcullis never adopts a namespace it didn't create. Each one carries the
@@ -175,8 +175,13 @@ The commands are the same as on Docker:
 - **`upgrade`** works as on Docker, with the release applied again.
 - **`status`** prints `runtime: kubernetes <version> (context <ctx>)`, the
   host checks' warnings and failures, and the core pods. It fails while the
-  NetworkPolicy probe isn't proven, an admission binding is missing, or an
-  app Service has a core Service's name.
+  NetworkPolicy probe isn't proven, an admission binding is missing, an
+  app Service has a core Service's name, or a Deployment of the core or
+  apps namespace is crashing: a container waiting in `CrashLoopBackOff`,
+  `Error` or an image-pull backoff, or restarted in the last 10 minutes and
+  not ready again (`kubernetes: <ns>/<deployment> is crashing (<reason>,
+  <n> restarts): kubectl -n <ns> logs deploy/<deployment> --previous`). A
+  pod list it can't read fails closed.
 - The CLI reaches Vault and Keycloak through `kubectl port-forward` on the
   server's loopback. `lldap-ui` is a port-forward to LLDAP's UI.
 
@@ -219,6 +224,13 @@ How the parts of an instance map:
 - **Routes**: the Hub renders an instance's Traefik labels as on Docker and
   converts them into IngressRoutes and Middlewares in `portcullis-edge`.
   App routes are on `websecure` or `vpnsecure` only.
+- **Backends**: Traefik can't read the apps namespace, so for each Service
+  a route uses the Hub writes an ExternalName Service `<instance>--<svc>`
+  in `portcullis-edge`, pointing at exactly
+  `<instance>--<svc>.portcullis-apps.svc.cluster.local`, the instance's own
+  Service there. Routes name it without a namespace: Traefik runs with
+  cross-namespace references off, ExternalName Services on and safe naming
+  on, and the edge admission policy admits only that exact shape.
 - **Isolation**: each instance gets its own NetworkPolicies (deny by
   default). Routed ports admit only Traefik, an AI companion's port only
   `mcp-gate`, and egress to the internet excludes the cluster's networks
@@ -226,11 +238,9 @@ How the parts of an instance map:
 - **Backups** in the Hub work as on Docker: the Hub copies a volume
   through a short-lived helper pod and streams it over `exec`.
 
-!!! info "Routing of app Services across namespaces is being finalised"
-    An app's IngressRoutes live in `portcullis-edge` and name its Services
-    in `portcullis-apps`, while Traefik watches only `portcullis-edge`.
-    How Traefik reaches those Services is being confirmed on a live
-    cluster. Until it is, treat routed apps on Kubernetes as unverified.
+- **Instance ids** may not contain `--` (on every runtime): it separates
+  an instance from its objects' names, so another instance's names could
+  otherwise equal this one's.
 
 ## The cluster guard
 
