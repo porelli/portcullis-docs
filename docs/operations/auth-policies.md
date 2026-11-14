@@ -663,8 +663,9 @@ passkey or the YubiKey certificate approves; an app on a password-only
 template is confirmed by typing the password again; a template that needs a
 security key and a password (`all[security_key, password]`) is confirmed with
 the security key — the password alone never is. Under *Password +
-authenticator code* the confirmation is one typed code (the popup asks only
-for it), and a password alone is refused. A template that is
+authenticator code* the confirmation is your password (or key), then a code:
+the popup asks for your primary method first, then the code, because a code
+is never the only proof. A password alone is refused. A template that is
 disabled, gone or can't be met refuses.
 
 ## Traefik TLS tier

@@ -761,7 +761,8 @@ never printed, written or captured. The cases:
 - `wrong_code_failed` (history "wrong authenticator code", brute-force count
   1), `replay_refused`, `window` (`at(now − 30)` accepted, `at(now − 90)`
   refused);
-- `fresh_one_code` (the confirmation popup with `pc_method=totp`; a
+- `fresh_one_code` (the confirmation popup with `pc_method=totp` asks for the
+  password, then a code, and approves; a
   password-only fresh sign-in `403`);
 - `replace_rename_remove`, `fourth_refused`;
 - `carol_removes_alice` (`sign_in_help`), `root_impersonating_pat` (can't
