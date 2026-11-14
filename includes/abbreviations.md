@@ -149,9 +149,9 @@
 *[NetworkPolicies]: Kubernetes rules that say which pods may connect to which pods and ports
 *[IngressRoute]: Traefik's Kubernetes object for one router (rule, entrypoints, middlewares, TLS options)
 *[IngressRoutes]: Traefik's Kubernetes objects, one per router (rule, entrypoints, middlewares, TLS options)
-*[helper pod]: A short-lived pod from the Hub's own image that copies a volume or runs the folder fixer over exec; no network, no token
-*[helper pods]: Short-lived pods from the Hub's own image that copy volumes or run the folder fixer over exec; no network, no token
-*[admission self-test]: The Hub's dry run of a forbidden pod and deployment: it must be denied by a portcullis-apps-guard binding, or every runtime operation is refused
-*[cluster guard]: The Hub's checks on Kubernetes (namespace, exact Role, admission self-test, NetworkPolicy probe); until they hold every runtime operation answers 503
+*[helper pod]: A short-lived pod from the Hub's own image that copies a volume or runs the folder fixer over exec; no network (except the NetworkPolicy probe's pods), no token
+*[helper pods]: Short-lived pods from the Hub's own image that copy volumes or run the folder fixer over exec; no network (except the NetworkPolicy probe's pods), no token
+*[admission self-test]: The Hub's dry run of one forbidden object per admission binding: each must be denied by its own portcullis-apps-guard binding, or every runtime operation is refused
+*[cluster guard]: The Hub's checks on Kubernetes (apps namespace, exact Role, admission self-test, NetworkPolicy probe) at start, every 60 s and before every deploy; until they hold every runtime operation answers 503
 *[Kubernetes baseline]: The capabilities an app may add on Kubernetes: AUDIT_WRITE, CHOWN, DAC_OVERRIDE, FOWNER, FSETID, KILL, MKNOD, NET_BIND_SERVICE, SETFCAP, SETGID, SETPCAP, SETUID, SYS_CHROOT
 *[forbidden roots]: Host paths no shared folder or path setting may touch: Docker's data root, or on Kubernetes the containerd root and the volume storage directory
