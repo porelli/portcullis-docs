@@ -588,7 +588,7 @@ ACME account exists but can't be read, it warns and shows the CA-only pin.
 ### dns setup
 
 ```
-portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail]
+portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail|mail]
 ```
 
 Shows the plan, asks to apply it (`--yes`: don't ask; required without a
@@ -638,10 +638,14 @@ the variable (never its value).
 |--------|---------|
 | `--yes` | Apply without asking |
 | `--dnssec` | Also turn on DNSSEC signing (the whole zone; `cloudflare` only; others print the steps). Signing is never turned off |
-| `--only SET` | Apply one record set: `address`, `caa` or `nomail` |
+| `--only SET` | Apply one record set: `address`, `caa`, `nomail` or `mail` (the mail server's records; mail must be on and mailctl answering) |
 
 Without `--only` it applies `address` and `caa`, plus `nomail` with
-`DNS_NOMAIL=true`. With `DNS_CAA=false` the `caa` step removes the CAA
+`DNS_NOMAIL=true`, plus `mail` while the mail server is on: `dns plan`,
+`dns setup` and `mail rotate` read the main domain's mail records from
+mailctl (`mailctl dns --main --json`) and pass them to the dns tool on its
+stdin with `MAIL_HOSTNAME` (if mailctl doesn't answer, `plan` / `setup`
+leave the mail set out with a warning; `--only mail` is refused). With `DNS_CAA=false` the `caa` step removes the CAA
 entries Portcullis wrote. If Traefik's ACME account can't be read, the live
 CAA is left alone (`--only caa` is refused). There is no `--check` option:
 use `dns check`.
