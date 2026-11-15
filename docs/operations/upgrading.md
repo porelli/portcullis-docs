@@ -288,6 +288,10 @@ the same notes in its `CHANGELOG.md`.
 - The Hub refuses to start without `HUB_CONTAINER_RUNTIME`, which core's
   compose sets from `CONTAINER_RUNTIME`: upgrade the Hub and core together.
 
+### Kubernetes support (Hub, core, templates)
+
+- Postgres's health start period is now 300 s on every runtime, so a Postgres that has really failed is reported unhealthy later (after up to five minutes instead of one).
+
 ## Changing settings during an upgrade
 
 | You changed | Run |
