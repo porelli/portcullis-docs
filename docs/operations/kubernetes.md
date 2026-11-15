@@ -125,10 +125,10 @@ They check:
 
 - `kubectl` and `helm` are present, the context exists and the cluster answers;
 - Kubernetes 1.32 or later;
-- k3s's flags (read from the node's `k3s.io/node-args`): `--secrets-encryption`, `--disable=traefik`, no `--disable-network-policy`, ServiceLB on;
+- k3s's flags (read from the node's `k3s.io/node-args`): `--secrets-encryption`, `--disable=traefik`, no `--disable-network-policy`, ServiceLB on. On k3s, node-args it can't read fail the check; on another distribution they only warn;
 - the kubelet's `podPidsLimit` is 1024;
 - IPv4 single-stack with one pod CIDR and one service CIDR, the same as `.env`;
-- the three fixed ClusterIPs are inside the static band and not taken by another Service;
+- the three fixed ClusterIPs are inside the static band and not taken by another Service (a Services list it can't read fails);
 - the four namespaces are absent or this install's;
 - AppArmor: `kernel.apparmor_restrict_unprivileged_unconfined` isn't `1`
   while AppArmor is on and containerd's profile is loaded
@@ -139,6 +139,12 @@ They check:
 Two more checks only warn: client addresses (a public address that is
 local but not published by ServiceLB suggests `--node-external-ip=<pub>`),
 and ports 6443 or 10250 answering on the public address.
+
+`init` writes the default namespaces. To use other ones, run
+`init --env-only --runtime kubernetes --kube-context <ctx>` first, change
+`PORTCULLIS_NAMESPACE` or `PORTCULLIS_APPS_NAMESPACE` in `.env`, then run
+`init`: the admission bindings follow the apps namespace. The edge and
+storage namespaces are fixed.
 
 Then comes the **cluster setup**, idempotent and server-side:
 
@@ -161,7 +167,8 @@ NetworkPolicies**: its probe pods, in the namespace
 the probe passes, nothing is deployed (`NetworkPolicy enforcement isn't
 proven (see above): nothing is deployed`). Finally `init` installs the
 release and runs the usual steps: Vault, PKI, Keycloak, OIDC clients and
-the Hub.
+the Hub. Last, it installs **`portcullis-kube-check.timer`**, which
+refreshes the cluster check every 6 hours ([Day to day](#day-to-day)).
 
 **Images.** With `PORTCULLIS_KUBE_IMAGES=registry` (the default) every
 image is resolved to a digest before anything is deployed, and the release
@@ -181,6 +188,14 @@ The commands are the same as on Docker:
   the **cluster check** the Hub reads (the ConfigMap
   `portcullis-cluster-check`: the apps namespace's PSA labels and the six
   admission bindings).
+- **The cluster check expires.** The Hub refuses every runtime operation
+  once the check is more than 24 hours old. `init` installs
+  `portcullis-kube-check.timer` (system units, every 6 hours, after
+  `k3s.service` when this host runs k3s), which runs
+  [`./portcullis kube check`](cli.md#kube-check). Check it with
+  `systemctl list-timers portcullis-kube-check.timer`. Without systemd,
+  `init` warns: run `./portcullis kube check` from cron at least every
+  20 hours.
 - **`down`** scales every Deployment of the core and apps namespaces to 0.
   It never runs `helm uninstall`: the release, its PVCs and its Secrets
   stay.
@@ -193,7 +208,8 @@ The commands are the same as on Docker:
   `Error` or an image-pull backoff, or restarted in the last 10 minutes and
   not ready again (`kubernetes: <ns>/<deployment> is crashing (<reason>,
   <n> restarts): kubectl -n <ns> logs deploy/<deployment> --previous`). A
-  pod list it can't read fails closed.
+  pod list it can't read fails closed. It also warns once the cluster check
+  is 20 hours old, and fails when it is missing, failed or 24 hours old.
 - The CLI reaches Vault and Keycloak through `kubectl port-forward` on the
   server's loopback. `lldap-ui` is a port-forward to LLDAP's UI.
 
@@ -227,7 +243,11 @@ How the parts of an instance map:
 - **Template files** become one ConfigMap per instance,
   `<instance>--tpl-<hash>`, mounted read-only.
 - **Shared folders** are `hostPath` mounts, only under the bind roots
-  (`HUB_OVERRIDE_BIND_ROOTS`).
+  (`HUB_OVERRIDE_BIND_ROOTS`). A pod with a host path runs non-root: every
+  container needs a numeric user above 0, a group above 0 (never group 0,
+  also not as `fsGroup` or a supplemental group) and no privilege
+  escalation, so a service that binds a shared folder needs a numeric
+  non-root `user:`.
 - **Published ports** are `LoadBalancer` Services on ServiceLB, with
   `externalTrafficPolicy: Local` and no node port. A **LAN only** port gets
   source ranges from the Local networks' IPv4 entries, and no Service at

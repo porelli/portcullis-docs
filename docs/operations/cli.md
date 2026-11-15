@@ -76,6 +76,7 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`vpn add-device`](#vpn-add-device) | Make a built-in VPN device for a person (config + QR, shown once) |
 | | [`vpn devices`](#vpn-devices) | List VPN devices of every provider |
 | | [`vpn revoke`](#vpn-revoke) | Remove a built-in VPN device |
+| Kubernetes | [`kube check`](#kube-check) | Refresh the cluster check the Hub reads (`init`'s timer: every 6 h) |
 
 ---
 
@@ -263,7 +264,9 @@ Prints a health overview:
   core or apps namespace is crashing (a container in `CrashLoopBackOff`,
   `Error` or an image-pull backoff, or restarted in the last 10 minutes and
   not ready again; the line names the `kubectl logs --previous` command; a
-  pod list it can't read fails closed); `--json` adds `netpol`,
+  pod list it can't read fails closed). It also reports the cluster check
+  the Hub reads ([`kube check`](#kube-check)): a warning once it is 20 h
+  old, and a failing line when it is missing, failed or 24 h old; `--json` adds `netpol`,
   `netpol_proven_at`, `admission`, `kube_api_public` and `crashing` (`null`
   when the pods can't be read)
 - compose services
@@ -1089,3 +1092,28 @@ portcullis vpn revoke <device-id>
 Removes a built-in VPN device; `wg` drops its peer at once and closes its
 open connections. Its address is quarantined for 7 days. Marketplace devices
 are removed in their app.
+
+## Kubernetes
+
+### kube check
+
+```
+portcullis kube check
+```
+
+Kubernetes only ([Kubernetes](kubernetes.md), experimental). Re-checks the
+apps namespace's Pod Security labels and the six admission bindings, and
+writes the result into the ConfigMap `portcullis-cluster-check`
+(`checked_at`, `ok`, `why`), which the Hub reads. The Hub refuses every
+runtime operation while the check failed or is more than 24 h old. `up`
+writes it too.
+
+`init` installs `portcullis-kube-check.timer`, which runs this every 6 h
+(system units in `/etc/systemd/system`, as root or through `sudo`; the
+service runs as the operator and, when this host runs k3s, after and
+requiring `k3s.service`). Without systemd, or when the install fails,
+`init` warns and prints the manual steps: then run `kube check` at least
+every 20 h yourself. [`status`](#status) warns once the check is 20 h old.
+
+Exit status: 0 the check passed, 1 it failed (the reason is printed and
+recorded for the Hub). On another runtime it exits 1.

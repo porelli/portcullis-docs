@@ -584,28 +584,39 @@ policies and NetworkPolicies take their place. The full rules are in
       namespaces, `hostPort`, capabilities outside the
       [Kubernetes baseline](../guides/integration-contracts.md#34-compose-on-kubernetes-new-kubernetes),
       unconfined seccomp or AppArmor, SELinux options, sysctls), a
-      `hostPath` outside the bind roots, a ServiceAccount token, a
+      `hostPath` outside the bind roots, a pod with any `hostPath` (the
+      Hub's helpers aside) unless every container is provably non-root with
+      a group above 0 and no privilege escalation (and no `fsGroup` or
+      supplemental group 0), a ServiceAccount token, a
       Secret, ConfigMap or PVC that isn't the pod's own instance's
       (`<instance>--…`), helper and probe pods that aren't the Hub's own
       image and shape, NodePort, ExternalName and `externalIPs` Services,
       node ports, a LoadBalancer on a core port, a clusterIP in the core
-      Services' static band, and every NetworkPolicy peer the Hub doesn't
-      generate;
+      Services' static band, every NetworkPolicy peer the Hub doesn't
+      generate, a claim of another StorageClass than `portcullis-apps`
+      (or with `volumeName`, a data source, a foreign name or a 4-digit
+      mode), and any change or delete of a NetworkPolicy, Service or Secret
+      that isn't the Hub's own (`owner: hub`, an instance label; for
+      NetworkPolicies an instance selector). So the Hub can't delete or
+      rewrite the chart's `default-deny`;
     - every Traefik object in the apps namespace;
     - in `portcullis-edge`, for every identity but the CLI's: objects
       other than the Hub's IngressRoutes and Middlewares (`owner: hub`,
       written only by the Hub's ServiceAccount; core's `owner: core`
-      objects can't be changed), a Service other than the pinned
+      objects can't be changed; a Middleware named `<instance>--<name>`
+      after its own instance label), a Service other than the pinned
       ExternalName shape (`<instance>--<svc>` →
       `<instance>--<svc>.portcullis-apps.svc.cluster.local`, no selector,
       address or load balancer, `tcp-<port>` ports), entrypoints other than `websecure` and
       `vpnsecure`, a VPN-only instance's route off `vpnsecure`, a route
-      match other than `Host(…)` with an optional path, a route on a core
+      match other than `Host(…)` with an optional path, `parentRefs`
+      (which would attach a route under another IngressRoute, core's
+      included), `ingressClassName`, a route syntax other than `v3`, a route on a core
       hostname, a priority above core's, a route without TLS, a service
       other than the instance's own edge Service or the three core
       services, a core
       Middleware or any `@file` name outside the allowlist, TLS options
-      outside the four tiers, a TLS secret or store, `forwardAuth` and
+      outside the four tiers, `tls.domains`, a TLS secret or store, `forwardAuth` and
       other Middleware types outside the Hub's allowlist, and an
       `X-Portcullis-*` header.
 
