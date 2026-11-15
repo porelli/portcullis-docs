@@ -387,6 +387,44 @@ Provider control routers stay public in every mode, so marketplace clients
 can always reconnect, and `./portcullis vpn add-device` on the host can
 always make a built-in device for an administrator.
 
+## Kubernetes
+
+On [Kubernetes](kubernetes.md) (experimental) the VPN works with the same
+commands, settings, modes and `vpn.json`. What changes is how the roles
+are kept apart:
+
+- **One `wg` pod** in the core namespace, only while `COMPOSE_PROFILES`
+  contains `wg` (`vpn init` adds it): uid 10006, PSA `restricted`, the
+  userspace network stack and no capabilities. Every role listens on the
+  pod's own address.
+- **NetworkPolicies instead of networks.** Each gateway's edge port
+  (`9001 + slot`) admits only that wired provider's gateway pod; Traefik's
+  `vpnsecure` port admits only `wg`; the metrics port only Prometheus.
+  Nothing else reaches `wg`, and the Kubernetes API is never reachable
+  through it.
+- **Services.** The built-in VPN's port (`PORTCULLIS_VPN_PORT`, default
+  51820/udp) is the LoadBalancer Service `wg-people`, published on the node
+  by ServiceLB. Gateways reach the edge at `wg-edge` and `wg` reaches
+  Traefik at `traefik-vpn`, both fixed ClusterIPs.
+- **Gateways.** The Hub labels a wired provider's gateway pod with its
+  slot and writes the pod's current address into `vpn.json`, again
+  whenever the pod moves. A gateway pod that isn't ready is left out, so
+  its port is closed until the Hub sees the new pod.
+- **Reserved ranges.** The pod and service CIDRs and the node addresses
+  are reserved: a built-in subnet or a provider range that overlaps them
+  is refused.
+- **The CLI.** `vpn init`, `vpn add-device` and the other commands run
+  their steps by `exec` in the `wg` and Hub pods; private keys still never
+  reach a command line or a file other than `secrets/wg/people.key`.
+  `vpn mode apps` remains the break-glass, also with the Hub scaled to 0.
+- **Marketplace gateways** that need TUN or `NET_ADMIN` (NetBird,
+  WireGuard servers) are refused on Kubernetes; the Headscale gateway
+  runs in userspace, but the Headscale template itself isn't available
+  there yet ([Kubernetes → Apps](kubernetes.md#apps-on-kubernetes)).
+
+The details are in
+[contract §16.1](../guides/integration-contracts.md#161-on-kubernetes-new-kubernetes).
+
 ## What isn't covered
 
 - **Not a general-purpose VPN.** The built-in VPN gives no LAN access, no
@@ -400,4 +438,5 @@ always make a built-in device for an administrator.
 - **Marketplace VPN instances on another server**: a provider runs on this
   server. Server-to-server tunnels (the reserved `link` role, UDP 51821,
   `10.214.0.0/24`) aren't built yet.
-- **Kubernetes**: not supported yet.
+- **On Kubernetes**: the `link` role, and VPN-only access to the Kubernetes
+  API itself ([below](#kubernetes)).

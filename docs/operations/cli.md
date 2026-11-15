@@ -23,14 +23,17 @@ the core checkout: `./portcullis`. There are no other scripts.
   environment or a hidden prompt. The Vault admin token comes from `VAULT_TOKEN`
   or from `secrets/vault-init.json`.
 - **The container runtime is fixed at `init`.** `.env` says
-  `CONTAINER_RUNTIME=docker` or `CONTAINER_RUNTIME=podman`
-  ([Rootless Podman](rootless-podman.md)). Every command that talks to the
+  `CONTAINER_RUNTIME=docker`, `CONTAINER_RUNTIME=podman`
+  ([Rootless Podman](rootless-podman.md)) or `CONTAINER_RUNTIME=kubernetes`
+  ([Kubernetes](kubernetes.md), experimental). Every command that talks to the
   engine refuses to run while it is missing or empty, naming the variable,
   and fails when the engine that answers contradicts it (for example a
   `DOCKER_HOST` that points at Podman on a Docker install). `init` writes it;
   no other command ever adds or changes it. Under Podman the CLI points the
   Docker CLI at the operator's Podman socket itself, so every command below
-  works the same on both runtimes.
+  works the same on both runtimes. Under Kubernetes every `kubectl` and
+  `helm` call names `PORTCULLIS_KUBE_CONTEXT` from `.env`: the current
+  context is never used.
 - **Every setup step is idempotent.** `init`, `upgrade`, `vault init`,
   `pki setup`, `keycloak configure` and `oidc register` can be re-run safely.
 
@@ -73,6 +76,7 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`vpn add-device`](#vpn-add-device) | Make a built-in VPN device for a person (config + QR, shown once) |
 | | [`vpn devices`](#vpn-devices) | List VPN devices of every provider |
 | | [`vpn revoke`](#vpn-revoke) | Remove a built-in VPN device |
+| Kubernetes | [`kube check`](#kube-check) | Refresh the cluster check the Hub reads (`init`'s timer: every 6 h) |
 
 ---
 
@@ -82,7 +86,8 @@ the core checkout: `./portcullis`. There are no other scripts.
 
 ```
 portcullis init [--domain DOMAIN] [--email EMAIL] [--dns-provider NAME]
-                [--runtime docker|podman] [--non-interactive] [--env-only]
+                [--runtime docker|podman|kubernetes] [--kube-context CTX]
+                [--non-interactive] [--env-only]
                 [--skip-dns] [--no-config-repo]
 ```
 
@@ -124,6 +129,15 @@ When both answer, Docker wins unless you pass `--runtime podman`. Podman as
 root is refused: only rootless Podman is supported. `--env-only` with no
 `--runtime`, no `CONTAINER_RUNTIME` in the environment and no engine
 answering is refused (`no container engine answers: pass --runtime docker|podman`).
+`kubernetes` is never detected: name it with `--runtime kubernetes` and
+`--kube-context <ctx>` (required; `--kube-context` without
+`--runtime kubernetes` is refused). `init` then detects the cluster's pod
+and service CIDRs and API endpoints, refuses a dual-stack or IPv6 cluster,
+and writes the `PORTCULLIS_KUBE_*`, namespace, CIDR and fixed ClusterIP keys
+([Kubernetes → Install](kubernetes.md#install)). An existing `.env` can't
+become a Kubernetes one (`CONTAINER_RUNTIME=kubernetes needs a fresh .env`),
+and on a Kubernetes `.env` a different `--kube-context` is refused: edit
+`PORTCULLIS_KUBE_CONTEXT` there.
 An existing `.env` without the key gets the detected value, with an info line.
 An existing `.env` with the other runtime is refused: the runtime is never
 switched (backup → fresh `init` → `restore`, see
@@ -131,14 +145,18 @@ switched (backup → fresh `init` → `restore`, see
 
 Under Podman, `init`, `up`, `upgrade` and `restore` first run the host
 checks of [Rootless Podman → Host preparation](rootless-podman.md#host-preparation)
-and refuse while a required one fails, listing every failure.
+and refuse while a required one fails, listing every failure. Under
+Kubernetes they run the cluster checks of
+[Kubernetes → Install](kubernetes.md#install) the same way, then the
+cluster setup and the NetworkPolicy probe, before anything is deployed.
 
 | Option | Meaning |
 |--------|---------|
 | `--domain DOMAIN` | Base domain (default: `$PORTCULLIS_DOMAIN`, otherwise a prompt) |
 | `--email EMAIL` | Let's Encrypt account email (default: `admin@DOMAIN`) |
 | `--dns-provider NAME` | `cloudflare`, `porkbun`, `route53`, `digitalocean`, `hetzner`, `hetzner-cloud`, `none`, or another lego provider name (default: `cloudflare`) |
-| `--runtime docker\|podman` | Container runtime, written to `.env` as `CONTAINER_RUNTIME` and never changed afterwards (default: detected, see above) |
+| `--runtime docker\|podman\|kubernetes` | Container runtime, written to `.env` as `CONTAINER_RUNTIME` and never changed afterwards (default: detected, see above; `kubernetes` is never detected) |
+| `--kube-context CTX` | The kubeconfig context of the cluster: required with `--runtime kubernetes`, written to `.env` as `PORTCULLIS_KUBE_CONTEXT` |
 | `--non-interactive` | Never prompt. DNS credentials must be in the environment (e.g. `CLOUDFLARE_API_TOKEN=...`) |
 | `--env-only` | Only write or complete `.env`, then stop |
 | `--skip-dns` | Do not create DNS records |
@@ -159,7 +177,12 @@ network settings, creates the bind-mount sources, and rebuilds
 for vault, postgres, lldap and keycloak to be healthy. Vault unseals itself on
 start. Under Podman it builds core's local images with `podman build` first
 and runs `docker compose up -d --no-build`, so nothing reaches the engine's
-build endpoint (the socket proxies deny it).
+build endpoint (the socket proxies deny it). Under Kubernetes it resolves
+every image to a digest, syncs `.env`, the secrets and the config files into
+Secrets and ConfigMaps, re-runs the cluster setup and the NetworkPolicy
+probe, runs `helm upgrade --install --wait` (up to 10 minutes) and then
+writes the cluster check the Hub reads
+([Kubernetes → Day to day](kubernetes.md#day-to-day)).
 
 Then it reads Traefik's ACME account URI (a helper container with the ACME
 volume read-only and no network prints only the URI), writes it to
@@ -194,7 +217,9 @@ portcullis down
 
 Stops and removes the core containers (`docker compose down`). Volumes and
 `secrets/` are kept. Apps enabled in the Hub run as their own compose projects
-and are not touched.
+and are not touched. Under Kubernetes it scales every Deployment of the core
+and apps namespaces to 0, apps included; the release, its PVCs and its
+Secrets stay (never `helm uninstall`).
 
 ### upgrade
 
@@ -230,8 +255,20 @@ Prints a health overview:
 - the runtime: `runtime: docker <version>`, or under Podman
   `runtime: podman <version> rootless, uid <uid>, subuid <start>+<count>, ports ≥ <port start>`,
   followed under Podman by one line per host check
-  ([Rootless Podman → Host preparation](rootless-podman.md#host-preparation)).
-  A failed required check is a failing line
+  ([Rootless Podman → Host preparation](rootless-podman.md#host-preparation)),
+  or under Kubernetes `runtime: kubernetes <version> (context <ctx>)` and
+  each cluster check that warns or fails ([Kubernetes → Install](kubernetes.md#install)).
+  A failed required check is a failing line. Under Kubernetes status also
+  fails while the NetworkPolicy probe isn't proven, an admission binding is
+  missing, an app Service is named like a core one, or a Deployment of the
+  core or apps namespace is crashing (a container in `CrashLoopBackOff`,
+  `Error` or an image-pull backoff, or restarted in the last 10 minutes and
+  not ready again; the line names the `kubectl logs --previous` command; a
+  pod list it can't read fails closed). It also reports the cluster check
+  the Hub reads ([`kube check`](#kube-check)): a warning once it is 20 h
+  old, and a failing line when it is missing, failed or 24 h old; `--json` adds `netpol`,
+  `netpol_proven_at`, `admission`, `kube_api_public` and `crashing` (`null`
+  when the pods can't be read)
 - compose services
 - Vault: sealed/active, CA expiry (root, YubiKey certificate CA, browser certificate CA), issued certs (both mounts), and YubiKey and browser certificates expiring within `CERT_EXPIRY_WARN_DAYS` (default 7) days (each person's newest of each kind; renewed or replaced on the Sign-in page)
 - Keycloak: realm, users, forward-auth client, and the passkey policy: the
@@ -399,6 +436,9 @@ because the units depend on the runtime:
   logged in because lingering is on (a host preparation step). Install them
   with `systemctl --user daemon-reload` and
   `systemctl --user enable --now portcullis-backup.timer`.
+- **Kubernetes:** the Docker units, which still require `docker.service`.
+  On a host without Docker, run `./portcullis backup --offsite` from your
+  own timer for now.
 
 | Option | Meaning |
 |--------|---------|
@@ -448,6 +488,10 @@ runtime as `init` does, before its first engine call, and writes the detected
 keys. A directory restore needs `init` first. So a backup taken on Docker
 restores onto a Podman host and the other way round; see
 [Rootless Podman → Moving between runtimes](rootless-podman.md#moving-between-runtimes).
+Under Kubernetes the restore also keeps this host's `PORTCULLIS_KUBE_*`,
+namespace, CIDR and fixed ClusterIP keys, and a restore without an `.env`
+never detects Kubernetes: run `init --runtime kubernetes` first
+([Backups → Kubernetes](backups.md#kubernetes)).
 
 | Option | Meaning |
 |--------|---------|
@@ -783,7 +827,10 @@ Break-glass access to LLDAP's own web UI. `directory.<domain>` redirects to
 `people.<domain>` (LLDAP has no single sign-on), so LLDAP's UI is
 reachable only from the server. The command prints the SSH tunnel to run on
 your machine; then open `http://localhost:17170` and sign in as the LLDAP
-admin (`LLDAP_ADMIN_PASSWORD` in `.env`). Use it for recovery only:
+admin (`LLDAP_ADMIN_PASSWORD` in `.env`). Under Kubernetes it is a
+`kubectl port-forward` to LLDAP's Service on the server's loopback (port
+`LLDAP_UI_PORT`, default 17170); it still checks that the `docker` command
+exists. Use it for recovery only:
 day-to-day, people and groups are managed in the Hub at `hub.<domain>` (admins) or `people.<domain>` (everyone, with per-request permission checks). Manual changes to rule-based groups in LLDAP are reverted by the Hub's evaluator and audited.
 
 ---
@@ -1045,3 +1092,28 @@ portcullis vpn revoke <device-id>
 Removes a built-in VPN device; `wg` drops its peer at once and closes its
 open connections. Its address is quarantined for 7 days. Marketplace devices
 are removed in their app.
+
+## Kubernetes
+
+### kube check
+
+```
+portcullis kube check
+```
+
+Kubernetes only ([Kubernetes](kubernetes.md), experimental). Re-checks the
+apps namespace's Pod Security labels and the six admission bindings, and
+writes the result into the ConfigMap `portcullis-cluster-check`
+(`checked_at`, `ok`, `why`), which the Hub reads. The Hub refuses every
+runtime operation while the check failed or is more than 24 h old. `up`
+writes it too.
+
+`init` installs `portcullis-kube-check.timer`, which runs this every 6 h
+(system units in `/etc/systemd/system`, as root or through `sudo`; the
+service runs as the operator and, when this host runs k3s, after and
+requiring `k3s.service`). Without systemd, or when the install fails,
+`init` warns and prints the manual steps: then run `kube check` at least
+every 20 h yourself. [`status`](#status) warns once the check is 20 h old.
+
+Exit status: 0 the check passed, 1 it failed (the reason is printed and
+recorded for the Hub). On another runtime it exits 1.

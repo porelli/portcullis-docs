@@ -553,6 +553,129 @@ both the compose file and the SELinux overlay. What changes:
   trust never depended on the gateway: identity headers are trusted only
   from Traefik's pinned address, and Keycloak only from its pinned peers.
 
+## Kubernetes
+
+On [Kubernetes](kubernetes.md) (experimental) there is no engine socket and
+there are no socket proxies. RBAC, Pod Security Admission, admission
+policies and NetworkPolicies take their place. The full rules are in
+[contract §6 "On Kubernetes"](../guides/integration-contracts.md#6-engine-access).
+
+- **Traefik reads one namespace.** Its CRD provider lists every Secret of
+  each namespace it watches, so it watches only `portcullis-edge`, which
+  holds the IngressRoutes, the Middlewares and the apps' pinned
+  ExternalName Services, and never a Secret. Cross-namespace references are
+  off: an app's backend is an ExternalName Service in the edge namespace
+  pinned to exactly its own Service in the apps namespace. Its one
+  read-only Role is there: nothing in the core or apps namespace, nothing
+  cluster-scoped, no nodes. The CLI refuses to deploy while
+  `portcullis-edge` holds a Secret.
+- **The Hub's Roles** are the Kubernetes form of `socket-proxy-hub`: one in
+  the apps namespace (workloads, Services, PVCs, ConfigMaps, Secrets,
+  NetworkPolicies, pods without `patch` or `update`, `pods/log`,
+  `pods/exec` `create` only, events) and one in `portcullis-edge`
+  (IngressRoutes, Middlewares and Services only). There is nothing in the core
+  namespace and nothing cluster-scoped. The Hub checks at start, every
+  60 s and before every deploy that it holds exactly these rules, and
+  refuses every runtime operation (`503`) while it holds more or less.
+- **Admission policies limit what RBAC can't.** RBAC lets the Hub create a
+  pod, but not decide what is in it. Six ValidatingAdmissionPolicies
+  (`failurePolicy: Fail`, `Deny`, missing params = deny) refuse:
+    - in the apps namespace: the whole PSA baseline (privileged, host
+      namespaces, `hostPort`, capabilities outside the
+      [Kubernetes baseline](../guides/integration-contracts.md#34-compose-on-kubernetes-new-kubernetes),
+      unconfined seccomp or AppArmor, SELinux options, sysctls), a
+      `hostPath` outside the bind roots, a pod with any `hostPath` (the
+      Hub's helpers aside) unless every container is provably non-root with
+      a group above 0 and no privilege escalation (and no `fsGroup` or
+      supplemental group 0, and `supplementalGroupsPolicy: Strict`, so the
+      image's `/etc/group` adds nothing), a ServiceAccount token, a
+      Secret, ConfigMap or PVC that isn't the pod's own instance's
+      (`<instance>--…`), helper and probe pods that aren't the Hub's own
+      image and shape, NodePort, ExternalName and `externalIPs` Services,
+      node ports, a LoadBalancer on a core port, a clusterIP in the core
+      Services' static band, every NetworkPolicy peer the Hub doesn't
+      generate, a claim of another StorageClass than `portcullis-apps`
+      (or with `volumeName`, a data source, a foreign name or a 4-digit
+      mode), and any change or delete of a NetworkPolicy, Service, Secret or
+      PVC that isn't the Hub's own (`owner: hub`, an instance label; for
+      NetworkPolicies an instance selector, for PVCs the `<instance>--`
+      name). Only two exact controller changes to a claim are exempt: the
+      volume binder setting `volumeName` once, and the PVC protection
+      controller removing its finalizer. So the Hub can't delete or
+      rewrite the chart's `default-deny`;
+    - every Traefik object in the apps namespace;
+    - in `portcullis-edge`, for every identity but the CLI's: objects
+      other than the Hub's IngressRoutes and Middlewares (`owner: hub`,
+      written only by the Hub's ServiceAccount; core's `owner: core`
+      objects can't be changed; a Middleware named `<instance>--<name>`
+      after its own instance label), a Service other than the pinned
+      ExternalName shape (`<instance>--<svc>` →
+      `<instance>--<svc>.portcullis-apps.svc.cluster.local`, no selector,
+      address or load balancer, `tcp-<port>` ports), entrypoints other than `websecure` and
+      `vpnsecure`, a VPN-only instance's route off `vpnsecure`, a route
+      match other than `Host(…)` with an optional path, `parentRefs`
+      (which would attach a route under another IngressRoute, core's
+      included), `ingressClassName`, a route syntax other than `v3`, a route on a core
+      hostname, a priority above core's, a route without TLS, a service
+      other than the instance's own edge Service or the three core
+      services, a core
+      Middleware or any `@file` name outside the allowlist, TLS options
+      outside the four tiers, `tls.domains`, a TLS secret or store, `forwardAuth` and
+      other Middleware types outside the Hub's allowlist, and an
+      `X-Portcullis-*` header.
+
+    The params live in the core namespace, where no ServiceAccount has a
+    Role, so nothing they judge can rewrite them. The CLI never edits live
+    params: each change gets a new params generation with its own
+    bindings, proved live before the old ones are removed, so no object
+    is ever unbound. The Hub dry-runs a forbidden object per binding (the
+    admission self-test) and refuses every runtime operation while one is
+    let through.
+
+- **Not enforced by admission: the gate chain and the entrypoint choice.**
+  The edge policy checks that every middleware on an app route is allowed
+  and that its entrypoints are `websecure` or `vpnsecure`. It doesn't check
+  that a route carries the sign-in gate (`portcullis-auth`,
+  `portcullis-groups` and the rest) in the right order, or that a route is
+  on the entrypoint its instance's VPN setting asks for (beyond a VPN-only
+  route staying on `vpnsecure`). **Those rules are enforced only by the
+  Hub's rendering**, as on Docker, and checked by its exposure drift.
+
+- **NetworkPolicies isolate every pod.** The core, apps, storage and
+  probe namespaces deny everything by default in both directions (every
+  pod may still ask kube-dns), and each allowed path is a policy of its own. An instance's pods reach only each other on their compose
+  networks; routed ports admit only Traefik's pods and an AI companion's
+  port only `mcp-gate`'s; egress to the internet excludes the pod and
+  service CIDRs, `169.254.0.0/16`, every node address and the API
+  server's, with only ports 80 and 443 to a node. The CLI and the Hub each
+  prove with their own probe pods that the cluster enforces them, and
+  nothing is deployed until it does. Pod-CIDR source ranges in app
+  settings (`PORTCULLIS_TRAEFIK_SOURCE`) are only the second layer.
+
+- **Header trust.** `websecure`, `vpnsecure` and `kcinternal` strip the
+  client's forwarding headers first. Keycloak's port admits only Traefik,
+  and its internal port 8081 only the five core clients.
+
+- **k3s settings the CLI requires**: `--secrets-encryption` (Secrets
+  encrypted in the datastore), its bundled Traefik off, the network policy
+  controller on, and a per-pod process limit of 1024. The CLI refuses to
+  deploy without them.
+
+- **Volumes.** The provisioner creates each PVC's directory with the
+  owner, group and mode from its annotations, and leaves one without them
+  `Pending`. Its namespace has its own admission policy
+  (`portcullis-storage-pods`): only the pinned provisioner and its pinned
+  helper image, `hostPath` only under `/var/lib/portcullis-storage`.
+
+- **Helper pods** (the folder fixer and volume copies) are the only pods
+  that may run as root, only with the Hub's own image by digest, only
+  created by the Hub's ServiceAccount, and only with their mode's
+  capabilities.
+
+- **The Kubernetes API.** Restrict ports 6443 and 10250 to the
+  administrators' addresses. `status` and the doctor warn when either
+  answers on the public address.
+
 ## File sharing
 
 The Samba and Time Machine templates enforce hardened SMB3 and trust only the Local networks (§ [File Sharing](file-sharing.md)).
@@ -1158,6 +1281,8 @@ own uid, which the CLI uses through `docker compose exec`.
 | kernel or TUN WireGuard in core | refused | refused |
 | marketplace gateway with TUN + `NET_ADMIN` (NetBird, WireGuard servers) | allowed; doctor `vpn_gateway_privileged` (Info) | **limited** ("uses TUN/NET_ADMIN inside the rootless network namespace"): `NET_ADMIN` acts only in the container's own network namespace; the host needs the `tun` module ([Rootless Podman](rootless-podman.md#vpn-under-rootless-podman)) |
 | Headscale gateway (`tailscale/tailscale`, userspace) | works, no capabilities | works |
+
+On [Kubernetes](kubernetes.md) `wg` is one pod (uid 10006, PSA `restricted`, the userspace stack, no capabilities), its roles kept apart by NetworkPolicies; a marketplace gateway with TUN or `NET_ADMIN` is refused there ([VPN → Kubernetes](vpn.md#kubernetes)).
 
 ## Hub proxy secret
 

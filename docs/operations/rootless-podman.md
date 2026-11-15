@@ -9,6 +9,8 @@ There is one compose file and one CLI for both runtimes. `./portcullis init`
 picks the runtime once and writes it into `.env` as `CONTAINER_RUNTIME`. It is
 never switched afterwards: to move an install to the other runtime, back it
 up, run a fresh `init` and restore ([below](#moving-between-runtimes)).
+A third runtime, a single-node k3s cluster, is experimental: see
+[Kubernetes](kubernetes.md).
 
 ## Why
 
@@ -251,7 +253,8 @@ The app templates at the default port start (80):
 | Headscale | works | its VPN gateway runs in userspace, with no TUN device or capability |
 | Every other template | works | |
 
-The templates repository commits this classification in `tests/rootless.txt`,
+The templates repository commits this classification, with the Kubernetes
+one, in `tests/runtime.txt`,
 so any change to it shows up in review.
 
 ## VPN under rootless Podman
@@ -289,6 +292,10 @@ the same on both.
 4. Copy the backup directory over and run
    `./portcullis restore --yes <backup-dir>`, or
    `./portcullis restore --from-offsite`.
+
+The same steps move an install onto Kubernetes, with
+`./portcullis init --runtime kubernetes --kube-context <ctx>`
+([Kubernetes → Moving to Kubernetes](kubernetes.md#moving-to-kubernetes)).
 
 The restore keeps the new host's `CONTAINER_RUNTIME` and
 `PORTCULLIS_ENGINE_SOCKET` and never takes them from the backup
