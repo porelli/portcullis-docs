@@ -46,6 +46,13 @@ same name without them stops `init`.
   checks below assume k3s's flags and ServiceLB.
 - **IPv4 single-stack**, with one pod CIDR and one service CIDR. Dual-stack
   and IPv6 clusters are refused.
+- **No AppArmor stacking of containerd's profile.** On hosts with
+  `kernel.apparmor_restrict_unprivileged_unconfined=1` (Ubuntu 26.04 and
+  similar), containerd's AppArmor profile denies the signals Postgres sends
+  between its own processes, so Postgres never finishes starting
+  (containerd#14485, k3s#13625). Portcullis refuses such a host; see
+  [Troubleshooting](#postgres-never-starts-apparmor-stacking) for the two
+  ways out.
 - On the node, for the operator: `kubectl`, `helm`, `jq` and `curl`. The
   CLI runs on the node itself: it compares the node's local addresses with
   the public one.
@@ -122,7 +129,12 @@ They check:
 - the kubelet's `podPidsLimit` is 1024;
 - IPv4 single-stack with one pod CIDR and one service CIDR, the same as `.env`;
 - the three fixed ClusterIPs are inside the static band and not taken by another Service;
-- the four namespaces are absent or this install's.
+- the four namespaces are absent or this install's;
+- AppArmor: `kernel.apparmor_restrict_unprivileged_unconfined` isn't `1`
+  while AppArmor is on and containerd's profile is loaded
+  ([Troubleshooting](#postgres-never-starts-apparmor-stacking)). This is
+  checked on this host when the node is this host; otherwise it only warns
+  that you must check the node yourself.
 
 Two more checks only warn: client addresses (a public address that is
 local but not published by ServiceLB suggests `--node-external-ip=<pub>`),
@@ -285,6 +297,42 @@ the restore always keeps this host's `CONTAINER_RUNTIME` and every
 `PORTCULLIS_KUBE_*` key ([Backups → Moving between runtimes](backups.md#moving-between-runtimes)).
 Check [Apps on Kubernetes](#apps-on-kubernetes) first: an app that isn't
 available there can't be started after the move.
+
+## Troubleshooting
+
+### Postgres never starts (AppArmor stacking)
+
+On a host with `kernel.apparmor_restrict_unprivileged_unconfined=1`, k3s's
+containerd gives each container a stacked AppArmor label that its profile's
+signal rules don't match. Every signal inside a container is denied, and
+Postgres, which signals its own processes, never finishes recovery. This is
+upstream bug containerd#14485 (k3s#13625). The host checks refuse such a
+host with:
+
+```
+this cluster isn't ready for Portcullis (docs: operations/kubernetes):
+  - kernel.apparmor_restrict_unprivileged_unconfined=1 with containerd's AppArmor profile: containers get a stacked label its signal rules don't match, so signals inside them are denied and Postgres never finishes starting (containerd#14485, k3s#13625). Either run sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 and keep it in /etc/sysctl.d/ (this relaxes an Ubuntu hardening for unprivileged profile changes), or wait for a k3s with the fix
+```
+
+While containerd's profile isn't loaded yet (k3s loads it when it starts),
+the same setting only gets a warning. Portcullis never changes this setting
+itself. Pick one:
+
+- **Set the sysctl to 0**, now and at boot. This relaxes an Ubuntu
+  hardening that restricts unprivileged processes from changing AppArmor
+  profiles:
+
+    ```bash
+    sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
+    echo 'kernel.apparmor_restrict_unprivileged_unconfined = 0' \
+      | sudo tee /etc/sysctl.d/60-portcullis-apparmor.conf
+    ```
+
+- **Use a k3s release that has the fix**: one whose bundled containerd
+  includes the fix for containerd#14485. Then reinstall k3s with the flags
+  of [Host preparation](#host-preparation).
+
+Then run `./portcullis init` (or `up`) again.
 
 ## Limits
 
