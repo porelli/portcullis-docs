@@ -587,7 +587,8 @@ policies and NetworkPolicies take their place. The full rules are in
       `hostPath` outside the bind roots, a pod with any `hostPath` (the
       Hub's helpers aside) unless every container is provably non-root with
       a group above 0 and no privilege escalation (and no `fsGroup` or
-      supplemental group 0), a ServiceAccount token, a
+      supplemental group 0, and `supplementalGroupsPolicy: Strict`, so the
+      image's `/etc/group` adds nothing), a ServiceAccount token, a
       Secret, ConfigMap or PVC that isn't the pod's own instance's
       (`<instance>--…`), helper and probe pods that aren't the Hub's own
       image and shape, NodePort, ExternalName and `externalIPs` Services,
@@ -595,9 +596,12 @@ policies and NetworkPolicies take their place. The full rules are in
       Services' static band, every NetworkPolicy peer the Hub doesn't
       generate, a claim of another StorageClass than `portcullis-apps`
       (or with `volumeName`, a data source, a foreign name or a 4-digit
-      mode), and any change or delete of a NetworkPolicy, Service or Secret
-      that isn't the Hub's own (`owner: hub`, an instance label; for
-      NetworkPolicies an instance selector). So the Hub can't delete or
+      mode), and any change or delete of a NetworkPolicy, Service, Secret or
+      PVC that isn't the Hub's own (`owner: hub`, an instance label; for
+      NetworkPolicies an instance selector, for PVCs the `<instance>--`
+      name). Only two exact controller changes to a claim are exempt: the
+      volume binder setting `volumeName` once, and the PVC protection
+      controller removing its finalizer. So the Hub can't delete or
       rewrite the chart's `default-deny`;
     - every Traefik object in the apps namespace;
     - in `portcullis-edge`, for every identity but the CLI's: objects

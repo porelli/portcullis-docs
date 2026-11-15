@@ -40,8 +40,12 @@ same name without them stops `init`.
 
 ## Requirements
 
-- **One k3s node**, Kubernetes **1.32 or later** (the first release with
-  ValidatingAdmissionPolicy GA). CI runs `v1.37.2+k3s1`. Another
+- **One k3s node**, Kubernetes **1.33 or later**, the first release with
+  `supplementalGroupsPolicy` on by default (host-path pods need it, below;
+  an older cluster is refused: `Portcullis needs >= 1.33
+  (supplementalGroupsPolicy Strict for host-folder pods)`). CI runs `v1.37.2+k3s1`,
+  the default; the oldest supported line is pinned at `v1.33.13+k3s2`.
+  Both are tested. Another
   distribution only gets a warning ("should work, not CI-tested"), but the
   checks below assume k3s's flags and ServiceLB.
 - **IPv4 single-stack**, with one pod CIDR and one service CIDR. Dual-stack
@@ -124,7 +128,7 @@ Before deploying anything, `init`, `up`, `upgrade` and `restore` run the
 They check:
 
 - `kubectl` and `helm` are present, the context exists and the cluster answers;
-- Kubernetes 1.32 or later;
+- Kubernetes 1.33 or later;
 - k3s's flags (read from the node's `k3s.io/node-args`): `--secrets-encryption`, `--disable=traefik`, no `--disable-network-policy`, ServiceLB on. On k3s, node-args it can't read fail the check; on another distribution they only warn;
 - the kubelet's `podPidsLimit` is 1024;
 - IPv4 single-stack with one pod CIDR and one service CIDR, the same as `.env`;
@@ -246,7 +250,8 @@ How the parts of an instance map:
   (`HUB_OVERRIDE_BIND_ROOTS`). A pod with a host path runs non-root: every
   container needs a numeric user above 0, a group above 0 (never group 0,
   also not as `fsGroup` or a supplemental group) and no privilege
-  escalation, so a service that binds a shared folder needs a numeric
+  escalation, and the pod sets `supplementalGroupsPolicy: Strict` (the Hub
+  does), so no group from the image's `/etc/group` is added, so a service that binds a shared folder needs a numeric
   non-root `user:`.
 - **Published ports** are `LoadBalancer` Services on ServiceLB, with
   `externalTrafficPolicy: Local` and no node port. A **LAN only** port gets
@@ -355,6 +360,14 @@ itself. Pick one:
 Then run `./portcullis init` (or `up`) again.
 
 ## Limits
+
+- **Deleting the apps or edge namespace by hand hangs.** The cluster's
+  namespace controller isn't exempt from the admission policies, so a
+  manual `kubectl delete ns portcullis-apps` (or `portcullis-edge`) waits
+  on core's objects there (`portcullis.io/owner: core`, such as
+  `default-deny`) until you delete them with the CLI's identity (the
+  kubeconfig context in `.env`). No Portcullis command deletes those
+  namespaces.
 
 - One node, IPv4 only, k3s as the tested distribution.
 - Most marketplace templates are refused today (above).
