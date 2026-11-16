@@ -247,6 +247,18 @@ The step **"Test the VPN service"** (`.github/ci/build-and-test-vpn-service.sh`)
 
 `wg` then stays on for the rest of the job (`up`, `upgrade`, backup and restore).
 
+The step **"Test the mail service"** (`.github/ci/build-and-test-mail-service.sh setup`) turns [mail](../setup/mail.md) on (`./portcullis mail enable`, the mail certificate from a CI Pebble) and checks, failing with `FAIL: <what>`:
+
+- **No outbound SMTP.** Outbound TCP 25, 465 and 587 is rejected first, for the containers, `mail-egress` and the runner itself; `mail-resolver` forwards every name to the domains service's fake DNS. Nothing is ever sent to an external domain: foreign recipients are only tried at RCPT (and refused).
+- `mail` runs as 2000:2000, read-only, with `NET_BIND_SERVICE` only; `mailctl` as 10010 with group 10001; the resolver is healthy.
+- No `recovery.env` is left, a recovery login gets `401`, and `api-key` is 0640 group 10010.
+- The management listener is unreachable from `portcullis-proxy` and `404` from another `portcullis-mail` address (the API key too).
+- The certificate's SAN is `MAIL_HOSTNAME`, a second `mail cert` keeps the key, and 25, 465, 587 and 993 present it.
+- Port 25 offers no AUTH and relays nothing (from the host and from `mail-egress`); submission refuses a foreign envelope sender and a foreign `From:`, and accepts the person's own mail.
+- `status --json` `.mail` (bootstrap, certificate, the timer warning turning active after `mail schedule --systemd`).
+
+After the backup step, **"Mail: the backup stopped and restarted mail"** checks that `backup` stopped `mail` for its store, started it again and archived `mail_data`, `mail_etc`, `mailctl_data`, `mail_tls` and `mail_acme`. After the restore into a fresh stack, **"Mail: the restore voided the mail passwords"** checks that the old mail password is refused by IMAP, mail is healthy and `mailctl_data` came back (the same DKIM state, `restored_at` set).
+
 The step "Test the public guard (public exceptions) through Traefik" routes a test host through `portcullis-public-guard@docker` only and checks: no version-3 entry → 403; published prefix / static paths → 200; other paths, encoded `/` or `#`, dot-segment escapes → 403; `Authorization`, `Proxy-Authorization`, a credential header, credential cookies and query keys in PHP-mangled spellings → 403. The guard's unit tests are in `tests/test_group_gate.py` (`PublicGuardTest`, `PhpVarNameTest`).
 
 ### `e2e` (browser)
@@ -936,6 +948,30 @@ uploads `e2e-folders-artifacts`: logs, API answers, the tree and
 
 Built like `e2e-settings` (same-named Hub and templates branches, else `main`). Ubuntu 24.04 runners, smbclient pinned at `2:4.19.5+dfsg-4ubuntu9*`. On failure: policy/attributes files, data files, container logs, screenshots, no traces (DOM snapshots would carry the password).
 
+### `e2e-mail` (the mail server)
+
+The whole core stack, the Hub and the domains service (Pebble, the CI-only
+fake DNS provider: one fake zone shared by the dns tool and `mail-cert`), with
+mail on for `ci.example.org` and the added domain `team-b.test`, plus a second
+Stalwart ("remote", `remote.test`) on `mail-egress`. **Nothing leaves the
+runner:** outbound 25, 465 and 587 is rejected outside the stack's networks
+and every name is the fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
+
+- **setup**: people in and out of `mail_users`, the list `team`, every account answering RCPT, DKIM Ed25519 and RSA active for both domains (`./portcullis mail rotate`), and the mail passwords created on the Sign-in page (fresh-auth popup, shown once).
+- **exchange both ways**: the remote's `Authentication-Results` show `dkim=pass` for an Ed25519 and an RSA signature, `spf=pass` and `dmarc=pass`; mail from the remote arrives; the remote's DMARC aggregate report reaches `dmarc-reports@` and shows in `GET /api/mail/checks`.
+- **added-domain alias**: a person receives at and sends as their `team-b.test` address.
+- **spam**: GTUBE in the Subject is refused with `550 5.7.1` at DATA (a GTUBE body is pinned as accepted: Stalwart reads it only in the Subject); a message scoring between the thresholds lands in Junk with `X-Spam-*`; the allow list (through the Hub) tags `TRUSTED_DOMAIN`.
+- **mail passwords**: shown once and nowhere after the dialog; IMAP 993, SMTP 465 and 587 work; the LLDAP password fails IMAP and the mail password fails LLDAP; the management listener answers `404` from another address and a method-level `forbidden` from mailctl's own; the sixth password is `409`.
+- **lists and postmaster**: the remote can't post to the members-only list (`550 5.7.1` at RCPT), a member can; `postmaster@` reaches the administrators.
+- **revocation and removal**: an IMAP session fails within 8 s of the revoke; an IDLE session fails within 8 s of the person's removal from `mail_users`, whose address then gets `550 5.1.1`; a username deleted and created again gets an empty mailbox, the old passwords fail, and `former-<old uuid>` is listed.
+
+Then the job runs `./portcullis backup` and `./portcullis restore --yes`, and
+`e2e_mail.py restore` checks that the old password is refused by IMAP and
+SMTP AUTH and that the Sign-in page says "reset by a restore". On failure it
+uploads the mail, mailctl, resolver, domains, Hub, Traefik and Keycloak logs
+(never a password: every one is masked as soon as it is known, and there are
+no Playwright traces).
+
 ### `e2e-ai` (AI support through mcp-gate)
 
 The first run of the whole chain: an MCP client on the runner host →
@@ -1081,6 +1117,7 @@ as the operator ([Rootless Podman](rootless-podman.md)). No artifact carries
     - **The VPN service** (`.github/ci/e2e-podman-vpn-service-on-rootless-podman.sh`): `vpn init` rootless, `wg` as 10006 without capabilities, `vpn add-device` for an LLDAP person, a `tests/e2e/vpn-client` handshake over the published UDP port and a GET of people.&lt;domain&gt; through the edge and `vpnsecure` (forward-auth's redirect). The host prep writes the operator's `containers.conf` pool line, and the job checks a new network lands in `10.89.0.0/16`
     - **reboot:** after `systemctl restart user@<uid>.service` (every container dies with the user manager), `podman-restart.service` brings the stack back and `status` is clean within 180 s
     - **Docker → Podman round trip:** after a wipe, `init --runtime podman` and `./portcullis restore --yes` of the Docker phase's backup: `.env` keeps `CONTAINER_RUNTIME=podman` and the rootless socket, `status` is clean, `certs/ca-chain.crt` has the recorded sha256, the Docker phase's LLDAP person exists, and the secrets are the operator's on the host
+    - **Mail on rootless Podman** (`.github/ci/e2e-podman-mail.sh`): outbound 25 / 465 / 587 rejected for the runner and pasta; `ip_unprivileged_port_start=25`, then `./portcullis mail enable` (`MAILCTL_CLIENT_IP=rewritten`, healthy); a message from a CI container to the host's port 25 is delivered to an LLDAP person; the doctor names `mail_client_ip_rewritten`; and no ban appears after the delivery (with rewritten addresses every client is the gateway, so a ban would lock everyone out)
 - On failure it uploads the container logs only.
 
 ### `e2e-vpn` (VPN-only access)

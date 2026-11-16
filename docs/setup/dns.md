@@ -246,10 +246,13 @@ except under the [CAA merge rule](#caa).
 | `address` | `<d>` and `*.<d>`: A → the server's IPv4, AAAA → its IPv6 (no AAAA without one) | 300 | on |
 | `caa` | at `<d>` only (it also covers `*.<d>`): `issue` and `issuewild` for the ACME CA, optional `iodef` | 300 | on (`DNS_CAA=true`), when the CA is known |
 | `nomail` | at `<d>`: null MX `0 .` and TXT `v=spf1 -all`; at `_dmarc.<d>`: TXT `v=DMARC1; p=reject;` | 3600 | off |
+| `mail` | the [mail server](mail.md)'s records, rendered by mailctl ([below](#the-mail-set)) | 3600 (DKIM, TLSA and the rest alike) | off; on for each domain mail is on for |
 
 - **`address`** is refused while a CNAME exists at `<d>` or `*.<d>`: the plan
   shows the CNAME as a record that isn't Portcullis' and names it, and you
   remove it by hand.
+- **`mail`** replaces `nomail` while mail is on for the domain, and `nomail`
+  comes back when mail is turned off (if it was there before).
 - **`nomail`** says "this domain sends no mail", so nobody can send mail that
   passes as yours. Turn it on for the main domain with `DNS_NOMAIL=true` (then
   `dns setup`); for an added domain, use its **Fix** in the Hub's DNS panel.
@@ -257,6 +260,33 @@ except under the [CAA merge rule](#caa).
   `ALERT_SMTP_FROM` isn't at or under `<d>`. It replaces an existing SPF, MX
   or DMARC record at those names, and the plan says so first. Other TXT
   records at `<d>` (site verifications) stay.
+
+### The `mail` set
+
+With the [mail server](mail.md) on, each mail domain `<d>` gets these records
+(`<h>` is `MAIL_HOSTNAME`, default `mail.<main domain>`):
+
+| Name | Records |
+|------|---------|
+| `<d>` | `MX 10 <h>.`; TXT `v=spf1 mx -all` (with ` include:<MAIL_RELAY_SPF_INCLUDE>` when a relay is set; other TXT records at `<d>` stay) |
+| `<h>` (main domain) | TXT `v=spf1 a -all` (the HELO name). Its A record belongs to the `address` set while mail is on |
+| `<selector>._domainkey.<d>` | TXT `v=DKIM1; k=ed25519; p=…` and `v=DKIM1; k=rsa; p=…`, selectors `v1-ed25519-YYYYMMDD` / `v1-rsa-YYYYMMDD`; during a rotation the new and the retiring keys are both there |
+| `_dmarc.<d>` | TXT `v=DMARC1; p=<policy>; adkim=s; aspf=s; rua=mailto:dmarc-reports@<d>` |
+| `_mta-sts.<d>` | TXT `v=STSv1; id=<policy id>`, only while the MTA-STS page is reachable from the internet (not in VPN mode `server`) |
+| `_smtp._tls.<d>` | TXT `v=TLSRPTv1; rua=mailto:tls-reports@<d>` |
+| `_submissions._tcp`, `_submission._tcp`, `_imaps._tcp` | SRV to `<h>` on 465, 587 and 993; `_imap._tcp`, `_pop3._tcp` and `_pop3s._tcp` say "not offered" (`SRV 0 0 0 .`) |
+| `mta-sts.<d>`, `autoconfig.<d>`, `autodiscover.<d>` | nothing while `*.<d>` covers them; `CNAME <h>.` on an added domain without a wildcard |
+| `_25._tcp.<h>` (main domain) | `TLSA 3 1 1 <key hash>` (two during a key rollover), only while the main zone's DNSSEC state is `secure` |
+
+The CAA record at `<h>` belongs to the mail certificate, not to this set: it
+pins the mail certificate's own ACME account (closer than the main domain's
+pin, which it leaves untouched).
+
+The main domain's set is written by `./portcullis dns setup` (or
+`--only mail`) and by the daily `./portcullis mail rotate`; added domains'
+sets by the Hub. On a main domain whose provider Portcullis can't write, mail
+can't be turned on at all (the mail certificate needs DNS-01 through the
+provider).
 
 ## CAA
 
