@@ -31,6 +31,8 @@ runs `./portcullis mail rotate` once a day:
    `active` → `retiring` → `retired`, the rollover's switch);
 3. writes the main domain's mail records through your DNS provider.
 
+If the main domain isn't a mail domain (mail off for it, or the Hub hasn't sent its first document yet), the step says "The main domain isn't a mail domain (yet): nothing to rotate for it." and still succeeds.
+
 Added domains don't wait for it: the Hub republishes their records within
 about a minute of every change. Run `./portcullis mail rotate` by hand any
 time; it is what the timer runs.
@@ -159,7 +161,7 @@ conditions hold; nothing is ever promoted by itself.
 `enforce` goes back to `testing` only when the server's own certificate check
 fails definitely twice, at least 15 minutes apart (an unreachable port or a
 timeout doesn't count). While the core pages are VPN-only, no policy is
-published at all ([Setup → DNS](../setup/mail.md#dns)).
+published at all ([Setup → DNS](../setup/mail.md#dns)). A domain whose mail goes off without the usual drain still never jumps straight to off: an `enforce` policy goes back to `testing` for the last policy's `max_age`, then off.
 
 **DMARC** (what receivers do with mail that fails SPF and DKIM):
 `p=none` → `p=quarantine` → `p=reject`, each step offered as
@@ -210,8 +212,11 @@ and configuration (`mail_data`, `mail_etc`), mailctl's state, the mail
 certificate and its ACME account.
 
 **Mail stops for the copy.** Stalwart's store has no online backup, so
-`backup` stops `mail` alone while it archives `mail_data` and `mail_etc`, and
-starts it again, also when the copy fails. This is the one exception to
+`backup` stops `mail` while it archives `mail_data` and `mail_etc`, and
+starts it again, also when the copy fails. The Hub stops for that time too
+(it restarts `mail` after every revoke, which would tear the copy), and if
+`mail` is running again when the copy ends anyway, the backup fails rather
+than keep a torn copy. This is the one exception to
 "backups never stop services". For that minute port 25 is closed; other
 servers retry later (they keep trying for days), and mail clients reconnect.
 
@@ -226,8 +231,16 @@ The order:
 2. While the marker exists, nothing starts mail normally: `restore`, `up`,
    `upgrade` and `mail enable` void first, and the mail container itself
    refuses to start without the void session.
-3. The void runs in a short recovery session with no network egress; the
-   marker is removed only once it worked.
+3. The void runs in a short recovery session: `mail` with no published
+   ports, only its internal network and no restart policy, bound to the
+   host's current boot (a recovery container left by a killed command or a
+   reboot is refused). The marker is removed only once it worked.
+
+The container checks a sentinel in the same directory
+(`secrets/mail/gate/.present`) before every normal start: if the directory
+isn't readable it says "the mail gate isn't readable" and stays stopped, so
+a broken mount can never hide a pending void. `./portcullis up` writes the
+sentinel again.
 
 If the void fails, mail and mailctl stay stopped while the rest of the stack
 runs, `restore` exits 1 with "mail passwords could not be voided: mail stays
@@ -273,6 +286,30 @@ Mail. To keep one's mail before it is deleted:
 This is the only way anyone reads mailbox content, and only on the server:
 never through the Hub or an AI. It opens the former account for a moment
 with a one-hour, read-only credential and closes it again, also on error.
+
+## Changing `MAIL_HOSTNAME`
+
+`./portcullis mail enable --hostname mail2.example.com` (or a new
+`MAIL_HOSTNAME` in `.env`, then `./portcullis up`) issues a certificate for
+the new name; set the PTR to it at your provider and run
+`./portcullis dns setup`. The CLI records every earlier name
+(`secrets/mail/former-hostnames`), and only those recorded names are cleaned
+up in DNS (the old HELO SPF and TLSA); a name Portcullis never used is never
+touched.
+
+## Turning mail off: what stays
+
+`./portcullis mail disable` removes every mail domain's mail records, but
+**leaves `MAIL_HOSTNAME`'s A record and its CAA pin** (a known limitation).
+Delete them by hand at your DNS provider if you don't turn mail on again.
+
+## One command at a time
+
+`up`, `down`, `upgrade`, `restore`, `backup` and `mail enable`, `disable`,
+`rotate` and `cert` take a lock (`.portcullis.lock` in the checkout), shared
+with the backup and mail timers. A second one says "Waiting for another
+./portcullis command (a backup or mail timer?) to finish...", waits up to
+`PORTCULLIS_LOCK_WAIT` seconds (default 1800), then refuses.
 
 ## Testing your install
 

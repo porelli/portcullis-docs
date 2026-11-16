@@ -34,6 +34,13 @@ the core checkout: `./portcullis`. There are no other scripts.
   works the same on both runtimes. Under Kubernetes every `kubectl` and
   `helm` call names `PORTCULLIS_KUBE_CONTEXT` from `.env`: the current
   context is never used.
+- **One changing command at a time.** `up`, `down`, `upgrade`, `restore`,
+  `backup` and `mail enable|disable|rotate|cert` take an exclusive lock on
+  `.portcullis.lock` in the checkout (shared with the backup and mail
+  timers; `--help` never locks). Another one waits up to
+  `PORTCULLIS_LOCK_WAIT` seconds (default 1800), saying "Waiting for another
+  ./portcullis command (a backup or mail timer?) to finish...", then
+  refuses. Needs `flock` (util-linux).
 - **Every setup step is idempotent.** `init`, `upgrade`, `vault init`,
   `pki setup`, `keycloak configure` and `oidc register` can be re-run safely.
 
@@ -1150,7 +1157,7 @@ them)" and offers to install the daily timer.
 
 | Option | Meaning |
 |--------|---------|
-| `--hostname H` | The mail server's name (a lowercase host name, e.g. `mail.example.com`) |
+| `--hostname H` | The mail server's name (a lowercase host name, e.g. `mail.example.com`). A change is recorded (`secrets/mail/former-hostnames`): only recorded former names are cleaned up in DNS |
 | `--lan-only true\|false` | Mail passwords work only from the Hub's Local networks (refused under rootless Podman: "LAN-only needs the real client address; rootless Podman rewrites it") |
 | `--rotate-key` | Replace mailctl's Stalwart API key |
 | `--yes` | Install the daily timer without asking |
@@ -1172,7 +1179,8 @@ Drains every mail domain (MTA-STS mode none for its `max_age`, then the MX
 goes) through the Hub, and removes `mail` from `COMPOSE_PROFILES` once the Hub
 reports every domain off: run it again after the drain. `--force` removes it
 now (senders with a cached MTA-STS policy may bounce mail). The mail volumes
-are kept.
+are kept, and so are `MAIL_HOSTNAME`'s A record and its CAA pin (a known
+limitation: delete them by hand).
 
 ### mail status
 
@@ -1228,7 +1236,9 @@ portcullis mail rotate [--next-key]
 
 The daily timer's step: certificate, DKIM / MTA-STS / TLSA state, the main
 domain's mail records. `--next-key` starts a mail key rollover (both TLSA
-records published; the timer switches after 2×TTL + 1 day).
+records published; the timer switches after 2×TTL + 1 day). When the main
+domain isn't a mail domain (yet), it prints "The main domain isn't a mail
+domain (yet): nothing to rotate for it." and exits 0.
 
 ### mail schedule
 

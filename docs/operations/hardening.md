@@ -327,7 +327,8 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/mail/api-key`, `secrets/mail/dqs-key` | 10010 | 0640 (dir 0700) | mailctl (Stalwart's API key, written straight from the bootstrap's output; the Spamhaus DQS key) |
 | `secrets/mail/hub-secret` | 10001 | 0640 | Hub and mailctl (the bearer between them, ≥ 32 characters; written in place) |
 | `secrets/mail/{metrics-secret,relay-password}` | 2000 | 0640 | mail (the Prometheus scrape password; `MAIL_RELAY_PASSWORD`) |
-| `secrets/mail/gate/` | — | 0700, files 0600 | mail, read-only (the restore's `void-pending` marker and the recovery session file, [Mail](#mail)) |
+| `secrets/mail/mailctl-metrics-secret` | 10010 | 0640 | mailctl (its metrics' Basic-auth password, ≥ 32 characters; Prometheus reads a copy) |
+| `secrets/mail/gate/` | 2000 | 0750; `.present` 0640, the markers 0600 | mail, read-only (the sentinel `.present`, the restore's `void-pending` marker and the recovery session's boot id, [Mail](#mail)) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
 | `secrets/monitoring/alertmanager/alertmanager.yml` | 65534 | 0640 (dir 0750) | Alertmanager (receivers incl. SMTP password / webhook URLs) |
 | `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
@@ -552,6 +553,24 @@ reads message content: CLI only, never through the Hub or an AI. It lifts
 sign-in on one former account for a moment, with a one-hour read-only IMAP
 credential limited to mailctl's address and pinned to Stalwart's own
 certificate, and disables it again, also on error.
+
+**The recovery session** runs `mail` from `docker-compose.mail-recovery.yml`:
+no published ports, only the internal `portcullis-mail` network, `restart:
+"no"`. Its gate file holds the host's boot id, and the container refuses a
+recovery-mode start whose id doesn't match, so a recovery container left by
+a killed CLI or brought back after a reboot never runs. Every normal start
+needs the gate's sentinel (`gate/.present`), failing closed with "the mail
+gate isn't readable".
+
+**Local networks** (LAN-only mail passwords) can never amount to anywhere:
+at most 64; public IPv4 at most a /16 and public IPv6 at most a /32 (private
+ranges as wide as their block); IPv6 never overlapping `::ffff:0:0/96`,
+`::/96`, `64:ff9b::/96` or `64:ff9b:1::/48`, and within `fc00::/7`,
+`fe80::/10` or `2000::/3`. mailctl refuses a document that breaks this.
+
+**Metrics** of both `mail` and `mailctl` need Basic auth (user `prometheus`,
+their own passwords); mailctl refuses to start with a metrics password
+shorter than 32 characters.
 
 **After a restore** no mail password from the backup works: the store is
 voided in a recovery session before mail serves anyone, and the mail

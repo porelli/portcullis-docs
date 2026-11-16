@@ -212,7 +212,10 @@ needs inbound port 25.
 `./portcullis mail enable --lan-only true` (or
 `MAIL_SUBMISSION_LAN_ONLY=true`) makes mail passwords work only from the
 Hub's [Local networks](../operations/hub.md#local-networks): every password is
-limited to them, and the server refuses a login from anywhere else. Port 25
+limited to them (at most 64 networks, never "anywhere": a public IPv4 range
+at most a /16, a public IPv6 one at most a /32, private ranges as wide as
+their block; IPv6 within ULA, link-local or global unicast and never one of
+the ranges that embed IPv4 addresses), and the server refuses a login from anywhere else. Port 25
 stays public (other servers must reach you). Only the CLI sets it; Settings →
 Mail shows it. It is refused under rootless Podman (below).
 
@@ -278,7 +281,8 @@ It drains every mail domain through the Hub (MTA-STS `mode: none` for its
 `./portcullis mail status` shows every domain off, and it removes the mail
 records and the profile. `--force` removes everything now (senders with a
 cached MTA-STS policy may bounce mail until it expires). The mail volumes are
-kept.
+kept, and so are `MAIL_HOSTNAME`'s A record and its CAA pin (a known
+limitation): delete them by hand if you don't need them.
 
 ## Settings in `.env`
 
