@@ -341,7 +341,7 @@ Doctor tab says so and shows no mail findings.
 | `mail_dmarc_failures` | Warning | Aggregate reports of the last 7 days name senders failing SPF / DKIM or TLS | Read the sources: add a forgotten legitimate sender's service to your setup, or ignore forgeries (reports are display-only) |
 | `mail_dmarc_promote` | Info | 14 clean days: DMARC can move one step stricter | One click (after reading the reports) |
 | `mail_mtasts_enforce` | Info | 7 days of `testing` with a valid certificate: MTA-STS can enforce | One click |
-| `mail_dane_off` | Info | `mail-resolver` can't validate DNSSEC, so outbound DANE is off | Let the host reach the root servers on UDP and TCP port 53; it turns back on by itself |
+| `mail_dane_off` | Problem | `mail-resolver` can't validate DNSSEC, so outbound DANE is off | Let the host reach the root servers on UDP and TCP port 53; it turns back on by itself |
 | `mail_client_ip_rewritten` | Warning | Rootless Podman: SPF, iprev and the IP blocklists are off and DMARC never rejects | Expected under rootless Podman ([degraded mode](../setup/mail.md#rootless-podman)) |
 | `mail_lan_only_unenforced` | Problem | LAN-only is on but can't be enforced (rewritten client addresses): mail passwords work from anywhere | `./portcullis mail enable --lan-only false` |
 | `mail_rate_held` | Warning | A person's outgoing mail is held by the sending limit; or the Hub's restart of mail after a revoke failed ("mail sessions may still be open") | Check the person's mail; revoke their mail passwords if it wasn't them. For the restart: `./portcullis up` |

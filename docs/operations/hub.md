@@ -1879,7 +1879,7 @@ says so. What each one means and what to do:
 | `mail_dmarc_failures` | Warning | Explain |
 | `mail_dmarc_promote` | Info | One click: `<domain>: DMARC p=<policy> → p=<proposed>` |
 | `mail_mtasts_enforce` | Info | One click: `<domain>: MTA-STS testing → enforce (max_age 604800)` |
-| `mail_dane_off` | Info | Explain |
+| `mail_dane_off` | Problem | Explain |
 | `mail_client_ip_rewritten` | Warning | Explain |
 | `mail_lan_only_unenforced` | Problem | Explain |
 | `mail_rate_held` | Warning | Explain |
