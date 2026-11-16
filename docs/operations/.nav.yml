@@ -11,5 +11,6 @@ nav:
   - Sign-in Methods & Templates: auth-policies.md
   - Hub Management: hub.md
   - File Sharing: file-sharing.md
+  - Mail: mail.md
   - AI Support: ai.md
   - Testing & CI: testing.md

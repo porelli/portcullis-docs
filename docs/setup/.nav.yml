@@ -2,3 +2,4 @@ nav:
   - Quick Start: quickstart.md
   - DNS Configuration: dns.md
   - Certificates: certificates.md
+  - Mail Server: mail.md
