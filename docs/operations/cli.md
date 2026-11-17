@@ -34,6 +34,13 @@ the core checkout: `./portcullis`. There are no other scripts.
   works the same on both runtimes. Under Kubernetes every `kubectl` and
   `helm` call names `PORTCULLIS_KUBE_CONTEXT` from `.env`: the current
   context is never used.
+- **One changing command at a time.** `up`, `down`, `upgrade`, `restore`,
+  `backup` and `mail enable|disable|rotate|cert` take an exclusive lock on
+  `.portcullis.lock` in the checkout (shared with the backup and mail
+  timers; `--help` never locks). Another one waits up to
+  `PORTCULLIS_LOCK_WAIT` seconds (default 1800), saying "Waiting for another
+  ./portcullis command (a backup or mail timer?) to finish...", then
+  refuses. Needs `flock` (util-linux).
 - **Every setup step is idempotent.** `init`, `upgrade`, `vault init`,
   `pki setup`, `keycloak configure` and `oidc register` can be re-run safely.
 
@@ -76,6 +83,15 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`vpn add-device`](#vpn-add-device) | Make a built-in VPN device for a person (config + QR, shown once) |
 | | [`vpn devices`](#vpn-devices) | List VPN devices of every provider |
 | | [`vpn revoke`](#vpn-revoke) | Remove a built-in VPN device |
+| Mail | [`mail enable`](#mail-enable) | Turn the mail server on (Stalwart, the mail certificate, bootstrap) |
+| | [`mail disable`](#mail-disable) | Turn mail off for every domain (drains first) |
+| | [`mail status`](#mail-status) | Mail status: certificate, DKIM, MTA-STS, DMARC, queue, checks |
+| | [`mail test`](#mail-test) | Send a signed test message |
+| | [`mail dkim rotate`](#mail-dkim-rotate) | A new DKIM key pair for a domain now |
+| | [`mail cert`](#mail-cert) | Issue or renew the mail certificate |
+| | [`mail rotate`](#mail-rotate) | The daily step: certificate, DKIM / MTA-STS / TLSA, records |
+| | [`mail schedule`](#mail-schedule) | Install the daily mail timer (`--systemd`) |
+| | [`mail export`](#mail-export) | Export a former account's mailbox as mbox |
 | Kubernetes | [`kube check`](#kube-check) | Refresh the cluster check the Hub reads (`init`'s timer: every 6 h) |
 
 ---
@@ -588,7 +604,7 @@ ACME account exists but can't be read, it warns and shows the CA-only pin.
 ### dns setup
 
 ```
-portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail]
+portcullis dns setup [--yes] [--dnssec] [--only address|caa|nomail|mail]
 ```
 
 Shows the plan, asks to apply it (`--yes`: don't ask; required without a
@@ -638,10 +654,14 @@ the variable (never its value).
 |--------|---------|
 | `--yes` | Apply without asking |
 | `--dnssec` | Also turn on DNSSEC signing (the whole zone; `cloudflare` only; others print the steps). Signing is never turned off |
-| `--only SET` | Apply one record set: `address`, `caa` or `nomail` |
+| `--only SET` | Apply one record set: `address`, `caa`, `nomail` or `mail` (the mail server's records; mail must be on and mailctl answering) |
 
 Without `--only` it applies `address` and `caa`, plus `nomail` with
-`DNS_NOMAIL=true`. With `DNS_CAA=false` the `caa` step removes the CAA
+`DNS_NOMAIL=true`, plus `mail` while the mail server is on: `dns plan`,
+`dns setup` and `mail rotate` read the main domain's mail records from
+mailctl (`mailctl dns --main --json`) and pass them to the dns tool on its
+stdin with `MAIL_HOSTNAME` (if mailctl doesn't answer, `plan` / `setup`
+leave the mail set out with a warning; `--only mail` is refused). With `DNS_CAA=false` the `caa` step removes the CAA
 entries Portcullis wrote. If Traefik's ACME account can't be read, the live
 CAA is left alone (`--only caa` is refused). There is no `--check` option:
 use `dns check`.
@@ -1092,6 +1112,155 @@ portcullis vpn revoke <device-id>
 Removes a built-in VPN device; `wg` drops its peer at once and closes its
 open connections. Its address is quarantined for 7 days. Marketplace devices
 are removed in their app.
+
+## Mail
+
+The [mail server](../setup/mail.md) (compose profile `mail`). Day-to-day work
+is on [Mail operations](mail.md); the interfaces are in
+[contracts §19](../guides/integration-contracts.md#19-mail-new-mail). Every
+`mail` command refuses on Kubernetes ("mail isn't available on Kubernetes yet
+(Docker or rootless Podman only)"), and all but `enable` refuse while mail is
+off ("mail is off: ./portcullis mail enable").
+
+```
+Usage: portcullis mail <subcommand>
+
+  enable        Turn the mail server on (profile mail, certificate, bootstrap)
+  disable       Turn mail off for every domain (drains first)
+  status        Mail status: certificate, DKIM, MTA-STS, DMARC, queue, checks
+  test          Send a signed test message from the postmaster account
+  dkim          dkim rotate <domain>: a new DKIM key now
+  cert          Issue or renew the mail certificate (below 30 days)
+  rotate        The daily step: certificate, DKIM / MTA-STS / TLSA, the main domain's records
+  schedule      schedule --systemd: install the daily timer
+  export        Export a former account's mailbox as mbox
+```
+
+### mail enable
+
+```
+portcullis mail enable [--hostname H] [--lan-only true|false] [--rotate-key] [--yes]
+```
+
+Turns the mail server on: adds `mail` to `COMPOSE_PROFILES`, writes
+`MAIL_HOSTNAME` (default `mail.<domain>`) and `MAILCTL_CLIENT_IP`, issues the
+mail certificate through your DNS provider (`mail-cert`), bootstraps Stalwart
+in recovery mode (the recovery admin exists only during it and is checked
+gone after), starts `mail`, `mail-resolver` and `mailctl`, and gives mailctl
+the certificate's key (`mailctl tls-key --json`, `mail-cert`'s
+`spki_sha256` on stdin), so `mail test` works before the timer's first
+rotate. Idempotent. It voids a restore's mail passwords first while they are
+pending, so it is also the retry after a failed void. It ends with "Mail is
+on. DNS: ./portcullis dns setup (&lt;host&gt;'s address now; the mail records
+once the Hub has sent mailctl its first document, then the daily timer keeps
+them)" and offers to install the daily timer.
+
+| Option | Meaning |
+|--------|---------|
+| `--hostname H` | The mail server's name (a lowercase host name, e.g. `mail.example.com`). A change is recorded (`secrets/mail/former-hostnames`): only recorded former names are cleaned up in DNS |
+| `--lan-only true\|false` | Mail passwords work only from the Hub's Local networks (refused under rootless Podman: "LAN-only needs the real client address; rootless Podman rewrites it") |
+| `--rotate-key` | Replace mailctl's Stalwart API key |
+| `--yes` | Install the daily timer without asking |
+
+Refused with a DNS provider Portcullis can't write ("mail needs a DNS
+provider Portcullis can write (see setup/mail.md)"), with `MAIL_IPV6` in
+`.env` ("MAIL_IPV6 isn't supported yet: remove it from .env"), and on rootless
+Podman unless `net.ipv4.ip_unprivileged_port_start` is at most 25 (the
+message gives the `sysctl -w` line). `up` and `upgrade` apply the same
+refusals while mail is in `COMPOSE_PROFILES`.
+
+### mail disable
+
+```
+portcullis mail disable [--yes] [--force]
+```
+
+Drains every mail domain (MTA-STS mode none for its `max_age`, then the MX
+goes) through the Hub, and removes `mail` from `COMPOSE_PROFILES` once the Hub
+reports every domain off: run it again after the drain. `--force` removes it
+now (senders with a cached MTA-STS policy may bounce mail). The mail volumes
+are kept, and so are `MAIL_HOSTNAME`'s A record and its CAA pin (a known
+limitation: delete them by hand).
+
+### mail status
+
+```
+portcullis mail status [--json]
+```
+
+Mail status: the services' health, the Hub's document ("the Hub's document:
+generation N, applied M", or a failure when `secrets/mail/hub-secret` is
+empty or too short, or mailctl has no document from the Hub), the
+certificate, each domain's DKIM keys, MTA-STS and DMARC (with "ready to
+enforce" / "proposed" when the doctor offers the step), the queue, former
+accounts, every check that isn't ok, the daily timer and the client-address
+mode. Exit status 1 on a problem (a service not healthy, mailctl not
+answering, a Problem check, unvoided mail passwords after a restore).
+`./portcullis status` shows the same block ("Mail"; `--json` key `mail`,
+absent with mail off).
+
+### mail test
+
+```
+portcullis mail test --to <address>
+```
+
+Sends a DKIM-signed test message from the first postmaster account
+(`<user>@<primary domain>`) and prints its Message-ID; open its headers and
+check `Authentication-Results` ([Testing your install](mail.md#testing-your-install)).
+
+### mail dkim rotate
+
+```
+portcullis mail dkim rotate <domain>
+```
+
+Makes a new DKIM key pair for the domain now. It goes active once both public
+resolvers serve it: for the main domain at the next `mail rotate` (or
+`dns setup --only mail`), for an added domain when the Hub publishes it.
+
+### mail cert
+
+```
+portcullis mail cert
+```
+
+Issues or renews the mail certificate (renewal below 30 days); reloads
+Stalwart on a change.
+
+### mail rotate
+
+```
+portcullis mail rotate [--next-key]
+```
+
+The daily timer's step: certificate, DKIM / MTA-STS / TLSA state, the main
+domain's mail records. `--next-key` starts a mail key rollover (both TLSA
+records published; the timer switches after 2×TTL + 1 day). When the main
+domain isn't a mail domain (yet), it prints "The main domain isn't a mail
+domain (yet): nothing to rotate for it." and exits 0.
+
+### mail schedule
+
+```
+portcullis mail schedule --systemd [--out DIR]
+```
+
+Writes `portcullis-mail.service` and `portcullis-mail.timer` (daily, up to an
+hour's random delay, catching up after downtime) to `backups/systemd/` (or
+`DIR`) and prints how to install them: system units as root under Docker,
+user units (lingering on) under rootless Podman.
+
+### mail export
+
+```
+portcullis mail export <former-id> [--out FILE]
+```
+
+Exports a former account's mailbox (`former-<uuid>`, listed by
+`mail status`) as mbox, mode 0600, under `backups/mail-export/` (or `FILE`,
+which must not exist). Nothing is left behind when it fails, and the account
+stays disabled.
 
 ## Kubernetes
 

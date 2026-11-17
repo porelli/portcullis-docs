@@ -42,7 +42,7 @@ Do this once, as root. Use a dedicated account for Portcullis (here
 | cgroups v2 delegation | `memory` and `pids` delegated to the user's systemd manager (systemd's default) | yes |
 | Lingering | `loginctl enable-linger`: healthchecks and the start at boot need the user manager running while nobody is logged in | yes |
 | User units | `podman.socket` and `podman-restart.service` enabled for the operator | yes |
-| Low ports | `net.ipv4.ip_unprivileged_port_start=80`, so Traefik can publish 80 and 443 | yes |
+| Low ports | `net.ipv4.ip_unprivileged_port_start=80`, so Traefik can publish 80 and 443; **25** with the [mail server](../setup/mail.md#rootless-podman) (it publishes 25, 465 and 587) | yes |
 | Network pool | the operator's `~/.config/containers/containers.conf` says, under `[network]`, exactly `default_subnet_pools = [{"base" = "10.89.0.0/16", "size" = 24}]`, and no file in `containers.conf.d` sets `default_subnet_pools`. Portcullis reserves `10.88.0.0/16` (Podman's default network) and `10.89.0.0/16` against [VPN](vpn.md) ranges, so every network Podman creates must come from there: an address in a VPN provider's range could otherwise be a container's | yes |
 | `tun` module | loaded at boot, only for marketplace VPN gateways that use a TUN device ([below](#vpn-under-rootless-podman)) | — |
 | Versions | Podman 5.4 or later, passt, the Docker CLI and its compose plugin (no Docker daemon) | yes |
@@ -370,6 +370,15 @@ Time Machine settings ([File Sharing](file-sharing.md)).
   they started with. After `podman.socket` restarts they can't reach the
   engine and turn unhealthy; `./portcullis status` says so, and
   `./portcullis up` (or `upgrade`) restarts an unhealthy proxy.
+- **Mail runs degraded.** The [mail server](../setup/mail.md#rootless-podman)
+  needs `ip_unprivileged_port_start=25` (`mail enable`, `up` and `upgrade`
+  refuse otherwise, giving the `sysctl -w` line; any local account may then
+  bind ports from 25). Every mail client and server seems to come from the
+  rootless gateway, so mail runs with `MAILCTL_CLIENT_IP=rewritten`: SPF,
+  reverse DNS and the IP blocklists are off for incoming mail, DMARC judges
+  DKIM alignment only and never rejects, nobody is banned automatically, and
+  LAN-only mail passwords are refused. The doctor shows
+  `mail_client_ip_rewritten`.
 - **`lldap-ui`.** Container addresses aren't reachable from the host under
   rootless Podman, so `./portcullis lldap-ui` starts a short-lived forwarder
   published on `127.0.0.1:17170` (`LLDAP_UI_PORT` changes it) and prints the

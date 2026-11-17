@@ -60,6 +60,7 @@ All images:
 | `vault_health` | blackbox → `http://vault:8200/v1/sys/health` | 200 only when initialised, unsealed and active |
 | `services`, `services_tcp` | blackbox → enroll, forward-auth, Hub, LLDAP (HTTP); Postgres, LLDAP LDAP (TCP) | Services without a metrics endpoint |
 | `wg` | `wg-metrics:9100` (file discovery `secrets/monitoring/prometheus/wg-targets.json`) | Only while the `wg` profile is on (an empty target list otherwise, so no `TargetDown`); over the internal network `portcullis-metrics-wg` (exactly `wg` and Prometheus). The [VPN](vpn.md) edge: `wg_edge_accepted_total{provider}`, `wg_edge_rejected_total{provider,reason}`, `wg_edge_closed_total{provider,reason}`, `wg_provider_stale{provider}`, `wg_role_up{role}`, `wg_people_peers` (configured built-in peers), `wg_mode_restricted` |
+| `mail`, `mailctl` | `mail-metrics:9180/metrics/prometheus` (Stalwart, Basic auth `prometheus` with the password file `/etc/portcullis/mail-metrics-secret`) and `mailctl-metrics:9100` (Basic auth `prometheus` with `/etc/portcullis/mailctl-metrics-secret`, a copy of `secrets/mail/mailctl-metrics-secret`, at least 32 characters: mailctl refuses to start otherwise; file discovery `secrets/monitoring/prometheus/mail-targets.json`, labels `service="mail"` / `service="mailctl"`) | Only while the `mail` profile is on (an empty target list otherwise), over the internal `portcullis-metrics-mail` network. mailctl's: `portcullis_mail_check{check}` (1 ok, 0 not), `portcullis_mail_dkim_stage{domain,stage}`, `portcullis_mail_cert_expiry_seconds`, `portcullis_mail_queue_messages`, `portcullis_mail_queue_deferred_ratio`. See [Mail operations](mail.md) |
 | `tls` | blackbox → `auth.<domain>:443` | Goes through the host's published port, so it sees the certificate browsers see. Verified against the system roots |
 
 ### DNS metrics
@@ -101,6 +102,12 @@ The Vault metrics token is an orphan token without the default policy, with a
 | `CaExpiring` | The root, the YubiKey certificate CA (`ca="intermediate"`) or the browser certificate CA (`ca="browser"`) expires in < 90 days | critical |
 | `PortcullisVPNDown` | The VPN mode is `admin` or `server` (`portcullis_vpn_mode_restricted == 1`, from `status --textfile`) and `wg` can't be scraped, for 2 min: the VPN-only core surfaces are unreachable. Break-glass: `./portcullis vpn mode apps` | critical |
 | `PortcullisVPNProviderStale` | A VPN provider's device list is stale (`wg_provider_stale == 1`) for 5 min: its devices are denied (the identity hook fails or the gateway is down; see the instance's VPN tab) | warning |
+| `MailQueueHigh` | More than 100 messages wait in the mail queue for 30 min | warning |
+| `MailDeferralsHigh` | More than a fifth of the queued mail is deferred for 1 h (often: outbound port 25 blocked, or a blocklist) | warning |
+| `MailCertExpiring` | The mail certificate expires within 14 days, or is missing, for 10 min (check `portcullis-mail.timer`; `./portcullis mail cert`) | warning |
+| `MailBlocklisted` | The mail server's address is on a blocklist, or a list refused the query, for 10 min | critical |
+| `MailDKIMStuck` | A new DKIM key has waited more than 24 h for DNS, for 10 min | warning |
+| `MailCheckFailing` | Any other mail check fails for 1 h (`./portcullis mail status`, or the Hub's doctor) | warning |
 | `PortcullisStatusStale` / `PortcullisStatusProblems` | `status --textfile` did not run for 36 h / reported problems for 1 h | warning |
 
 Core CI runs `promtool test rules monitoring/prometheus/tests/alerts_test.yml`,

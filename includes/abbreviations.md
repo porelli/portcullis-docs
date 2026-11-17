@@ -158,3 +158,18 @@
 *[forbidden roots]: Host paths no shared folder or path setting may touch: Docker's data root, or on Kubernetes the containerd root and the volume storage directory
 *[edge namespace]: portcullis-edge on Kubernetes: the only namespace Traefik watches; it holds every IngressRoute and Middleware and the apps' pinned ExternalName Services, never a Secret
 *[params generation]: The hash of the admission params on Kubernetes: each change gets new params and bindings, proved live before the old ones are removed
+*[Stalwart]: The mail server Portcullis runs (profile mail): SMTP, submission and IMAP, with a built-in spam filter
+*[mailctl]: The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks
+*[mail_users]: The Hub-managed group whose members get a mailbox
+*[mail password]: A per-device password for mail apps only (IMAP and submission), created by the person on their Sign-in page, shown once
+*[mail passwords]: Per-device passwords for mail apps only (IMAP and submission), created by each person on their Sign-in page, shown once
+*[MX]: Mail exchanger: the DNS record naming the server that receives a domain's mail
+*[SPF]: Sender Policy Framework: a TXT record listing who may send mail for a domain
+*[DKIM]: DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS
+*[DMARC]: A DNS policy telling receivers what to do with mail that fails SPF and DKIM alignment (none, quarantine, reject)
+*[MTA-STS]: Mail Transfer Agent Strict Transport Security: a policy telling other servers to deliver only over valid TLS
+*[TLS-RPT]: SMTP TLS reporting: other servers send daily reports about TLS problems delivering to you
+*[DANE]: DNS-based Authentication of Named Entities: TLSA records, trusted through DNSSEC, pinning a server's TLS key
+*[TLSA]: The DNS record DANE uses to pin a TLS key (Portcullis publishes 3 1 1, the SPKI hash)
+*[PTR]: Reverse DNS: the name an IP address points back to, set by whoever owns the address
+*[GTUBE]: The standard spam test string: a message carrying it in the Subject must be refused

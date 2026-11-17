@@ -247,6 +247,18 @@ The step **"Test the VPN service"** (`.github/ci/build-and-test-vpn-service.sh`)
 
 `wg` then stays on for the rest of the job (`up`, `upgrade`, backup and restore).
 
+The step **"Test the mail service"** (`.github/ci/build-and-test-mail-service.sh setup`) turns [mail](../setup/mail.md) on (`./portcullis mail enable`, the mail certificate from a CI Pebble) and checks, failing with `FAIL: <what>`:
+
+- **No outbound SMTP.** Outbound TCP 25, 465 and 587 is rejected first, for the containers, `mail-egress` and the runner itself; `mail-resolver` forwards every name to the domains service's fake DNS. Nothing is ever sent to an external domain: foreign recipients are only tried at RCPT (and refused).
+- `mail` runs as 2000:2000, read-only, with `NET_BIND_SERVICE` only; `mailctl` as 10010 with group 10001; the resolver is healthy.
+- No `recovery.env` is left, a recovery login gets `401`, and `api-key` is 0640 group 10010.
+- The management listener is unreachable from `portcullis-proxy` and `404` from another `portcullis-mail` address (the API key too).
+- The certificate's SAN is `MAIL_HOSTNAME`, a second `mail cert` keeps the key, and 25, 465, 587 and 993 present it.
+- Port 25 offers no AUTH and relays nothing (from the host and from `mail-egress`); submission refuses a foreign envelope sender and a foreign `From:`, and accepts the person's own mail.
+- `status --json` `.mail` (bootstrap, certificate, the timer warning turning active after `mail schedule --systemd`).
+
+After the backup step, **"Mail: the backup stopped and restarted mail"** checks that `backup` stopped `mail` for its store, started it again and archived `mail_data`, `mail_etc`, `mailctl_data`, `mail_tls` and `mail_acme`. After the restore into a fresh stack, **"Mail: the restore voided the mail passwords"** checks that the old mail password is refused by IMAP, mail is healthy and `mailctl_data` came back (the same DKIM state, `restored_at` set).
+
 The step "Test the public guard (public exceptions) through Traefik" routes a test host through `portcullis-public-guard@docker` only and checks: no version-3 entry → 403; published prefix / static paths → 200; other paths, encoded `/` or `#`, dot-segment escapes → 403; `Authorization`, `Proxy-Authorization`, a credential header, credential cookies and query keys in PHP-mangled spellings → 403. The guard's unit tests are in `tests/test_group_gate.py` (`PublicGuardTest`, `PhpVarNameTest`).
 
 ### `e2e` (browser)
@@ -936,6 +948,30 @@ uploads `e2e-folders-artifacts`: logs, API answers, the tree and
 
 Built like `e2e-settings` (same-named Hub and templates branches, else `main`). Ubuntu 24.04 runners, smbclient pinned at `2:4.19.5+dfsg-4ubuntu9*`. On failure: policy/attributes files, data files, container logs, screenshots, no traces (DOM snapshots would carry the password).
 
+### `e2e-mail` (the mail server)
+
+The whole core stack, the Hub and the domains service (Pebble, the CI-only
+fake DNS provider: one fake zone shared by the dns tool and `mail-cert`), with
+mail on for `ci.example.org` and the added domain `team-b.test`, plus a second
+Stalwart ("remote", `remote.test`) on `mail-egress`. **Nothing leaves the
+runner:** outbound 25, 465 and 587 is rejected outside the stack's networks
+and every name is the fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
+
+- **setup**: people in and out of `mail_users`, the list `team`, every account answering RCPT, DKIM Ed25519 and RSA active for both domains (`./portcullis mail rotate`), and the mail passwords created on the Sign-in page (fresh-auth popup, shown once).
+- **exchange both ways**: the remote's `Authentication-Results` show `dkim=pass` for an Ed25519 and an RSA signature, `spf=pass` and `dmarc=pass`; mail from the remote arrives; the remote's DMARC aggregate report reaches `dmarc-reports@` and shows in `GET /api/mail/checks`.
+- **added-domain alias**: a person receives at and sends as their `team-b.test` address.
+- **spam**: GTUBE in the Subject is refused with `550 5.7.1` at DATA (a GTUBE body is pinned as accepted: Stalwart reads it only in the Subject); a message scoring between the thresholds lands in Junk with `X-Spam-*`; the allow list (through the Hub) tags `TRUSTED_DOMAIN`.
+- **mail passwords**: shown once and nowhere after the dialog; IMAP 993, SMTP 465 and 587 work; the LLDAP password fails IMAP and the mail password fails LLDAP; the management listener answers `404` from another address and a method-level `forbidden` from mailctl's own; the sixth password is `409`.
+- **lists and postmaster**: the remote can't post to the members-only list (`550 5.7.1` at RCPT), a member can; `postmaster@` reaches the administrators.
+- **revocation and removal**: an IMAP session fails within 8 s of the revoke; an IDLE session fails within 8 s of the person's removal from `mail_users`, whose address then gets `550 5.1.1`; a username deleted and created again gets an empty mailbox, the old passwords fail, and `former-<old uuid>` is listed.
+
+Then the job runs `./portcullis backup` and `./portcullis restore --yes`, and
+`e2e_mail.py restore` checks that the old password is refused by IMAP and
+SMTP AUTH and that the Sign-in page says "reset by a restore". On failure it
+uploads the mail, mailctl, resolver, domains, Hub, Traefik and Keycloak logs
+(never a password: every one is masked as soon as it is known, and there are
+no Playwright traces).
+
 ### `e2e-ai` (AI support through mcp-gate)
 
 The first run of the whole chain: an MCP client on the runner host →
@@ -1081,6 +1117,7 @@ as the operator ([Rootless Podman](rootless-podman.md)). No artifact carries
     - **The VPN service** (`.github/ci/e2e-podman-vpn-service-on-rootless-podman.sh`): `vpn init` rootless, `wg` as 10006 without capabilities, `vpn add-device` for an LLDAP person, a `tests/e2e/vpn-client` handshake over the published UDP port and a GET of people.&lt;domain&gt; through the edge and `vpnsecure` (forward-auth's redirect). The host prep writes the operator's `containers.conf` pool line, and the job checks a new network lands in `10.89.0.0/16`
     - **reboot:** after `systemctl restart user@<uid>.service` (every container dies with the user manager), `podman-restart.service` brings the stack back and `status` is clean within 180 s
     - **Docker → Podman round trip:** after a wipe, `init --runtime podman` and `./portcullis restore --yes` of the Docker phase's backup: `.env` keeps `CONTAINER_RUNTIME=podman` and the rootless socket, `status` is clean, `certs/ca-chain.crt` has the recorded sha256, the Docker phase's LLDAP person exists, and the secrets are the operator's on the host
+    - **Mail on rootless Podman** (`.github/ci/e2e-podman-mail.sh`): outbound 25 / 465 / 587 rejected for the runner and pasta; `ip_unprivileged_port_start=25`, then `./portcullis mail enable` (`MAILCTL_CLIENT_IP=rewritten`, healthy); a message from a CI container to the host's port 25 is delivered to an LLDAP person; the doctor names `mail_client_ip_rewritten`; and no ban appears after the delivery (with rewritten addresses every client is the gateway, so a ban would lock everyone out)
 - On failure it uploads the container logs only.
 
 ### `e2e-vpn` (VPN-only access)
@@ -1214,6 +1251,137 @@ shellcheck -S warning portcullis scripts/lib/*.sh tests/*.sh tests/e2e/*.sh
 # compose validity without Docker containers:
 PORTCULLIS_ROOT=/tmp/x ./portcullis init --env-only --non-interactive --domain ci.example.org --dns-provider none
 ```
+
+### Running a CI job on a Docker host (`run-job.sh`)
+
+`.github/ci/local/run-job.sh <job>` runs one `ci.yml` job on a Linux host
+with Docker (the shared dev builder), step by step as GitHub's runner does,
+and cleans up after itself:
+
+```bash
+.github/ci/local/run-job.sh build-and-test                  # main, fresh clone from GitHub
+.github/ci/local/run-job.sh e2e-mail --scenario 4           # one scenario (+ its setup)
+.github/ci/local/run-job.sh e2e-signin --ref mybranch       # a pushed branch
+.github/ci/local/run-job.sh e2e-ai --local ~/w/portcullis   # a working tree, uncommitted changes included
+.github/ci/local/run-job.sh e2e --keep                      # keep the container to look around
+.github/ci/local/run-job.sh --cleanup <container>           # …then remove it
+```
+
+- **Isolation.** Every run is its own privileged Ubuntu 24.04 system
+  container `pcci-<job>-<id>` (`.github/ci/local/Dockerfile`: systemd, its
+  own dockerd, user `runner` 1001 with passwordless sudo, Docker CE + buildx +
+  compose, jq, yq, shellcheck, python3, gcc, Node.js LTS, Playwright's
+  system packages) on its own bridge network (`10.250.<n>.0/24`), 4 CPUs /
+  16 GB like a GitHub runner (`--cpus` / `--memory`); `/tmp`, `/srv` and the
+  workspace are volumes (ext4 with ACLs, as on GitHub) and dockerd's
+  data-root is `/var/lib/docker-store/docker` (a container's mountinfo names
+  `…/docker/containers/<id>/`, as the Hub's tests expect). Every job and step
+  `timeout-minutes` is multiplied by `--timeout-factor` (default 1.5: ci.yml's
+  limits are sized for a fresh GitHub runner). The job's compose
+  project, its fixed networks (172.30/172.31), published ports, `/etc/hosts`
+  lines and `/tmp` files are the container's own, so several runs (and
+  other work on the host) never collide; the compose project inside stays
+  `portcullis` because the steps name `portcullis_*` volumes. The checkout
+  is a fresh clone in `~/w/ci-local/<id>/`, copied into the workspace
+  volume at `/home/runner/work/portcullis/portcullis`. Afterwards the
+  container, its network and its volumes are removed and the clone deleted;
+  `run.log` and uploaded artifacts stay in `~/w/ci-local/<id>/` (pruned
+  after 7 days).
+- **Steps.** `.github/ci/local/steps.py` reads the job from `ci.yml` (so
+  it can't drift) and runs it like Actions: workflow / job / step `env`
+  with `${{ }}` expressions, `if:` (default `success()`, `always()`,
+  `failure()`), Actions' default shells, `working-directory`,
+  `timeout-minutes`, `continue-on-error`, `GITHUB_ENV` / `GITHUB_OUTPUT` /
+  `GITHUB_PATH` / `GITHUB_STEP_SUMMARY`, step outputs, and the local
+  composite actions (`cached-images`, `hub-image`, `keycloak-image`). The
+  event is a `workflow_dispatch` of the checked-out branch (nothing saves
+  caches; same-named Hub / Keycloak / templates branches are used as in
+  CI). `uses:` steps that need GitHub are emulated: `actions/checkout` (the
+  workspace is already there; another repository is cloned),
+  `actions/setup-go` (Go from go.dev, sha256-checked), `actions/cache*`
+  (always a miss), `actions/upload-artifact` (copied to the run directory),
+  `docker/setup-buildx-action` (no-op), `docker/build-push-action`
+  (`docker buildx build --load`, no `gha` layer cache, never a push).
+- **Caches.** Unless `--no-cache`: the job's image store (`pcci-cache-<job>-*`
+  volumes; one run of a job at a time uses it, a concurrent one gets a
+  throwaway store) — sanitized before every run: no container, volume or
+  network survives, and every image name not backed by a registry pull of
+  that repository is removed — and the shared pip / Playwright / go-build
+  and Go module caches. The Go toolchain is downloaded every run.
+- **Not here:** `e2e-podman` (stops the runner's Docker) and `e2e-k3s`
+  (installs k3s; use `.github/ci/e2e-k3s-local.sh container`). The Actions
+  layer cache (`type=gha`) and artifact service don't exist locally.
+
+The builder (Ubuntu 24.04) also has rootless Podman for user `pcpodman`
+(`sudo -iu pcpodman`; `DOCKER_HOST` is its user socket, so `docker` /
+`docker compose` talk to Podman; netavark, pasta, slirp4netns; Ubuntu's
+Podman 4.9 — CI's `e2e-podman` runs 26.04's 5.x), Node.js LTS (the Hub's
+web tests) and `docker:dind` works privileged (e2e-servers' dind workers).
+
+### Single-scenario reruns (`scenarios`)
+
+`gh workflow run ci.yml --ref <branch> -f jobs=e2e-mail -f scenarios="4 members_only_list"`
+runs only those scenarios of the e2e runners (`tests/e2e/*.py`), plus their
+setup; empty = all. `E2E_SCENARIOS` (the workflow's env) carries it to the
+runners, and `run-job.sh --scenario` sets the same. A scenario's name comes
+from its `check()` name: the text before the first `:` (or the whole name),
+parenthesised parts dropped, split on `,` `+` `/`, with an optional leading
+number — `"4 mail_password_flow"` is `4` and `mail_password_flow`,
+`"cross_domain_sso: …"` is `cross_domain_sso`; a check whose name gives no
+identifier (`"alice, bob and carol: setup link → passkey → portal"`) is
+setup and always runs, as do `setup`, `seed`, `finally` and what a runner
+declares with `scenarios.always()` (e2e_ai's `ai_on`, e2e_instances'
+`alice`). A named scenario also pulls in the scenarios whose checks set the
+`state` keys it `needs()` (read from the source with `ast`, transitively);
+state built any other way isn't seen — such a scenario fails closed with
+"needs …": name that one too. `python3 tests/e2e/scenarios.py list` names
+every scenario; `jobs-input` fails the run on a name none of the chosen
+jobs' runners knows (`scenarios.py check`), and each runner fails at import
+on a name no runner knows. Only the Python runners' checks are filtered:
+the job's shell steps (stack start, backups, shell assertions) still run.
+
+### The self-hosted builder runner (`runner: builder`)
+
+`gh workflow run ci.yml --ref <branch> -f runner=builder [-f jobs=…]` (core)
+or `gh workflow run build.yml --ref <branch> -f runner=builder` (Hub: the
+`test` job only; `build` — GHCR push, cosign's OIDC token — never leaves
+GitHub) runs the jobs on the dev builder's ephemeral runner instead of
+`ubuntu-latest`. `runs-on` resolves to `[self-hosted, linux, x64,
+pc-builder]` only when `github.event_name == 'workflow_dispatch'` and the
+input is `builder`; push, pull_request and `workflow_call` (releases) always
+get GitHub's runners, and `e2e-podman` / `e2e-k3s` never use it.
+
+On the builder (`.github/ci/local/runner/`, installed by `sudo
+.github/ci/local/runner/install.sh`): user `ghrunner` (system user, no
+password, no sudo, in the `docker` group — root-equivalent on the host),
+`pcci-runner@portcullis.service` and `pcci-runner@portcullis-hub.service`
+(`runner-loop.sh`): each start registers one ephemeral runner
+(`pc-builder-portcullis` / `pc-builder-portcullis-hub`, repo level, label
+`pc-builder`, `--ephemeral`) inside a fresh privileged job container (the
+`run-job.sh` image with the official actions/runner), takes one job, and is
+removed with the container; systemd starts the next. Every job gets a fresh
+workspace, `/srv`, image store and tool cache; only pip / Playwright /
+go-build and the Go module cache (`GOFLAGS=-mod=readonly`) persist per repo.
+The runner's `ACTIONS_RUNNER_HOOK_JOB_STARTED` hook
+(`job-started-hook.sh`) refuses — before any step — every job that isn't a
+`workflow_dispatch` of that repo's `ci.yml` / `build.yml` on a branch,
+dispatched (actor and triggering actor) by the repository owner: the
+privileged container and the shared caches are acceptable only under that
+rule. Both repos require approval for fork pull-request workflows from all
+outside contributors. A builder job never writes GitHub's shared Actions cache
+(GitHub-hosted runs restore it): every cache-writing step of a
+builder-switchable job carries `!(github.event_name == 'workflow_dispatch'
+&& inputs.runner == 'builder')` or writes only on a push (setup-go's
+`cache`, `actions/cache/save`, build-push's `cache-to`, cached-images'
+`save`), checked by `tests/lint_builder_cache.sh` (core unit-tests; a byte
+copy runs in the Hub's `test` job). Registration tokens come from `/etc/pcci-runner/gh-pat`
+(a fine-grained token for the two repositories with Administration: read and
+write; unattended) or, without it, a token dropped into
+`/var/lib/pcci-runner/tokens/<repo>.json` (`gh api -X POST
+repos/porelli/<repo>/actions/runners/registration-token`, one registration
+each). Removal: `sudo .github/ci/local/runner/uninstall.sh`, then delete the
+registrations (`gh api repos/porelli/<repo>/actions/runners` →
+`gh api -X DELETE repos/porelli/<repo>/actions/runners/<id>`).
 
 ## Templates CI
 
@@ -1414,6 +1582,10 @@ template.
 
 Triggers: pushes to `main`, tags `v*`, and pull requests. Every action is
 pinned by commit SHA.
+A `workflow_dispatch` with `-f runner=builder` runs the `test` job on the
+dev builder's ephemeral runner (see [the self-hosted builder
+runner](#the-self-hosted-builder-runner-runner-builder)); `build` always
+runs on GitHub.
 
 - **`test`**:
     - `gofmt -l .` must be empty
