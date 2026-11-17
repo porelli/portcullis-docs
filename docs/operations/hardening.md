@@ -681,7 +681,8 @@ policies and NetworkPolicies take their place. The full rules are in
 - **The Hub's Roles** are the Kubernetes form of `socket-proxy-hub`: one in
   the apps namespace (workloads, Services, PVCs, ConfigMaps, Secrets,
   NetworkPolicies, pods without `patch` or `update`, `pods/log`,
-  `pods/exec` `create` only, events) and one in `portcullis-edge`
+  `pods/exec` `create` only, events, read-only pod metrics — never node
+  stats) and one in `portcullis-edge`
   (IngressRoutes, Middlewares and Services only). There is nothing in the core
   namespace and nothing cluster-scoped. The Hub checks at start, every
   60 s and before every deploy that it holds exactly these rules, and
