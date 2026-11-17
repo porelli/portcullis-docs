@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`, `e2e-ssh`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-mail`, `e2e-ai`, `e2e-podman`, `e2e-vpn`, `e2e-k3s`, `e2e-servers`, `e2e-servers-podman`, `e2e-ssh`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | Keycloak image (`porelli/portcullis-keycloak`) | `build.yml` | `test`, `vectors`, `smoke`, `publish` |
@@ -1145,6 +1145,50 @@ The whole stack with the VPN service (`COMPOSE_PROFILES=wg`, `./portcullis vpn i
 
 Keys, configurations and cookies live only in a 0700 temp directory; setup links are masked and there are no Playwright traces. The artifacts are logs and `wg`'s status, never `vpn.json`'s keys, `.env`, `secrets/` or configurations.
 
+### `e2e-servers` and `e2e-servers-podman` (multiple servers)
+
+Two thin jobs (60 min each, `ubuntu-26.04`; the steps are
+`.github/ci/e2e-servers-{setup,worker,rogue,asserts}.sh`) test [worker
+servers](servers.md) end to end. The primary runs on Docker: the stack and
+the Hub, with the CI template `servers-echo` (busybox httpd and a CGI that
+echoes the request's `Cookie` header, sets a host-only and a parent-domain
+cookie, prints a volume marker and streams a long response) and
+`./portcullis link init`. `.github/actions/hub-image` builds the Hub, the
+agent and the relay from the same-named Hub branch with `GO_TAGS=e2etest`
+(the CI-only clock-offset and oversized-info hooks;
+[contracts §17.3](../guides/integration-contracts.md#173-servers-in-the-hub)).
+
+- **`e2e-servers`**: the workers are pinned `docker:dind` containers, each
+  with a copy of the checkout. They run **privileged, in CI only**: the one
+  reviewed exception (a `test_cli` lint allows `--privileged` only on a
+  `# reviewed exception` line of `e2e-servers-worker.sh` and the local
+  `e2e-k3s-local.sh`).
+- **`e2e-servers-podman`**: the worker is rootless Podman as a second runner
+  user, `worker`, with its own user socket and linger.
+
+Each worker joins with `./portcullis worker join --runtime …`, the code on
+stdin. `tests/e2e/e2e_servers.py` (Playwright for the setup links and the
+Hub's fresh sign-ins, the Hub's API as admin) runs, in order:
+
+| Case | Checks |
+|------|--------|
+| `join_ok`, `join_code_reused_refused`, `join_code_expired_refused` | a join works; a used code and an expired one (the Hub's clock moved 16 minutes on) are refused |
+| `echo_on_worker_signed_in`, `echo_on_worker_denied_without_sign_in` | an echo on the worker answers through the primary after sign-in, with the same template and tier as one on the primary, its containers on the worker only; refused without sign-in |
+| `stream_non_browser_clients` | `curl --http1.1` and `--http2` with alice's cookies (a 0600 header file) stream the echo's `?stream` through Traefik, forward-auth and the relay: the first ticks within 5 s |
+| `no_portcullis_cookie_reaches_app`, `parent_domain_set_cookie_stripped` | the app never sees a Portcullis cookie; its `Set-Cookie; Domain=…` arrives host-only |
+| `move_worker_primary_worker_keeps_data`, `move_back_onto_kept_copy_refused` | worker → primary → worker (*Undo move*) keeps the volume marker; a direct move onto a server holding a kept copy is `409` |
+| `wg_stopped_fails_closed`, `wg_back_routes_again` | with `wg` stopped the worker app is unreachable and its containers still run; it routes again after |
+| `worker_break_glass_stop_start` | `./portcullis worker stop` / `start` of the echo on the worker, as its operator (the rootless Podman user on the podman job); it routes again |
+| `rogue_worker` | from the worker's own tunnel, 2000+ TCP ports of `10.214.0.1` all answer with a reset (`tests/e2e/vpn-client --probe`; a timeout doesn't count as closed); another worker's certificate makes the server offline (dind job), and a certificate `pki_node` issued for the worker's own name with another key and serial is refused by the pin (`server_identity_mismatch` in the Hub's log); the echo's own token tunnels (`200`, the control) and data CONNECTs without a token, with a bogus one or with another instance's are `403`; an oversized `/v1/info` makes it offline |
+| `revoke_drops_handshake_and_rotates` | a revoke drops the worker from link within 15 s and changes an OIDC instance's Keycloak client secret |
+| `revoke_cuts_relayed_stream` | a long-lived `fetch()` stream in alice's page through the relay ends at most 10 s after the revoke |
+| `socket_rule_both_stacks` | live from each engine: on the primary only the two socket proxies mount the socket, on each worker only `socket-proxy-agent`, all read-only |
+
+The join code is kept masked, in one 0600 file in a 0700 temp directory,
+and piped to the worker script; the test checks it never shows in the
+script's output, the op record or the Hub's and `wg`'s logs. On failure the
+artifacts are logs only, and any file containing `pcj1.` is dropped.
+
 ### `e2e-k3s` (Kubernetes)
 
 The whole stack on a real k3s on `ubuntu-26.04` (90 min), never kind or k3d ([Kubernetes](kubernetes.md)). No artifact carries `.env`, `secrets/` or a backup; on failure it uploads pods, events, logs and k3s's journal only.
@@ -1229,10 +1273,11 @@ The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most
 
 Runs on `v*` tags:
 
-1. **`preflight`** checks three things:
+1. **`preflight`** checks four things:
     - The tag is `vMAJOR.MINOR.PATCH` and `CHANGELOG.md` has its `## [X.Y.Z]` section.
     - The `HUB_IMAGE` default in `docker-compose.yml` is `ghcr.io/porelli/portcullis-hub:A.B.C@sha256:…`, where `vA.B.C` is a published (non-draft, non-prerelease) Hub release and the tag still resolves to that digest.
     - The `KEYCLOAK_IMAGE` default is `ghcr.io/porelli/portcullis-keycloak:D.E.F@sha256:…` in the same way (a published portcullis-keycloak release whose tag still resolves to that digest).
+    - The `AGENT_IMAGE` default (`docker-compose.worker.yml`) and the `RELAY_IMAGE` default (`docker-compose.yml`) are `ghcr.io/porelli/portcullis-agent:A.B.C@sha256:…` and `ghcr.io/porelli/portcullis-relay:A.B.C@sha256:…`, the same Hub release's version and digests ([Multiple servers](servers.md)).
 2. **`ci`** runs the full `ci.yml` on the tagged commit.
 3. **`release`** builds a reproducible `portcullis-X.Y.Z.tar.gz` (the checkout without `.git`, plus `VERSION`) and its `.sha256`. It then creates the GitHub release with the changelog section, the pinned Hub and Keycloak images and generated notes.
 
@@ -1672,7 +1717,9 @@ runs on GitHub.
     **DNS hardening** is tested in `internal/domains` (the plan, apply and DNSSEC client calls against the fake domains service), `internal/hub` (`DomainPlan`, `MainDNSPlan`, `ApplyDomainDNS` and `EnableDomainDNSSEC`: sets validated, audit `domain.dns_apply` / `domain.dnssec_enable`, an AI caller needs the confirmation for signing; op keys `_domain.<name>` fail closed and DNS names never reach op paths, `TestDNSNamesNeverReachOpPaths`), `internal/httpapi` (the four routes and their MCP twins, `TestAdminToolsSameAsHTTP`) and `internal/doctor` (every DNS kind and its fingerprint's stability; the unknown-CA item is never `dns_caa_missing`, `TestDNSUnknownCANotCAAMissing`; `dns_unavailable` when the plans can't be read). The harness (`harness_dns_test.go`) seeds a fake domains service with every DNS panel row kind.
     `TestProtectedAccountsParity` reflects over `directory.Service` methods to check every user-targeting operation refuses `admin` and `portcullis-hub`.
 
-- **`build`** (after `test`):
+    **Multiple servers** ([Multiple servers](servers.md)): the agent and the relay are built from the same tree (`cmd/portcullis-agent`, `cmd/portcullis-relay`). The step **e2etest hooks only with the tag** runs the `-tags e2etest` tests, then builds the three binaries as the Dockerfiles do (`GO_TAGS` empty) and fails if one carries the e2etest marker (the CI-only clock-offset and oversized-info hooks), and checks that tagged builds do. The unit tests cover the shared `link.json` and placement vectors, join codes and the enrolment proof, the agent's bundle and scope checks, the relay's cookie filter, moves with a failure at every step, revocation and the doctor kinds.
+
+- **`build`** (after `test`), once per image: `portcullis-hub`, `portcullis-agent` (`Dockerfile.agent`) and `portcullis-relay` (`Dockerfile.relay`), each:
     - Multi-arch image (`linux/amd64`, `linux/arm64`) with SBOM and provenance (`mode=max`) attestations.
     - Tags `X.Y.Z`/`X.Y`/`X`/`sha-<short>` for release tags and `edge` for `main`. `latest` is disabled.
     - Pushed to GHCR and **signed with cosign** (keyless, GitHub OIDC) by digest. Pull requests build but don't push or sign.

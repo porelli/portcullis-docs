@@ -59,6 +59,7 @@ field.
 | `jobs` | list of compose service names | No | **NEW (apps).** One-off setup services that exit when done. See [jobs](#jobs) |
 | `ai` | object | Yes | **NEW (AI support).** `mcp` (companions) or `unsupported` (the reason). See [ai](#ai) |
 | `vpn` | object | No | **NEW (VPN).** The app is a VPN the Hub can wire as a VPN provider. See [vpn](#vpn) |
+| `placement` | `any` or `primary_only` | No (default `any`) | **NEW (multiple servers).** Whether an instance may run on a worker server. See [placement](#placement) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
 `networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
@@ -1409,6 +1410,31 @@ jobs: [migrate]
 Each entry is a service of `compose.yml`, listed once. No job — listed
 or found through `depends_on` — may have a Traefik router (a job serves
 nothing).
+
+## placement
+
+**NEW (multiple servers).** Whether an instance of the template may run on a
+[worker server](../operations/servers.md): `any` (the default) or
+`primary_only`.
+
+```yaml
+placement: primary_only
+```
+
+The Hub (and the validator's `placement_reasons()`, on the same shared
+vectors) already makes a template primary-only when it mounts a core
+volume, has a Traefik TCP/UDP router, a `person_secret` option, an `ai.mcp`
+or `ai.chat` block, a `vpn:` block, `host-gateway`, a host device, a
+capability beyond the Kubernetes baseline, a non-HTTP backend scheme, or an
+absolute bind outside the server's folder roots
+([contracts §3](integration-contracts.md#3-template-layout)). Set
+`primary_only` for what detection misses, above all an app that needs a
+cookie for a parent or sibling host: on a worker the relay makes every
+`Set-Cookie` host-only and removes Portcullis' cookies
+([the cookie rule](../operations/servers.md#the-cookie-rule)).
+
+`python3 tests/validate.py --placement` prints each template as
+`worker-placeable` or `primary-only: <reasons>`.
 
 ## instances
 
