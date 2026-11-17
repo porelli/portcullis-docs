@@ -118,6 +118,7 @@ graph LR
     NC{{portcullis<br/>core}}
     NST{{socket-proxy-traefik<br/>internal}}
     NSH{{socket-proxy-hub<br/>internal}}
+    NMH{{portcullis-metrics-hub<br/>internal}}
 
     T --- NP
     T --- NA
@@ -139,6 +140,8 @@ graph LR
     PG[(PostgreSQL)] --- NC
     Hub --- NC
     Hub --- NSH
+    Hub ---|alias hub-metrics| NMH
+    Prom[Prometheus] --- NMH
     NM{{portcullis-mcp<br/>internal, fixed IPAM}}
     MG[mcp-gate] --- NM
     MG --- NP
@@ -166,6 +169,7 @@ graph LR
 | `portcullis-vpn-edge` (`internal: true`) | exactly Traefik and `wg` | `PORTCULLIS_VPN_EDGE_SUBNET` (`172.31.254.64/28`), range `PORTCULLIS_VPN_EDGE_IP_RANGE` (`172.31.254.72/29`), Traefik at `PORTCULLIS_VPN_EDGE_TRAEFIK_IP` (`.66`), `wg` at `PORTCULLIS_VPN_EDGE_WG_IP` (`.67`) | Traefik's `vpnsecure` (`.66:8443`) listens only here and trusts PROXY v2 only from `.67` |
 | `wg-egress` | `wg` only | Docker default | Publishes the built-in VPN's UDP port and carries the resolver's upstream queries |
 | `portcullis-metrics-wg` (`internal: true`) | `wg` (alias `wg-metrics`) and Prometheus only | Docker default | `wg`'s metrics (`wg-metrics:9100`), bound to that address only |
+| `portcullis-metrics-hub` (`internal: true`) | the Hub (alias `hub-metrics`) and Prometheus only | Docker default | The Hub's [usage metrics](monitoring.md#usage-history) (`hub-metrics:9100`, `GET /metrics` and `/healthz` only), bound to that address only; the Hub refuses to start on a wildcard, loopback or foreign address |
 
 CI checks that exactly `keycloak` and `traefik` are on `portcullis-auth`,
 that each socket-proxy network has exactly its two members, and that
@@ -222,6 +226,16 @@ API (`/libpod/…`, with or without a version prefix: `play kube`, `generate`,
 `machine`) never matches an allowed section, so both proxies deny it on both
 runtimes. CI runs a real `docker compose` project through `socket-proxy-hub`
 and checks the denials, the Podman ones and `/build` included.
+
+**Usage reads stay inside these sections.** The Hub's [Usage](hub.md#usage)
+page reads container stats (`/containers/{id}/stats?stream=false&one-shot=true`)
+and writable-layer sizes (`/containers/{id}/json?size=true`) through
+`CONTAINERS`, image sizes through `IMAGES` and the host's CPUs and memory
+through `INFO`. `SYSTEM` (`/system/df`) and `ALLOW_TOP` (`/containers/{id}/top`)
+stay off, and so does Podman's `/libpod/containers/stats`; CI asserts all three
+still answer `403`. Storage is measured by the fixer's read-only `usage` mode
+(one read-only mount at `/vol`, `DAC_READ_SEARCH` only, no network, idle IO).
+The sampler copies only named inspect fields, never `Config.Env`.
 
 **Limits of a socket proxy.** The Hub can still create containers with any
 `HostConfig` (privileged, host bind mounts): that is inherent to "runs compose

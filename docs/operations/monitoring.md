@@ -61,6 +61,7 @@ All images:
 | `services`, `services_tcp` | blackbox → enroll, forward-auth, Hub, LLDAP (HTTP); Postgres, LLDAP LDAP (TCP) | Services without a metrics endpoint |
 | `wg` | `wg-metrics:9100` (file discovery `secrets/monitoring/prometheus/wg-targets.json`) | Only while the `wg` profile is on (an empty target list otherwise, so no `TargetDown`); over the internal network `portcullis-metrics-wg` (exactly `wg` and Prometheus). The [VPN](vpn.md) edge: `wg_edge_accepted_total{provider}`, `wg_edge_rejected_total{provider,reason}`, `wg_edge_closed_total{provider,reason}`, `wg_provider_stale{provider}`, `wg_role_up{role}`, `wg_people_peers` (configured built-in peers), `wg_mode_restricted` |
 | `mail`, `mailctl` | `mail-metrics:9180/metrics/prometheus` (Stalwart, Basic auth `prometheus` with the password file `/etc/portcullis/mail-metrics-secret`) and `mailctl-metrics:9100` (Basic auth `prometheus` with `/etc/portcullis/mailctl-metrics-secret`, a copy of `secrets/mail/mailctl-metrics-secret`, at least 32 characters: mailctl refuses to start otherwise; file discovery `secrets/monitoring/prometheus/mail-targets.json`, labels `service="mail"` / `service="mailctl"`) | Only while the `mail` profile is on (an empty target list otherwise), over the internal `portcullis-metrics-mail` network. mailctl's: `portcullis_mail_check{check}` (1 ok, 0 not), `portcullis_mail_dkim_stage{domain,stage}`, `portcullis_mail_cert_expiry_seconds`, `portcullis_mail_queue_messages`, `portcullis_mail_queue_deferred_ratio`. See [Mail operations](mail.md) |
+| `hub-usage` | `hub-metrics:9100` | The Hub's [usage history](#usage-history), over the internal network `portcullis-metrics-hub` (exactly the Hub and Prometheus) |
 | `tls` | blackbox → `auth.<domain>:443` | Goes through the host's published port, so it sees the certificate browsers see. Verified against the system roots |
 
 ### DNS metrics
@@ -82,6 +83,32 @@ The Vault metrics token is an orphan token without the default policy, with a
 10-year TTL. It lives in `secrets/monitoring/prometheus/vault-token`.
 `vault init` recreates it when less than a year is left (it raises the
 `token/` mount's max TTL to allow this).
+
+## Usage history
+
+The Hub's [Usage](hub.md#usage) page keeps one hour in memory. With the
+monitoring profile on, Prometheus scrapes the same figures from the Hub
+(job `hub-usage`, `hub-metrics:9100`, set by core as `HUB_METRICS_ADDR`) and
+Grafana shows them on the provisioned dashboard **Portcullis usage** (uid
+`portcullis-usage`): CPU and working set per app, memory against its limit
+per container, storage per app volume and folder, and each filesystem's
+use. The Usage page links to it ("History in Grafana ↗") once Prometheus
+has scraped the Hub in the last 5 minutes.
+
+| Series | Labels | Value |
+|--------|--------|-------|
+| `portcullis_container_cpu_seconds_total` | `instance`, `service`, `number` | CPU time (counter) |
+| `portcullis_container_memory_working_set_bytes`, `portcullis_container_memory_limit_bytes` | the same | Working set and limit |
+| `portcullis_container_pids`, `portcullis_container_oom_killed` | the same | Processes; 1 after an OOM kill |
+| `portcullis_container_network_receive_bytes_total`, `…_transmit_bytes_total`, `portcullis_container_blkio_read_bytes_total`, `…_write_bytes_total` | the same | Counters |
+| `portcullis_storage_alloc_bytes`, `portcullis_storage_measured_timestamp_seconds` | `instance`, `kind`, `target` (a volume name, folder id, service or image, never a host path: binds are `bind:<n>`) | Last measured size and when |
+| `portcullis_filesystem_free_bytes`, `portcullis_filesystem_total_bytes` | `dev` | Per filesystem |
+| `portcullis_usage_sampler_last_success_timestamp_seconds` | — | The sampler's last good sweep |
+
+`instance` is the instance id, or `core`. A figure the Hub doesn't have is
+left out, never exported as 0. **Retention:** the existing
+`PROMETHEUS_RETENTION` (default 30 days). Rough cost: 30 containers × 10
+series × 2 samples/min × 30 d ≈ 26 M samples, about 40 MB.
 
 ## Alerts
 
@@ -108,6 +135,9 @@ The Vault metrics token is an orphan token without the default policy, with a
 | `MailBlocklisted` | The mail server's address is on a blocklist, or a list refused the query, for 10 min | critical |
 | `MailDKIMStuck` | A new DKIM key has waited more than 24 h for DNS, for 10 min | warning |
 | `MailCheckFailing` | Any other mail check fails for 1 h (`./portcullis mail status`, or the Hub's doctor) | warning |
+| `PortcullisAppMemoryNearLimit` | A container's working set is above 90 % of its memory limit for 10 min (the doctor's `memory_near_limit`) | warning |
+| `PortcullisDiskNearlyFull` | A filesystem with Portcullis data has less than 10 % free for 30 min | warning |
+| `PortcullisUsageSamplerStale` | The Hub's usage sampler has had no good sweep for 10 min while the Hub is up | warning |
 | `PortcullisStatusStale` / `PortcullisStatusProblems` | `status --textfile` did not run for 36 h / reported problems for 1 h | warning |
 
 Core CI runs `promtool test rules monitoring/prometheus/tests/alerts_test.yml`,

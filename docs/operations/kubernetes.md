@@ -279,6 +279,17 @@ How the parts of an instance map:
   an instance from its objects' names, so another instance's names could
   otherwise equal this one's.
 
+## Usage on Kubernetes
+
+The Hub's [Usage](hub.md#usage) page doesn't measure anything on Kubernetes
+yet: app groups and the core group show **not measured on Kubernetes yet**,
+and storage measurements skip every target with the same reason. The Hub's
+Roles are unchanged. A later release reads pod CPU and memory from the
+cluster's metrics API (metrics-server, which k3s bundles); without it the
+page will say "the cluster has no metrics API (metrics-server)". Network,
+disk IO and PIDs need node-level access the Hub is never given, so they
+will stay not measured.
+
 ## The cluster guard
 
 The Hub doesn't trust the cluster until its own checks hold, at start,
