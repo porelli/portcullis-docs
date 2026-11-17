@@ -4,6 +4,7 @@ nav:
   - Rootless Podman: rootless-podman.md
   - Kubernetes (experimental): kubernetes.md
   - VPN: vpn.md
+  - SSH Access: ssh-access.md
   - Backups: backups.md
   - Monitoring: monitoring.md
   - Security & Hardening: hardening.md

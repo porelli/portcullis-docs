@@ -1164,6 +1164,33 @@ The whole stack on a real k3s on `ubuntu-26.04` (90 min), never kind or k3d ([Ku
 
 `.github/ci/e2e-k3s-local.sh steps [--from <n>] [--to <n>]` runs the job's `run:` steps locally on a Linux host (read from `ci.yml`, so they can't drift), amd64 or arm64.
 
+### `e2e-ssh` (SSH access and the CLI)
+
+The stack plus the Hub and two local sshd containers on `portcullis-proxy`
+(`tests/e2e/sshd/Dockerfile`, a pinned `debian:13-slim`): `web-1` enrolled
+as a managed host with `--service none`, `web-2` set up with `host trust`.
+The CLI runs with `--no-browser`; Playwright opens the printed URL with the
+virtual security key. Cases: alice reaches both without sudo and gets sudo on
+the managed host within one long-poll after joining `ssh_admins`; bob's
+`deploy@web` shows `ID pc:bob:web:` in the sshd log; `root` is refused;
+password, authenticator-code and impersonated sign-ins get nothing (exit 3
+and 4); a replayed code and a wrong key proof are refused; leaving
+`ssh_web` locks alice, ends her session and revokes her key (seconds on
+`web-1`, one pull on `web-2`); a hand-edited principals file is healed and a
+main-config override is a Problem; with the Hub stopped, valid certificates
+and the break-glass key still work; a forged report and an oversized bundle
+are refused; the CI Keycloak's `portcullis-cli` has the contract's shape;
+and no code, verifier, token, enrolment secret or private key appears in any
+log or artifact (`.github/ci/e2e-ssh-artifacts.sh`).
+
+**Hub-side tests.** `go test -tags sshd ./cmd/portcullis/internal/host/`
+runs the host agent against real sshd in Debian, Ubuntu and Rocky containers
+(the Hub CI's "host agent against real sshd" step, `PORTCULLIS_DOCKER_TEST=require`).
+The opt-in live tests are `TestLiveCLIObjects` (Keycloak, the
+`portcullis-cli` client and its refused redirect URIs) and core's
+`TestLiveSSHVault` (`PORTCULLIS_VAULT_LIVE_ADDR`: the real `enroll.hcl`
+against Vault, every refusal of the spike and the FIDO key types).
+
 ### Caching
 
 Core CI caches what it safely can. Caches are written only on pushes to `main`.
