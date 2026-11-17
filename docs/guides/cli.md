@@ -70,7 +70,7 @@ Options:
 |---|---|
 | `--method <id>` | ask for one sign-in method, e.g. `--method security_key` when a host group needs a YubiKey |
 | `--key <file.pub>` | sign an existing key instead (it must be in your agent), e.g. a FIDO key `~/.ssh/id_ed25519_sk.pub`: then every SSH connection needs a touch |
-| `--write-files` | also write the private key (0600) when you have no ssh-agent; it is useless after the certificates expire and `logout` deletes it |
+| `--write-files` | also write the private key (0600) when you have no ssh-agent (the written ssh config then points `IdentityFile` at it); it is useless after the certificates expire and `logout` deletes it |
 | `--no-browser` | print the sign-in URL instead of opening a browser (open it in a browser on this machine) |
 | `--ca-file <pem>` | trust an extra CA, for a test server on staging certificates (or `PORTCULLIS_CA_FILE`); there is no way to skip TLS checks |
 | `--domain <d>` | pick one of several configured servers |
@@ -85,7 +85,7 @@ security_key"), 4 refused, 5 Portcullis unreachable.
 | Command | What it does |
 |---|---|
 | `portcullis status` | the certificates in your agent: host group, principals, expiry, key type (no network) |
-| `portcullis logout [--revoke]` | removes the Portcullis keys from your agent and deletes the written files; `--revoke` also revokes this login's certificates (needs a fresh sign-in) |
+| `portcullis logout [--revoke]` | removes the Portcullis keys from your agent and deletes the written files; `--revoke` also revokes this login's keys for good (needs a fresh sign-in): a key of your own used with `--key`, such as a security key, can never be certified again, so the fingerprints are listed first |
 | `portcullis ssh-config [--install]` | prints, or adds after a y/N question, `Include ~/.ssh/portcullis/*/config` to `~/.ssh/config` |
 | `portcullis open [<name>]` | opens `https://<name>.<domain>/` (or the portal) in your browser |
 | `portcullis version` | the version and API version (no network) |
