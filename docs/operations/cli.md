@@ -1280,28 +1280,36 @@ in `.env`, then `./portcullis upgrade`).
 ### ssh enroll-self
 
 ```
-./portcullis ssh enroll-self [--no-ssh] < code.txt
+./portcullis ssh enroll-self [--no-ssh] [--ca-file <pem>] < code.txt
 ```
 
 Makes this Portcullis server a managed SSH host. First add it in **Hub → SSH
 access → Hosts → Add host** (any host group) and save the one-time code in a
-file. The command copies the `portcullis` binary out of the pinned Hub image
-(`docker create` + `docker cp`, nothing downloaded) and runs
-`portcullis host enroll` with the code on standard input. The code is never
-a command-line argument. `--no-ssh` does nothing and exits 0 (for scripts
-that call it unconditionally).
+file. The command copies the `portcullis` binary out of the running Hub
+container (nothing downloaded), installs it root-owned as
+`/usr/local/bin/portcullis` (`sudo`; the root service it sets up refuses any
+binary a non-root user could replace) and runs `portcullis host enroll` with
+the code on standard input. The code is never a command-line argument.
+`--ca-file` trusts an extra CA for `people.<domain>` (a test server on
+staging certificates). `--no-ssh` does nothing and exits 0 (for scripts that
+call it unconditionally).
 
 ### ssh breakglass-cert
 
 ```
-./portcullis ssh breakglass-cert --user <name> --host-group <hg> --ttl 1h --key <pub file> [--note <text>]
+./portcullis ssh breakglass-cert (--user <name> | --account <name>) --host-group <hg> --ttl 1h --key <pub file> [--note <text>]
 ```
 
-For when the Hub is down and Vault is up: signs a user certificate for
-`<name>@<hg>` directly on `ssh_user/sign/hg-<hg>` with the root token from
-`secrets/vault-init.json` (passed to the container in an environment file,
-never on a command line), key id `pc-breakglass:<note>`, and prints it. Every
-use is appended to `secrets/ssh/breakglass.jsonl`; the Hub records it in its
+For when the Hub is down and Vault is up: signs a user certificate for a
+person's own account (`--user`: principal `u:<name>@<hg>`) or a shared
+account (`--account`: `s:<name>@<hg>`) directly on `ssh_user/sign/hg-<hg>`
+with the root token from `secrets/vault-init.json` (or `VAULT_TOKEN`; handed
+to the Vault container by name in its environment, never on a command line),
+key id `pc-breakglass:<note>` (default `breakglass`), and prints it. `--ttl`
+is 5m to 12h; the principal must be in the host group's Vault role (the Hub
+writes the roles from its grants). The key file is one public key line
+(ed25519, ECDSA P-256 or their security-key forms). Every use is appended to
+`secrets/ssh/breakglass.jsonl` (0640, group 10001); the Hub records it in its
 audit (`ssh.certificate.breakglass`) and raises a doctor warning at its next
 start.
 
