@@ -5727,11 +5727,11 @@ path "ssh_user/roles/hg-*" {
     "allow_user_certificates"  = ["true"]
     "allow_host_certificates"  = ["false"]
     "allow_user_key_ids"       = ["true"]
-    "allowed_users"            = []
+    "allowed_users"            = ["s:*", "u:*"]
     "allowed_extensions"       = ["permit-pty", "permit-pty,permit-port-forwarding",
                                   "permit-pty,permit-agent-forwarding",
                                   "permit-pty,permit-port-forwarding,permit-agent-forwarding"]
-    "default_extensions"       = []
+    "default_extensions"       = [{}]
     "allowed_critical_options" = ["", "source-address"]
     "default_critical_options" = []
     "allowed_user_key_lengths" = []
@@ -5757,6 +5757,7 @@ path "ssh_host/roles/host"      { capabilities = ["read"] }
 - **The host sign path** (spike S4b): `denied_parameters = {"cert_type" = []}` makes host certificates impossible (Vault's default `cert_type` is `user`, which the host role refuses), so the path takes exactly `cert_type = "host"` and enroll always sends it, plus `key_id` `pc-host:<host id>` (else Vault writes `vault-approle-<hash>`).
 - **`list` on `ssh_user/roles/`** lets enroll find stale `hg-*` roles; **`read` on the two `config/ca`** paths gives the public CA keys; **`read` on the tunes and the host role** needs no `sudo` (spike S4d) and feeds `problems` (§18.8).
 - Even with this policy enroll can't make a role that issues host certificates, X11 / user-rc / `force-command` certificates, or certificates over 12 h. No Vault audit device in part 1.
+- **What the policy can't pin** (security review; checked live by `TestLiveSSHVault`): `allowed_users` is limited to `s:…` / `u:…` lists — never the bare `*`; Vault matches every entry exactly (no glob, an embedded `*` entry is no wildcard) and `allowed_users_template` can't be set — but *which* principals is enroll's check (grammar, host group) and the Hub's read-back comparison. `default_extensions` is pinned to `{}` (Vault applies a role's defaults without checking `allowed_extensions`). `default_critical_options` can't be pinned (the per-host-group `source-address`); OpenSSH's critical options only restrict, so the worst a stolen enroll token does there is drop `source-address`. `allowed_user_key_lengths` can't be pinned (Vault never matches a policy's numbers against JSON numbers); enroll accepts only the four key types. enroll refuses a role whose read-back has default extensions, `allowed_users_template`, host certificates or a principal outside the grammar.
 
 ### 18.8 enroll's SSH endpoints
 
