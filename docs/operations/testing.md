@@ -1261,11 +1261,12 @@ AppRole is least-privilege" checks the SSH paths on the real stack after
 Core CI caches what it safely can. Caches are written only on pushes to `main`.
 
 - **Infra and monitoring images:** cached by the local composite action `.github/actions/cached-images`.
-    - The cache key is a hash of each job's pinned image list. Refs without a digest are refused.
+    - The cache key is the runner image (`ImageOS`: `ubuntu24`, `ubuntu26`, …; `self-hosted` on the builder) and a hash of each job's pinned image list. Refs without a digest are refused. A tarball saved by one image's Docker doesn't load reliably on another's, so jobs on 24.04 and 26.04 never share one.
     - After `docker load`, every name set by the tarball is removed. Each ref is then re-pulled by its pinned digest (with retry and backoff), so the engine reuses a loaded image only if its content-addressed ID matches the registry's config digest.
 - **enroll and group-gate images:** buildx layer cache (`type=gha`).
 - **Go:** module and build cache through `setup-go`, with `go mod verify`.
-- **Python:** pip and Playwright browsers, cached on the pinned requirements file (`group-gate/requirements.txt` has `--require-hashes`).
+- **Python:** pip and Playwright browsers, cached on the runner image (`ImageOS`, as above: Playwright's browser builds are per distro) and the pinned requirements file (`group-gate/requirements.txt` has `--require-hashes`).
+- **Runner images:** every job that installs Playwright's system packages (`playwright install-deps`) runs on `ubuntu-24.04`; the 26.04 image lacks some of its font packages. e2e-podman, e2e-k3s and e2e-servers* stay on `ubuntu-26.04` (e2e-servers installs Playwright's deps there, which resolve).
 
 The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most once a minute.
 
