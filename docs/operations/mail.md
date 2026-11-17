@@ -3,7 +3,7 @@
 Running the [mail server](../setup/mail.md) once it is on: the spam filter,
 DKIM keys, the MTA-STS and DMARC policies, DANE, backups, former mailboxes,
 testing and troubleshooting. The interfaces are in
-[contracts §19](../guides/integration-contracts.md#19-mail-new-mail).
+[contracts §19](../guides/integration-contracts.md#19-mail-provider-api-new-mail-provider).
 
 Three places show the state:
 

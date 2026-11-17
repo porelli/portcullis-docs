@@ -12,7 +12,7 @@ allowed to configure it. Mail is part of core (the compose profile `mail`),
 not an app from the marketplace. Day-to-day work (spam, DKIM, policies,
 backups, troubleshooting) is on [Mail operations](../operations/mail.md); the
 interfaces are in
-[contracts §19](../guides/integration-contracts.md#19-mail-new-mail).
+[contracts §19](../guides/integration-contracts.md#19-mail-provider-api-new-mail-provider).
 
 ## Before you start
 

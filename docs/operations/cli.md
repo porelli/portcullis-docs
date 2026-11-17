@@ -1117,7 +1117,7 @@ are removed in their app.
 
 The [mail server](../setup/mail.md) (compose profile `mail`). Day-to-day work
 is on [Mail operations](mail.md); the interfaces are in
-[contracts §19](../guides/integration-contracts.md#19-mail-new-mail). Every
+[contracts §19](../guides/integration-contracts.md#19-mail-provider-api-new-mail-provider). Every
 `mail` command refuses on Kubernetes ("mail isn't available on Kubernetes yet
 (Docker or rootless Podman only)"), and all but `enable` refuse while mail is
 off ("mail is off: ./portcullis mail enable").

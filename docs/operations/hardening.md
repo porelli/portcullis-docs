@@ -499,7 +499,7 @@ not by relying on the mount's read-only flag alone.
 
 The [mail server](../setup/mail.md) is the one core service other mail
 servers on the internet talk to directly. Its layout
-([contracts §19.1](../guides/integration-contracts.md#191-services-networks-addresses-and-files)):
+([contracts §19.1](../guides/integration-contracts.md#191-the-slot-networks-volumes-files-and-the-override)):
 
 | Network | Kind | Members |
 |---------|------|---------|
