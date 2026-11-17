@@ -1272,7 +1272,12 @@ and cleans up after itself:
   own dockerd, user `runner` 1001 with passwordless sudo, Docker CE + buildx +
   compose, jq, yq, shellcheck, python3, gcc, Node.js LTS, Playwright's
   system packages) on its own bridge network (`10.250.<n>.0/24`), 4 CPUs /
-  16 GB like a GitHub runner (`--cpus` / `--memory`). The job's compose
+  16 GB like a GitHub runner (`--cpus` / `--memory`); `/tmp`, `/srv` and the
+  workspace are volumes (ext4 with ACLs, as on GitHub) and dockerd's
+  data-root is `/var/lib/docker-store/docker` (a container's mountinfo names
+  `…/docker/containers/<id>/`, as the Hub's tests expect). Every job and step
+  `timeout-minutes` is multiplied by `--timeout-factor` (default 1.5: ci.yml's
+  limits are sized for a fresh GitHub runner). The job's compose
   project, its fixed networks (172.30/172.31), published ports, `/etc/hosts`
   lines and `/tmp` files are the container's own, so several runs (and
   other work on the host) never collide; the compose project inside stays
