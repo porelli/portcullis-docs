@@ -23,7 +23,7 @@ be used at once. The interfaces are in
 ## The model
 
 Core's **`wg` service** (one Go binary, userspace WireGuard on a gVisor
-network stack: no capabilities, no TUN device, no kernel module) has two
+network stack: no capabilities, no TUN device, no kernel module) has two VPN
 roles:
 
 - **The edge** (the VPN edge): every VPN's traffic to Portcullis goes through it. Each
@@ -37,6 +37,13 @@ roles:
   default, tunnel `10.213.0.0/22`). Its clients reach exactly one thing:
   Portcullis over HTTPS (plus HTTP, which redirects, and its DNS resolver).
   It is a split tunnel, not a general VPN.
+
+A third role, **link**, is not for people: it is the tunnel
+[worker servers](servers.md) dial out to (`./portcullis link init`, UDP
+51821, the fixed subnet `10.214.0.0/24`). It has its own WireGuard device,
+key, port and subnet, and its network stack has no listener: the primary only
+dials *into* it, for the Hub's control calls and the relays' app traffic. A
+worker is never a VPN device, and a link peer has no route to `vpnsecure`.
 
 A VPN-only app has **five gates**, all of which must pass:
 
@@ -435,8 +442,11 @@ The details are in
 - **IPv6** inside the tunnels.
 - **The LAN as equal to the VPN.** Local networks never open a VPN-only app.
 - **Shared devices** (a tablet several people use): a device has one owner.
-- **Marketplace VPN instances on another server**: a provider runs on this
-  server. Server-to-server tunnels (the reserved `link` role, UDP 51821,
-  `10.214.0.0/24`) aren't built yet.
-- **On Kubernetes**: the `link` role, and VPN-only access to the Kubernetes
-  API itself ([below](#kubernetes)).
+- **Marketplace VPN instances on a worker server**: a provider is
+  [primary-only](servers.md#primary-only-apps), because its gateway joins
+  `portcullis-vpn` there. VPN-only apps *placed* on a worker work unchanged:
+  their relays on the primary carry the `vpnsecure` routers and the
+  allowlist.
+- **On Kubernetes**: the `link` role (servers need a Docker or Podman
+  primary), and VPN-only access to the Kubernetes API itself
+  ([below](#kubernetes)).

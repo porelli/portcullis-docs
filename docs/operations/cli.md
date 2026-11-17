@@ -83,6 +83,14 @@ the core checkout: `./portcullis`. There are no other scripts.
 | | [`vpn add-device`](#vpn-add-device) | Make a built-in VPN device for a person (config + QR, shown once) |
 | | [`vpn devices`](#vpn-devices) | List VPN devices of every provider |
 | | [`vpn revoke`](#vpn-revoke) | Remove a built-in VPN device |
+| Servers | [`link init`](#link-init) | Set up the link role: the tunnel worker servers dial out to |
+| | [`link status`](#link-status) | The link role and each worker server's last handshake |
+| | [`worker join`](#worker-join) | Join this host to a primary as a worker server (the code on stdin) |
+| | [`worker status`](#worker-status) | The worker's agent and containers |
+| | [`worker upgrade`](#worker-upgrade) | Pull and restart the worker's agent |
+| | [`worker leave`](#worker-leave) | Take this worker's apps down and wipe its identity |
+| | [`worker stop`](#worker-stop-worker-start) | Stop one app instance on this worker (break-glass) |
+| | [`worker start`](#worker-stop-worker-start) | Start an app instance on this worker again |
 | Mail | [`mail enable`](#mail-enable) | Turn the mail server on (Stalwart, the mail certificate, bootstrap) |
 | | [`mail disable`](#mail-disable) | Turn mail off for every domain (drains first) |
 | | [`mail status`](#mail-status) | Mail status: certificate, DKIM, MTA-STS, DMARC, queue, checks |
@@ -320,6 +328,12 @@ Prints a health overview:
   provider its label, ranges, devices and map age; a stale provider is a
   failing line ("its devices are denied"). With a mode other than `apps`,
   `wg` down is a Problem: the VPN-only core surfaces are unreachable
+- **Servers** ([Multiple servers](servers.md)), once `link init` has run:
+  whether link is up and on which UDP port, and each worker server's
+  tunnel address and last handshake. Link down, or a server silent for more
+  than 3 minutes ("offline: nothing routes to its apps"), is a Problem; a
+  server that never shook hands is a warning. `--json`: `servers{}`. On a
+  worker, `status` shows [`worker status`](#worker-status) instead
 - mcp-gate refusing every AI request (`503`) and why, for example AI
   credentials it can't decrypt with `secrets/mcp-gate/age.key`
   ([AI support → Residuals](ai.md#residuals))
@@ -350,7 +364,7 @@ Prints a health overview:
 
 Exits 1 if a host check fails, if a core service is down or unhealthy, if Vault is not active, if
 the passkey policy drifted, if such a container exists, if mcp-gate
-refuses every AI request, or if a DNS check is a Problem, or if `wg` is down while the VPN mode isn't `apps`.
+refuses every AI request, or if a DNS check is a Problem, or if `wg` is down while the VPN mode isn't `apps`, or if link is down or a worker server is offline.
 Otherwise it exits 0.
 
 | Option | Meaning |
@@ -1112,6 +1126,154 @@ portcullis vpn revoke <device-id>
 Removes a built-in VPN device; `wg` drops its peer at once and closes its
 open connections. Its address is quarantined for 7 days. Marketplace devices
 are removed in their app.
+
+## Servers
+
+The link role on the primary and the `worker …` commands on a worker
+server. The guide is [Multiple servers](servers.md); the interfaces are in
+[contracts §17](../guides/integration-contracts.md#17-servers-new-multiple-servers).
+
+```
+Usage: portcullis link <subcommand>
+
+  init          Set up the link role: the tunnel worker servers dial out to
+  status        The link role and each worker server's last handshake
+```
+
+```
+Usage: portcullis worker <subcommand>
+
+  join          Join this host to a primary as a worker server (the code on stdin)
+  status        The agent's state and its containers
+  upgrade       Pull the agent's images and restart it
+  leave         Take this worker's apps down and wipe its identity
+  stop          Stop one app instance here (break-glass)
+  start         Start one app instance here again
+```
+
+`link …` runs on the primary; `worker …` on a primary is refused. On a
+worker (`PORTCULLIS_ROLE=worker` in `.env`) every command except `worker …`,
+`help`, `version`, `status` (which shows `worker status` there) and
+`--help` refuses: "this host is a Portcullis worker: use ./portcullis
+worker …".
+
+### link init
+
+```
+portcullis link init [--port N]
+```
+
+Sets up the link role of the VPN service (compose profile `wg`): the
+WireGuard server worker servers connect out to, on its own UDP port and the
+fixed tunnel subnet `10.214.0.0/24`. Adds `wg` to `COMPOSE_PROFILES`, writes
+`PORTCULLIS_LINK=on` and `PORTCULLIS_LINK_PORT`, generates the link's
+WireGuard key and TLS key (once; `secrets/wg/link.key` and `link-tls.key`,
+never printed), has Vault sign its `link.control` certificate (`pki_node`;
+renewed by `up` and `upgrade` at a third of its life left) and starts `wg`,
+Traefik and the Hub. Then add servers in the Hub (Settings → Servers) and
+run `./portcullis worker join` on each.
+
+The Hub must be running (`./portcullis up` first): `link init` refuses when
+`10.214.0.0/24` overlaps the built-in VPN's subnet, a Portcullis core
+network, a Docker network, a Local network you entered in the Hub or a wired
+provider's range (the Hub's default Local networks only warn). It also
+refuses the built-in VPN's port. Not available on Kubernetes ("servers need
+a Docker or Podman primary").
+
+| Option | Meaning |
+|--------|---------|
+| `--port N` | Its UDP port (default `51821`; open it in your firewall) |
+
+Re-running it is safe: the keys and the certificate are made once.
+
+### link status
+
+```
+portcullis link status [--json]
+```
+
+The link role (up, port) and each worker server's tunnel address and last
+handshake; a server silent for more than 3 minutes is offline (exit 1). A
+server that never shook hands (still enrolling) is a warning. The same lines
+are the **Servers** block of [`status`](#status) (`servers{}` in `--json`).
+
+### worker join
+
+```
+portcullis worker join [--runtime docker|podman] [--force]
+```
+
+Joins this host to a primary as a worker server. Get a join code in the
+primary's Hub (Settings → Servers → Add server), then paste it when asked,
+or pipe it in:
+
+```bash
+./portcullis worker join < code.txt
+```
+
+The code is a secret and valid for 15 minutes, once: it is never accepted
+as an argument (exit 2: "the join code is a secret: paste it when asked, or
+pipe it in"). `join` writes `.env` (`PORTCULLIS_ROLE=worker`, the runtime,
+`PORTCULLIS_WORKER_DATA` = this checkout's `worker-data/`), starts the agent
+and its socket proxy (project `portcullis-worker`) and waits up to 5 minutes
+for the primary to enrol it. The worker needs no inbound port: it dials out
+to the primary's link port (UDP).
+
+Refused, before anything is written: on a primary, on Kubernetes, when this
+worker already has an identity (pass `--force` to join again), when a
+folder root (`PORTCULLIS_WORKER_BIND_ROOTS`, default `/srv:/mnt:/media`)
+doesn't exist, and when the checkout is inside a folder root or under
+`/root` (the agent, uid 10008, can't traverse it: use e.g.
+`/opt/portcullis`).
+
+| Option | Meaning |
+|--------|---------|
+| `--runtime docker\|podman` | The container runtime (default: Docker if its engine answers, else rootless Podman) |
+| `--force` | Join again over an existing identity |
+
+### worker status
+
+```
+portcullis worker status [--json]
+```
+
+The agent's state (`enrolling`, `ready`, …), its server id and tunnel
+address, and the worker's containers. Exit 1 unless the agent is ready and
+healthy.
+
+### worker upgrade
+
+```
+portcullis worker upgrade
+```
+
+Pulls the agent's images (`AGENT_IMAGE`) and restarts it; the folder-root
+binds and the host facts the agent reads are written again. The Hub never
+upgrades an agent remotely; it accepts an agent of its own minor version or
+one behind (doctor `server_agent_outdated`), and refuses lifecycle calls to
+any other (`server_agent_incompatible`).
+
+### worker leave
+
+```
+portcullis worker leave [--yes]
+```
+
+Takes every app instance placed here down (their volumes stay), wipes the
+worker's identity, takes the agent down and removes `worker-data/` (after
+you type `leave`; `--yes` skips it). Remove or revoke the server in the
+primary's Hub too.
+
+### worker stop, worker start
+
+```
+portcullis worker stop <instance>
+portcullis worker start <instance>
+```
+
+Break-glass on the worker: stop one app instance (compose project
+`portcullis-<instance>`), and start it again. The primary keeps routing to
+it, and nothing changes in the Hub.
 
 ## Mail
 
