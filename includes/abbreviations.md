@@ -173,3 +173,10 @@
 *[TLSA]: The DNS record DANE uses to pin a TLS key (Portcullis publishes 3 1 1, the SPKI hash)
 *[PTR]: Reverse DNS: the name an IP address points back to, set by whoever owns the address
 *[GTUBE]: The standard spam test string: a message carrying it in the Subject must be refused
+*[worker server]: A machine that runs app instances for the primary Portcullis server: only its agent and socket proxy, reached over the link tunnel it dials out
+*[worker servers]: Machines that run app instances for the primary Portcullis server: only their agent and socket proxy, reached over the link tunnel they dial out
+*[link role]: The third role of the wg service: the WireGuard server worker servers dial out to (UDP 51821, subnet 10.214.0.0/24)
+*[join code]: A one-time secret (pcj1.…) from Settings → Servers that ./portcullis worker join takes on stdin; valid 15 minutes, shown once
+*[primary-only]: A template that can't run on a worker server (core volumes, TCP/UDP routers, AI, VPN providers, per-person secrets, …)
+*[portcullis-agent]: The worker server's agent: serves the Hub's narrow API inside its own WireGuard tunnel and drives the engine through socket-proxy-agent
+*[socket-proxy-agent]: The worker server's socket proxy: the only container there that mounts the engine socket, shared with the agent alone
