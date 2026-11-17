@@ -222,14 +222,13 @@ POP3 isn't offered. Port 25 never accepts a login.
 ## Sending through a relay
 
 When your provider won't open outbound port 25, or your address is in a
-residential range, send through a smarthost. The relay is one of the Hub's
-mail settings (`relay` in `PUT /api/mail/settings`:
-`{"host", "port", "username", "spf_include", "password"}`,
-[contracts §19.9](../guides/integration-contracts.md#199-hub-api-and-audit)):
-port 465 means implicit TLS, any other port requires STARTTLS, the password
-is write-only, and `spf_include` is added to every mail domain's SPF.
-Settings → Mail shows the relay (host, port, user, whether a password is
-set). Every non-local recipient then goes through the relay. Receiving still
+residential range, send through a smarthost. Set it in **Settings → Mail →
+Relay, DKIM rotation and former accounts** ([Hub → Mail](../operations/hub.md#settings-mail)):
+host, port, user, SPF include and password. Port 465 means implicit TLS, any
+other port requires STARTTLS, the password is write-only, and the SPF
+include is added to every mail domain's SPF. Saving a relay change needs a
+fresh sign-in with your security key, and is never possible through MCP or
+AI. Every non-local recipient then goes through the relay. Receiving still
 needs inbound port 25.
 
 ## LAN-only mail passwords

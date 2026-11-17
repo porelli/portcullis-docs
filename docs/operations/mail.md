@@ -164,7 +164,12 @@ itself and revokes anything left; only an empty second listing is a void.
 Then it writes the gate's sentinel and starts the provider normally. If the
 void fails, the provider stays stopped, the doctor shows `mail_void_pending`,
 and the Hub retries every **5 minutes**; **Retry** on the Mail tab or
-Settings → Mail retries at once.
+Settings → Mail retries at once. **Retry** is also the fix when the wired
+provider's API secret is missing or too short (Settings → Mail says "Mail
+can't be managed: the Hub's secret for the wired mail provider is missing or
+too short"): it owes a void, and the void writes a fresh secret. After
+`./portcullis mail restore-hold clear`, Retry is what starts the provider
+again, through a void.
 
 ## The daily timer
 
@@ -404,8 +409,8 @@ bounced and doesn't lose it at once:
 A **new** person who reuses the username gets a fresh, empty mailbox, never
 the old one.
 
-Former accounts are in the provider's status (`GET /api/mail/status`,
-`status.former`). To keep one's mail before it is deleted:
+Former accounts are listed in Settings → Mail (**Former accounts**: the
+username, the id and since when). To keep one's mail before it is deleted:
 
 ```bash
 ./portcullis mail export former-6f1c2a9e-3b4d-4e5f-8a7b-1c2d3e4f5a6b
@@ -535,7 +540,10 @@ Other things to check:
 - **Nobody's mail password works and the Mail tab shows a void owed**: the
   void hasn't succeeded yet ([The void](#the-void)).
 - **"the Hub's document" isn't applied** in `mail status`: the provider
-  isn't taking the Hub's document; its logs say why.
+  isn't taking the Hub's document; its logs say why. The Hub sends no
+  document at all until the mail certificate's key has been posted once
+  (`./portcullis mail rotate` posts it, as does `mail enable` once the
+  provider serves).
 - **A new person's mail password says "your mailbox isn't ready yet: try
   again in a minute"**: new mailboxes are created up to a minute after
   someone joins `mail_users`.
