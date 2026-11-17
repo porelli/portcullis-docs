@@ -269,6 +269,15 @@ move are lost.** After 7 days *Undo move* is gone and the doctor shows
 deletes the old copy's volumes, after which no undo is possible. Both need a
 fresh sign-in and the typed instance id.
 
+**Earlier copies on a worker.** Creating an instance on a worker, or moving
+one there, is refused while that worker still holds a copy of the same
+instance id — its bundle or its volumes, for example from a failed move — and
+also when the worker can't be asked. Remove the old copy first. A kept copy
+on a server that was revoked or removed can't be reached any more: deleting
+or forgetting the instance drops it from the record and audits it
+(`instance.copy_dropped`), and whatever is left on that machine is yours to
+wipe.
+
 ## Backups
 
 An instance on a worker is backed up like any other: the archive streams
