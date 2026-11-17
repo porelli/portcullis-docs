@@ -4524,7 +4524,8 @@ Under a non-identity map, `apply`, `restore` and `childfix` refuse (exit `2`, no
     - `ssh_breakglass_used` (Warning): logins to a host's break-glass account (time and source);
     - `ssh_breakglass_cert` (Warning): break-glass certificates imported from `breakglass.jsonl`;
     - `ssh_hostgroup_unused` (Info): a host group with no grant or no host;
-    - `ssh_username_collision` (Problem): a personal grant skipped because the username is root, a shared, protected, reserved or system account (§18.12).
+    - `ssh_username_collision` (Problem): a personal grant skipped because the username is root, a shared, protected, reserved or system account (§18.12);
+    - `ssh_revocation_incomplete` (Warning): fingerprints revoked whose keys the Hub didn't know (§18.10).
 ### 14.6 Fix classes
 
 - **One-click** (preview → plan hash → Apply, `202`; `409` "the setup changed since the preview" on a mismatch; audited `doctor.fix` besides what the steps audit). **NEW (AI support):** the preview's `FixPlan` carries `touches_data`, true for the fixes that change data on disk or revoke access (the folder assignment and undo, `person_tree_owner`, `revoke_leaver`); the Portcullis MCP's `doctor_apply_fix` is class D (a confirmation, §15.6) when it is set, and (**NEW**, DNS hardening) for the `dnssec_sign` fix:
@@ -5376,7 +5377,7 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
 - **Resources and prompts.** `portcullis://docs/<name>` (both scopes), `portcullis://templates` and `portcullis://templates/{id}`, `portcullis://doctor/checks` and the prompts are admin-only. Long operations send no progress notifications (stateless: the twin's `202` body at once, then `wait_for_op`).
 - **Canonical JSON.** The Hub's `internal/mcpsdk/canon.go` is a copy of the gate's `internal/canon` (one can't import the other across repos); both keep the same vectors.
 
-- **New tools (NEW, SSH).** Admin (`/mcp/admin`): `list_ssh_access` (R, `GET /api/ssh/grants` + host groups), `ssh_access_preview` (R, `GET /api/ssh/hosts/{id}/access`), `list_ssh_certificates` (R, `GET /api/ssh/certificates`), `list_ssh_hosts` (R, `GET /api/ssh/hosts`, state and drift), `revoke_ssh_certificates` (D, `POST /api/ssh/certificates/revoke`) and `set_ssh_grant` (D, `POST|PUT /api/ssh/grants`, **non-privileged only**: a privileged grant is `403`). People (`/mcp/people`): `my_ssh_access` (R, `GET /api/me/ssh`) and `revoke_my_ssh_certificates` (D, `POST /api/me/ssh/revoke-all`). Never through MCP: signing user or host certificates, enrolment codes, privileged grants, `source-address`, settings and CA rotation.
+- **New tools (NEW, SSH).** Admin (`/mcp/admin`): `list_ssh_access` (R, `GET /api/ssh/grants` + host groups), `ssh_access_preview` (R, `GET /api/ssh/hosts/{id}/access`), `list_ssh_certificates` (R, `GET /api/ssh/certificates`), `list_ssh_hosts` (R, `GET /api/ssh/hosts`, state and drift), `revoke_ssh_certificates` (D, `POST /api/ssh/certificates/revoke`) and `set_ssh_grant` (D, `POST|PUT /api/ssh/grants`, **non-privileged only**: a privileged grant is `403`). People (`/mcp/people`): `my_ssh_access` (R, `GET /api/me/ssh`) and `revoke_my_ssh_certificates` (W, `POST /api/me/ssh/revoke-all`). Never through MCP: signing user or host certificates, enrolment codes, privileged grants, `source-address`, settings and CA rotation.
 
 ### 15.11 Hub API, switches and audit
 
@@ -5595,7 +5596,7 @@ An untagged or foreign-tagged client of that id, or a failed ensure, makes every
 - **`HUB_CLI_PROXY_SECRET`** (`openssl rand -hex 32`, in `CORE_SECRETS` and `ROTATABLE_SECRETS`): the middleware `hub-cli-proxy-secret` sets `X-Portcullis-Proxy-Secret` to it. The CLI listener accepts only that value (constant-time; missing or the main `HUB_PROXY_SECRET` → `401`), and the Hub's other listeners never accept it, so neither listener accepts the other's secret. The Hub refuses to start without it.
 - **The listener** serves only `/api/cli/v1/*` (every other path `404`). It never reads an identity header: `X-Forwarded-User` and its siblings change nothing.
 - **The client address** is `X-Real-Ip`, which Traefik sets from the connection (no entrypoint trusts forwarded headers). Without it, the address is one shared `unknown` for the limits.
-- **Version header.** Every CLI request carries `Portcullis-CLI: <version>; api=1`. A missing header or another `api` answers `426` `{"error": "update the Portcullis CLI to <min>"}` (`min` = the config's `min_cli`). The CLI never updates itself.
+- **Version header.** Every CLI request carries `Portcullis-CLI: <version>; api=1`. A missing header, another `api`, or a version below `HUB_CLI_MIN_VERSION` (optional; the config's `min_cli`; a non-semver version such as `dev` passes) answers `426` `{"error": "update the Portcullis CLI to <min>"}`. The CLI never updates itself.
 - **Bodies** are strict JSON (`DisallowUnknownFields`, one value, no trailing data): `400` on a schema error, `413` over the route's cap. Errors are `{"error": "<fixed text>"}`; reasons go to the log and the audit only.
 
 ### 18.4 The API
@@ -5624,10 +5625,10 @@ All under `https://people.<d>/api/cli/v1/`. **SSH access off** (`state.ssh.setti
  "redirect_uri": "http://127.0.0.1:38917/callback",
  "public_key": "ssh-ed25519 AAAA…",
  "key_proof": "-----BEGIN SSH SIGNATURE-----…",
- "host_groups": []}
+ "host_groups": [], "own_key": false}
 ```
 
-`host_groups` empty = all the person's host groups. At most 16 certificates per login.
+`host_groups` empty = all the person's host groups. At most 16 certificates per login. `own_key` (optional) is `true` with `login --key`: the key is the person's own, not this login's ephemeral one, so its revocation never expires (§18.10).
 
 **The Hub's steps, in order:**
 
@@ -5660,7 +5661,9 @@ All under `https://people.<d>/api/cli/v1/`. **SSH access off** (`state.ssh.setti
 
 Unknown or ungranted ids in `host_groups` are listed in `refused` as "not available to you"; the answer never reveals other host groups. All refused (no certificate) is still `200`: the CLI exits 3.
 
-**Fixed texts:** `403` "a fresh sign-in is required" (every proof or key-proof failure; the reason goes to the log and the audit); `403` "a session as someone else can't get SSH certificates"; `409` "SSH access is off on this server".
+**Fixed texts:** `403` "a fresh sign-in is required" (every proof or key-proof failure; the reason goes to the log and the audit); `403` "a session as someone else can't get SSH certificates"; `409` "SSH access is off on this server"; `400` "this key type can't be certified: use an ed25519 or ECDSA P-256 key (a FIDO sk- key works too)"; `403` "this key is revoked: use another key"; `409` "this account can't get SSH certificates" (protected names), "this account isn't in the directory", "this account is disabled"; `429` "too many attempts: wait a minute and try again"; `503` "SSH certificates can't be issued right now" (a role that can't be made current, enroll refusing, an answer that fails the Hub's check, the key that can't be recorded) and "SSH sign-in isn't available right now" (`portcullis-cli` not in place). Refused entries: "not available to you" (unknown or ungranted ids, the same text for both), "at most 16 certificates per sign-in", "your access ends in less than 5 minutes".
+
+**Checked before it's handed out:** enroll's answer must parse as a user certificate for exactly the posted key, the planned principals and key id, signed by a known user CA, valid no longer than planned (one minute of clock slack), with no extension outside the four. The key's fingerprint → key record (§18.10) is written **before** enroll is asked; if it can't be written, nothing is signed.
 
 **Limits** (`golang.org/x/time/rate`, idle limiters dropped after 10 minutes): refusals 10 a minute per address and per person (burst 10), successful signings 6 a minute per person (burst 6); over either, `429`. At most 64 host groups and 256 grants in the state.
 
@@ -5777,7 +5780,8 @@ On enroll's internal listener (§9.4: `http://enroll:8444`, the same bearer, str
 ### 18.10 Revocation
 
 - **The list** `hub_data/ssh/revoked.json` (0600, atomic write): `[{"key", "fp", "reason", "actor", "added", "until"}]`. The public list (`GET ssh/revoked-keys`) and the bundles carry the keys only.
-- **`until`** = the `valid_before` of the last certificate issued for that key + 24 h; entries are pruned daily after it. A bring-your-own key's `until` is zero: revoked until an administrator removes it, and the Hub won't sign it meanwhile.
+- **`until`** = the `valid_before` of the last certificate issued for that key + 24 h; entries are pruned daily after it. A bring-your-own key's (`own_key`) `until` is zero: revoked until an administrator removes it, and the Hub won't sign it meanwhile.
+- **The signed keys** (Ruling C21-b): `hub_data/ssh/keys.json` (0600, atomic) maps each signed key's fingerprint to its public key, so a revocation by fingerprint (an admin's *Revoke*, revocation on leave) can put the key on the list. Only read for that; never in a log, the audit, the history or an answer. Kept 90 days, and as long as the fingerprint is on `revoked.json`. A revocation whose key isn't known still records the fingerprint (`key` empty: the Hub never signs it again; the accounts follow the mapping) and raises "revocation incomplete: key unknown <fp>" in the audit and the doctor (`ssh_revocation_incomplete`, Warning) — never a silent no-op.
 - **Entries are added** by *Revoke* (admin), *Revoke all SSH certificates* on a person (admin; a `sign_in_help` holder who may target the person; administrators' certificates by administrators only), *Revoke all my SSH certificates* (the person), `portcullis logout --revoke`, and **automatically on leave**: at every compile, any issued, unexpired certificate whose host group no longer grants that person at least one of its principals has its key revoked (actor `-`, reason `left <group>`).
 - **`POST ssh/revocations`** `{code, code_verifier, nonce, redirect_uri, public_keys}`: a proof that passes freshauth for `portcullis-cli` with any switched-on method; it revokes only the listed keys that the issued index shows were issued to that person → `{"revoked": n}`.
 - **Hosts:** managed hosts get the list in every bundle (seconds, long-poll). Unmanaged hosts with `--revoked-keys` pull `GET ssh/revoked-keys` every 5 minutes; a failed fetch keeps the last file. The file `/etc/ssh/portcullis/revoked_keys` always exists (created empty before sshd is told about it: an unreadable `RevokedKeys` refuses every key). A partitioned host keeps its stale list on purpose; the lag is bounded by the certificate TTL (≤ 12 h).
@@ -5853,6 +5857,7 @@ State (`state.yaml` `ssh:`): `settings {enabled, default_ttl_hours}` (0 = 8, 1�
 - **Grammars:** principal `^([us]):([a-z_][a-z0-9._-]{0,31})@([a-z][a-z0-9-]{0,30})$`; LLDAP usernames `^[a-z0-9][a-z0-9._-]{0,63}$`; key id `pc:<user>:<hg>:<16 lowercase hex>`; break-glass key id `pc-breakglass:<operator note>`.
 - **Two principal namespaces** (security review): a person's own account is `u:<username>@<hg>`, a shared account `s:<account>@<hg>`. A host's principals file for a person account lists only `u:` principals of that name, a shared account's only `s:` principals, so a certificate for one can never log in as the other even if the names collide; the host agent refuses a bundle entry whose principals don't match its account's kind and name.
 - **Collisions.** A person's `{username}` grant is **skipped** (no principal, no account) when the username is `root`, a shared account of any grant, a host's break-glass or protected account (from its reported ceiling), a reserved name (`admin`, `portcullis-hub`, `portcullis-*`) or a system account name (`sshaccess.SystemAccounts`, names below uid 1000 on common distributions; `_*`, `systemd-*`). Each skip is the doctor's `ssh_username_collision` (Problem) and a "skipped" row in the previews. Saving a grant whose shared account equals a current directory username is refused (`409`). A person and a shared account are never merged.
+- **Other access-changing writes** need a fresh sign-in under the `hub` template too, and are never made through MCP: switching SSH access on or raising the default lifetime; a host group edit that changes anything but its label or description (template, patterns, source addresses, VPN, host certificates, delegable, shared accounts); a host edit that changes its names, addresses or host groups. Add host and a new enrolment code, Remove host and *Sign a host key* always do. Through MCP a grant never allows port forwarding.
 - **Widening edits** need what creating a privileged grant needs (an administrator, a fresh sign-in under the `hub` template, the audit), privileged or not: an account added, a longer effective TTL, port or agent forwarding newly allowed, sudo or privilege added, another host group, another group (`sshaccess.WideningReasons`). `ssh_access` holders may only narrow or keep a grant.
 - **Names clients see** (host names, addresses, patterns) pass a strict grammar where they enter (the admin API, `sshaccess.Validate`) and again where they are rendered (`cliapi.ClientConfig`, `cliapi.KnownHosts`, which refuse rather than write): an IPv4 or IPv6 address without a zone id, or dot-separated labels of letters, digits and `-` where `*` and `?` are the only pattern characters, optionally after one `!`. No whitespace, commas, quotes or control characters.
 - **Privileged** grants: `sudo: full`, the account `root`, agent forwarding, a shared account with sudo, or the host group `all`. They need an administrator, a fresh sign-in under the `hub` template and the group's name typed again; default to a 4 h TTL; raise `ssh_privileged_grant` (Info); make the group's members protected targets (§9.6); are never created through MCP.
@@ -5919,6 +5924,25 @@ Match Group portcullis-users
 - **Exit codes:** 0 ok · 1 error · 2 usage · 3 signed in, but no certificate was issued · 4 refused · 5 Portcullis unreachable.
 - **TLS:** the system pool, plus `--ca-file <pem>` / `PORTCULLIS_CA_FILE` for a staging root. No `--insecure`, no TLS skip. No telemetry, no update check: the CLI talks only to `auth.<d>`, `people.<d>` and its own loopback.
 - **Release:** the Hub repo's `v*` tags build `darwin`, `linux`, `windows` × `amd64`, `arm64` with `-trimpath -buildvcs=true`, `SHA256SUMS`, a cosign keyless bundle per archive (identity `^https://github.com/porelli/portcullis-hub/`) and SLSA provenance. The Hub image carries the Linux binary at `/usr/local/bin/portcullis`.
+
+### 18.16 The Hub's SSH routes
+
+**Hub listener** (administrators; every mutation audited with its §18.13 action):
+
+| Route | Notes |
+|---|---|
+| `GET` / `PUT /api/ssh/settings` | `{enabled, default_ttl_hours}` (+ proof to switch on or raise) → the settings with the CA keys, fingerprints and `problems` |
+| `GET` / `POST /api/ssh/hostgroups`, `PUT` / `DELETE /api/ssh/hostgroups/{id}` | `409` for a template no phishing-resistant method can meet; delete only when unused, never `all` |
+| `GET /api/ssh/hostgroups/{id}/access`, `GET /api/ssh/hosts/{id}/access?root=1`, `GET /api/ssh/people/{u}/access` | the previews (§9.8 of the design) |
+| `GET` / `POST /api/ssh/hosts`, `PUT` / `DELETE /api/ssh/hosts/{id}`, `POST /api/ssh/hosts/{id}/code` | `POST` and `/code` answer `{id, code}` once (fresh sign-in); `DELETE` takes the proof |
+| `POST /api/ssh/hosts/{id}/accounts/{name}/remove` | the bundle's `remove` |
+| `GET` / `POST /api/ssh/grants`, `PUT` / `DELETE /api/ssh/grants/{id}`, `POST /api/ssh/grants/preview` | `{…grant, confirm, code, code_verifier, nonce}`; `confirm` is the group's name typed again |
+| `GET /api/ssh/certificates[?user=]`, `POST /api/ssh/certificates/revoke` | `{user, fingerprints}` (none listed: all of the person's unexpired) |
+| `POST /api/ssh/host-certificates` | *Sign a host key*: `{host_group, public_key, names, code, code_verifier, nonce}`, `pc_fresh` `security_key` or `yubikey_cert` |
+
+**People listener:** `GET /api/me/ssh` (the card), `POST /api/me/ssh/revoke-all`; `GET /api/directory/users/{u}/ssh` and `POST …/ssh/revoke-all` (administrators; `sign_in_help` holders who may target the person — administrators' certificates by administrators only); `GET|POST /api/ssh/delegated/grants`, `PUT|DELETE /api/ssh/delegated/grants/{id}`, `POST /api/ssh/delegated/grants/preview`, `GET /api/ssh/delegated/hostgroups/{id}/access` (`ssh_access` holders; delegable host groups only).
+
+**MCP** (§15.10): `revoke_ssh_certificates` and `set_ssh_grant` are class D with every effective argument in the confirmation (`id` "Replaces grant …", accounts, port forwarding, lifetime); `revoke_my_ssh_certificates` is W.
 
 ## 19. Mail — NEW (mail)
 
