@@ -180,3 +180,6 @@
 *[primary-only]: A template that can't run on a worker server (core volumes, TCP/UDP routers, AI, VPN providers, per-person secrets, …)
 *[portcullis-agent]: The worker server's agent: serves the Hub's narrow API inside its own WireGuard tunnel and drives the engine through socket-proxy-agent
 *[socket-proxy-agent]: The worker server's socket proxy: the only container there that mounts the engine socket, shared with the agent alone
+*[mail slot]: The one place a mail server plugs into Portcullis: core's certificate, TLSA, networks and volumes plus the Hub's provider API client; open while PORTCULLIS_MAIL=on
+*[mail provider]: The app instance wired into the mail slot (a Marketplace template with a mail: block, e.g. Stalwart); only the wired instance gets the slot's ports, secrets and certificate
+*[mail providers]: App instances that can be wired into the mail slot (Marketplace templates with a mail: block, e.g. Stalwart); at most one is wired at a time

@@ -106,6 +106,11 @@ exactly as on a real install. Every step drives the stack through
     - **Shared `vpn.json` vectors match the Hub**: `tests/vpn_json_vectors.json` is a byte copy of the same-named Hub branch's (else main's) `internal/vpn/testdata/vpn_json_vectors.json`; group-gate's reader runs them too (`tests/test_group_gate.py`).
     - `tests/test_cli.sh`: `vpn` argument parsing and help; `vpnsecure` trusts PROXY v2 only from `wg`'s edge address and never gets `forwardedHeaders.trustedIPs` / `insecure`; every core router uses its entrypoint variable.
     - `tests/test_shell_libs.sh`: the mode's entrypoint variables, `vpn init`'s subnet refusals and suggestion, `vpn add-device` (the config and QR from one config on stdin, no key on any logged command line, nothing run without the Hub), and the reserved ranges in `core.env` (`172.16.0.0/12 192.168.0.0/16 10.214.0.0/24` plus the core networks, and Podman's pools under Podman).
+- **Mail** ([Mail server](../setup/mail.md), contract §19):
+    - **The mail slot wiring check** (`.github/ci/unit-tests-mail-wiring.sh`): `portcullis-mail-api` (internal, the fixed subnet, the Hub's pinned address), `mail_slot` and `mail_provider_slot` mounted by the Hub only (and `mail_slot` by Prometheus read-only), the Hub's group 2000; no mail server in core.
+    - **mailctl unit tests** (`cd mailctl && go vet && go test -race`, the adapter of the `stalwart` app): its config, the provider API guard (source subnet, bearer), the gate and the slot layout check, the JMAP envelope, the Stalwart schema snapshot (`internal/stalwart/testdata/schema-v1.1.0.json`), the base plan, the spam rules.
+    - **mail-fake and the conformance suite**: `tests/e2e/mail-fake` (a CI-only provider: the provider API v1 over an in-memory store, honouring the gate, with no mail server behind it; `mail-fake mode honest|hostile`) with `go vet` and `go test -race`, and `tests/mail-conformance/test_run.py` for `tests/mail-conformance/run.py`, the provider conformance suite: `run.py --level api|full --api-url URL --secret-file FILE [--smtp-host H --imap-host H] [--ca-file PEM]` prints `PASS <name>` / `FAIL <name>: <why>` per check and exits 1 on any failure; `api` judges the provider API alone (any provider), `full` adds the mail protocol checks (never an open relay, a mail password opens only mail). Every provider template must pass it.
+    - **MailState v2 and the mail DNS rule vectors match the Hub**: mailctl's `mailstate_v2.json` and the domains service's `mail_dns_vectors.json` are byte copies of the same-named Hub branch's (else main's) `internal/mailprovider/testdata/`.
 - **Pin enforcement.** Every image in every compose file, under every profile (`--profile '*'`), must be pinned `tag@sha256:…`, apart from the Hub and Keycloak, which come from `HUB_IMAGE` and `KEYCLOAK_IMAGE` (our own `edge` images on `main`; the Keycloak image's Dockerfile pins Keycloak itself). The same goes for the `enroll/Dockerfile` bases and the pinned refs (`name:tag@sha256:<64 hex>`) the CLI (`scripts/lib/*.sh`: the helper, restic, lldap-ui forwarder constants) and the workflows / actions run inline, and inline images in the workflows. `tests/lint_images.sh` checks the Dockerfiles, the compose files (core and the CI templates `tests/e2e/apps/*/compose.yml`), and every pinned ref the CLI and workflows run. Every action must be pinned by full commit SHA with a `# vX.Y.Z` comment.
 - **Monitoring config.** It runs, in the pinned images:
     - `promtool check config` and `check rules`, plus `promtool test rules` (the alert unit tests)
@@ -247,17 +252,18 @@ The step **"Test the VPN service"** (`.github/ci/build-and-test-vpn-service.sh`)
 
 `wg` then stays on for the rest of the job (`up`, `upgrade`, backup and restore).
 
-The step **"Test the mail service"** (`.github/ci/build-and-test-mail-service.sh setup`) turns [mail](../setup/mail.md) on (`./portcullis mail enable`, the mail certificate from a CI Pebble) and checks, failing with `FAIL: <what>`:
+The step **"Test the mail provider"** (`.github/ci/build-and-test-mail-service.sh setup`) opens the [mail slot](../setup/mail.md) and wires the `stalwart` app (`./portcullis mail enable --provider stalwart`; the mail certificate from a CI Pebble). The templates come from the same-named templates branch, else main (`.github/ci/mail-templates-checkout.sh`), loaded as the Hub's `portcullis` source, with two CI changes: the app's adapter image lines become the locally built `portcullis-mailctl:ci` (core CI tests the checkout's `mailctl/`, never the published image), and its resolver forwards every name to the domains service's fake DNS. It checks, failing with `FAIL: <what>`:
 
-- **No outbound SMTP.** Outbound TCP 25, 465 and 587 is rejected first, for the containers, `mail-egress` and the runner itself; `mail-resolver` forwards every name to the domains service's fake DNS. Nothing is ever sent to an external domain: foreign recipients are only tried at RCPT (and refused).
-- `mail` runs as 2000:2000, read-only, with `NET_BIND_SERVICE` only; `mailctl` as 10010 with group 10001; the resolver is healthy.
-- No `recovery.env` is left, a recovery login gets `401`, and `api-key` is 0640 group 10010.
-- The management listener is unreachable from `portcullis-proxy` and `404` from another `portcullis-mail` address (the API key too).
+- **No outbound SMTP.** Outbound TCP 25, 465 and 587 is rejected first, for the containers, the template's egress network and the runner itself. Nothing is ever sent to an external domain: foreign recipients are only tried at RCPT (and refused).
+- `stalwart` runs as 2000:2000, read-only, with `NET_BIND_SERVICE` only; the adapter as 10010 with no capability, from the checkout's mailctl.
+- The bootstrap job ran the base plan once on the empty store and exited 0, the recovery login is refused, no container keeps a recovery variable, the store is marked and `api-key` is 0640 group 2010; a second run plans nothing.
+- The management listener answers `404` from another address on the template's internal network (the API key too), and `stalwart` is on no core network.
 - The certificate's SAN is `MAIL_HOSTNAME`, a second `mail cert` keeps the key, and 25, 465, 587 and 993 present it.
-- Port 25 offers no AUTH and relays nothing (from the host and from `mail-egress`); submission refuses a foreign envelope sender and a foreign `From:`, and accepts the person's own mail.
-- `status --json` `.mail` (bootstrap, certificate, the timer warning turning active after `mail schedule --systemd`).
+- `mail status --json`: wired, reachable, nothing owed or held, the certificate; the timer warning turning active after `mail schedule --systemd`.
+- Port 25 offers no AUTH and relays nothing (from the host and from the egress network); submission refuses a foreign envelope sender and a foreign `From:`, and accepts the person's own mail.
+- The gate: without `.present` in the slot volume a raw start of `stalwart` exits before serving; with it, healthy again.
 
-After the backup step, **"Mail: the backup stopped and restarted mail"** checks that `backup` stopped `mail` for its store, started it again and archived `mail_data`, `mail_etc`, `mailctl_data`, `mail_tls` and `mail_acme`. After the restore into a fresh stack, **"Mail: the restore voided the mail passwords"** checks that the old mail password is refused by IMAP, mail is healthy and `mailctl_data` came back (the same DKIM state, `restored_at` set).
+After the backup step, **"Mail: the backup holds the provider's instance archive"** checks that `MANIFEST.json` names the provider's archive, that `hub_data` holds it, that `mail_tls` and `mail_acme` are archived and that `backup verify` checks it. After the restore into a fresh stack, **"Mail: the restore restored the provider and voided its mail passwords"** checks that the Hub verified the void (nothing owed), no hold file is left, the old mail password is refused and no credential is left.
 
 The step "Test the public guard (public exceptions) through Traefik" routes a test host through `portcullis-public-guard@docker` only and checks: no version-3 entry → 403; published prefix / static paths → 200; other paths, encoded `/` or `#`, dot-segment escapes → 403; `Authorization`, `Proxy-Authorization`, a credential header, credential cookies and query keys in PHP-mangled spellings → 403. The guard's unit tests are in `tests/test_group_gate.py` (`PublicGuardTest`, `PhpVarNameTest`).
 
@@ -951,26 +957,40 @@ Built like `e2e-settings` (same-named Hub and templates branches, else `main`). 
 ### `e2e-mail` (the mail server)
 
 The whole core stack, the Hub and the domains service (Pebble, the CI-only
-fake DNS provider: one fake zone shared by the dns tool and `mail-cert`), with
-mail on for `ci.example.org` and the added domain `team-b.test`, plus a second
-Stalwart ("remote", `remote.test`) on `mail-egress`. **Nothing leaves the
-runner:** outbound 25, 465 and 587 is rejected outside the stack's networks
-and every name is the fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
+fake DNS provider: one fake zone shared by the dns tool and `mail-cert`),
+with the `stalwart` app wired (`.github/ci/e2e-mail-start-stack.sh`: the
+templates checkout as above, the adapter and `mail-fake` built from the
+checkout), mail on for `ci.example.org` and the added domain `team-b.test`,
+plus a second Stalwart ("remote", `remote.test`, `.github/ci/e2e-mail-remote.sh`)
+on the wired app's egress network (disconnected and reconnected around every
+switch and around the restore). **Nothing leaves the runner:** outbound 25,
+465 and 587 is rejected outside the stack's networks and every name is the
+fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 
 - **setup**: people in and out of `mail_users`, the list `team`, every account answering RCPT, DKIM Ed25519 and RSA active for both domains (`./portcullis mail rotate`), and the mail passwords created on the Sign-in page (fresh-auth popup, shown once).
-- **exchange both ways**: the remote's `Authentication-Results` show `dkim=pass` for an Ed25519 and an RSA signature, `spf=pass` and `dmarc=pass`; mail from the remote arrives; the remote's DMARC aggregate report reaches `dmarc-reports@` and shows in `GET /api/mail/checks`.
-- **added-domain alias**: a person receives at and sends as their `team-b.test` address.
-- **spam**: GTUBE in the Subject is refused with `550 5.7.1` at DATA (a GTUBE body is pinned as accepted: Stalwart reads it only in the Subject); a message scoring between the thresholds lands in Junk with `X-Spam-*`; the allow list (through the Hub) tags `TRUSTED_DOMAIN`.
-- **mail passwords**: shown once and nowhere after the dialog; IMAP 993, SMTP 465 and 587 work; the LLDAP password fails IMAP and the mail password fails LLDAP; the management listener answers `404` from another address and a method-level `forbidden` from mailctl's own; the sixth password is `409`.
-- **lists and postmaster**: the remote can't post to the members-only list (`550 5.7.1` at RCPT), a member can; `postmaster@` reaches the administrators.
-- **revocation and removal**: an IMAP session fails within 8 s of the revoke; an IDLE session fails within 8 s of the person's removal from `mail_users`, whose address then gets `550 5.1.1`; a username deleted and created again gets an empty mailbox, the old passwords fail, and `former-<old uuid>` is listed.
+- **1 exchange_both_ways**: the remote's `Authentication-Results` show `dkim=pass` for an Ed25519 and an RSA signature, `spf=pass` and `dmarc=pass`; mail from the remote arrives; the remote's DMARC aggregate report reaches `dmarc-reports@` and shows in `GET /api/mail/checks`.
+- **2 enrolled_domain_alias**: a person receives at and sends as their `team-b.test` address.
+- **3 gtube_rejected_at_data**: GTUBE in the Subject is refused with `550 5.7.1` at DATA; a message scoring between the thresholds lands in Junk with `X-Spam-*` (`between_thresholds_to_junk`).
+- **4 mail_password_flow**: shown once and nowhere after the dialog; IMAP 993, SMTP 465 and 587 work; the LLDAP password fails IMAP and the mail password fails LLDAP; the management listener answers `404` from another address and a method-level `forbidden` from the adapter's own; the sixth password is `409`.
+- **8 members_only_list**, **9 postmaster_to_admins**: the remote can't post to the members-only list (`550 5.7.1` at RCPT), a member can; `postmaster@` reaches the administrators.
+- **5 revoke_within_8s**, **6 leave_ends_idle_session**, **7 recreated_username_fresh_mailbox**: an IMAP session fails within 8 s of the revoke; an IDLE session fails within 8 s of the person's removal from `mail_users`, whose address then gets `550 5.1.1`; a username deleted and created again gets an empty mailbox, the old passwords fail, and `former-<old uuid>` is listed.
+- **13 wiring_guards**: wiring `mail-fake` (from a CI-only source) is refused without a fresh proof (403), with a wrong typed id (400), for an AI / MCP actor (403) and for a delegate (403); with all of them it succeeds.
+- **11 switch_provider**: a switch to `mail-fake` (honest): the sets replaced per domain with the old DKIM keys kept, retiring; the mail passwords' rows voided (`provider_changed`); the ports reach the fake (no SMTP banner); `stalwart` stopped with its volumes; `mail.provider_switched` audited; then back to `stalwart` (which voids again).
+- **12 hostile_provider_contained**: `mail-fake` in hostile mode while wired: none of its forbidden records reaches the zone (`mail_records_wrong` names them), no mass-removal document is sent, and the over-wide `allowed_ips` row is revoked.
+- **14 template_change_holds**: the wired template's files change and the Hub syncs: no container is recreated, `mail_provider_refused`, the mail routes answer `503`; a confirmation clears the hold.
+- **15 conformance_stalwart**: `run.py --level full` against the wired `stalwart`.
+- **16 conformance_fake_api**: `run.py --level api` against `mail-fake`, wired for the run.
 
 Then the job runs `./portcullis backup` and `./portcullis restore --yes`, and
-`e2e_mail.py restore` checks that the old password is refused by IMAP and
-SMTP AUTH and that the Sign-in page says "reset by a restore". On failure it
-uploads the mail, mailctl, resolver, domains, Hub, Traefik and Keycloak logs
-(never a password: every one is masked as soon as it is known, and there are
-no Playwright traces).
+`e2e_mail.py restore` (**10 restore_voids_mail_passwords**) checks that the
+rows are voided (`void_restore`), the Sign-in page says "reset by a
+restore" and the old password is refused by IMAP and SMTP AUTH. On failure
+it uploads the provider's, the remote's, the domains', Hub, Traefik and
+Keycloak logs (never a password: every one is masked as soon as it is known,
+and there are no Playwright traces). One scenario on its own:
+`.github/ci/local/run-job.sh e2e-mail --scenario 11 --local <checkout>` on a
+Docker host, or `-f scenarios="11 switch_provider"` on GitHub
+([below](#single-scenario-reruns-scenarios)).
 
 ### `e2e-ai` (AI support through mcp-gate)
 
@@ -1117,7 +1137,7 @@ as the operator ([Rootless Podman](rootless-podman.md)). No artifact carries
     - **The VPN service** (`.github/ci/e2e-podman-vpn-service-on-rootless-podman.sh`): `vpn init` rootless, `wg` as 10006 without capabilities, `vpn add-device` for an LLDAP person, a `tests/e2e/vpn-client` handshake over the published UDP port and a GET of people.&lt;domain&gt; through the edge and `vpnsecure` (forward-auth's redirect). The host prep writes the operator's `containers.conf` pool line, and the job checks a new network lands in `10.89.0.0/16`
     - **reboot:** after `systemctl restart user@<uid>.service` (every container dies with the user manager), `podman-restart.service` brings the stack back and `status` is clean within 180 s
     - **Docker → Podman round trip:** after a wipe, `init --runtime podman` and `./portcullis restore --yes` of the Docker phase's backup: `.env` keeps `CONTAINER_RUNTIME=podman` and the rootless socket, `status` is clean, `certs/ca-chain.crt` has the recorded sha256, the Docker phase's LLDAP person exists, and the secrets are the operator's on the host
-    - **Mail on rootless Podman** (`.github/ci/e2e-podman-mail.sh`): outbound 25 / 465 / 587 rejected for the runner and pasta; `ip_unprivileged_port_start=25`, then `./portcullis mail enable` (`MAILCTL_CLIENT_IP=rewritten`, healthy); a message from a CI container to the host's port 25 is delivered to an LLDAP person; the doctor names `mail_client_ip_rewritten`; and no ban appears after the delivery (with rewritten addresses every client is the gateway, so a ban would lock everyone out)
+    - **Mail on rootless Podman** (`.github/ci/e2e-podman-mail.sh`): outbound 25 / 465 / 587 rejected for the runner and pasta; `mail enable` refused while `ip_unprivileged_port_start` is above 25 (nothing written), then 25 and `./portcullis mail enable --provider stalwart` (the templates checkout as the Hub's source, the adapter built here): wired, healthy, client addresses rewritten; a cold start keeps the store's key (no plan, no new key); a message from a CI container to the host's port 25 is delivered to an LLDAP person; the doctor names `mail_client_ip_rewritten`; no ban after 110 failed logins (with rewritten addresses every client is the gateway, so a ban would lock everyone out); the gate refuses a raw start without `.present` in the slot volume
 - On failure it uploads the container logs only.
 
 ### `e2e-vpn` (VPN-only access)
@@ -1456,6 +1476,14 @@ every contributor gets this feedback:
   the Hub" compares `tests/runtime_vectors.json` byte for byte with the
   Hub's `internal/templates/testdata/runtime_vectors.json` on the
   same-named Hub branch, else main.
+- **Mail providers.** `MailTests` checks the `mail:` block rule for rule with
+  the Hub's `ValidateMail`, on the shared vectors `tests/mail_vectors.json`;
+  "Mail vectors match the Hub" compares that file byte for byte with the
+  Hub's `internal/templates/testdata/mail_vectors.json` on the same-named Hub
+  branch, else main. "stalwart gate unit tests"
+  (`tests/mail/test_gate_entrypoint.sh`, under `dash`) run the `stalwart`
+  app's start gate with a stub server: every case of the slot predicate, the
+  recovery-mode refusal, the job's own starts, `--check` and the store lock.
 - `tests/trust/test_grafana_trust.sh`: Grafana's `trust.sh` (the AI trust
   network allowlist) against stubbed `ip` output, including the ambiguous
   layouts it must refuse.

@@ -282,10 +282,7 @@ CI fails if any of these is missing.
 | relays (primary, one compose project per instance placed on a worker) | 65534:65534 | read-only | — | `portcullis-relay healthcheck` (image) | Image `ghcr.io/porelli/portcullis-relay` (`RELAY_IMAGE` → `HUB_RELAY_IMAGE`, a digest or `:edge`). Started by the Hub, one per routed service, carrying exactly the labels the service would carry on the primary. `mem_limit` 64m, `pids_limit` 64. Networks `portcullis-proxy` and `portcullis-link-data` only; its token lives in the relay project's env file (0600). See [Relays](#relays-and-the-cookie-rule) |
 | agent (worker only) | 10008:10008 + group 10001 | read-only (`tmpfs /tmp`) | — | `portcullis-agent healthcheck` (image) | Image `ghcr.io/porelli/portcullis-agent` (`AGENT_IMAGE`). No published port: it serves only inside its own userspace WireGuard tunnel. Networks `socket-proxy-agent` (internal) and `worker-egress`; joins the worker's `portcullis-proxy` itself. Mounts `worker-data/` at the same host path, and **read-only** at their host paths the checkout, the engine's data root and every folder root (it refuses to start without them). `mem_limit` 256m, `pids_limit` 256. Under SELinux `label=disable` ([below](#the-agent)) |
 | socket-proxy-agent (worker only) | root | read-only (`tmpfs /run`) | `SYS_CHROOT` | `/_ping` | `socket-proxy-hub`'s service byte for byte; `label=disable` under SELinux, as it mounts the engine socket |
-| mail (profile `mail`) | 2000:2000 | read-only (`tmpfs /tmp`, `/var/log/stalwart`, size-capped) | `NET_BIND_SERVICE` | `/healthz/live` (loopback) | Stalwart, the upstream image `stalwartlabs/stalwart` pinned. Exception: its binary carries the file capability `cap_net_bind_service=+ep`, which can't be executed under `cap_drop: ALL` ("operation not permitted"), so the one capability is added back; the effective set is that one capability, and Stalwart still binds only ports ≥ 10025. Publishes 25, 465, 587 and 993 (IPv4) directly, not through Traefik. `mem_limit` 1g, `pids_limit` 256. See [Mail](#mail) |
-| mailctl (profile `mail`) | 10010:10010 + group 10001 (`group_add`, the Hub secret) | read-only (`tmpfs /tmp`) | — | `mailctl healthcheck` | Image `portcullis-mailctl`, built from `mailctl/` (Go). The only holder of Stalwart's API key; no engine access, no LLDAP, Keycloak or DNS credentials. `mem_limit` 256m, `pids_limit` 128. See [Mail](#mail) |
-| mail-resolver (profile `mail`) | 101:102 (the image's) | read-only (`tmpfs /tmp`) | — | `drill-hc` on `dnssec.works` | Unbound (`klutchell/unbound`, pinned): a validating recursive resolver for `mail` and `mailctl` only (`access-control` the `portcullis-mail` subnet), no forwarders. `mem_limit` 128m, `pids_limit` 64 |
-| mail-cert (profile `tools`) | 10004:2000 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains mail-cert`), started only by `./portcullis mail …` like `dns-tool`; network `domains-egress` only; volumes `mail_acme` and `mail_tls`; the DNS credentials on stdin. Its own ACME account and key, never Traefik's |
+| mail-cert (profile `tools`) | 10004:2000 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains mail-cert`), started only by `./portcullis mail …` like `dns-tool`; network `domains-egress` only; volumes `mail_acme` and `mail_tls`; the DNS credentials on stdin. Its own ACME account and key, never Traefik's. The mail server itself is no core service: it is the wired [mail provider](#mail) |
 | prometheus, alertmanager, blackbox, textfile-exporter (profile `monitoring`) | 65534:65534 | read-only | — | `/-/ready`, `/-/healthy`, `/metrics` | `monitoring` network is `internal`; nothing published. Alertmanager's only egress is the `alerting` network |
 | grafana (profile `monitoring`) | 472:472 | read-only (`tmpfs /tmp`) | — | `/api/health` | Header auth only from `PORTCULLIS_TRAEFIK_IP`; login form and basic auth off |
 
@@ -339,11 +336,6 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/mcp-gate/{age.pub,hub-secret}` | 10001 | 0640 | Hub (encrypts to `age.pub`; holds no identity) and mcp-gate (`hub-secret`, through group 10001) |
 | `secrets/sessions/valkey.conf` | 1000 | 0640 (dir 0700) | sessions (its config and ACL users: the SHA-256 of `FORWARD_AUTH_REDIS_PASSWORD` / `FORWARD_AUTH_EXT_REDIS_PASSWORD`, never the passwords; rewritten from `.env` on every run) |
 | `secrets/wg/people.key` | 10006 | 0640 (dir 0750) | wg (the built-in VPN's private key, written by `./portcullis vpn init` inside a throwaway `wg` container, never printed; an empty file means the built-in VPN is off) |
-| `secrets/mail/api-key`, `secrets/mail/dqs-key` | 10010 | 0640 (dir 0700) | mailctl (Stalwart's API key, written straight from the bootstrap's output; the Spamhaus DQS key) |
-| `secrets/mail/hub-secret` | 10001 | 0640 | Hub and mailctl (the bearer between them, ≥ 32 characters; written in place) |
-| `secrets/mail/{metrics-secret,relay-password}` | 2000 | 0640 | mail (the Prometheus scrape password; `MAIL_RELAY_PASSWORD`) |
-| `secrets/mail/mailctl-metrics-secret` | 10010 | 0640 | mailctl (its metrics' Basic-auth password, ≥ 32 characters; Prometheus reads a copy) |
-| `secrets/mail/gate/` | 2000 | 0750; `.present` 0640, the markers 0600 | mail, read-only (the sentinel `.present`, the restore's `void-pending` marker and the recovery session's boot id, [Mail](#mail)) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
 | `secrets/monitoring/alertmanager/alertmanager.yml` | 65534 | 0640 (dir 0750) | Alertmanager (receivers incl. SMTP password / webhook URLs) |
 | `secrets/monitoring/grafana/admin-password` | 472 | 0640 (dir 0750) | Grafana |
@@ -512,89 +504,129 @@ not by relying on the mount's read-only flag alone.
 
 ## Mail
 
-The [mail server](../setup/mail.md) is the one core service other mail
-servers on the internet talk to directly. Its layout
-([contracts §19.1](../guides/integration-contracts.md#191-the-slot-networks-volumes-files-and-the-override)):
+The mail server is a **mail provider**: an app instance whose template has
+a `mail:` block, wired by a full administrator into the server's one mail
+slot ([Mail operations](mail.md)). It is the one app other mail servers on
+the internet talk to directly, and it holds everyone's mailbox, so the slot
+contains it whatever template it comes from (any installed mail template may
+be wired, from any source)
+([contracts §3.5](../guides/integration-contracts.md#35-mail-providers-the-mail-block-new-mail-provider),
+[§19.1](../guides/integration-contracts.md#191-the-slot-networks-volumes-files-and-the-override)).
 
-| Network | Kind | Members |
-|---------|------|---------|
-| `portcullis-mail` | internal, fixed subnet `172.31.255.0/28` | `mail`, `mailctl`, `mail-resolver` (pinned addresses) |
-| `portcullis-mailctl` | internal, fixed subnet `172.31.255.16/28` | the Hub and `mailctl` only |
-| `portcullis-metrics-mail` | internal | Prometheus, `mail`, `mailctl` |
-| `mail-egress` | not internal | `mail`, `mailctl`, `mail-resolver` (outbound delivery, DNS, the blocklists) |
+**What core runs for the slot:**
 
-`mailctl` also joins `portcullis-proxy` at a pinned address for its
-well-known pages (MTA-STS, autoconfig, autodiscover), which follow the
-[VPN mode](vpn.md) like every core router.
+| Name | Kind | Members |
+|------|------|---------|
+| `portcullis-mail-api` | internal network, fixed subnet `172.31.255.16/28` | the Hub at `.18`; the wired provider's API service at `.19` (alias `mail-api`), attached by the Hub's override. Nothing else |
+| `portcullis-metrics-mail` | internal network | Prometheus; the wired provider's metrics services, attached by the override |
+| `mail_slot` | volume, `10001:65534` `2750` | the Hub read-write, Prometheus read-only: the metrics targets and their password |
+| `mail_provider_slot` | volume, `10001:2000` `2750` | the Hub read-write; the wired provider's `gated` services read-only (the whole volume): its API secret, metrics secret, relay password and gate files. Never backed up, emptied by a restore |
+| `mail_tls`, `mail_acme` | volumes | `mail-cert` (the certificate, its key and ACME account); `mail_tls` read-only into the wired provider's `tls` services |
+
+The Hub has the group 2000 (`group_add`), the mail-provider group, so it
+writes the slot files (`0640`, group 2000, written in place, never on argv
+or in a log); the override adds group 2000 to the provider's `tls` and
+`gated` services so they can read them.
+
+**Containing a provider.** A template the admin wires gains exactly what the
+slot allows:
+
+1. **An allowlist.** The `mail:` block names services and ports, and the
+   Hub's override renders exactly those: the four ports on the listener
+   service, the API network on the API service, the metrics network, the
+   certificate and the slot files on the services the block lists, and one
+   Traefik router for MTA-STS, autoconfig and autodiscover. The template
+   itself gets the VPN gateway's hardening on **every** service: no
+   `ports`, no Traefik labels, not privileged, `cap_drop: [ALL]` with at
+   most `NET_BIND_SERVICE`, no devices, no `pid`, `ipc`, `volumes_from` or
+   host network, read-only binds of its own files only, plain volumes, its
+   own plain networks only (never a core network, fixed addresses only
+   inside its own subnets), no IPv6, literal pinned images, no YAML anchors,
+   no per-person secrets, `instances: single`. The provider never gets
+   engine access, `hub_data`, LLDAP, Keycloak or DNS credentials, the
+   wildcard key, other instances' networks, or a core network other than
+   the two above. Before every `up` of every instance the Hub checks the
+   rendered project: `portcullis_mail_tls` and `portcullis_mail_provider_slot`
+   are mounted only into the wired provider's `tls` and `gated` services,
+   read-only, and on core networks only the Hub's own attachments exist.
+2. **Wiring is deliberate.** A full administrator with a fresh sign-in with
+   a security key (or the host operator, through the CLI) types the
+   instance id after the powers are spelled out; never from MCP or AI;
+   audited with the template's source, commit and fingerprint. Installing a
+   template never wires it.
+3. **Template updates hold.** Any change to the wired template (its block,
+   its compose file, any file of its directory, an image bump) keeps the
+   instance on its current containers until a full administrator confirms
+   it ([Template updates hold](mail.md#template-updates-hold)).
+4. **The Hub checks every rule itself**, never trusting the provider: the
+   DNS allowlist and the DMARC floor (the Hub and the domains service);
+   mail passwords by uuid, echoed and compared, and rows that end only on a
+   confirmed answer; the mass-removal guard before it sends a document;
+   LAN-only, through each password's reported networks; the void after every
+   wiring and restore, verified by listing credentials; the session reset
+   after every revoke; strict decoding of every answer (unknown keys
+   refused, sizes capped, ids shaped, texts clipped and shown as plain
+   text).
+5. **The damage bound.** A provider that turns hostile can read and send the
+   mail of the people in `mail_users`: that is inherent to running a mail
+   server, and it is why the warning says so ("… and can read every
+   mailbox") and wiring needs a fresh, typed confirmation. It can't affect
+   sign-in, other apps, DNS outside the validated mail names, or the
+   certificate of any other host.
 
 **The four ports.** `25` (SMTP, STARTTLS) is public by necessity and never
 offers AUTH or relays anything (relaying needs an authenticated session, never
 an IP address); `465` and `587` (submission) require AUTH, refuse the MX
 role and check that the envelope sender and `From:` are the person's own
 address, alias or list; `993` is IMAPS. All four are IPv4 only, published by
-the engine (no Traefik TCP entrypoint), and no app instance may publish any of
-them while mail is on. They are never LAN-only: port 25 must be public, and
+the engine onto the wired provider (no Traefik TCP entrypoint), and no other
+instance may publish any of them while the slot is open. They are never
+LAN-only: port 25 must be public, and
 [LAN-only mail passwords](../setup/mail.md#lan-only-mail-passwords) limit who
-can sign in instead.
+can sign in instead. Every provider must keep these rules (core's
+conformance suite tests them).
 
-**Stalwart's management API** listens on `mail`'s `portcullis-mail` address
-and its own loopback only. Its access rule answers only mailctl's pinned
-address on `/jmap`, `/api` and `/.well-known/jmap` (and the metrics path on
-the metrics listener), `404` otherwise. **The rule fails open:** Stalwart
-treats an expression error as allow and lets loopback bypass it, so the real
-control is the network: only `mail`, `mailctl` and `mail-resolver` are on
-`portcullis-mail`, and core CI checks that `/jmap` from another address on
-that network is `404`. Never attach anything else to `portcullis-mail`.
+**The gate.** Every `gated` service of the provider checks the slot files
+before its server starts: the sentinel `.present`, or the Hub's void mode
+with its session nonce. A raw start of the provider (an unwired instance, a
+core restore that emptied the slot volume, a void owed) fails closed.
 
-**mailctl's API key** has the custom role `portcullis-mailctl`: account,
-domain, DKIM, mail-password, list, queue-read, report-read, spam-settings,
-outbound-throttle and TLS-strategy permissions, the spam rules' import task,
-and the reload actions; never API-key or role administration, so the key
-can't widen itself, and never JMAP, DAV, Sieve or POP3. `impersonate` plus
-creating app passwords already amount to mailbox access, so the key is pinned
-(`allowedIps` = mailctl's own `/32`). mailctl has no engine access; the Hub
-restarts `mail` (the one core container it may restart, matched by the core
-project's labels and checkout path) after every revoke, so open sessions end.
+**The mail certificate** is core's (`mail-cert`): its own ACME account and
+its own key, never Traefik's wildcard key, so a compromised provider can't
+impersonate `auth.<domain>`; SAN exactly `MAIL_HOSTNAME`; the CAA at
+`MAIL_HOSTNAME` pins that account. The provider gets the files read-only and
+never the DNS credentials, the account or the key's history.
 
 **Mail passwords** open IMAPS and submission only, never Portcullis sign-in
-or Stalwart's API; Stalwart keeps only their hash, and the plaintext exists in
-one `no-store` answer. Nobody signs in to Stalwart interactively: the
-accounts' own passwords are random and never kept. The recovery admin exists
-only during a recovery session (`mail enable`, `upgrade`, a restore's void),
-and the CLI checks that its login is refused afterwards.
+or the provider's API; the provider keeps only their hash, and the plaintext
+exists in one `no-store` answer. The Hub restarts the provider's session
+service (the block's `sessions.restart`, the only service of the instance it
+restarts for mail) after every revoke and removal, so open sessions end
+within 8 seconds.
 
 **The export exception.** `./portcullis mail export` is the only path that
-reads message content: CLI only, never through the Hub or an AI. It lifts
-sign-in on one former account for a moment, with a one-hour read-only IMAP
-credential limited to mailctl's address and pinned to Stalwart's own
-certificate, and disables it again, also on error.
-
-**The recovery session** runs `mail` from `docker-compose.mail-recovery.yml`:
-no published ports, only the internal `portcullis-mail` network, `restart:
-"no"`. Its gate file holds the host's boot id, and the container refuses a
-recovery-mode start whose id doesn't match, so a recovery container left by
-a killed CLI or brought back after a reboot never runs. Every normal start
-needs the gate's sentinel (`gate/.present`), failing closed with "the mail
-gate isn't readable".
+reads message content: CLI only, never through the Hub or an AI. It runs the
+block's export command in the provider's container; the provider must refuse
+anything but a former account and remove whatever access it granted itself.
 
 **Local networks** (LAN-only mail passwords) can never amount to anywhere:
 at most 64; public IPv4 at most a /16 and public IPv6 at most a /32 (private
 ranges as wide as their block); IPv6 never overlapping `::ffff:0:0/96`,
 `::/96`, `64:ff9b::/96` or `64:ff9b:1::/48`, and within `fc00::/7`,
-`fe80::/10` or `2000::/3`. mailctl refuses a document that breaks this.
+`fe80::/10` or `2000::/3`.
 
-**Metrics** of both `mail` and `mailctl` need Basic auth (user `prometheus`,
-their own passwords); mailctl refuses to start with a metrics password
-shorter than 32 characters.
+**Metrics** of the provider need Basic auth (user `prometheus`, the slot's
+metrics secret).
 
-**After a restore** no mail password from the backup works: the store is
-voided in a recovery session before mail serves anyone, and the mail
-container itself refuses to start while the void is pending
+**After a restore** no mail password from the backup works: the Hub voids
+every one before the provider serves anyone, and the provider itself refuses
+to start while the void is pending
 ([Mail operations](mail.md#backups-and-restores)).
 
-**No surprise egress.** The spam rules' four external lookups are kept off
-(re-checked every 15 minutes), the AI classifier, Stalwart's web UI and its
-GeoIP / ASN downloads are disabled, and DMARC report forwarding is off.
+**No surprise egress.** The provider contacts the outside only to deliver
+mail, to resolve DNS and for its checks; a spam filter's external lookups
+must stay off. How the `stalwart` app keeps that, and its own management
+API, key and role: [Stalwart](../apps/stalwart.md).
 
 ## Rootless Podman
 

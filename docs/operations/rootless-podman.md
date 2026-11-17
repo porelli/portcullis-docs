@@ -233,7 +233,8 @@ limited one runs with the limits named. Under Docker no badge is shown
 | Socket proxies, Traefik's Docker provider | works (Podman's own API is always denied) |
 | App backups and restores, core `backup` and `restore` | works (archives are the same on both runtimes) |
 | Shared folders and the fixer | works, with conditions: folders owned by a host account outside the operator's id range are refused per path (run `sudo chown -R '<uid>:<gid>' '<path>'` once), and on SELinux hosts each folder needs a label |
-| File sharing (Samba, Time Machine) on 445 | works; [Time Machine discovery](#time-machine-discovery) is unverified |
+| File sharing (Samba, Time Machine) on 445 | not available (the Rootless badge still says works): an app with per-person passwords isn't started ("&lt;id&gt; was not started: per-person passwords need Docker for now (rootless Podman &lt;version&gt; doesn't apply compose volume subpaths)"): Podman's compat API ignores compose volume subpaths, which keep each instance's password hashes apart. [Time Machine discovery](#time-machine-discovery) is unverified too |
+| The mail server (a wired [mail provider](../setup/mail.md#rootless-podman)) | limited: degraded mode (below), and `ip_unprivileged_port_start=25` |
 | Apps that trust identity headers | works (they trust Traefik's pinned address, as on Docker) |
 | Host networking (NetBird's relay) | limited: published ports must stay at or above the sysctl |
 | Apps that publish UDP | limited: clients appear with a rewritten source address |
@@ -372,9 +373,12 @@ Time Machine settings ([File Sharing](file-sharing.md)).
   `./portcullis up` (or `upgrade`) restarts an unhealthy proxy.
 - **Mail runs degraded.** The [mail server](../setup/mail.md#rootless-podman)
   needs `ip_unprivileged_port_start=25` (`mail enable`, `up` and `upgrade`
-  refuse otherwise, giving the `sysctl -w` line; any local account may then
-  bind ports from 25). Every mail client and server seems to come from the
-  rootless gateway, so mail runs with `MAILCTL_CLIENT_IP=rewritten`: SPF,
+  refuse otherwise, giving the `sysctl -w` line, and the Hub refuses to wire
+  a provider; any local account may then bind ports from 25). The provider's
+  slot files reach it through a whole volume (`mail_provider_slot`), never a
+  subpath, so mail works the same on both runtimes. Every mail client and
+  server seems to come from the rootless gateway, so core writes
+  `PORTCULLIS_MAIL_CLIENT_IP=rewritten` and the provider runs degraded: SPF,
   reverse DNS and the IP blocklists are off for incoming mail, DMARC judges
   DKIM alignment only and never rejects, nobody is banned automatically, and
   LAN-only mail passwords are refused. The doctor shows
