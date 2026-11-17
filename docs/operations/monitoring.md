@@ -97,15 +97,15 @@ has scraped the Hub in the last 5 minutes.
 
 | Series | Labels | Value |
 |--------|--------|-------|
-| `portcullis_container_cpu_seconds_total` | `instance`, `service`, `number` | CPU time (counter) |
+| `portcullis_container_cpu_seconds_total` | `app`, `service`, `number` | CPU time (counter) |
 | `portcullis_container_memory_working_set_bytes`, `portcullis_container_memory_limit_bytes` | the same | Working set and limit |
 | `portcullis_container_pids`, `portcullis_container_oom_killed` | the same | Processes; 1 after an OOM kill |
 | `portcullis_container_network_receive_bytes_total`, `…_transmit_bytes_total`, `portcullis_container_blkio_read_bytes_total`, `…_write_bytes_total` | the same | Counters |
-| `portcullis_storage_alloc_bytes`, `portcullis_storage_measured_timestamp_seconds` | `instance`, `kind`, `target` (a volume name, folder id, service or image, never a host path: binds are `bind:<n>`) | Last measured size and when |
+| `portcullis_storage_alloc_bytes`, `portcullis_storage_measured_timestamp_seconds` | `app`, `kind`, `target` (a volume name, folder id, service or image, never a host path: binds are `bind:<n>`) | Last measured size and when |
 | `portcullis_filesystem_free_bytes`, `portcullis_filesystem_total_bytes` | `dev` | Per filesystem |
 | `portcullis_usage_sampler_last_success_timestamp_seconds` | — | The sampler's last good sweep |
 
-`instance` is the instance id, or `core`. A figure the Hub doesn't have is
+`app` is the instance id, or `core` (`instance` stays Prometheus' own label, the target `hub-metrics:9100`). A figure the Hub doesn't have is
 left out, never exported as 0. **Retention:** the existing
 `PROMETHEUS_RETENTION` (default 30 days). Rough cost: 30 containers × 10
 series × 2 samples/min × 30 d ≈ 26 M samples, about 40 MB.
@@ -136,8 +136,10 @@ series × 2 samples/min × 30 d ≈ 26 M samples, about 40 MB.
 | `MailDKIMStuck` | A new DKIM key has waited more than 24 h for DNS, for 10 min | warning |
 | `MailCheckFailing` | Any other mail check fails for 1 h (`./portcullis mail status`, or the Hub's doctor) | warning |
 | `PortcullisAppMemoryNearLimit` | A container's working set is above 90 % of its memory limit for 10 min (the doctor's `memory_near_limit`) | warning |
-| `PortcullisDiskNearlyFull` | A filesystem with Portcullis data has less than 10 % free for 30 min | warning |
+| `PortcullisDiskNearlyFull` | A filesystem with Portcullis data has less than 10 % or 5 GiB free for 30 min (the doctor's warning band) | warning |
+| `PortcullisDiskAlmostFull` | Less than 3 % or 1 GiB free for 10 min (the doctor's problem band) | critical |
 | `PortcullisUsageSamplerStale` | The Hub's usage sampler has had no good sweep for 10 min while the Hub is up | warning |
+| `PortcullisUsageSamplerNeverRan` | The Hub has been scraped for 15 min and its sampler has never had a good sweep | warning |
 | `PortcullisStatusStale` / `PortcullisStatusProblems` | `status --textfile` did not run for 36 h / reported problems for 1 h | warning |
 
 Core CI runs `promtool test rules monitoring/prometheus/tests/alerts_test.yml`,
