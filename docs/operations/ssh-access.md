@@ -140,11 +140,12 @@ can't touch protected accounts.
 
 ```
 sudo portcullis host trust --domain example.com --host-group web \
-     --ca-key 'ssh-ed25519 AAAA…' --account deploy --account alice --revoked-keys
+     --ca-key 'ssh-ed25519 AAAA…' --person alice --account deploy --revoked-keys
 ```
 
 The Hub's host-group page shows this command with the right key and the
-`--account` lines the current grants need. `--ca-fingerprint SHA256:…`
+`--person` (a person's own account) and `--account` (a shared account)
+lines the current grants need. `--ca-fingerprint SHA256:…`
 fetches the key instead, and only accepts it when the fingerprint matches.
 Without `--revoked-keys` the host never talks to Portcullis.
 
