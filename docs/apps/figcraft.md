@@ -41,7 +41,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `figcraft` | `nginxinc/nginx-unprivileged:1.31.7-alpine3.24` | `sha256:b5047b9b7684…` |
-| `figcraft-fetch` | `alpine:3.24.3` | `sha256:be2656061b53…` |
+| `figcraft-fetch` | `alpine:3.24.4` | `sha256:f59abe656b69…` |
 
 ## Settings
 

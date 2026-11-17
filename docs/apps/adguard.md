@@ -40,7 +40,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `adguard` | `adguard/adguardhome:v0.107.79` | `sha256:aba9e3bf0613…` |
+| `adguard` | `adguard/adguardhome:v0.107.80` | `sha256:e2e1b48c832f…` |
 
 ## Host Ports
 

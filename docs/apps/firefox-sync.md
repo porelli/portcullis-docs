@@ -41,8 +41,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `firefox-sync` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.24.0` | `sha256:6b4ad5b6ed19…` |
-| `firefox-sync-db` | `postgres:17.11-alpine` | `sha256:266d3c257594…` |
-| `firefox-sync-init` | `postgres:17.11-alpine` | `sha256:266d3c257594…` |
+| `firefox-sync-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
+| `firefox-sync-init` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
 | `firefox-sync-migrate` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.24.0` | `sha256:6b4ad5b6ed19…` |
 
 ## Settings

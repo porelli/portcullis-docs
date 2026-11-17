@@ -70,12 +70,12 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `immich-db` | `ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0` | `sha256:1a078b237c1d…` |
-| `immich-init` | `alpine:3.24.3` | `sha256:be2656061b53…` |
+| `immich-init` | `alpine:3.24.4` | `sha256:f59abe656b69…` |
 | `immich-lock-local-users` | `ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0` | `sha256:1a078b237c1d…` |
-| `immich-machine-learning` | `ghcr.io/immich-app/immich-machine-learning:v3.3.5` | `sha256:5b28c9352c83…` |
+| `immich-machine-learning` | `ghcr.io/immich-app/immich-machine-learning:v3.4.1` | `sha256:8adebf414256…` |
 | `immich-redis` | `redis:7.4.12-alpine` | `sha256:8da19c7399dc…` |
-| `immich-server` | `ghcr.io/immich-app/immich-server:v3.3.5` | `sha256:485d546a2e31…` |
-| `immich-setup` | `alpine:3.24.3` | `sha256:be2656061b53…` |
+| `immich-server` | `ghcr.io/immich-app/immich-server:v3.4.1` | `sha256:7c489add298f…` |
+| `immich-setup` | `alpine:3.24.4` | `sha256:f59abe656b69…` |
 
 ## Settings
 

@@ -55,7 +55,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | `api` | `ghcr.io/librechat-ai/librechat:v0.8.8` | `sha256:5b706bcee1ca…` |
 | `config` | `ghcr.io/librechat-ai/librechat:v0.8.8` | `sha256:5b706bcee1ca…` |
 | `meilisearch` | `getmeili/meilisearch:v1.35.1` | `sha256:8b57fc3c7f46…` |
-| `mongodb` | `mongo:7.0.45` | `sha256:8bb4442761a6…` |
+| `mongodb` | `mongo:7.0.48` | `sha256:9896df581dfd…` |
 
 ## Environment Variables
 

@@ -41,7 +41,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `motioneye` | `ghcr.io/motioneye-project/motioneye:0.44.0` | `sha256:7da31d62e6c4…` |
-| `motioneye-gate` | `nginx:1.31.8-alpine` | `sha256:785835ea65db…` |
+| `motioneye-gate` | `nginx:1.31.8-alpine` | `sha256:fed7e14be83c…` |
 | `motioneye-init` | `ghcr.io/motioneye-project/motioneye:0.44.0` | `sha256:7da31d62e6c4…` |
 
 ## Settings

@@ -20,7 +20,7 @@
 | **Subdomain** | `remote` |
 
 !!! info "Auth Notes"
-    Forward-auth + group-gate, then Guacamole's header extension trusts X-Forwarded-User, the immutable LLDAP username (never the user-editable email); accounts are auto-created with no permissions. The extension has no proxy allowlist, so a Tomcat RewriteValve rejects (403) any request carrying X-Forwarded-User that does not come from Traefik (PORTCULLIS_TRAEFIK_IP). On first boot the built-in guacadmin account gets a random password (GUACAMOLE_ADMIN_PASSWORD) and a per-instance, non-guessable name, guacadmin-<GUACAMOLE_ADMIN_SUFFIX> (both generated; break-glass only). The header extension logs a user in as the account named like X-Forwarded-User, so the same valve refuses (403) any X-Forwarded-User starting with "guacadmin" (case-insensitive): no LLDAP user can become the local administrator (also on databases initialized before the suffix, where the account is still called guacadmin). Set the Administrator setting before first enable to make that LLDAP user (by username, not email; not guacadmin*) the administrator instead. Accounts created when the header carried the email are named after it; rename them in the Guacamole UI. Connection permissions are managed in the Guacamole UI. Changing either value after the database is initialized has no effect. Upgrades: guacamole, guacamole-init and guacd are pinned to the same release and must move together; apply the upstream database schema upgrade scripts for each release in between before starting the new one.
+    Forward-auth + group-gate, then Guacamole's header extension trusts X-Forwarded-User, the immutable LLDAP username (never the user-editable email); accounts are auto-created with no permissions. The extension has no proxy allowlist, so a Tomcat RewriteValve rejects (403) any request carrying X-Forwarded-User that does not come from Traefik (PORTCULLIS_TRAEFIK_SOURCE). On first boot the built-in guacadmin account gets a random password (GUACAMOLE_ADMIN_PASSWORD) and a per-instance, non-guessable name, guacadmin-<GUACAMOLE_ADMIN_SUFFIX> (both generated; break-glass only). The header extension logs a user in as the account named like X-Forwarded-User, so the same valve refuses (403) any X-Forwarded-User starting with "guacadmin" (case-insensitive): no LLDAP user can become the local administrator (also on databases initialized before the suffix, where the account is still called guacadmin). Set the Administrator setting before first enable to make that LLDAP user (by username, not email; not guacadmin*) the administrator instead. Accounts created when the header carried the email are named after it; rename them in the Guacamole UI. Connection permissions are managed in the Guacamole UI. Changing either value after the database is initialized has no effect. Upgrades: guacamole, guacamole-init and guacd are pinned to the same release and must move together; apply the upstream database schema upgrade scripts for each release in between before starting the new one.
 
 ## Routing
 
@@ -41,7 +41,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `guacamole` | `guacamole/guacamole:1.6.0` | `sha256:f344085e618b…` |
-| `guacamole-db` | `mysql:8.4.13` | `sha256:a0225d1ea663…` |
+| `guacamole-db` | `mysql:8.4.13` | `sha256:a81d043930e5…` |
 | `guacamole-init` | `guacamole/guacamole:1.6.0` | `sha256:f344085e618b…` |
 | `guacd` | `guacamole/guacd:1.6.0` | `sha256:8974eaa9ba32…` |
 
