@@ -4,7 +4,7 @@ This page covers what the core stack (`docker-compose.yml` in the core repo)
 does to limit the damage a compromised component can do, and where it can't:
 the threat model, network layout, Docker socket proxies, per-service container
 settings, the secrets containers read, the shared-folder fixer, LAN-only
-ports, header trust and the VPN service.
+ports, header trust, the VPN service and worker servers.
 
 ## Threat model summary
 
@@ -28,6 +28,7 @@ ports, header trust and the VPN service.
 | An LLDAP account deleted and re-created under the same name | The newcomer inherits the previous holder's Keycloak user (passkeys, sessions, consents, AI connections) | Keycloak links LLDAP accounts by LLDAP's immutable `entryUUID`: the newcomer is a new Keycloak user (new `sub`); the old copy and its passkeys, sessions and consents are removed at the next lookup |
 | Password guessing (only while the password method is on) | Online guessing of a person's LLDAP password at `auth.<domain>` | Keycloak's brute-force protection (realm, `keycloak configure`): after 10 failures each further one adds 60 s of wait, at most 15 min, never a permanent lockout (so nobody can lock an account out for good); Traefik's `rate-limit-auth@file`; `admin` and `portcullis-hub` never sign in with a password (refused before any check, not counted) |
 | VPN-only apps ([VPN](vpn.md)) | Reached from the internet, from a LAN or Docker address, from another person's device, or through a gateway claiming another VPN's addresses | A VPN-only router never exists on `websecure`; Traefik's `vpnsecure` honours PROXY v2 only from `wg` on a network of exactly `wg` and Traefik; the edge admits a provider's connection only on its own port, from its own gateway, from an address in its own ranges that is one of its fresh devices; an allowlist on the connection's address; then the normal sign-in and the device ↔ person binding in group-gate, which counts only on its VPN paths. Missing, invalid, expired or stale device lists deny. See [VPN](#vpn-wg-the-edge-and-gateways) |
+| Worker servers ([Multiple servers](servers.md)) | A stolen or compromised worker takes over the primary, reaches another worker, reads sessions or keeps working after revocation | A worker gets no session cookie, proxy secret, cookie secret, ACME, DNS, Vault, LLDAP or Keycloak admin credential, and no other server's bundles. Every connection is opened by the primary; its end of the tunnel listens on nothing. The agent's API is narrower than `socket-proxy-hub`, every reply is untrusted input to the Hub. Node certificates come from their own CA, which signs no person in. Revocation needs nothing from the worker and rotates what it held. See [Multiple servers](#multiple-servers) |
 | Vault data volume | Copied off the host | Encrypted. The unseal key is in `secrets/` on the host, so a copy of the volume alone is useless |
 | Host root / `docker` group | Full compromise | Out of scope. Anyone who can run docker is root-equivalent, and the unseal key is on the host |
 
@@ -170,6 +171,8 @@ graph LR
 | `wg-egress` | `wg` only | Docker default | Publishes the built-in VPN's UDP port and carries the resolver's upstream queries |
 | `portcullis-metrics-wg` (`internal: true`) | `wg` (alias `wg-metrics`) and Prometheus only | Docker default | `wg`'s metrics (`wg-metrics:9100`), bound to that address only |
 | `portcullis-metrics-hub` (`internal: true`) | the Hub (alias `hub-metrics`) and Prometheus only | Docker default | The Hub's [usage metrics](monitoring.md#usage-history) (`hub-metrics:9100`, `GET /metrics` and `/healthz` only), bound to that address only; the Hub refuses to start on a wildcard, loopback or foreign address |
+| `portcullis-link` (`internal: true`) | exactly the Hub and `wg` | `PORTCULLIS_LINK_NET` (`172.31.254.80/29`), the Hub at `PORTCULLIS_LINK_HUB_IP` (`.82`), `wg` at `PORTCULLIS_LINK_WG_IP` (`.83`), no dynamic range | The Hub's only path to the worker agents: link's **control** CONNECT listener (`.83:3128`) |
+| `portcullis-link-data` (`internal: true`) | `wg` and the relays only | `PORTCULLIS_LINK_DATA_NET` (`172.31.254.128/26`), `wg` at `PORTCULLIS_LINK_DATA_WG_IP` (`.130`), relays from `PORTCULLIS_LINK_DATA_IP_RANGE` (`172.31.254.160/27`) | The relays' only path to worker apps: link's **data** CONNECT listener (`.130:3129`) |
 
 CI checks that exactly `keycloak` and `traefik` are on `portcullis-auth`,
 that each socket-proxy network has exactly its two members, and that
@@ -177,7 +180,10 @@ that each socket-proxy network has exactly its two members, and that
 `forward-auth-ext`. For the VPN it checks, over every profile and on Docker,
 Podman and the SELinux overlay, that `portcullis-vpn` has exactly `wg` in
 core, `portcullis-vpn-edge` exactly `wg` and Traefik, `wg-egress` exactly
-`wg`, and that Traefik isn't on `portcullis-vpn`. `./portcullis up` validates
+`wg`, and that Traefik isn't on `portcullis-vpn`; for the link, that
+`portcullis-link` has exactly the Hub and `wg`, that `wg` is the only core
+service on `portcullis-link-data`, and that only the Hub and `wg` carry the
+`link_doc` volume and group 10009. `./portcullis up` validates
 the VPN networks' addresses (a /26 at least, `wg` and the dynamic range
 outside the gateway window, no overlaps) and refuses a mismatch with an
 existing network.
@@ -201,7 +207,8 @@ existing network has different IPAM:
 
 No service mounts the engine socket except two
 [linuxserver/socket-proxy](https://github.com/linuxserver/docker-socket-proxy)
-containers (HAProxy, pinned by digest). Each sits on its own internal network,
+containers (HAProxy, pinned by digest) on the primary, and one on each
+[worker server](servers.md), `socket-proxy-agent`. Each sits on its own internal network,
 shared with exactly one client (integration contract
 [§6](../guides/integration-contracts.md#6-engine-access)):
 
@@ -209,7 +216,8 @@ shared with exactly one client (integration contract
 |-------|--------|---------|---------------------|---------|
 | `socket-proxy-traefik` | Traefik (`TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy-traefik:2375`) | `socket-proxy-traefik` | `CONTAINERS`, `NETWORKS`, `EVENTS`, `VERSION`, `PING` | `GET`/`HEAD` only (`POST=0`) |
 | `socket-proxy-hub` | Hub (`DOCKER_HOST=tcp://socket-proxy-hub:2375`) | `socket-proxy-hub` | `CONTAINERS`, `IMAGES`, `NETWORKS`, `VOLUMES`, `EXEC`, `EVENTS`, `INFO`, `VERSION`, `PING`, `ALLOW_LOGS`, `ALLOW_ARCHIVE` (instance backups / restores: the archive endpoints of never-started helper containers) | All. `POST=1` also allows `PUT`/`DELETE` on the allowed sections |
-| **Socket source** (both proxies) | — | — | `${PORTCULLIS_ENGINE_SOCKET:-/var/run/docker.sock}`, mounted read-only at `/var/run/docker.sock`: Docker's socket, or under [rootless Podman](rootless-podman.md) the operator's `/run/user/<uid>/podman/podman.sock` | — |
+| `socket-proxy-agent` (worker only, `docker-compose.worker.yml`) | the worker's agent (`AGENT_ENGINE=tcp://socket-proxy-agent:2375`) | `socket-proxy-agent` | the same as `socket-proxy-hub` (image, sections, limits; a core test compares them) | All, as `socket-proxy-hub` |
+| **Socket source** (every proxy) | — | — | `${PORTCULLIS_ENGINE_SOCKET:-/var/run/docker.sock}`, mounted read-only at `/var/run/docker.sock`: Docker's socket, or under [rootless Podman](rootless-podman.md) the operator's `/run/user/<uid>/podman/podman.sock` | — |
 
 The Hub's set is what `docker compose up/down/ps/logs` and the Hub's own Engine
 API calls (status, logs, exec, events) need:
@@ -225,7 +233,11 @@ Everything else is denied: `BUILD`, `COMMIT`, `SWARM`, `NODES`, `SERVICES`,
 API (`/libpod/…`, with or without a version prefix: `play kube`, `generate`,
 `machine`) never matches an allowed section, so both proxies deny it on both
 runtimes. CI runs a real `docker compose` project through `socket-proxy-hub`
-and checks the denials, the Podman ones and `/build` included.
+and checks the denials, the Podman ones and `/build` included. On a worker
+the engine socket's literal appears once, in `socket-proxy-agent`; core's
+servers e2e jobs check live, on both stacks, that only those proxies mount
+the socket, read-only. No engine API is ever reachable over the network: the
+primary reaches a worker's engine only through the agent's API.
 
 **Usage reads stay inside these sections.** The Hub's [Usage](hub.md#usage)
 page reads container stats (`/containers/{id}/stats?stream=false&one-shot=true`)
@@ -280,7 +292,10 @@ CI fails if any of these is missing.
 | enroll | 10002:10002 (`USER` in Dockerfile) | read-only | — | `/healthz` | Reads `secrets/enroll/` via group 10002. Generates browser certificates' keys in memory, answers the `.p12` and its password once to the Hub, clears them and never stores or logs them |
 | dns-tool (profile `tools`) | 10004:10004 | read-only | — | none (one-shot) | Image `portcullis-domains` (entrypoint `domains dns`, built if missing, never pulled). Only `./portcullis dns …` starts it (`docker compose run --rm --no-deps -T`); the image's health check is disabled for it. Network `domains-egress` only; no volumes, no `environment`, no `env_file`, no ports, no Traefik labels; `mem_limit` 128m, `pids_limit` 64. The provider credentials arrive as JSON on stdin ([The dns tool](#the-dns-tool)) |
 | mcp-gate | 10005:10005 + group 10001 | read-only (`tmpfs /tmp`) | — | `mcp-gate healthcheck` | Image `portcullis-mcp-gate`, built from `mcp-gate/` (Go, the official MCP Go SDK; pinned base images). No Docker access, no LLDAP or Keycloak admin credentials. Reads `hub_data` read-only (the gate files), writes `mcp_gate_data` (the access log). `mem_limit` 1g (`GOMEMLIMIT` 900MiB; the gate caps one person's requests in flight and the memory request bodies hold, [contracts §15.9](../guides/integration-contracts.md#159-rate-limits-and-all-my-apps); results and aggregate refreshes aren't budgeted, so many people at once can still exhaust it and the container restarts, one person can't), `pids_limit` 256 |
-| wg (profile `wg`) | 10006:10006 + group 10007 (`group_add`) | read-only | — | `wg healthcheck` | Image `portcullis-wg`, built from `wg/` (Go; wireguard-go and the gVisor netstack: userspace WireGuard). **No `cap_add`, `devices`, `sysctls`, `/dev/net/tun`, `privileged`, `network_mode` or engine socket, on any runtime** (CI's VPN wiring check and the no-`NET_ADMIN` / `SYS_ADMIN` lint). The internet-exposed service, so never the Hub's group 10001 and no `hub_data`: reads `vpn_doc` read-only (group 10007), writes `wg_data` (`status.json`), reads `secrets/wg/people.key` read-only. `mem_limit` 128m, `pids_limit` 128. See [VPN](#vpn-wg-the-edge-and-gateways) |
+| wg (profile `wg`) | 10006:10006 + group 10007 (`group_add`) | read-only | — | `wg healthcheck` | Image `portcullis-wg`, built from `wg/` (Go; wireguard-go and the gVisor netstack: userspace WireGuard). **No `cap_add`, `devices`, `sysctls`, `/dev/net/tun`, `privileged`, `network_mode` or engine socket, on any runtime** (CI's VPN wiring check and the no-`NET_ADMIN` / `SYS_ADMIN` lint). The internet-exposed service, so never the Hub's group 10001 and no `hub_data`: reads `vpn_doc` read-only (group 10007), writes `wg_data` (`status.json`), reads `secrets/wg/people.key` read-only. The link role adds group 10009 (`link_doc` read-only), the read-only `link.key`, `link-tls.key`, `link-tls.crt` and `certs/node-ca.crt`, and the networks `portcullis-link` and `portcullis-link-data`. `mem_limit` 128m, `pids_limit` 128. See [VPN](#vpn-wg-the-edge-and-gateways) and [Multiple servers](#multiple-servers) |
+| relays (primary, one compose project per instance placed on a worker) | 65534:65534 | read-only | — | `portcullis-relay healthcheck` (image) | Image `ghcr.io/porelli/portcullis-relay` (`RELAY_IMAGE` → `HUB_RELAY_IMAGE`, a digest or `:edge`). Started by the Hub, one per routed service, carrying exactly the labels the service would carry on the primary. `mem_limit` 64m, `pids_limit` 64. Networks `portcullis-proxy` and `portcullis-link-data` only; its token lives in the relay project's env file (0600). See [Relays](#relays-and-the-cookie-rule) |
+| agent (worker only) | 10008:10008 + group 10001 | read-only (`tmpfs /tmp`) | — | `portcullis-agent healthcheck` (image) | Image `ghcr.io/porelli/portcullis-agent` (`AGENT_IMAGE`). No published port: it serves only inside its own userspace WireGuard tunnel. Networks `socket-proxy-agent` (internal) and `worker-egress`; joins the worker's `portcullis-proxy` itself. Mounts `worker-data/` at the same host path, and **read-only** at their host paths the checkout, the engine's data root and every folder root (it refuses to start without them). `mem_limit` 256m, `pids_limit` 256. Under SELinux `label=disable` ([below](#the-agent)) |
+| socket-proxy-agent (worker only) | root | read-only (`tmpfs /run`) | `SYS_CHROOT` | `/_ping` | `socket-proxy-hub`'s service byte for byte; `label=disable` under SELinux, as it mounts the engine socket |
 | mail (profile `mail`) | 2000:2000 | read-only (`tmpfs /tmp`, `/var/log/stalwart`, size-capped) | `NET_BIND_SERVICE` | `/healthz/live` (loopback) | Stalwart, the upstream image `stalwartlabs/stalwart` pinned. Exception: its binary carries the file capability `cap_net_bind_service=+ep`, which can't be executed under `cap_drop: ALL` ("operation not permitted"), so the one capability is added back; the effective set is that one capability, and Stalwart still binds only ports ≥ 10025. Publishes 25, 465, 587 and 993 (IPv4) directly, not through Traefik. `mem_limit` 1g, `pids_limit` 256. See [Mail](#mail) |
 | mailctl (profile `mail`) | 10010:10010 + group 10001 (`group_add`, the Hub secret) | read-only (`tmpfs /tmp`) | — | `mailctl healthcheck` | Image `portcullis-mailctl`, built from `mailctl/` (Go). The only holder of Stalwart's API key; no engine access, no LLDAP, Keycloak or DNS credentials. `mem_limit` 256m, `pids_limit` 128. See [Mail](#mail) |
 | mail-resolver (profile `mail`) | 101:102 (the image's) | read-only (`tmpfs /tmp`) | — | `drill-hc` on `dnssec.works` | Unbound (`klutchell/unbound`, pinned): a validating recursive resolver for `mail` and `mailctl` only (`access-control` the `portcullis-mail` subnet), no forwarders. `mem_limit` 128m, `pids_limit` 64 |
@@ -1393,6 +1408,190 @@ own uid, which the CLI uses through `docker compose exec`.
 | Headscale gateway (`tailscale/tailscale`, userspace) | works, no capabilities | works |
 
 On [Kubernetes](kubernetes.md) `wg` is one pod (uid 10006, PSA `restricted`, the userspace stack, no capabilities), its roles kept apart by NetworkPolicies; a marketplace gateway with TUN or `NET_ADMIN` is refused there ([VPN → Kubernetes](vpn.md#kubernetes)).
+
+## Multiple servers
+
+[Worker servers](servers.md) run app instances for the primary. The
+interfaces are in
+[contracts §17](../guides/integration-contracts.md#17-servers-new-multiple-servers).
+
+**Threat model.** A worker is less trusted than the primary: it may sit in
+a house, be stolen, or run a compromised app. The design holds these lines:
+
+- **No engine API on the network, ever.** A worker's engine socket is
+  mounted only into its local `socket-proxy-agent`. The network carries only
+  the agent's API, which is narrower than `socket-proxy-hub`.
+- **A compromised worker never gains control of the primary or another
+  worker.** It never receives a session cookie, the proxy secret, the
+  cookie secret, Keycloak, LLDAP, Vault, ACME or DNS credentials, or another
+  server's bundles. The primary's end of the tunnel listens on nothing, so a
+  worker can't open a connection to it; everything a worker returns is
+  untrusted input (size-capped, strictly decoded, never executed and never
+  used as a path). Worker identities are per server and pinned.
+- **Sign-in strength and group rules are the same on every server.** No
+  setting, placement or server state can remove or reorder
+  `portcullis-auth` / `portcullis-groups`: the relays carry the labels the
+  service would carry on the primary, and the Hub's tests compare them with
+  the primary's.
+- **Fail closed** when the primary is unreachable: nothing routes to a
+  worker app, and the agent changes nothing on its own.
+- **No hardening property is weaker on a worker**: the agent and its proxy
+  follow this page, and the [rootless Podman](#rootless-podman) rules apply
+  per server.
+
+Out of scope, as on the primary: a malicious template. The worker's agent
+starts what the Hub sends, within the checks below, and the host's root (or
+the rootless user) owns the worker.
+
+### The link
+
+`link`, the third role of `wg`, is the WireGuard server the workers dial
+(UDP 51821, subnet `10.214.0.0/24`, MTU 1380; each peer's AllowedIPs is its
+own `/32`). **Its netstack has zero listeners**: link only dials *into* the
+tunnel, for two clients, through HTTP CONNECT listeners on two Docker
+networks:
+
+- **control** (`portcullis-link`, exactly the Hub and `wg`): only
+  `CONNECT <peer ip>:7443` for a peer in `link.json`;
+- **data** (`portcullis-link-data`, `wg` and the relays): only
+  `CONNECT <instance>.<service>.relay:<port>` with the instance's relay token
+  (`Proxy-Authorization: Bearer …`), to a `ready` server. link writes the
+  data preamble naming the instance itself, so a relay can't name another
+  one.
+
+A refusal is a `403`; over a stream cap it is `503` (busy: 256 control and
+8192 data streams in all, and per server 32 control and 1024 data, so one
+worker holding its streams open can't starve the others); a failed dial into
+the tunnel is `502`. Each is counted in
+`wg_link_connect_rejected_total{path,reason}`. Once one direction of a stream
+ends, link gives the other 5 s, then closes both. Only an agent's
+`portcullis_agent_*` metrics pass into Prometheus (job `link`); job `wg`
+keeps no worker series, so a worker can't fake or silence a primary alert. The peer list is `link.json`,
+written by the Hub only on the core volume `link_doc` (`10001:10009`, 2750;
+the file 0640, group 10009), read-only in `wg`; it is never in `hub_data`
+and isn't backed up (the Hub rewrites it at every start). A document that
+fails any rule is refused **whole**: link then has no peers and refuses every
+CONNECT. A dropped peer or token closes its open streams at once.
+
+**The link subnet is never local.** `10.214.0.0/24` never counts as a Local
+network: a `lan_only` port bound there is judged as outside the LAN, and
+[`link init`](cli.md#link-init) and the doctor (`link_subnet_overlap`)
+refuse or report an overlap with the built-in VPN, a provider range or a
+Local network.
+
+### Relays and the cookie rule
+
+For an instance on a worker, its compose project on the primary holds only
+**relays**, one per routed service: `ghcr.io/porelli/portcullis-relay`,
+uid 65534, read-only, no capabilities, on `portcullis-proxy` and
+`portcullis-link-data` only. Each is a reverse proxy (WebSockets included)
+whose every upstream connection is a CONNECT through link's data listener
+with the instance's token. The token (32 random bytes, in the relay
+project's env file only; `link.json` holds its sha256) rotates on every move
+and on revocation.
+
+- **Requests:** every Portcullis cookie is deleted: `_oauth2_proxy`,
+  `__Host-portcullis_ext`, and every name that starts with one of them
+  followed by `_` or `-` (split and CSRF cookies), compared
+  case-insensitively. The app's own cookies pass.
+- **Responses:** every `Set-Cookie` is rewritten **host-only** (each
+  `Domain` attribute removed, everything else kept); a reserved or
+  unparsable one is dropped. A worker app's cookies never reach another
+  host or another instance's subdomain.
+- **Offline:** when the CONNECT fails, the relay answers `503` with a static
+  page, "<app> runs on <server>, which is offline", with no cookie.
+
+### The agent
+
+`portcullis-agent` serves its API (`:7443`, mTLS) and the data listener
+(`:7000`, accepted only from link's address `10.214.0.1`) inside its own
+userspace WireGuard netstack, and has no other listener anywhere. Once
+enrolled it requires a client certificate from the pinned node CA: CN
+`hub.control` may call every route, `link.control` only the metrics; a
+person's certificate, another CA or another worker's certificate is refused.
+The Hub, in turn, pins each worker's certificate key and serial: a mismatch
+is `server_identity_mismatch` and the server goes offline.
+
+What the agent checks again, whatever the Hub sends:
+
+- **Bundles.** A tar of regular files and directories only, every file
+  listed with its sha256 and size (a symlink, hard link, `..`, absolute
+  name or extra file refuses the whole bundle). The agent loads the resolved
+  compose model and refuses `privileged`, devices and capabilities beyond the
+  runtime's allowlist, host `pid` / `ipc` / `userns` / `network_mode` outside
+  the template rules, `env_file` other than its own, unsized `tmpfs`, and
+  any bind source outside the bundle and the folder roots. Compose runs only
+  from the agent's own copy, with an empty environment file.
+- **Protected paths.** A bind may not equal, contain or sit inside the
+  agent's data directory, the checkout, the engine's data root, the engine
+  socket or `/`. Each part of a bind's path under a folder root is checked
+  with `lstat` (a symlink anywhere is refused), each existing ancestor is
+  compared by device and inode with the protected directories, and nested
+  writable binds across instances are refused. The checkout, the engine root
+  and every folder root are mounted **read-only** into the agent at their
+  host paths, so it sees what it judges; it refuses to start without them.
+- **Scope.** Every container, volume, image, exec and helper call is limited
+  to the instance's own compose project (and the agent's own helpers); there
+  is no arbitrary container create, build, prune, plugin, swarm or raw
+  Engine API route.
+- **The start-time backstop.** The agent watches every container start (and
+  sweeps every 30 s): a container of an instance project without a valid
+  bundle, or whose actual mounts fail the checks, is killed and its project
+  taken down, and the instance is **quarantined**. A quarantine survives
+  restarts and new bundles; only an admin's lift (fresh sign-in) removes it,
+  after the agent's checks pass again.
+- **Its own containers** are identified by container id and labels, never
+  by name: an instance id that maps to the agent's own project (`worker`) is
+  refused.
+
+**SELinux.** On SELinux-enforcing rootless Podman workers, the agent and
+`socket-proxy-agent` run with `label=disable`: relabelling the checkout, the
+engine's data root or a folder root would be harmful, and the agent already
+drives the engine through its proxy (root-equivalent for that user). The app
+containers it starts keep normal SELinux labelling. Fedora / RHEL is a manual
+release check.
+
+**Not under `/root`.** The agent (uid 10008) must traverse the checkout:
+`worker join` refuses an install under `/root`, also through a symlink. A
+folder root may not contain (every path resolved) the install, its
+worker-data, the engine socket or the engine's data root.
+
+!!! warning "Aliases the agent can't tell"
+    FUSE union filesystems (Unraid's `/mnt/user`, mergerfs) and `mount
+    --bind` copies of a protected directory give the same files another
+    path and device number. Never let a folder root reach the checkout, its
+    `worker-data/` or the engine's data root under another name
+    ([Folder roots](servers.md#folder-roots)).
+
+### Node identities (`pki_node`)
+
+Workers, the Hub's control client and link's metrics client get
+certificates from **`pki_node`**, a Vault PKI mount with its **own
+self-signed root** (`<domain> Node CA`), never signed by the person CA and
+never signing into it. Its certificate (`certs/node-ca.crt`) is never in
+Traefik's, Keycloak's or group-gate's trust files, so a node certificate can
+never sign anyone in, and a person's certificate can never act as a node;
+core CI checks that a worker certificate fails Traefik's and Keycloak's
+certificate sign-in. Roles: `node-worker` (CN
+`<id>.node.portcullis.internal`, 30 days), `node-control` (`hub.control`,
+30 days), `node-link` (`link.control`, 90 days; signed by the CLI, never
+through enroll). Private keys never leave the machine that uses them. The
+Hub never holds a Vault token: enroll signs `node-worker` and
+`node-control` only.
+
+**Enrolment.** The join code carries a one-time bootstrap WireGuard key, the
+node CA's hash and a 32-byte secret; the Hub stores only the secret's hash.
+The agent accepts the Hub only with that CA, proves the secret with an HMAC
+over a fresh nonce and its own certificate key, and then generates its own
+WireGuard and TLS keys; the bootstrap key is dropped. Three wrong proofs stop
+the agent. Clocks more than 5 minutes apart are refused.
+
+**Revocation** ([Multiple servers](servers.md#revoking-and-removing)) needs
+nothing from the worker: its peer and relay tokens leave `link.json` (the
+tunnel and every stream drop at once), its certificate serial is revoked and
+unpinned, and the Keycloak client secrets and relay tokens it held are
+rotated. Renewal revokes the replaced certificate as soon as the new one is
+pinned.
 
 ## Hub proxy secret
 
