@@ -1444,8 +1444,14 @@ networks:
   data preamble naming the instance itself, so a relay can't name another
   one.
 
-Every refusal is a `403`, counted in
-`wg_link_connect_rejected_total{path,reason}`. The peer list is `link.json`,
+A refusal is a `403`; over a stream cap it is `503` (busy: 256 control and
+8192 data streams in all, and per server 32 control and 1024 data, so one
+worker holding its streams open can't starve the others); a failed dial into
+the tunnel is `502`. Each is counted in
+`wg_link_connect_rejected_total{path,reason}`. Once one direction of a stream
+ends, link gives the other 5 s, then closes both. Only an agent's
+`portcullis_agent_*` metrics pass into Prometheus (job `link`); job `wg`
+keeps no worker series, so a worker can't fake or silence a primary alert. The peer list is `link.json`,
 written by the Hub only on the core volume `link_doc` (`10001:10009`, 2750;
 the file 0640, group 10009), read-only in `wg`; it is never in `hub_data`
 and isn't backed up (the Hub rewrites it at every start). A document that
@@ -1531,7 +1537,9 @@ containers it starts keep normal SELinux labelling. Fedora / RHEL is a manual
 release check.
 
 **Not under `/root`.** The agent (uid 10008) must traverse the checkout:
-`worker join` refuses an install under `/root`.
+`worker join` refuses an install under `/root`, also through a symlink. A
+folder root may not contain (every path resolved) the install, its
+worker-data, the engine socket or the engine's data root.
 
 !!! warning "Aliases the agent can't tell"
     FUSE union filesystems (Unraid's `/mnt/user`, mergerfs) and `mount
