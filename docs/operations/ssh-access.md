@@ -32,7 +32,10 @@ LLDAP group ──grant──▶ host group ──contains──▶ hosts
   last (default 8 hours, at most 12), and whether port or agent forwarding
   is allowed. At most 256.
 - **Certificates.** One per host group per login. Its principals are
-  `<account>@<host group>` (`alice@web`, `deploy@web`). Its lifetime is the
+  `u:<username>@<host group>` for a person's own account and
+  `s:<account>@<host group>` for a shared one (`u:alice@web`, `s:deploy@web`):
+  the two never mix, so a shared account and a person with the same name can
+  never stand in for each other. Its lifetime is the
   **shortest** of the grants' TTLs, the server's maximum and the end of a
   temporary membership it depends on: access never outlives the reason for it.
 
@@ -40,9 +43,9 @@ Example:
 
 | LLDAP group | Grant | Result |
 |---|---|---|
-| `ssh_web` | → `web`, account `{username}`, no sudo | alice gets a `web` certificate with `alice@web`; on every `web` host the account `alice` exists |
+| `ssh_web` | → `web`, account `{username}`, no sudo | alice gets a `web` certificate with `u:alice@web`; on every `web` host the account `alice` exists |
 | `ssh_admins` | → `all`, account `{username}`, sudo | alice also gets an `all` certificate; on every managed host she has sudo |
-| `ssh_deploy` | → `web`, account `deploy`, no sudo | bob gets `deploy@web`; the host's log still names him: `ID pc:bob:web:…` |
+| `ssh_deploy` | → `web`, account `deploy`, no sudo | bob gets `s:deploy@web`; the host's log still names him: `ID pc:bob:web:…` |
 
 **sudo belongs to an account on a host**, not to a certificate: on a `web`
 host alice has sudo because a grant that applies there (`all`) gives it,
@@ -156,6 +159,11 @@ Without `--revoked-keys` the host never talks to Portcullis.
   password, no keyboard-interactive login. Nobody can plant a key in them.
 - An existing local account with the same name that Portcullis didn't
   create is **never adopted**: it is reported as a conflict.
+- A person whose username is `root`, a shared account of a grant, a host's
+  break-glass or protected account, or a system account name (`daemon`,
+  `www-data`, …) gets **no** personal account at all: the doctor reports
+  `ssh_username_collision`, and the previews show the skipped grant. A
+  shared account can't be named after a person in the directory.
 - **Losing access** (leaving the group, a deleted grant) locks the account at
   the next sync, removes its principals and ends its running sessions.
   Accounts are never deleted automatically: *Remove account* on the host's
@@ -252,5 +260,5 @@ the same trust by hand: copy the user CA key from the Hub into
 `TrustedUserCAKeys __PROGRAMDATA__/ssh/portcullis_user_ca.pub` and
 `AuthorizedPrincipalsFile __PROGRAMDATA__/ssh/portcullis_principals/%u` to
 `C:\ProgramData\ssh\sshd_config`, write one principals file per account
-(`alice@web`), and restart the `sshd` service. `portcullis host …` commands
+(`u:alice@web` for alice's own account, `s:deploy@web` for a shared one), and restart the `sshd` service. `portcullis host …` commands
 refuse on Windows with "Windows hosts: follow the manual steps in the docs".

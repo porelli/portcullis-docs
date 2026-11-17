@@ -1172,7 +1172,7 @@ as a managed host with `--service none`, `web-2` set up with `host trust`.
 The CLI runs with `--no-browser`; Playwright opens the printed URL with the
 virtual security key. Cases: alice reaches both without sudo and gets sudo on
 the managed host within one long-poll after joining `ssh_admins`; bob's
-`deploy@web` shows `ID pc:bob:web:` in the sshd log; `root` is refused;
+`s:deploy@web` shows `ID pc:bob:web:` in the sshd log; `root` is refused;
 password, authenticator-code and impersonated sign-ins get nothing (exit 3
 and 4); a replayed code and a wrong key proof are refused; leaving
 `ssh_web` locks alice, ends her session and revokes her key (seconds on

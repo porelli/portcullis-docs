@@ -4523,7 +4523,8 @@ Under a non-identity map, `apply`, `restore` and `childfix` refuse (exit `2`, no
     - `ssh_host_bundle_too_large` (Problem): a compiled bundle over 4 MiB, not served;
     - `ssh_breakglass_used` (Warning): logins to a host's break-glass account (time and source);
     - `ssh_breakglass_cert` (Warning): break-glass certificates imported from `breakglass.jsonl`;
-    - `ssh_hostgroup_unused` (Info): a host group with no grant or no host.
+    - `ssh_hostgroup_unused` (Info): a host group with no grant or no host;
+    - `ssh_username_collision` (Problem): a personal grant skipped because the username is root, a shared, protected, reserved or system account (§18.12).
 ### 14.6 Fix classes
 
 - **One-click** (preview → plan hash → Apply, `202`; `409` "the setup changed since the preview" on a mismatch; audited `doctor.fix` besides what the steps audit). **NEW (AI support):** the preview's `FixPlan` carries `touches_data`, true for the fixes that change data on disk or revoke access (the folder assignment and undo, `person_tree_owner`, `revoke_leaver`); the Portcullis MCP's `doctor_apply_fix` is class D (a confirmation, §15.6) when it is set, and (**NEW**, DNS hardening) for the `dnssec_sign` fix:
@@ -5650,7 +5651,7 @@ All under `https://people.<d>/api/cli/v1/`. **SSH access off** (`state.ssh.setti
 ```json
 {"user": "alice",
  "certificates": [{"host_group": "web", "certificate": "ssh-ed25519-cert-v01@openssh.com AAAA…",
-                   "principals": ["alice@web"], "serial": "1234567890",
+                   "principals": ["u:alice@web"], "serial": "1234567890",
                    "valid_before": "2026-11-15T18:04:05Z",
                    "hosts": ["web-1.example.com", "web-2.example.com"]}],
  "refused": [{"host_group": "prod", "reason": "prod needs a YubiKey: sign in with --method security_key"}],
@@ -5761,7 +5762,7 @@ On enroll's internal listener (§9.4: `http://enroll:8444`, the same bearer, str
 | `PUT /internal/ssh-roles/{hg}` | `{"principals": [], "extensions": "<canonical>", "source_address": [], "max_ttl_s": n}` → `200` the role as Vault reads it back, normalised to the same shape | an `{hg}` outside `^[a-z][a-z0-9-]{0,30}$` or `portcullis-*`; a principal outside the grammar; > 4096 principals; an extension set outside the four; > 16 CIDRs or an invalid one; `max_ttl_s` outside 3600–43200 (rounded up to the hour) |
 | `DELETE /internal/ssh-roles/{hg}` | → `204` | the id grammar |
 | `GET /internal/ssh-roles` | → `{"roles": ["hg-…"]}` | — |
-| `POST /internal/ssh-certificates` | `{"user", "host_group", "public_key", "principals", "valid_seconds", "extensions", "key_id"}` → `201 {"certificate", "serial", "valid_before"}` | `409` `admin`, `portcullis-hub`, `portcullis-*`; `409` a user not in LLDAP; a key type outside §18.6; a principal outside the grammar or not `<x>@<host_group>`; `valid_seconds` outside 300–43200; a `key_id` other than `pc:<user>:<host_group>:<16 hex>`; an extension outside the four |
+| `POST /internal/ssh-certificates` | `{"user", "host_group", "public_key", "principals", "valid_seconds", "extensions", "key_id"}` → `201 {"certificate", "serial", "valid_before"}` | `409` `admin`, `portcullis-hub`, `portcullis-*`; `409` a user not in LLDAP; a key type outside §18.6; a principal outside the grammar or not `<u|s>:<x>@<host_group>`; `valid_seconds` outside 300–43200; a `key_id` other than `pc:<user>:<host_group>:<16 hex>`; an extension outside the four |
 | `POST /internal/ssh-host-certificates` | `{"public_key", "principals", "host_group", "host_id"}` → `201 {"certificate", "serial", "valid_before"}` | a key that isn't `ssh-ed25519`; no principals or > 64; a principal that isn't a DNS name or an IP address |
 | `GET /internal/ssh-ca` | → `{"user_cas": [], "host_cas": [], "problems": []}` | — |
 
@@ -5807,8 +5808,8 @@ Time within ±60 s; a nonce is refused for 5 minutes after its first use; an unk
  "user_cas": ["ssh-ed25519 AAAA… portcullis-user-ca"],
  "host_certificate": "ssh-ed25519-cert-v01@openssh.com AAAA…",
  "accounts": [
-   {"name": "alice", "kind": "person", "uid": 20001, "principals": ["alice@web", "alice@all"], "sudo": true},
-   {"name": "deploy", "kind": "shared", "principals": ["deploy@web"], "sudo": false}],
+   {"name": "alice", "kind": "person", "uid": 20001, "principals": ["u:alice@all", "u:alice@web"], "sudo": true},
+   {"name": "deploy", "kind": "shared", "principals": ["s:deploy@web"], "sudo": false}],
  "locked": ["carol"],
  "remove": [],
  "revoked_keys": ["ssh-ed25519 AAAA…"],
@@ -5849,9 +5850,13 @@ State (`state.yaml` `ssh:`): `settings {enabled, default_ttl_hours}` (0 = 8, 1�
 
 - **Host group** id `^[a-z][a-z0-9-]{0,30}$`; `portcullis-*` reserved; the built-in `all` (every managed host, plus unmanaged hosts set up with `--host-group all`); at most 64. Fields: label, description, governing template (default `strong`), patterns (unmanaged names), source CIDRs (≤ 16) or "Only through the Portcullis VPN", host certificates (default on), delegable (default off), create shared accounts (default off).
 - **Grant** `{id, group, group_id, host_group, accounts: ["{username}", "deploy"], sudo: "none"|"full", ttl_hours, port_forwarding, agent_forwarding}`; at most 256. `group_id` is the LLDAP group id at creation: a group re-created with a new id grants nothing.
-- **Grammars:** principal `^([a-z_][a-z0-9._-]{0,31})@([a-z][a-z0-9-]{0,30})$`; LLDAP usernames `^[a-z0-9][a-z0-9._-]{0,63}$`; key id `pc:<user>:<hg>:<16 lowercase hex>`; break-glass key id `pc-breakglass:<operator note>`.
+- **Grammars:** principal `^([us]):([a-z_][a-z0-9._-]{0,31})@([a-z][a-z0-9-]{0,30})$`; LLDAP usernames `^[a-z0-9][a-z0-9._-]{0,63}$`; key id `pc:<user>:<hg>:<16 lowercase hex>`; break-glass key id `pc-breakglass:<operator note>`.
+- **Two principal namespaces** (security review): a person's own account is `u:<username>@<hg>`, a shared account `s:<account>@<hg>`. A host's principals file for a person account lists only `u:` principals of that name, a shared account's only `s:` principals, so a certificate for one can never log in as the other even if the names collide; the host agent refuses a bundle entry whose principals don't match its account's kind and name.
+- **Collisions.** A person's `{username}` grant is **skipped** (no principal, no account) when the username is `root`, a shared account of any grant, a host's break-glass or protected account (from its reported ceiling), a reserved name (`admin`, `portcullis-hub`, `portcullis-*`) or a system account name (`sshaccess.SystemAccounts`, names below uid 1000 on common distributions; `_*`, `systemd-*`). Each skip is the doctor's `ssh_username_collision` (Problem) and a "skipped" row in the previews. Saving a grant whose shared account equals a current directory username is refused (`409`). A person and a shared account are never merged.
+- **Widening edits** need what creating a privileged grant needs (an administrator, a fresh sign-in under the `hub` template, the audit), privileged or not: an account added, a longer effective TTL, port or agent forwarding newly allowed, sudo or privilege added, another host group, another group (`sshaccess.WideningReasons`). `ssh_access` holders may only narrow or keep a grant.
+- **Names clients see** (host names, addresses, patterns) pass a strict grammar where they enter (the admin API, `sshaccess.Validate`) and again where they are rendered (`cliapi.ClientConfig`, `cliapi.KnownHosts`, which refuse rather than write): an IPv4 or IPv6 address without a zone id, or dot-separated labels of letters, digits and `-` where `*` and `?` are the only pattern characters, optionally after one `!`. No whitespace, commas, quotes or control characters.
 - **Privileged** grants: `sudo: full`, the account `root`, agent forwarding, a shared account with sudo, or the host group `all`. They need an administrator, a fresh sign-in under the `hub` template and the group's name typed again; default to a 4 h TTL; raise `ssh_privileged_grant` (Info); make the group's members protected targets (§9.6); are never created through MCP.
-- **Merge** (one person, one host group): principals = the union of `<account>@<hg>`; extensions = the union (always `permit-pty`; never X11, user-rc or `force-command`); `valid_before` = now + the **earliest** of the grants' TTLs, the setting's maximum and the earliest end of a temporary membership the set depends on. On a host, an account has sudo if any grant that applies to this host and account gives it.
+- **Merge** (one person, one host group): principals = the union of `u:<username>@<hg>` and `s:<shared account>@<hg>`; extensions = the union (always `permit-pty`; never X11, user-rc or `force-command`); `valid_before` = now + the **earliest** of the grants' TTLs, the setting's maximum and the earliest end of a temporary membership the set depends on. On a host, an account has sudo if any grant that applies to this host and account gives it.
 - **uids** 20000–59999 per person, the lowest unused, never reused (`uids_used` never shrinks), primary group of the same number; exhaustion → `503` "no uid left in 20000–59999".
 - **Delivery.** Every relevant change (grant, host group, membership, rule evaluation, expiry, settings) triggers a coalesced compile: put every changed role through enroll, delete `hg-*` roles without grants, bump serials, renew host certificates, revoke on leave. Before each signing, the role's read-back must equal the compiled spec; a difference that a put doesn't fix fails closed. An unreadable directory leaves every role as it was.
 - **Golden vectors.** `internal/cliapi/testdata/vectors.json` (grammar cases, role JSON, key-proof messages) is byte-copied to core's `enroll/testdata/ssh_vectors.json`; core's `unit-tests` compares the two. `internal/sshaccess/testdata/golden/` pins state → roles, bundles and client config.
