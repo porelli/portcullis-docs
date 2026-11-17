@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-ai`, `e2e-ssh`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | Keycloak image (`porelli/portcullis-keycloak`) | `build.yml` | `test`, `vectors`, `smoke`, `publish` |
@@ -1170,19 +1170,31 @@ The whole stack on a real k3s on `ubuntu-26.04` (90 min), never kind or k3d ([Ku
 The stack plus the Hub and two local sshd containers on `portcullis-proxy`
 (`tests/e2e/sshd/Dockerfile`, a pinned `debian:13-slim`): `web-1` enrolled
 as a managed host with `--service none`, `web-2` set up with `host trust`.
-The CLI runs with `--no-browser`; Playwright opens the printed URL with the
-virtual security key. Cases: alice reaches both without sudo and gets sudo on
-the managed host within one long-poll after joining `ssh_admins`; bob's
-`s:deploy@web` shows `ID pc:bob:web:` in the sshd log; `root` is refused;
-password, authenticator-code and impersonated sign-ins get nothing (exit 3
-and 4); a replayed code and a wrong key proof are refused; leaving
-`ssh_web` locks alice, ends her session and revokes her key (seconds on
-`web-1`, one pull on `web-2`); a hand-edited principals file is healed and a
-main-config override is a Problem; with the Hub stopped, valid certificates
-and the break-glass key still work; a forged report and an oversized bundle
-are refused; the CI Keycloak's `portcullis-cli` has the contract's shape;
-and no code, verifier, token, enrolment secret or private key appears in any
-log or artifact (`.github/ci/e2e-ssh-artifacts.sh`).
+The CLI comes out of the Hub image under test and runs on the runner with
+`--no-browser`; Playwright opens the printed URL with the virtual security
+key, and the runner's own `ssh-agent` / `ssh` log in. The Hub's admin writes
+that need a fresh sign-in (SSH on, a new host, the privileged grant, removing
+a host) get one through the Hub listener's fresh-auth flow. Cases
+(`tests/e2e/e2e_ssh.py`; each a `check()`, so `-f scenarios=` reruns one):
+`setup` (`ssh_admins` → `all` with full sudo refused without the typed group
+name), alice reaches both hosts without sudo and gets sudo on the managed
+host within one long-poll after joining `ssh_admins` and logging in again;
+bob's `s:deploy@web` shows `ID pc:bob:web:` in the sshd log and bob has no
+account of his own; `root` is refused on both hosts; a sign-in code works
+once at `POST ssh/certificates` and a key proof by another key is refused
+(`403`); the CI Keycloak's `portcullis-cli` has the contract's shape
+(`127.0.0.1:40000` and `localhost:38917` refused); leaving the groups
+locks alice out of `web-1` within seconds and `web-2` after one
+`host revoked-keys` pull; with the Hub stopped, bob's certificate and the
+break-glass account's own key still work and `./portcullis ssh
+breakglass-cert` signs one from Vault (audited at the Hub's next start);
+and no sign-in code, PKCE verifier, enrolment code or private key appears in
+the logs, the Hub's audit, `issued.jsonl` or the CLI's output. On failure
+the logs are collected and withheld whole if anything looks like a secret
+(`.github/ci/e2e-ssh-artifacts.sh`). Covered by the Hub's own tests instead
+of here: password / authenticator-code / impersonated sign-ins getting
+nothing, drift healing and the main-config override Problem (the real-sshd
+container test), forged reports and oversized bundles.
 
 **Hub-side tests.** `go test -tags sshd ./cmd/portcullis/internal/host/`
 runs the host agent against real sshd in Debian, Ubuntu and Rocky containers
