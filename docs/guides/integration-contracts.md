@@ -5691,9 +5691,11 @@ vault secrets enable -path=ssh_host ssh
 vault secrets tune -max-lease-ttl=2160h ssh_host
 vault write ssh_host/config/ca generate_signing_key=true key_type=ed25519
 vault write ssh_host/roles/host key_type=ca allow_host_certificates=true \
-    allow_user_certificates=false allowed_domains="*" allow_subdomains=true \
+    allow_user_certificates=false allow_user_key_ids=true allowed_domains="*" allow_subdomains=true \
     allow_bare_domains=true ttl=2160h max_ttl=2160h
 ```
+
+`allow_user_key_ids=true` on the host role: without it Vault refuses the `key_id` `pc-host:<host id>` enroll sends ("setting key_id is not allowed by role", found by `TestLiveSSHVault`). `pki setup --force` never touches the SSH mounts or CAs.
 
 **One user role per host group, `ssh_user/roles/hg-<id>`**, written only by enroll from the Hub's compilation. Every field is sent as a **string** (spike S4: JSON booleans are refused by `allowed_parameters`):
 
@@ -5762,14 +5764,16 @@ On enroll's internal listener (§9.4: `http://enroll:8444`, the same bearer, str
 
 | Endpoint | Body → answer | enroll refuses (`400` unless noted) |
 |---|---|---|
-| `PUT /internal/ssh-roles/{hg}` | `{"principals": [], "extensions": "<canonical>", "source_address": [], "max_ttl_s": n}` → `200` the role as Vault reads it back, normalised to the same shape | an `{hg}` outside `^[a-z][a-z0-9-]{0,30}$` or `portcullis-*`; a principal outside the grammar; > 4096 principals; an extension set outside the four; > 16 CIDRs or an invalid one; `max_ttl_s` outside 3600–43200 (rounded up to the hour) |
+| `PUT /internal/ssh-roles/{hg}` | `{"principals": [], "extensions": "<canonical>", "source_address": [], "max_ttl_s": n}` → `200` the role as Vault reads it back, normalised to the same shape | an `{hg}` outside `^[a-z][a-z0-9-]{0,30}$` or `portcullis-*`; a principal outside the grammar or for another host group; a principal twice; > 4096 principals; an extension set outside the four; > 16 CIDRs or one that isn't canonical (`192.0.2.0/24`, never `192.0.2.1/24`); `max_ttl_s` outside 1–43200 (rounded up to the hour). Principals and CIDRs are kept in the order sent (the Hub sends them sorted); an empty principal list is a role that signs nothing (Vault refuses every sign on it, `TestLiveSSHVault`) |
 | `DELETE /internal/ssh-roles/{hg}` | → `204` | the id grammar |
 | `GET /internal/ssh-roles` | → `{"roles": ["hg-…"]}` | — |
-| `POST /internal/ssh-certificates` | `{"user", "host_group", "public_key", "principals", "valid_seconds", "extensions", "key_id"}` → `201 {"certificate", "serial", "valid_before"}` | `409` `admin`, `portcullis-hub`, `portcullis-*`; `409` a user not in LLDAP; a key type outside §18.6; a principal outside the grammar or not `<u|s>:<x>@<host_group>`; `valid_seconds` outside 300–43200; a `key_id` other than `pc:<user>:<host_group>:<16 hex>`; an extension outside the four |
+| `POST /internal/ssh-certificates` | `{"user", "host_group", "public_key", "principals", "valid_seconds", "extensions", "key_id"}` → `201 {"certificate", "serial", "valid_before"}` | `409` `admin`, `portcullis-hub`, `portcullis-*`; `409` a user not in LLDAP; a key type outside §18.6; a principal outside the grammar or not `<u|s>:<x>@<host_group>`; a `u:` principal naming another person than `user`; a principal twice; `valid_seconds` outside 300–43200; a `key_id` other than `pc:<user>:<host_group>:<16 hex>`; an extension outside the four |
 | `POST /internal/ssh-host-certificates` | `{"public_key", "principals", "host_group", "host_id"}` → `201 {"certificate", "serial", "valid_before"}` | a key that isn't `ssh-ed25519`; no principals or > 64; a principal that isn't a DNS name or an IP address |
 | `GET /internal/ssh-ca` | → `{"user_cas": [], "host_cas": [], "problems": []}` | — |
 
-`problems` names every §18.7 difference enroll can read: a missing mount or CA, a CA key type other than ed25519, `ssh_user` `max_lease_ttl` ≠ 12h, `ssh_host` ≠ 2160h, and the host role's `allow_host_certificates` / `allow_user_certificates` / `key_type`. `serial` is decimal. `GET /internal/ssh-roles` is used by the Hub's compile to delete roles that no longer have grants.
+enroll checks Vault's answer before handing it on: the certificate's type, key, key id, principals, extensions (exactly the map sent; no critical option but `source-address`) and lifetime (≤ `valid_seconds` + 60 s) must be what was asked, else `503`. `POST /internal/ssh-host-certificates` sends `cert_type=host`, `key_id` `pc-host:<host_id>` and no `ttl` (the host role's 2160h); `host_id` follows `^[a-z0-9][a-z0-9-]{0,62}$` (`unmanaged` for *Sign a host key*).
+
+`problems` names every §18.7 difference enroll can read: a missing mount or CA, a CA key type other than ed25519, `ssh_user` `max_lease_ttl` ≠ 12h, `ssh_host` ≠ 2160h, and the host role's `allow_host_certificates` / `allow_user_certificates` / `allow_user_key_ids` / `key_type`. `serial` is decimal. `GET /internal/ssh-roles` is used by the Hub's compile to delete roles that no longer have grants.
 
 ### 18.9 Host certificates
 

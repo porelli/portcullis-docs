@@ -31,7 +31,8 @@ exactly as on a real install. Every step drives the stack through
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
     - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
     - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `authaware` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
-    - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else
+    - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else; its SSH part is exactly contract §18.7's (role TTLs exactly the twelve whole hours up to 12 h)
+    - `ssh_setup` (stub vault): a fresh Vault gets both mounts, caps, CAs and the host role; a second run creates nothing; another cap, CA key type or engine at `ssh_user` / `ssh_host` fails naming it and changes nothing
     - `cert list --all` (stub `vault`) shows KIND `YubiKey` / `Browser` and revoked rows; `cert revoke` finds a `pki_file` serial after `pki_int`, revokes it there and rotates `pki_file`'s CRL; `cert enroll`'s renewal hint names `https://people.<domain>/signin`
     - `signin reset-core` (stubbed `docker compose`): without `--yes` and a terminal it refuses (exit 2, nothing run); `--yes` runs `stop hub`, `run --rm --no-deps -T --user 10001:10001 --label traefik.enable=false --entrypoint /usr/local/bin/hub hub signin reset-core`, `start hub` and shows the Hub's output; a failed run still starts the Hub and exits 1 with the exit status, the Hub's own message and "the Hub was started again" (never "nothing was reset"); a failed stop starts the Hub again and runs nothing; a failed start says so
     - the runtime: every `--help` works with no engine (a stub that fails any call is never called), `init --help` documents `--runtime`, no `ct_own "$(id -u)…"` is left in the CLI, and the engine-socket mount string appears exactly twice in `docker-compose.yml`
@@ -1188,8 +1189,16 @@ runs the host agent against real sshd in Debian, Ubuntu and Rocky containers
 (the Hub CI's "host agent against real sshd" step, `PORTCULLIS_DOCKER_TEST=require`).
 The opt-in live tests are `TestLiveCLIObjects` (Keycloak, the
 `portcullis-cli` client and its refused redirect URIs) and core's
-`TestLiveSSHVault` (`PORTCULLIS_VAULT_LIVE_ADDR`: the real `enroll.hcl`
-against Vault, every refusal of the spike and the FIDO key types).
+`TestLiveSSHVault` (`PORTCULLIS_VAULT_LIVE_ADDR` / `PORTCULLIS_VAULT_LIVE_TOKEN`:
+the real `enroll.hcl` against Vault — every refusal of the spike, among them
+no role above 12 h, the four key types, an empty principal list signing
+nothing, `source-address` from the role, the host sign's `cert_type`). Core
+CI's unit-tests runs it on every push against the compose pin of Vault in
+dev mode (step "enroll SSH against a real Vault"), next to "Shared SSH
+vectors match the Hub" (`enroll/testdata/ssh_vectors.json` = the Hub's
+`internal/cliapi/testdata/vectors.json`); build-and-test's "Test enroll
+AppRole is least-privilege" checks the SSH paths on the real stack after
+`pki setup`.
 
 ### Caching
 
