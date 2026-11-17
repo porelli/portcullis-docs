@@ -1173,12 +1173,14 @@ Hub's fresh sign-ins, the Hub's API as admin) runs, in order:
 |------|--------|
 | `join_ok`, `join_code_reused_refused`, `join_code_expired_refused` | a join works; a used code and an expired one (the Hub's clock moved 16 minutes on) are refused |
 | `echo_on_worker_signed_in`, `echo_on_worker_denied_without_sign_in` | an echo on the worker answers through the primary after sign-in, with the same template and tier as one on the primary, its containers on the worker only; refused without sign-in |
+| `stream_non_browser_clients` | `curl --http1.1` and `--http2` with alice's cookies (a 0600 header file) stream the echo's `?stream` through Traefik, forward-auth and the relay: the first ticks within 5 s |
 | `no_portcullis_cookie_reaches_app`, `parent_domain_set_cookie_stripped` | the app never sees a Portcullis cookie; its `Set-Cookie; Domain=…` arrives host-only |
-| `move_worker_primary_worker_keeps_data` | worker → primary → worker keeps the volume marker |
+| `move_worker_primary_worker_keeps_data`, `move_back_onto_kept_copy_refused` | worker → primary → worker (*Undo move*) keeps the volume marker; a direct move onto a server holding a kept copy is `409` |
 | `wg_stopped_fails_closed`, `wg_back_routes_again` | with `wg` stopped the worker app is unreachable and its containers still run; it routes again after |
-| `rogue_worker` | from the worker's own tunnel, 2000+ TCP ports of `10.214.0.1` are closed (`tests/e2e/vpn-client --probe`); another worker's certificate makes the server offline (dind job); data CONNECTs without a token, with a bogus one or with another instance's are `403`; an oversized `/v1/info` makes it offline |
+| `worker_break_glass_stop_start` | `./portcullis worker stop` / `start` of the echo on the worker, as its operator (the rootless Podman user on the podman job); it routes again |
+| `rogue_worker` | from the worker's own tunnel, 2000+ TCP ports of `10.214.0.1` all answer with a reset (`tests/e2e/vpn-client --probe`; a timeout doesn't count as closed); another worker's certificate makes the server offline (dind job), and a certificate `pki_node` issued for the worker's own name with another key and serial is refused by the pin (`server_identity_mismatch` in the Hub's log); the echo's own token tunnels (`200`, the control) and data CONNECTs without a token, with a bogus one or with another instance's are `403`; an oversized `/v1/info` makes it offline |
 | `revoke_drops_handshake_and_rotates` | a revoke drops the worker from link within 15 s and changes an OIDC instance's Keycloak client secret |
-| `revoke_cuts_websocket` | a long-lived stream through the relay ends less than 30 s after the revoke |
+| `revoke_cuts_relayed_stream` | a long-lived `fetch()` stream in alice's page through the relay ends at most 10 s after the revoke |
 | `socket_rule_both_stacks` | live from each engine: on the primary only the two socket proxies mount the socket, on each worker only `socket-proxy-agent`, all read-only |
 
 The join code is kept masked, in one 0600 file in a 0700 temp directory,
