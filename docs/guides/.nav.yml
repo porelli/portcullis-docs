@@ -1,4 +1,5 @@
 nav:
+  - The Portcullis CLI: cli.md
   - Adding an App: adding-an-app.md
   - Manifest Reference: manifest-reference.md
   - SAML Integration: saml-app.md

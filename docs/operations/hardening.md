@@ -1610,6 +1610,44 @@ oauth2-proxy or group-gate, and only requests that passed forward-auth and the
 To rotate it, empty `HUB_PROXY_SECRET` in `.env` and run
 `./portcullis upgrade`.
 
+## SSH access and the CLI listener
+
+Details: [SSH Access](ssh-access.md) and [contracts §18](../guides/integration-contracts.md#18-ssh-access-and-the-cli-new-ssh-cli-login).
+
+- **A separate listener and secret.** The CLI API is served on the Hub's
+  third public listener, `:8891`, only under `/api/cli/v1/`. Its router
+  `people-cli` has **no forward-auth** (the fresh sign-in proof is the
+  authentication), strips every identity header (`strip-identity@file`),
+  and injects its own `HUB_CLI_PROXY_SECRET`. The CLI listener accepts only
+  that secret, and the other listeners never accept it, so no route can
+  reach the admin API through it. Rotate it like `HUB_PROXY_SECRET`.
+- **Fresh hardware sign-in.** A certificate needs a sign-in in this
+  authentication (`prompt=login`, ≤ 5 minutes old) with a method the host
+  group's template accepts and that is a passkey or hardware method.
+  Password, authenticator-code and browser-certificate sign-ins, and
+  impersonated sessions, never sign. The OAuth code is exchanged by the Hub,
+  never by the CLI, and is useless without the PKCE verifier; the CLI proves
+  it holds the key with an SSHSIG over the code's hash and the nonce.
+- **Vault limits that hold even if the Hub is wrong.** One role per host
+  group lists its exact principals. enroll's Vault policy pins every role
+  field: certificates over 12 hours (the role TTLs are pinned to whole hours
+  up to 12, since a role's own `max_ttl` would override the mount's cap),
+  host certificates from the user CA, X11, user-rc and `force-command` are
+  impossible. User and host certificates come from two separate CAs.
+- **Hosts only dial out.** A managed host's requests are SSHSIGs by its
+  pinned host key, within ±60 s, with replays refused. Bundles and reports
+  are size-capped and strictly parsed; a report is never used as a path.
+  Each host's local ceiling (`/etc/portcullis/host.json`) is never changed
+  by Portcullis.
+- **sshd is never left broken.** Every change is checked with `visudo -cf`,
+  `sshd -t` and the effective `sshd -T` values for a Portcullis account and
+  the break-glass account, and rolled back byte for byte on any failure.
+- **Limits.** Refusals 10 a minute per address and per person, signings 6 a
+  minute per person, 16 certificates per login.
+- **No secrets anywhere.** Codes, verifiers, tokens, enrolment secrets and
+  private keys are never on a command line, in a log, an error or the
+  audit; the audit, the issued index and the history keep key fingerprints.
+
 ## Domains service
 
 The **domains** service manages added extra domains: DNS records, ACME DNS-01

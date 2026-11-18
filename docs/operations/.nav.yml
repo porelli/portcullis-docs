@@ -5,6 +5,7 @@ nav:
   - Kubernetes (experimental): kubernetes.md
   - VPN: vpn.md
   - Multiple Servers: servers.md
+  - SSH Access: ssh-access.md
   - Backups: backups.md
   - Monitoring: monitoring.md
   - Security & Hardening: hardening.md
