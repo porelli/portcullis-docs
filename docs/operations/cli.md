@@ -1478,11 +1478,11 @@ portcullis mail restore-hold clear [--yes]
 
 A core restore holds the mail provider (`hub_data/mail-restore-pending`:
 the Hub refuses to start it) until `hub mail restore` restored it from the
-backup's archive. When that restore can't run, this lifts the hold: the
-provider then starts on what its volumes hold now, which may be empty. Type
-`clear` to confirm (`--yes`: no prompt, for scripts). Logged (on stdout and
-in the system log). Lifting the hold never starts the provider itself. With
-no hold it says "No mail restore hold." See
+backup's archive. When that restore can't run, this lifts the hold. It
+starts nothing: the provider stays stopped until you start it (its Mail
+tab's Retry), and then runs on what its volumes hold now, maybe nothing.
+Type `clear` to confirm (`--yes`: no prompt, for scripts). Logged (on stdout
+and in the system log). With no hold it says "No mail restore hold." See
 [Backups → Restore](backups.md#restore).
 
 ## SSH

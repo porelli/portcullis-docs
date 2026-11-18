@@ -96,13 +96,15 @@ block, its `compose.yml` and every file of the template directory). After
 every source sync it compares again. On any change, an image bump included,
 or when the template no longer validates, the provider is **held**:
 
-- the running containers keep serving, and nothing of the changed template
-  starts: no `up`, re-render or recreate;
-- anything that would need an `up` meanwhile (enabling, a dead container,
-  a Hub restart, an environment change) starts it in void mode instead;
-- the mail routes answer as for an unreachable provider; revocations,
-  removals and session resets still reach the running provider (if it
-  can't take them, the Hub voids it);
+- a hold changes no mode: the running, confirmed containers keep serving
+  as they are, and keep taking every document, revocation, removal and
+  session reset; the mail routes work;
+- nothing of the changed template starts: every `up` of the provider is
+  refused with the hold's reason (enabling, a dead container, a Hub
+  restart, an owed restart, an environment change, a doctor fix);
+- if the held provider can't take what the Hub must send (a document, a
+  revocation, its state), the Hub stops it, fail closed: mail is down
+  (the mode shows `stopped`) until you confirm;
 - the doctor shows `mail_provider_refused`: "the mail provider's template
   changed: review and confirm on its Mail tab".
 
@@ -365,22 +367,29 @@ create new ones.
 
 - **An instance restore** of the provider (from the Hub) owes a void before
   the volumes are replaced.
-- **A core restore** (`./portcullis restore`) empties `hub_secrets` and the
-  provider's slot volume, so the gate closes (a raw start of the provider
+- **A core restore** (`./portcullis restore`) first stops the Hub and takes
+  down the wired provider (and any other project mounting the provider's
+  slot volume or the mail certificate), volumes kept; when it can't, it
+  restores nothing. It empties `hub_secrets` and the provider's slot volume, so the gate closes (a raw start of the provider
   fails closed). It writes a hold into `hub_data`
   (`mail-restore-pending`, the archive's name) before the Hub starts, so the
   Hub keeps the provider stopped; then it asks the Hub to restore the
   provider from the archive the backup names (`hub mail restore`, waited
   for), and only then starts the rest of the stack. The Hub voids every mail
-  password before the provider serves again.
+  password before the provider serves again. A Hub that starts and finds
+  the provider running while the hold exists takes it down at once.
 
 If the provider's restore fails, the hold stays, the restore still finishes
 the rest of the stack and ends with "the mail provider couldn't be restored
 from its archive (its mailboxes are NOT back yet; the Hub holds it): fix the
 cause and run ./portcullis restore again, or lift the hold with
 ./portcullis mail restore-hold clear (the provider then starts on what its
-volumes hold)". Lifting the hold never starts the provider by itself, and
-you must type `clear` to confirm (`--yes` for scripts); it is logged. DKIM
+volumes hold)". Lifting the hold starts nothing: the provider stays stopped
+until you start it with **Retry** on its Mail tab (which voids first), and
+then runs on what its volumes hold now, maybe nothing. You must type
+`clear` to confirm (`--yes` for scripts); it is logged. (The restore's
+message still says "the provider then starts on what its volumes hold":
+it means after that Retry.) DKIM
 keys survive a restore of the store, so the DNS records stay valid.
 
 ## Mass removals

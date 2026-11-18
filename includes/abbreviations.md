@@ -158,7 +158,7 @@
 *[forbidden roots]: Host paths no shared folder or path setting may touch: Docker's data root, or on Kubernetes the containerd root and the volume storage directory
 *[edge namespace]: portcullis-edge on Kubernetes: the only namespace Traefik watches; it holds every IngressRoute and Middleware and the apps' pinned ExternalName Services, never a Secret
 *[params generation]: The hash of the admission params on Kubernetes: each change gets new params and bindings, proved live before the old ones are removed
-*[Stalwart]: The mail server Portcullis runs (profile mail): SMTP, submission and IMAP, with a built-in spam filter
+*[Stalwart]: The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter
 *[mailctl]: The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks
 *[mail_users]: The Hub-managed group whose members get a mailbox
 *[mail password]: A per-device password for mail apps only (IMAP and submission), created by the person on their Sign-in page, shown once

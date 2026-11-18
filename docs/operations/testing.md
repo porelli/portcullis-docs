@@ -978,7 +978,7 @@ fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 - **13 wiring_guards**: wiring `mail-fake` (from a CI-only source) is refused without a fresh proof (403), with a wrong typed id (400), for an AI / MCP actor (403) and for a delegate (403); with all of them it succeeds.
 - **11 switch_provider**: a switch to `mail-fake` (honest): the sets replaced per domain with the old DKIM keys kept, retiring; the mail passwords' rows voided (`provider_changed`); the ports reach the fake (no SMTP banner); `stalwart` stopped with its volumes; `mail.provider_switched` audited; then back to `stalwart` (which voids again).
 - **12 hostile_provider_contained**: `mail-fake` in hostile mode while wired: none of its forbidden records reaches the zone (`mail_records_wrong` names them), no mass-removal document is sent, and the over-wide `allowed_ips` row is revoked.
-- **14 template_change_holds**: the wired template's files change and the Hub syncs: no container is recreated, `mail_provider_refused`, the mail routes answer `503`; a confirmation clears the hold.
+- **14 template_change_holds**: the wired template's files change and the Hub syncs: no container is recreated, the provider is held (`mail_provider_refused`), and the mail routes still answer `200` (Ruling R-HH1: the held provider keeps serving); a confirmation clears the hold and the routes keep answering.
 - **15 conformance_stalwart**: `run.py --level full` against the wired `stalwart`.
 - **16 conformance_fake_api**: `run.py --level api` against `mail-fake`, wired for the run.
 
