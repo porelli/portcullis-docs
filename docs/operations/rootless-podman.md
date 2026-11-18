@@ -258,6 +258,15 @@ The templates repository commits this classification, with the Kubernetes
 one, in `tests/runtime.txt`,
 so any change to it shows up in review.
 
+## Usage under rootless Podman
+
+The Hub's [Usage](hub.md#usage) page works the same under rootless Podman,
+through the same socket proxy. Two figures depend on the cgroup controllers
+delegated to the operator's user manager: **CPU** is "not measured" without
+the `cpu` controller (systemd delegates it by default), and **disk IO** is
+usually "not measured" because `io` usually isn't delegated. Memory and PIDs
+need `memory` and `pids`, which `init` already requires.
+
 ## VPN under rootless Podman
 
 Core's VPN service `wg` ([VPN-only access](vpn.md)) is the same on both

@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-mail`, `e2e-ai`, `e2e-podman`, `e2e-vpn`, `e2e-k3s`, `e2e-servers`, `e2e-servers-podman`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-mail`, `e2e-ai`, `e2e-podman`, `e2e-vpn`, `e2e-k3s`, `e2e-servers`, `e2e-servers-podman`, `e2e-ssh`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | Keycloak image (`porelli/portcullis-keycloak`) | `build.yml` | `test`, `vectors`, `smoke`, `publish` |
@@ -31,7 +31,8 @@ exactly as on a real install. Every step drives the stack through
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
     - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
     - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `authaware` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
-    - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else
+    - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else; its SSH part is exactly contract §18.7's (role TTLs exactly the twelve whole hours up to 12 h)
+    - `ssh_setup` (stub vault): a fresh Vault gets both mounts, caps, CAs and the host role; a second run creates nothing; another cap, CA key type or engine at `ssh_user` / `ssh_host` fails naming it and changes nothing
     - `cert list --all` (stub `vault`) shows KIND `YubiKey` / `Browser` and revoked rows; `cert revoke` finds a `pki_file` serial after `pki_int`, revokes it there and rotates `pki_file`'s CRL; `cert enroll`'s renewal hint names `https://people.<domain>/signin`
     - `signin reset-core` (stubbed `docker compose`): without `--yes` and a terminal it refuses (exit 2, nothing run); `--yes` runs `stop hub`, `run --rm --no-deps -T --user 10001:10001 --label traefik.enable=false --entrypoint /usr/local/bin/hub hub signin reset-core`, `start hub` and shows the Hub's output; a failed run still starts the Hub and exits 1 with the exit status, the Hub's own message and "the Hub was started again" (never "nothing was reset"); a failed stop starts the Hub again and runs nothing; a failed start says so
     - the runtime: every `--help` works with no engine (a stub that fails any call is never called), `init --help` documents `--runtime`, no `ct_own "$(id -u)…"` is left in the CLI, and the engine-socket mount string appears exactly twice in `docker-compose.yml`
@@ -1228,16 +1229,64 @@ The whole stack on a real k3s on `ubuntu-26.04` (90 min), never kind or k3d ([Ku
 
 `.github/ci/e2e-k3s-local.sh steps [--from <n>] [--to <n>]` runs the job's `run:` steps locally on a Linux host (read from `ci.yml`, so they can't drift), amd64 or arm64.
 
+### `e2e-ssh` (SSH access and the CLI)
+
+The stack plus the Hub and two local sshd containers on `portcullis-proxy`
+(`tests/e2e/sshd/Dockerfile`, a pinned `debian:13-slim`): `web-1` enrolled
+as a managed host with `--service none`, `web-2` set up with `host trust`.
+The CLI comes out of the Hub image under test and runs on the runner with
+`--no-browser`; Playwright opens the printed URL with the virtual security
+key, and the runner's own `ssh-agent` / `ssh` log in. The Hub's admin writes
+that need a fresh sign-in (SSH on, a new host, the privileged grant, removing
+a host) get one through the Hub listener's fresh-auth flow. Cases
+(`tests/e2e/e2e_ssh.py`; each a `check()`, so `-f scenarios=` reruns one):
+`setup` (`ssh_admins` → `all` with full sudo refused without the typed group
+name), alice reaches both hosts without sudo and gets sudo on the managed
+host within one long-poll after joining `ssh_admins` and logging in again;
+bob's `s:deploy@web` shows `ID pc:bob:web:` in the sshd log and bob has no
+account of his own; `root` is refused on both hosts; a sign-in code works
+once at `POST ssh/certificates` and a key proof by another key is refused
+(`403`); the CI Keycloak's `portcullis-cli` has the contract's shape
+(`127.0.0.1:40000` and `localhost:38917` refused); leaving the groups
+locks alice out of `web-1` within seconds and `web-2` after one
+`host revoked-keys` pull; with the Hub stopped, bob's certificate and the
+break-glass account's own key still work and `./portcullis ssh
+breakglass-cert` signs one from Vault (audited at the Hub's next start);
+and no sign-in code, PKCE verifier, enrolment code or private key appears in
+the logs, the Hub's audit, `issued.jsonl` or the CLI's output. On failure
+the logs are collected and withheld whole if anything looks like a secret
+(`.github/ci/e2e-ssh-artifacts.sh`). Covered by the Hub's own tests instead
+of here: password / authenticator-code / impersonated sign-ins getting
+nothing, drift healing and the main-config override Problem (the real-sshd
+container test), forged reports and oversized bundles.
+
+**Hub-side tests.** `go test -tags sshd ./cmd/portcullis/internal/host/`
+runs the host agent against real sshd in Debian, Ubuntu and Rocky containers
+(the Hub CI's "host agent against real sshd" step, `PORTCULLIS_DOCKER_TEST=require`).
+The opt-in live tests are `TestLiveCLIObjects` (Keycloak, the
+`portcullis-cli` client and its refused redirect URIs) and core's
+`TestLiveSSHVault` (`PORTCULLIS_VAULT_LIVE_ADDR` / `PORTCULLIS_VAULT_LIVE_TOKEN`:
+the real `enroll.hcl` against Vault — every refusal of the spike, among them
+no role above 12 h, the four key types, an empty principal list signing
+nothing, `source-address` from the role, the host sign's `cert_type`). Core
+CI's unit-tests runs it on every push against the compose pin of Vault in
+dev mode (step "enroll SSH against a real Vault"), next to "Shared SSH
+vectors match the Hub" (`enroll/testdata/ssh_vectors.json` = the Hub's
+`internal/cliapi/testdata/vectors.json`); build-and-test's "Test enroll
+AppRole is least-privilege" checks the SSH paths on the real stack after
+`pki setup`.
+
 ### Caching
 
 Core CI caches what it safely can. Caches are written only on pushes to `main`.
 
 - **Infra and monitoring images:** cached by the local composite action `.github/actions/cached-images`.
-    - The cache key is a hash of each job's pinned image list. Refs without a digest are refused.
+    - The cache key is the runner image (`ImageOS`: `ubuntu24`, `ubuntu26`, …; `self-hosted` on the builder) and a hash of each job's pinned image list. Refs without a digest are refused. A tarball saved by one image's Docker doesn't load reliably on another's, so jobs on 24.04 and 26.04 never share one.
     - After `docker load`, every name set by the tarball is removed. Each ref is then re-pulled by its pinned digest (with retry and backoff), so the engine reuses a loaded image only if its content-addressed ID matches the registry's config digest.
 - **enroll and group-gate images:** buildx layer cache (`type=gha`).
 - **Go:** module and build cache through `setup-go`, with `go mod verify`.
-- **Python:** pip and Playwright browsers, cached on the pinned requirements file (`group-gate/requirements.txt` has `--require-hashes`).
+- **Python:** pip and Playwright browsers, cached on the runner image (`ImageOS`, as above: Playwright's browser builds are per distro) and the pinned requirements file (`group-gate/requirements.txt` has `--require-hashes`).
+- **Runner images:** every job that installs Playwright's system packages (`playwright install-deps`) runs on `ubuntu-24.04`; the 26.04 image lacks some of its font packages. e2e-podman, e2e-k3s and e2e-servers* stay on `ubuntu-26.04` (e2e-servers installs Playwright's deps there, which resolve).
 
 The revocation check waits up to 180s, because Vault rebuilds delta CRLs at most once a minute.
 

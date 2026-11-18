@@ -119,6 +119,7 @@ graph LR
     NC{{portcullis<br/>core}}
     NST{{socket-proxy-traefik<br/>internal}}
     NSH{{socket-proxy-hub<br/>internal}}
+    NMH{{portcullis-metrics-hub<br/>internal}}
 
     T --- NP
     T --- NA
@@ -140,6 +141,8 @@ graph LR
     PG[(PostgreSQL)] --- NC
     Hub --- NC
     Hub --- NSH
+    Hub ---|alias hub-metrics| NMH
+    Prom[Prometheus] --- NMH
     NM{{portcullis-mcp<br/>internal, fixed IPAM}}
     MG[mcp-gate] --- NM
     MG --- NP
@@ -167,6 +170,7 @@ graph LR
 | `portcullis-vpn-edge` (`internal: true`) | exactly Traefik and `wg` | `PORTCULLIS_VPN_EDGE_SUBNET` (`172.31.254.64/28`), range `PORTCULLIS_VPN_EDGE_IP_RANGE` (`172.31.254.72/29`), Traefik at `PORTCULLIS_VPN_EDGE_TRAEFIK_IP` (`.66`), `wg` at `PORTCULLIS_VPN_EDGE_WG_IP` (`.67`) | Traefik's `vpnsecure` (`.66:8443`) listens only here and trusts PROXY v2 only from `.67` |
 | `wg-egress` | `wg` only | Docker default | Publishes the built-in VPN's UDP port and carries the resolver's upstream queries |
 | `portcullis-metrics-wg` (`internal: true`) | `wg` (alias `wg-metrics`) and Prometheus only | Docker default | `wg`'s metrics (`wg-metrics:9100`), bound to that address only |
+| `portcullis-metrics-hub` (`internal: true`) | the Hub (alias `hub-metrics`) and Prometheus only | Docker default | The Hub's [usage metrics](monitoring.md#usage-history) (`hub-metrics:9100`, `GET /metrics` and `/healthz` only), bound to that address only; the Hub refuses to start on a wildcard, loopback or foreign address |
 | `portcullis-link` (`internal: true`) | exactly the Hub and `wg` | `PORTCULLIS_LINK_NET` (`172.31.254.80/29`), the Hub at `PORTCULLIS_LINK_HUB_IP` (`.82`), `wg` at `PORTCULLIS_LINK_WG_IP` (`.83`), no dynamic range | The Hub's only path to the worker agents: link's **control** CONNECT listener (`.83:3128`) |
 | `portcullis-link-data` (`internal: true`) | `wg` and the relays only | `PORTCULLIS_LINK_DATA_NET` (`172.31.254.128/26`), `wg` at `PORTCULLIS_LINK_DATA_WG_IP` (`.130`), relays from `PORTCULLIS_LINK_DATA_IP_RANGE` (`172.31.254.160/27`) | The relays' only path to worker apps: link's **data** CONNECT listener (`.130:3129`) |
 
@@ -234,6 +238,16 @@ the engine socket's literal appears once, in `socket-proxy-agent`; core's
 servers e2e jobs check live, on both stacks, that only those proxies mount
 the socket, read-only. No engine API is ever reachable over the network: the
 primary reaches a worker's engine only through the agent's API.
+
+**Usage reads stay inside these sections.** The Hub's [Usage](hub.md#usage)
+page reads container stats (`/containers/{id}/stats?stream=false&one-shot=true`)
+and writable-layer sizes (`/containers/{id}/json?size=true`) through
+`CONTAINERS`, image sizes through `IMAGES` and the host's CPUs and memory
+through `INFO`. `SYSTEM` (`/system/df`) and `ALLOW_TOP` (`/containers/{id}/top`)
+stay off, and so does Podman's `/libpod/containers/stats`; CI asserts all three
+still answer `403`. Storage is measured by the fixer's read-only `usage` mode
+(one read-only mount at `/vol`, `DAC_READ_SEARCH` only, no network, idle IO).
+The sampler copies only named inspect fields, never `Config.Env`.
 
 **Limits of a socket proxy.** The Hub can still create containers with any
 `HostConfig` (privileged, host bind mounts): that is inherent to "runs compose
@@ -714,7 +728,8 @@ policies and NetworkPolicies take their place. The full rules are in
 - **The Hub's Roles** are the Kubernetes form of `socket-proxy-hub`: one in
   the apps namespace (workloads, Services, PVCs, ConfigMaps, Secrets,
   NetworkPolicies, pods without `patch` or `update`, `pods/log`,
-  `pods/exec` `create` only, events) and one in `portcullis-edge`
+  `pods/exec` `create` only, events, read-only pod metrics — never node
+  stats) and one in `portcullis-edge`
   (IngressRoutes, Middlewares and Services only). There is nothing in the core
   namespace and nothing cluster-scoped. The Hub checks at start, every
   60 s and before every deploy that it holds exactly these rules, and
@@ -1626,6 +1641,44 @@ oauth2-proxy or group-gate, and only requests that passed forward-auth and the
 
 To rotate it, empty `HUB_PROXY_SECRET` in `.env` and run
 `./portcullis upgrade`.
+
+## SSH access and the CLI listener
+
+Details: [SSH Access](ssh-access.md) and [contracts §18](../guides/integration-contracts.md#18-ssh-access-and-the-cli-new-ssh-cli-login).
+
+- **A separate listener and secret.** The CLI API is served on the Hub's
+  third public listener, `:8891`, only under `/api/cli/v1/`. Its router
+  `people-cli` has **no forward-auth** (the fresh sign-in proof is the
+  authentication), strips every identity header (`strip-identity@file`),
+  and injects its own `HUB_CLI_PROXY_SECRET`. The CLI listener accepts only
+  that secret, and the other listeners never accept it, so no route can
+  reach the admin API through it. Rotate it like `HUB_PROXY_SECRET`.
+- **Fresh hardware sign-in.** A certificate needs a sign-in in this
+  authentication (`prompt=login`, ≤ 5 minutes old) with a method the host
+  group's template accepts and that is a passkey or hardware method.
+  Password, authenticator-code and browser-certificate sign-ins, and
+  impersonated sessions, never sign. The OAuth code is exchanged by the Hub,
+  never by the CLI, and is useless without the PKCE verifier; the CLI proves
+  it holds the key with an SSHSIG over the code's hash and the nonce.
+- **Vault limits that hold even if the Hub is wrong.** One role per host
+  group lists its exact principals. enroll's Vault policy pins every role
+  field: certificates over 12 hours (the role TTLs are pinned to whole hours
+  up to 12, since a role's own `max_ttl` would override the mount's cap),
+  host certificates from the user CA, X11, user-rc and `force-command` are
+  impossible. User and host certificates come from two separate CAs.
+- **Hosts only dial out.** A managed host's requests are SSHSIGs by its
+  pinned host key, within ±60 s, with replays refused. Bundles and reports
+  are size-capped and strictly parsed; a report is never used as a path.
+  Each host's local ceiling (`/etc/portcullis/host.json`) is never changed
+  by Portcullis.
+- **sshd is never left broken.** Every change is checked with `visudo -cf`,
+  `sshd -t` and the effective `sshd -T` values for a Portcullis account and
+  the break-glass account, and rolled back byte for byte on any failure.
+- **Limits.** Refusals 10 a minute per address and per person, signings 6 a
+  minute per person, 16 certificates per login.
+- **No secrets anywhere.** Codes, verifiers, tokens, enrolment secrets and
+  private keys are never on a command line, in a log, an error or the
+  audit; the audit, the issued index and the history keep key fingerprints.
 
 ## Domains service
 
