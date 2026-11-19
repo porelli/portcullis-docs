@@ -82,6 +82,8 @@ exactly as on a real install. Every step drives the stack through
 - **`tests/test_e2e_mailcheck.py`** (step "e2e helper unit tests (e2e_mailcheck)"). Same venv, standard library only. It tests the pure helpers `e2e_mail.py` takes from `tests/e2e/e2e_mailcheck.py`:
     - `network_retries`: a browser step is retried only after Chromium aborted it on a network change on the runner (`net::ERR_NETWORK_CHANGED`, raised by `page.goto` itself or left as a `chrome-error://` page). It makes at most 4 attempts, notes each retry and waits between them. Any other failure is raised at once.
     - `switch_voided_problem`: after a provider switch, every row is `voided` with exactly "the mail server changed on <date>: create a new mail password" for an allowed date, and every required label is there. `active`, `provider_changed` as a status, another reason, another date or a missing row is named.
+    - `navigate`: `page.goto` / `page.reload` through `network_retries` (checked with a fake page: a raised abort, a `chrome-error://` page, the reload, the bound, another error not retried).
+    - `mail_status_view` / `sync_problem`: `./portcullis mail status --json` is read at exit 0 and 1 (1 only says a check is a Problem); exit 2, no JSON, or a document whose `problem` disagrees with the exit is a failed read. The sync has converged when the provider is wired, reachable, owes no void, isn't held, and has applied the Hub's generation.
     - `confirm_phrase` / `pending_uuids`: the phrase the Hub's `400` asks to be typed (also inside a JSON error body), and the pending removal's uuids. A missing, confirmed, empty or blank-uuid pending removal fails.
 
     The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
@@ -971,10 +973,12 @@ plus a second Stalwart ("remote", `remote.test`, `.github/ci/e2e-mail-remote.sh`
 on the wired app's egress network (disconnected and reconnected around every
 switch; disconnected for good before the restore, since the Hub's void after
 it recreates that network, and a foreign container on it would make that
-fail). The fresh sign-ins that wire, switch and confirm are retried, at most
-4 attempts and each noted in the job summary, only when Chromium aborted
-them on a network change (`net::ERR_NETWORK_CHANGED`: container starts change
-the runner's network). **Nothing leaves the runner:** outbound 25,
+fail). Every navigation of `e2e_mail.py` (`page.goto`, the reload, the fresh
+sign-ins that wire, switch and confirm) goes through one helper
+(`e2e_mailcheck.navigate`). It retries only when Chromium aborted the
+navigation on a network change (`net::ERR_NETWORK_CHANGED`, raised or left on
+`chrome-error://`: container starts change the runner's network), at most 4
+attempts, each noted in the job summary. **Nothing leaves the runner:** outbound 25,
 465 and 587 is rejected outside the stack's networks and every name is the
 fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 
