@@ -58,8 +58,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `homeassistant` | `ghcr.io/home-assistant/home-assistant:2026.10.4` | `sha256:23f4dfbb69ce…` |
-| `homeassistant-init` | `ghcr.io/home-assistant/home-assistant:2026.10.4` | `sha256:23f4dfbb69ce…` |
+| `homeassistant` | `ghcr.io/home-assistant/home-assistant:2026.11.0` | `sha256:c6c1ca993103…` |
+| `homeassistant-init` | `ghcr.io/home-assistant/home-assistant:2026.11.0` | `sha256:c6c1ca993103…` |
 
 ## Environment Variables
 

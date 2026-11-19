@@ -2,17 +2,24 @@
 
 Portcullis can run a full mail server for the main domain and for every
 [added domain](dns.md#adding-extra-domains) you turn mail on for: sending and
-receiving, a built-in spam filter, SPF, DKIM and DMARC that pass and align,
-MTA-STS, TLS reports, DANE when the main zone is signed, your LLDAP people as
+receiving, a spam filter, SPF, DKIM and DMARC that pass and align, MTA-STS,
+TLS reports, DANE when the main zone is signed, your LLDAP people as
 mailboxes, aliases and group lists, and one mail password per device.
 
-It is [Stalwart](https://stalw.art) (the upstream image, unmodified and
-pinned) plus `mailctl`, a small Portcullis service that is the only thing
-allowed to configure it. Mail is part of core (the compose profile `mail`),
-not an app from the marketplace. Day-to-day work (spam, DKIM, policies,
-backups, troubleshooting) is on [Mail operations](../operations/mail.md); the
+The mail server is a **mail provider**: an app from the Marketplace whose
+template declares a `mail:` block, wired by a full administrator into the
+server's one **mail slot**. Core and the Hub run the slot and know no mail
+server: core keeps the mail certificate, TLSA, the HELO SPF, the slot's
+networks and volumes, LAN-only and the CLI; the Hub drives the provider
+through the provider API, writes its DNS and checks every rule itself. The
+first provider is [Stalwart](../apps/stalwart.md) (the upstream image,
+unmodified and pinned, with Portcullis' `mailctl` as its adapter), and
+`./portcullis mail enable` wires it for you.
+
+Day-to-day work (wiring, switching, DKIM, policies, backups,
+troubleshooting) is on [Mail operations](../operations/mail.md); the
 interfaces are in
-[contracts §19](../guides/integration-contracts.md#19-mail-new-mail).
+[contracts §19](../guides/integration-contracts.md#19-mail-provider-api-new-mail-provider).
 
 ## Before you start
 
@@ -28,7 +35,7 @@ first.
 | **Reverse DNS (PTR)** of the address set to `MAIL_HOSTNAME` (default `mail.<domain>`) | Large receivers refuse or junk mail from an address whose PTR doesn't resolve back to it. Only the address's owner (your provider) can set it |
 | **A DNS provider Portcullis can write** | The mail certificate is issued through DNS-01, and DKIM keys rotate by rewriting TXT records. Cloudflare, Porkbun, Route 53, DigitalOcean and Hetzner work; other lego providers don't (`mail enable` refuses) |
 | **Docker or rootless Podman** | Mail isn't available on [Kubernetes](#kubernetes) yet |
-| **About 1.5 GiB of free memory** | Stalwart is capped at 1 GiB, mailctl at 256 MiB, the resolver at 128 MiB |
+| **About 1.5 GiB of free memory** (Stalwart) | The `stalwart` app caps Stalwart at 1 GiB, its adapter at 256 MiB and its resolver at 128 MiB |
 
 !!! note "IPv4 only"
     IPv6 for mail isn't supported yet: the mail ports are published on IPv4
@@ -54,9 +61,10 @@ doctor gives the same steps when it finds a problem
 | **Home ISP** | Usually blocked, and residential ranges are on Spamhaus's PBL anyway: send through a [relay](#sending-through-a-relay) | Rarely available | **Inbound still needs port 25**, forwarded to the server, and most home ISPs block that too. A static address is still required |
 | **Anyone else** | Ask the provider to allow outbound port 25 for this server | Ask the provider to set the PTR of the address | |
 
-Portcullis never probes port 25 itself: it learns that outbound 25 is blocked
-from the mail queue (every delivery of the last 24 hours timing out or
-refused). Until something has been sent the doctor only says "not known yet".
+Portcullis never probes port 25: the provider learns that outbound 25 is
+blocked from its own delivery history (every delivery of the last 24 hours
+timing out or refused). Until something has been sent the doctor only says
+"not known yet".
 
 ## Turn mail on
 
@@ -67,32 +75,49 @@ refused). Until something has been sent the doctor only says "not known yet".
 `mail enable` is idempotent: re-run it any time. It:
 
 1. refuses on Kubernetes, with a DNS provider Portcullis can't write, with
-   `MAIL_IPV6` set, and under rootless Podman without the
-   [port sysctl](#rootless-podman);
-2. writes `MAIL_HOSTNAME` (`--hostname`, default `mail.<domain>`) and adds
-   `mail` to `COMPOSE_PROFILES`;
+   `MAIL_IPV6` set, LAN-only under rootless Podman, and under rootless
+   Podman without the [port sysctl](#rootless-podman);
+2. **opens the mail slot**: writes `PORTCULLIS_MAIL=on`, `MAIL_HOSTNAME`
+   (`--hostname`, default `mail.<domain>`) and `MAIL_SUBMISSION_LAN_ONLY`
+   (`--lan-only`), and prepares the slot's networks and volumes;
 3. issues the **mail certificate** for `MAIL_HOSTNAME` through your DNS
    provider, with its own ACME account and its own key (never Traefik's
    wildcard key, so a compromised mail server can't impersonate
    `auth.<domain>`), and pins a CAA record at `MAIL_HOSTNAME` to that
    account;
-4. sets Stalwart up in a short **recovery session**: a one-time admin login
-   exists only during it, and the CLI checks that it is refused afterwards;
-5. starts `mail`, `mail-resolver` and `mailctl` (and recreates Traefik, the
-   Hub and the domains service), and gives mailctl the certificate's key;
+4. restarts the Hub and the domains service with the slot open;
+5. prints what the provider may do (the warning below) and asks you to type
+   the instance id, `stalwart` (`--yes` accepts it), then has the Hub
+   install the `stalwart` app from the default source when it isn't
+   installed and **wire** it ([Wiring a provider](../operations/mail.md#wiring-a-provider)):
+   every mail password is voided first, then the provider gets its ports,
+   its secrets and the certificate;
 6. offers to install the daily mail timer (`--yes` installs it without
    asking).
+
+The warning, word for word:
+
+> This app becomes the mail server for every person and every mail domain.
+> It gets public ports 25, 465, 587 and 993, writes the mail DNS records of
+> every mail domain, creates and checks the mail passwords of every person
+> in mail_users, sends mail to the internet (outbound SMTP), and can read
+> every mailbox.
 
 | Option | Meaning |
 |--------|---------|
 | `--hostname H` | The mail server's name (the MX of every mail domain, the certificate, the PTR you set). Default `mail.<domain>` |
 | `--lan-only true\|false` | Mail passwords work only from the Hub's Local networks ([below](#lan-only-mail-passwords)) |
-| `--rotate-key` | Replace mailctl's Stalwart API key |
-| `--yes` | Install the daily timer without asking |
+| `--provider stalwart\|none` | The provider to install and wire (default `stalwart`); `none` opens the slot only |
+| `--yes` | Accept the typed confirmation and install the daily timer without asking |
+
+**Another provider, or wiring from the Hub.** With `--provider none` the
+slot opens and nothing is wired. Install a mail server from the Marketplace
+(the "Mail server" badge), open the instance's **Mail** tab and wire it there
+([Hub → Mail](../operations/hub.md#mail)): it needs a full administrator, a
+fresh sign-in with a security key and the typed instance id.
 
 Then install the timer if you didn't (it renews the mail certificate,
-rotates DKIM, moves the policies on and rewrites the main domain's mail
-records):
+moves the TLSA rollover on and rewrites the main domain's mail records):
 
 ```bash
 ./portcullis mail schedule --systemd   # prints the two install commands
@@ -100,30 +125,35 @@ records):
 
 !!! warning "The daily timer is required"
     Without `portcullis-mail.timer` the mail certificate is never renewed and
-    the main domain's DKIM keys never rotate. `./portcullis mail status` and
-    the doctor (`mail_timer_missing`) warn after 36 hours without a run.
+    the main domain's mail records (its DKIM keys included) are never
+    rewritten. `./portcullis mail status` and the doctor
+    (`mail_timer_missing`) warn after 36 hours without a run.
 
 ## DNS
 
 Every mail domain gets one record set, `mail` ([Record sets](dns.md#record-sets)):
 the MX, SPF, DKIM, DMARC, MTA-STS, TLS reporting, the client SRV records and,
-for the main domain, the HELO SPF and the DANE TLSA record. `mail` replaces
-the `nomail` set while mail is on.
+for the main domain, core's HELO SPF and DANE TLSA record. `mail` replaces
+the `nomail` set while mail is on. The provider proposes each domain's
+records; the Hub and the domains service check them against fixed rules
+before anything is written (only mail names, never A, AAAA, CAA, NS, DS or
+TLSA from the provider, and DMARC never below the domain's floor).
 
 **The main domain** is written by the CLI only:
 
 ```bash
-./portcullis dns setup             # MAIL_HOSTNAME's address now, the mail records too once mailctl has them
+./portcullis dns setup             # MAIL_HOSTNAME's address now, the mail records too once the provider has them
 ./portcullis dns setup --only mail # just the mail records
 ```
 
 Run `dns setup` right after `mail enable`: with mail on, the main domain's
 `address` set also owns `MAIL_HOSTNAME`'s A record (its own records stop the
 wildcard answering it). The mail records themselves exist once the Hub has
-sent mailctl its first document (a few seconds after the Hub starts, or after
-the first change in Settings → Mail); after that the daily timer keeps them
-current. If mailctl doesn't answer yet, `dns setup` leaves the mail set out
-with a warning, and `--only mail` refuses.
+sent the provider its first document (right after the wiring, or after the
+first change in Settings → Mail); after that the daily timer keeps them
+current. If the Hub can't give them yet, `dns setup` leaves the mail set out
+with a warning, and `--only mail` refuses ("no mail provider is wired:
+nothing to write for --only mail" when nothing is wired).
 
 **Added domains** are written by the Hub through the domains service: turn
 mail on for the domain in **Settings → Mail** ([Hub](../operations/hub.md#mail))
@@ -139,8 +169,7 @@ only when you accept the [promotion](../operations/mail.md#mta-sts-and-dmarc-pro
 
 **DNSSEC and DANE.** The TLSA record (`_25._tcp.<MAIL_HOSTNAME>`) is
 published only while the main zone's DNSSEC state is `secure`
-([DNSSEC](dns.md#dnssec)); otherwise `mail status` says
-`withheld: dnssec <state>` and nothing else changes.
+([DNSSEC](dns.md#dnssec)); otherwise nothing else changes.
 
 **VPN-only mode.** The MTA-STS, autoconfig and autodiscover pages follow the
 [VPN mode](../operations/vpn.md) like every core page: in mode `server` they
@@ -193,31 +222,29 @@ POP3 isn't offered. Port 25 never accepts a login.
 ## Sending through a relay
 
 When your provider won't open outbound port 25, or your address is in a
-residential range, send through a smarthost. Set in `.env`, then run
-`./portcullis mail enable` again:
-
-```bash
-MAIL_RELAY_HOST=smtp.relay.example.net
-MAIL_RELAY_PORT=465                 # 465 = implicit TLS; anything else requires STARTTLS
-MAIL_RELAY_USERNAME=portcullis
-MAIL_RELAY_PASSWORD=...             # copied to secrets/mail/relay-password
-MAIL_RELAY_SPF_INCLUDE=_spf.relay.example.net   # added to every domain's SPF
-```
-
-Every non-local recipient then goes through the relay. Receiving still
+residential range, send through a smarthost. Set it in **Settings → Mail →
+Relay, DKIM rotation and former accounts** ([Hub → Mail](../operations/hub.md#settings-mail)):
+host, port, user, SPF include and password. Port 465 means implicit TLS, any
+other port requires STARTTLS, the password is write-only, and the SPF
+include is added to every mail domain's SPF. Saving a relay change needs a
+fresh sign-in with your security key, and is never possible through MCP or
+AI. Every non-local recipient then goes through the relay. Receiving still
 needs inbound port 25.
 
 ## LAN-only mail passwords
 
 `./portcullis mail enable --lan-only true` (or
-`MAIL_SUBMISSION_LAN_ONLY=true`) makes mail passwords work only from the
-Hub's [Local networks](../operations/hub.md#local-networks): every password is
+`MAIL_SUBMISSION_LAN_ONLY=true`, then `./portcullis up`) makes mail
+passwords work only from the Hub's
+[Local networks](../operations/hub.md#local-networks): every password is
 limited to them (at most 64 networks, never "anywhere": a public IPv4 range
 at most a /16, a public IPv6 one at most a /32, private ranges as wide as
 their block; IPv6 within ULA, link-local or global unicast and never one of
-the ranges that embed IPv4 addresses), and the server refuses a login from anywhere else. Port 25
-stays public (other servers must reach you). Only the CLI sets it; Settings →
-Mail shows it. It is refused under rootless Podman (below).
+the ranges that embed IPv4 addresses), and the server refuses a login from
+anywhere else. The Hub checks every password the provider reports and
+revokes one that reaches beyond the Local networks. Port 25 stays public
+(other servers must reach you). Only the CLI sets it; Settings → Mail shows
+it. It is refused under rootless Podman (below).
 
 ## Rootless Podman
 
@@ -226,7 +253,7 @@ two differences.
 
 **The port sysctl.** Mail publishes 25, 465 and 587, below the usual
 `ip_unprivileged_port_start=80`. `mail enable`, `up` and `upgrade` refuse
-until it is 25:
+until it is 25, and the Hub refuses to wire a provider:
 
 ```bash
 # As root.
@@ -237,8 +264,9 @@ echo 'net.ipv4.ip_unprivileged_port_start=25' > /etc/sysctl.d/90-portcullis-mail
 Any local account may then bind ports from 25.
 
 **Degraded mode.** Rootless Podman rewrites the client's address: every
-connection seems to come from Podman's gateway. Portcullis then runs mail in
-a degraded mode (`MAILCTL_CLIENT_IP=rewritten`, written by the CLI):
+connection seems to come from Podman's gateway. The provider then runs in a
+degraded mode (`client_ip: rewritten` in the Hub's document; core writes
+`PORTCULLIS_MAIL_CLIENT_IP=rewritten` for the Hub):
 
 - SPF, reverse-DNS (iprev) and the IP blocklists are off for incoming mail;
 - DMARC judges DKIM alignment only and never rejects;
@@ -254,13 +282,14 @@ the full checks, run mail on Docker.
 
 Mail isn't available on Kubernetes yet. `./portcullis mail enable` exits with
 "mail isn't available on Kubernetes yet (Docker or rootless Podman only)",
-`up` and `upgrade` refuse a `COMPOSE_PROFILES` with `mail`, and Settings →
-Mail is read-only.
+`up` and `upgrade` refuse while the slot is open, the Hub refuses to wire a
+provider, and Settings → Mail says "Mail isn't available on Kubernetes yet
+(Docker or rootless Podman only)".
 
 ## Check it works
 
 ```bash
-./portcullis mail status                         # services, certificate, DKIM, policies, queue, checks
+./portcullis mail status                         # the provider, its checks, the certificate, TLSA, the timer
 ./portcullis mail test --to you@example.org      # an external address you can read
 ```
 
@@ -276,24 +305,27 @@ external tester.
 ./portcullis mail disable
 ```
 
-It drains every mail domain through the Hub (MTA-STS `mode: none` for its
-`max_age`, up to 7 days), and says so; run it again once
-`./portcullis mail status` shows every domain off, and it removes the mail
-records and the profile. `--force` removes everything now (senders with a
-cached MTA-STS policy may bounce mail until it expires). The mail volumes are
-kept, and so are `MAIL_HOSTNAME`'s A record and its CAA pin (a known
-limitation): delete them by hand if you don't need them.
+It unwires the provider through the Hub and drains every mail domain
+(MTA-STS `mode: none` for its `max_age`, up to 7 days), and says so; run it
+again once `./portcullis mail status` shows every domain off, and it removes
+the main domain's mail records and closes the slot (`PORTCULLIS_MAIL=off`).
+`--force` unwires now (senders with a cached MTA-STS policy may bounce mail
+until it expires). The provider instance and its data are kept (delete it
+from the Hub if you don't need it), and so are `MAIL_HOSTNAME`'s A record and
+its CAA pin: delete them by hand if you don't need them.
 
 ## Settings in `.env`
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
+| `PORTCULLIS_MAIL` | `off` | `on` (exactly) opens the mail slot. Written by `mail enable` / `mail disable` |
 | `MAIL_HOSTNAME` | `mail.<domain>` | The mail server's name (written by `mail enable --hostname`) |
 | `MAIL_SUBMISSION_LAN_ONLY` | `false` | [LAN-only mail passwords](#lan-only-mail-passwords) |
-| `MAIL_DKIM_ROTATE` | `4320h` (180 days) | How often DKIM keys rotate |
-| `MAIL_FORMER_RETENTION` | `720h` (30 days) | How long a former person's mailbox is kept ([Former mailboxes](../operations/mail.md#former-mailboxes-and-mail-export)) |
-| `MAIL_RELAY_HOST`, `MAIL_RELAY_PORT`, `MAIL_RELAY_USERNAME`, `MAIL_RELAY_PASSWORD`, `MAIL_RELAY_SPF_INCLUDE` | empty | [Relay](#sending-through-a-relay) |
-| `MAIL_SPAMHAUS_DQS_KEY` | empty | A [Spamhaus DQS](../operations/mail.md#blocklists-and-the-spamhaus-dqs-key) key (8–64 lowercase letters and digits) |
 | `MAIL_ACME_CA_SERVER`, `MAIL_CAA_ISSUER` | empty | **Testing only**: another ACME CA (an `https://` directory URL) for the mail certificate, and its CAA issuer domain (pinned at `MAIL_HOSTNAME`; with `DNS_CAA` on, `mail cert` refuses without it). The mail certificate otherwise follows `ACME_CA_SERVER` and `ACME_STAGING` |
-| `PORTCULLIS_MAIL_SUBNET` and the other `PORTCULLIS_MAIL*` network keys | `172.31.255.0/28`, `172.31.255.16/28` | The two mail networks' fixed addresses. Change them only if they collide with a host, LAN or VPN network |
-| `MAILCTL_CLIENT_IP` | written by the CLI | `preserved` (Docker) or `rewritten` (rootless Podman). Never set it by hand |
+| `PORTCULLIS_MAIL_API_SUBNET`, `PORTCULLIS_MAIL_API_IP_RANGE`, `PORTCULLIS_MAIL_API_HUB_IP`, `PORTCULLIS_MAIL_API_PROVIDER_IP` | `172.31.255.16/28`, `172.31.255.24/29`, `.18`, `.19` | The provider API network's fixed addresses. Change them only if they collide with a host, LAN or VPN network |
+
+The relay, the DKIM rotation (`dkim_rotate`, default 180 days) and how long
+former mailboxes are kept (`former_retention`, default 30 days) are Hub
+settings ([Hub → Mail](../operations/hub.md#mail)); a provider's own options,
+such as Stalwart's Spamhaus DQS key, are its app's
+[settings](../apps/stalwart.md#settings).

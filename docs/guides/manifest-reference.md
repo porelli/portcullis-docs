@@ -60,9 +60,11 @@ field.
 | `ai` | object | Yes | **NEW (AI support).** `mcp` (companions) or `unsupported` (the reason). See [ai](#ai) |
 | `vpn` | object | No | **NEW (VPN).** The app is a VPN the Hub can wire as a VPN provider. See [vpn](#vpn) |
 | `placement` | `any` or `primary_only` | No (default `any`) | **NEW (multiple servers).** Whether an instance may run on a worker server. See [placement](#placement) |
+| `mail` | object | No | **NEW (mail provider).** The app is a mail server the Hub can wire into the mail slot. See [mail](#mail) |
 
 **Categories in use:** `monitoring`, `media`, `productivity`, `security`,
-`networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`.
+`networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`,
+`mail`.
 
 ## links
 
@@ -1280,6 +1282,71 @@ vpn:
   control_routers: [headscale]
 ```
 
+## mail
+
+**NEW (mail provider), optional.** The template is a mail server that a full
+administrator may wire as the server's **mail provider**
+([Mail operations](../operations/mail.md#wiring-a-provider),
+[contracts §3.5](integration-contracts.md#35-mail-providers-the-mail-block-new-mail-provider)).
+Installing the template grants nothing: only the wired instance gets the
+mail slot's powers (the public ports 25, 465, 587 and 993, the provider API
+network, the mail certificate, the slot files, the well-known router). The
+Marketplace shows such a template with a "Mail server" badge.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | single line, 1–64 chars | Yes | Shown on Settings → Mail and the instance's Mail tab |
+| `api_version` | integer, exactly `1` | Yes | The provider API v1 ([contracts §19.5](integration-contracts.md#195-the-provider-api-v1-hub-provider)) |
+| `api` | [mailEndpoint](#mailendpoint) | Yes | The service and container port the Hub dials on `portcullis-mail-api` |
+| `listeners` | `{service, smtp, submissions, submission, imaps}` | Yes | The four container ports (1024–65535), all on one service; the Hub publishes host ports 25, 465, 587 and 993 onto them |
+| `wellknown` | [mailEndpoint](#mailendpoint) | Yes | MTA-STS, autoconfig and autodiscover: the Hub's `portcullis-mail-wellknown` router routes to it |
+| `metrics` | [mailEndpoint](#mailendpoint) | Yes | The provider's metrics, scraped by core's Prometheus |
+| `server_metrics` | `{service, port, path}` | No | The mail server's own metrics; `path` an absolute URL path |
+| `tls` | list of services | Yes | Services that get the mail certificate, read-only; the listener and `api` services must be listed |
+| `gated` | list of services | Yes | Services that get the gate files and must honour them: every service that serves mail or holds credentials; the listener and `api` services must be listed |
+| `sessions` | `{restart: <service>}` | Yes | The service the Hub restarts after every removal and every revoked mail password |
+| `export` | `{service, argv}` | No | The former-account export: a literal argv with exactly one `{former_id}` element, run by `./portcullis mail export` as an exec in `service` (stdout is the mbox) |
+
+### mailEndpoint
+
+`{service, port}`: a compose service of the template (not a job, not an AI
+companion, no `network_mode`) and a container port, 1024–65535.
+
+**The whole template is held to stricter rules** (the VPN gateway's, applied
+to every service): no `ports:` and no manifest `ports`, no Traefik router or
+`traefik.*` label, not privileged, `cap_drop: [ALL]` and at most
+`NET_BIND_SERVICE` added, no devices, no `pid`, `ipc`, `volumes_from` or
+host network, binds only of the template's own files and read-only, plain
+volumes, only its own plain networks (no core network, no IPv6, fixed
+addresses only inside its own declared subnet), literal image references, no
+YAML anchors, no `person_secret` or `person_id` options, `instances:
+single`, and `auth` `method: custom` with no routers and `group_access:
+false`. The mailbox population is the Hub's `mail_users` group, never the
+template's. A mail template never interpolates `${PORTCULLIS_MAIL_*}`: the
+Hub's override sets the provider's environment, which its programs read at
+run time ([contracts §19.4](integration-contracts.md#194-the-provider-environment-gate-and-obligations)).
+A mail provider is primary-only.
+
+```yaml
+# manifest.yaml (excerpt, stalwart)
+instances: single
+mail:
+  label: Stalwart
+  api_version: 1
+  api:       {service: adapter, port: 8080}
+  listeners: {service: stalwart, smtp: 10025, submissions: 10465, submission: 10587, imaps: 10993}
+  wellknown: {service: adapter, port: 8081}
+  metrics:   {service: adapter, port: 9100}
+  server_metrics: {service: stalwart, port: 9180, path: /metrics/prometheus}
+  tls:       [stalwart, adapter, bootstrap]
+  gated:     [stalwart, adapter, bootstrap]
+  sessions:  {restart: stalwart}
+  export:    {service: adapter, argv: ["mailctl", "export", "--former", "{former_id}"]}
+```
+
+The app page of such a template shows the block and the provider's own
+notes ([Stalwart](../apps/stalwart.md)).
+
 ## config_files
 
 Files the Hub copies from the template directory into the core checkout when
@@ -1621,6 +1688,13 @@ refusal texts in the same order through the shared vectors
 - `vpn.control_routers: <r> is not a host router of the template`, `vpn.control_routers: <r> serves an admin UI`
 - every template router, with or without a `vpn:` block: `router <r>: entrypoints must be 'websecure'` (the Hub adds `vpnsecure` per instance)
 - reserved: `${PORTCULLIS_VPN_*}` anywhere (`$$PORTCULLIS_VPN_EDGE` in a shell is fine) and as a `settings`/`env` key; the prefix `portcullis-vpn` anywhere in `compose.yml`; the core names `wg` (service), `wg_data` and `vpn_doc` (volumes), `portcullis-vpn`, `portcullis-vpn-edge`, `portcullis-metrics-wg` and `wg-egress` (networks). `strip-client-forwarded@file` may be listed in a router's middlewares (core runs it first anyway)
+
+**Mail** (`check_mail`, the Hub's `ValidateMail` rule for rule, with the same
+refusal texts in the same order through the shared vectors
+`tests/mail_vectors.json`; **NEW**)
+
+- the field rules of [mail](#mail) and the stricter rules for every service, with the exact refusal list of [contracts §3.5](integration-contracts.md#35-mail-providers-the-mail-block-new-mail-provider) (for example `mail.listeners: exactly smtp, submissions, submission and imaps, on one service`, `mail.gated: <s> serves mail and must be listed`, `mail: <s> adds <cap>: a mail provider may add only NET_BIND_SERVICE`, `mail: network <n> is one of core's networks: a mail template declares only its own`)
+- reserved: the core names `mail_slot`, `mail_provider_slot`, `portcullis-mail-api`, `mail-api`, `mail-provider-metrics` and `mail-provider-server-metrics`; no template may mount `portcullis_mail_tls` or `portcullis_mail_provider_slot`
 
 **Cross-template**
 

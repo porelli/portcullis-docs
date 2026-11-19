@@ -42,8 +42,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `oxicloud` | `diocrafts/oxicloud:0.10.0` | `sha256:ef5174909d03…` |
-| `oxicloud-db` | `postgres:17.11-alpine` | `sha256:266d3c257594…` |
-| `oxicloud-init` | `postgres:17.11-alpine` | `sha256:266d3c257594…` |
+| `oxicloud-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
+| `oxicloud-init` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
 
 ## Environment Variables
 

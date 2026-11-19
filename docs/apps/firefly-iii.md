@@ -20,7 +20,7 @@
 | **Subdomain** | `finance` |
 
 !!! info "Auth Notes"
-    Uses remote_user_guard: the account is keyed on X-Forwarded-User, the immutable LLDAP username (stored in Firefly's email column; Firefly does not require an address there). X-Forwarded-Email (user-editable in LLDAP) only sets the notification address and never selects an account. remote_user_guard has no proxy allowlist, so the container's nginx rejects (403) any request carrying X-Forwarded-User or X-Forwarded-Email that does not come from Traefik (PORTCULLIS_TRAEFIK_IP); TRUSTED_PROXIES is likewise limited to Traefik. Auto-creates user on first login. No group-based admin support. Upgrading from a release that keyed users on email: the old accounts are named after the email; rename them to the LLDAP username (users.email column) before users log in again, or they get new empty accounts.
+    Uses remote_user_guard: the account is keyed on X-Forwarded-User, the immutable LLDAP username (stored in Firefly's email column; Firefly does not require an address there). X-Forwarded-Email (user-editable in LLDAP) only sets the notification address and never selects an account. remote_user_guard has no proxy allowlist, so the container's nginx rejects (403) any request carrying X-Forwarded-User or X-Forwarded-Email that does not come from Traefik (PORTCULLIS_TRAEFIK_SOURCE); TRUSTED_PROXIES is likewise limited to Traefik. Auto-creates user on first login. No group-based admin support. Upgrading from a release that keyed users on email: the old accounts are named after the email; rename them to the LLDAP username (users.email column) before users log in again, or they get new empty accounts.
 
 ## Routing
 
@@ -42,7 +42,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `firefly-db` | `postgres:16.15-alpine` | `sha256:0cefaabd882e…` |
+| `firefly-db` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
 | `firefly-iii` | `fireflyiii/core:version-6.7.9` | `sha256:d51ab6a3a7b9…` |
 
 ## Environment Variables

@@ -31,6 +31,7 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 🏠 [Home Assistant](homeassistant.md) | `home` | home-automation | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | 🐝 [Zigbee2MQTT](zigbee2mqtt.md) | `zigbee` | home-automation | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📹 [motionEye](motioneye.md) | `cameras` | home-automation | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
+| 📬 [Stalwart](stalwart.md) | — | mail | `custom` | :x: No | :x: | :x: | :x: |
 | 📷 [Immich](immich.md) | `photos` | media | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: | :x: |
 | 📺 [Jellyfin](jellyfin.md) | `media` | media | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :x: |
 | 🎬 [Plex](plex.md) | `plex` | media | `custom` | :x: No | :white_check_mark: | :x: | :x: |

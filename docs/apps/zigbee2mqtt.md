@@ -43,7 +43,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | `mosquitto` | `eclipse-mosquitto:2.1.2-alpine` | `sha256:860aeb5d63ce…` |
 | `mosquitto-init` | `eclipse-mosquitto:2.1.2-alpine` | `sha256:860aeb5d63ce…` |
 | `zigbee2mqtt` | `ghcr.io/koenkk/zigbee2mqtt:2.14.3` | `sha256:fb4a6b0f6868…` |
-| `zigbee2mqtt-gate` | `nginx:1.31.8-alpine` | `sha256:785835ea65db…` |
+| `zigbee2mqtt-gate` | `nginx:1.31.8-alpine` | `sha256:fed7e14be83c…` |
 
 ## Settings
 

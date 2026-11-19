@@ -408,6 +408,65 @@ def ai_lines(app: dict) -> list[str]:
     return lines
 
 
+# Hand-written provider notes (contract §19: a mail provider's app page is
+# normative for that template): scripts/app-notes/<id>.md is appended
+# verbatim to the generated mail section. Not under docs/, so it is never a
+# page of its own.
+APP_NOTES = Path(__file__).parent / "app-notes"
+
+
+def _endpoint(e) -> str:
+    if not isinstance(e, dict):
+        return "—"
+    return f"`{e.get('service', '?')}` port `{e.get('port', '?')}`"
+
+
+def mail_lines(app: dict) -> list[str]:
+    """The ## Mail provider section for a template with a mail: block."""
+    m = app.get("mail")
+    if not isinstance(m, dict):
+        return []
+    app_id = app["_id"]
+    lines = ["## Mail provider", ""]
+    lines.append("This template is a **mail provider** "
+                 "([contracts §3.5](../guides/integration-contracts.md#35-mail-providers-the-mail-block-new-mail-provider)): "
+                 "installing it grants nothing. A full administrator wires one instance into the server's mail slot "
+                 "([Mail operations → Wiring a provider](../operations/mail.md#wiring-a-provider)), and only that "
+                 "instance gets the slot's powers: the public ports, the provider API network, the mail certificate, "
+                 "the slot files and the well-known router.")
+    lines.append("")
+    lines.append("| `mail:` field | Value |")
+    lines.append("|---------------|-------|")
+    lines.append(f"| `label` | {md_cell(str(m.get('label', '')))} |")
+    lines.append(f"| `api_version` | `{m.get('api_version', '?')}` |")
+    lines.append(f"| `api` | {_endpoint(m.get('api'))}: the provider API the Hub dials on `portcullis-mail-api` |")
+    li = m.get("listeners") or {}
+    if isinstance(li, dict):
+        ports = ", ".join(f"{host} → `{li.get(k, '?')}`" for host, k in
+                          (("25", "smtp"), ("465", "submissions"), ("587", "submission"), ("993", "imaps")))
+        lines.append(f"| `listeners` | `{li.get('service', '?')}`: host port {ports} (published by the Hub, IPv4 only) |")
+    lines.append(f"| `wellknown` | {_endpoint(m.get('wellknown'))}: MTA-STS, autoconfig and autodiscover |")
+    lines.append(f"| `metrics` | {_endpoint(m.get('metrics'))} |")
+    sm = m.get("server_metrics")
+    if isinstance(sm, dict):
+        lines.append(f"| `server_metrics` | {_endpoint(sm)}, path `{sm.get('path', '?')}` |")
+    for k in ("tls", "gated"):
+        lines.append(f"| `{k}` | {', '.join(f'`{x}`' for x in m.get(k) or []) or '—'} |")
+    lines.append(f"| `sessions.restart` | `{(m.get('sessions') or {}).get('restart', '?')}`: restarted after every removal and every revoked mail password |")
+    ex = m.get("export")
+    if isinstance(ex, dict):
+        argv = " ".join(str(a) for a in ex.get("argv") or [])
+        lines.append(f"| `export` | `{ex.get('service', '?')}`: `{md_cell(argv)}` (`./portcullis mail export`) |")
+    else:
+        lines.append("| `export` | none: `./portcullis mail export` says the provider has none |")
+    lines.append("")
+    notes = APP_NOTES / f"{app_id}.md"
+    if notes.is_file():
+        lines.extend(notes.read_text().rstrip("\n").splitlines())
+        lines.append("")
+    return lines
+
+
 def ai_badge(app: dict) -> str:
     ai = app.get("ai") if isinstance(app.get("ai"), dict) else {}
     if ai.get("mcp"):
@@ -615,6 +674,7 @@ def generate_app_page(app: dict, output_dir: Path):
                          "`portcullis-auth@docker,portcullis-groups@docker` to every router.")
             lines.append("")
 
+    lines.extend(mail_lines(app))
     lines.extend(ai_lines(app))
 
     images = compose_images(app.get("_compose") or {})

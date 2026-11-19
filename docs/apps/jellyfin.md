@@ -43,8 +43,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `jellyfin` | `jellyfin/jellyfin:12.4` | `sha256:fea863d0cd9e…` |
-| `jellyfin-plugin` | `python:3.15.2-alpine` | `sha256:20a82dbc2783…` |
-| `jellyfin-setup` | `python:3.15.2-alpine` | `sha256:20a82dbc2783…` |
+| `jellyfin-plugin` | `python:3.15.2-alpine` | `sha256:0f9552bb2871…` |
+| `jellyfin-setup` | `python:3.15.2-alpine` | `sha256:0f9552bb2871…` |
 
 ## Settings
 

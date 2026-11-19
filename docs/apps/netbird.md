@@ -46,9 +46,9 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `coturn` | `coturn/coturn:4.18.0` | `sha256:bbefd3e1fdfd…` |
-| `netbird-dashboard` | `netbirdio/dashboard:v2.96.0` | `sha256:340b13c00b84…` |
-| `netbird-management` | `netbirdio/management:0.82.0` | `sha256:07c8f979fcc9…` |
-| `netbird-signal` | `netbirdio/signal:0.82.0` | `sha256:0c0c38bbef7d…` |
+| `netbird-dashboard` | `netbirdio/dashboard:v2.97.0` | `sha256:203b2dc90dc2…` |
+| `netbird-management` | `netbirdio/management:0.83.1` | `sha256:77c74f342e4d…` |
+| `netbird-signal` | `netbirdio/signal:0.83.1` | `sha256:9ceb99a656b3…` |
 
 ## Settings
 

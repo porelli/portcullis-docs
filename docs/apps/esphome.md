@@ -41,7 +41,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `esphome` | `ghcr.io/esphome/esphome:2026.10.2` | `sha256:4a918585150e…` |
-| `esphome-gate` | `nginx:1.31.8-alpine` | `sha256:785835ea65db…` |
+| `esphome-gate` | `nginx:1.31.8-alpine` | `sha256:fed7e14be83c…` |
 
 ## Settings
 
