@@ -79,6 +79,11 @@ exactly as on a real install. Every step drives the stack through
     - a `202` whose `poll` isn't the op's own `?op_id=` record fails, and so does a poll that answers another op.
     - every failure message is scrubbed: a password or NT hash in a record never reaches the output.
 
+- **`tests/test_e2e_mailcheck.py`** (step "e2e helper unit tests (e2e_mailcheck)"). Same venv, standard library only. It tests the pure helpers `e2e_mail.py` takes from `tests/e2e/e2e_mailcheck.py`:
+    - `network_retries`: a browser step is retried only after Chromium aborted it on a network change on the runner (`net::ERR_NETWORK_CHANGED`, raised by `page.goto` itself or left as a `chrome-error://` page). It makes at most 4 attempts, notes each retry and waits between them. Any other failure is raised at once.
+    - `switch_voided_problem`: after a provider switch, every row is `voided` with exactly "the mail server changed on <date>: create a new mail password" for an allowed date, and every required label is there. `active`, `provider_changed` as a status, another reason, another date or a missing row is named.
+    - `confirm_phrase` / `pending_uuids`: the phrase the Hub's `400` asks to be typed (also inside a JSON error body), and the pending removal's uuids. A missing, confirmed, empty or blank-uuid pending removal fails.
+
     The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
 
 - **Shared sign-in vectors match the Hub.** `tests/signin_vectors.json` must equal, byte for byte, the Hub's `internal/signin/testdata/vectors.json` on the same-named porelli/portcullis-hub branch when it exists (exactly `refs/heads/<branch>`), else `main`, fetched at the commit `git ls-remote` listed (like portcullis-keycloak's `vectors` job); a failed branch lookup fails the step.
@@ -964,7 +969,12 @@ templates checkout as above, the adapter and `mail-fake` built from the
 checkout), mail on for `ci.example.org` and the added domain `team-b.test`,
 plus a second Stalwart ("remote", `remote.test`, `.github/ci/e2e-mail-remote.sh`)
 on the wired app's egress network (disconnected and reconnected around every
-switch and around the restore). **Nothing leaves the runner:** outbound 25,
+switch; disconnected for good before the restore, since the Hub's void after
+it recreates that network, and a foreign container on it would make that
+fail). The fresh sign-ins that wire, switch and confirm are retried, at most
+4 attempts and each noted in the job summary, only when Chromium aborted
+them on a network change (`net::ERR_NETWORK_CHANGED`: container starts change
+the runner's network). **Nothing leaves the runner:** outbound 25,
 465 and 587 is rejected outside the stack's networks and every name is the
 fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 
@@ -976,16 +986,32 @@ fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 - **8 members_only_list**, **9 postmaster_to_admins**: the remote can't post to the members-only list (`550 5.7.1` at RCPT), a member can; `postmaster@` reaches the administrators.
 - **5 revoke_within_8s**, **6 leave_ends_idle_session**, **7 recreated_username_fresh_mailbox**: an IMAP session fails within 8 s of the revoke; an IDLE session fails within 8 s of the person's removal from `mail_users`, whose address then gets `550 5.1.1`; a username deleted and created again gets an empty mailbox, the old passwords fail, and `former-<old uuid>` is listed.
 - **13 wiring_guards**: wiring `mail-fake` (from a CI-only source) is refused without a fresh proof (403), with a wrong typed id (400), for an AI / MCP actor (403) and for a delegate (403); with all of them it succeeds.
-- **11 switch_provider**: a switch to `mail-fake` (honest): the sets replaced per domain with the old DKIM keys kept, retiring; the mail passwords' rows voided (`provider_changed`); the ports reach the fake (no SMTP banner); `stalwart` stopped with its volumes; `mail.provider_switched` audited; then back to `stalwart` (which voids again).
-- **12 hostile_provider_contained**: `mail-fake` in hostile mode while wired: none of its forbidden records reaches the zone (`mail_records_wrong` names them), no mass-removal document is sent, and the over-wide `allowed_ips` row is revoked.
+- **11 switch_provider**: a switch to `mail-fake` (honest):
+    - the sets are replaced per domain, with the old DKIM keys kept, retiring;
+    - every mail password row is `voided` with "the mail server changed on <date>", including one made under `stalwart` just before the switch;
+    - the ports reach the fake (no SMTP banner);
+    - nothing of `stalwart` runs (the unwire is a compose down) and its volumes stay;
+    - `mail.provider_switched` is audited;
+    - then it switches back to `stalwart` (which voids again), and IMAP refuses both the old password and the one made before the switch.
+- **12 hostile_provider_contained**: `mail-fake` in hostile mode while wired:
+    - none of its forbidden records reaches the zone (`mail_records_wrong` names them), and no mass-removal document is sent;
+    - the over-wide `allowed_ips` row is revoked (`mail_lan_only_unenforced`);
+    - a void whose verification fails stops it (`mail_void_pending`, no container left running). The fake keeps its store in its data volume, so it survives the void-mode start, as a real provider's does. It keeps one password through the void and through the Hub's revoke of it.
 - **14 template_change_holds**: the wired template's files change and the Hub syncs: no container is recreated, the provider is held (`mail_provider_refused`), and the mail routes still answer `200` (Ruling R-HH1: the held provider keeps serving); a confirmation clears the hold and the routes keep answering.
 - **15 conformance_stalwart**: `run.py --level full` against the wired `stalwart`.
-- **16 conformance_fake_api**: `run.py --level api` against `mail-fake`, wired for the run.
+- **16 conformance_fake_api**: `run.py --level api` against `mail-fake`, wired for the run. Then the switch back to `stalwart`, whose store still holds the accounts of 15's conformance documents (Ruling R-SWITCH-BASE-3: kept, a real-world case):
+    - its guard refuses the Hub's first document as a mass removal, and the Hub holds it as a pending removal (`mail_mass_removal_pending`);
+    - `POST /api/mail/confirm-removal` is refused for a non-admin, without a fresh sign-in and without the typed confirmation;
+    - root's confirmation with both is accepted, and `mail.confirm_removal` is audited;
+    - the sync converges: no pending removal, no `mail_sync_blocked`, the document applied.
+
+Before the backup, alice makes a mail password and it logs in over IMAP: the one scenario 10 judges (every earlier one was voided by the switches).
 
 Then the job runs `./portcullis backup` and `./portcullis restore --yes`, and
 `e2e_mail.py restore` (**10 restore_voids_mail_passwords**) checks that the
-rows are voided (`void_restore`), the Sign-in page says "reset by a
-restore" and the old password is refused by IMAP and SMTP AUTH. On failure
+password made before the backup is refused by IMAP and SMTP AUTH, its row is
+voided "reset by a restore" (`mail_credential.void_restore` audited), and the
+Sign-in page says "reset by a restore". On failure
 it uploads the provider's, the remote's, the domains', Hub, Traefik and
 Keycloak logs (never a password: every one is masked as soon as it is known,
 and there are no Playwright traces). One scenario on its own:
@@ -1357,6 +1383,7 @@ command".
 ```bash
 python3 tests/test_group_gate.py   # in a venv with group-gate/requirements.txt
 python3 tests/test_e2e_fsops.py
+python3 tests/test_e2e_mailcheck.py
 bash tests/test_cli.sh
 bash tests/test_shell_libs.sh
 (cd enroll && go test ./...)
