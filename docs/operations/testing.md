@@ -1001,8 +1001,9 @@ fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 - **15 conformance_stalwart**: `run.py --level full` against the wired `stalwart`.
 - **16 conformance_fake_api**: `run.py --level api` against `mail-fake`, wired for the run. Then the switch back to `stalwart`, whose store still holds the accounts of 15's conformance documents (Ruling R-SWITCH-BASE-3: kept, a real-world case):
     - its guard refuses the Hub's first document as a mass removal, and the Hub holds it as a pending removal (`mail_mass_removal_pending`);
-    - `POST /api/mail/confirm-removal` is refused for a non-admin, without a fresh sign-in and without the typed confirmation;
-    - root's confirmation with both is accepted, and `mail.confirm_removal` is audited;
+    - `pending_removal.confirm_phrase` is `remove <n> mailboxes` (`remove 1 mailbox`);
+    - `POST /api/mail/confirm-removal` is refused for a non-admin (`403`) and without a fresh sign-in even with the right phrase (`403`); with a proof and a wrong phrase it answers `400` naming the phrase;
+    - that same proof with the phrase gets `204` (the phrase is checked before the proof is spent), and `mail.confirm_removal` is audited with the count and the uuids;
     - the sync converges: no pending removal, no `mail_sync_blocked`, the document applied.
 
 Before the backup, alice makes a mail password and it logs in over IMAP: the one scenario 10 judges (every earlier one was voided by the switches).
