@@ -7289,15 +7289,19 @@ The ConfigMap **`portcullis-cluster-addresses`** in the core namespace, key `add
 
 ### 20.10 Per-replica logs
 
-The gates run as StatefulSets (2 replicas in HA, one local PVC each), so their logs are per replica. Each serves them on its own read-only port, which only the Hub pod may reach (NetworkPolicy; no other auth, a stated delta in `hardening.md`):
+The gates run as StatefulSets (in HA; one local PVC each, so their logs are per replica: 1 replica while the chart still mounts the single-node `hub-data` / `vpn-doc` into them, 2 once it no longer does). Each serves its log on its own read-only port, which only the Hub pod may reach (NetworkPolicy; no other auth, a stated delta in `hardening.md`):
 
 | Service | Port | Route | Answer |
 |---|---|---|---|
-| group-gate | `:8091` | `GET /v1/log?from=<RFC 3339>&limit=<n>` | the opened log (§8.2) as JSONL from `from`, oldest first, at most `limit` lines (1–10000, default 1000) and **≤ 4 MiB** |
-| mcp-gate | `:8092` | `GET /v1/log?from=<RFC 3339>&limit=<n>` | the access log (§15.8), the same rules |
+| group-gate | `:8091` | `GET /v1/log?cursor=<c>&limit=<n>` or `GET /v1/log?from=<RFC 3339>&limit=<n>` | the opened log's lines (§8.2), JSONL |
+| mcp-gate | `:8092` | the same | the access log's lines (§15.8), JSONL |
 | wg | `:8093` | `GET /v1/status` | the status document the Hub reads on Docker (`HUB_VPN_STATUS_FILE`) |
 
-Every other method is `405`. The Hub (with `HUB_GATE_LOG_SOURCES=http`, set by the chart) finds the replicas with `pods` `list` (§6), reads each, and merges them by timestamp, then replica; an unreadable replica or an answer over 4 MiB marks the result **incomplete**. group-gate prunes its own log to `GATE_OPENED_PRUNE_DAYS` (set by the chart); on Docker the Hub's file sources and pruning are unchanged.
+- **Paging.** A first page starts at `from` (the first line whose `time` is at or after it; neither = the start of the log); every later page passes `cursor` = the previous answer's `X-Portcullis-Next` (preferred; `cursor` and `from` together are `400`). The cursor is opaque (it encodes a byte offset in the log plus the time of the last line served) and **exclusive**: the next page starts right after the last line served, so lines sharing one second are never repeated or skipped. A cursor whose position no longer holds (the file was rewritten by its pruning) restarts at its time (the first line at or after it): the Hub drops duplicates (same line, same replica). A malformed cursor is `400`.
+- **Answers.** Lines in file order (the order they were written; time order up to a few seconds' skew), each exactly as on disk, whole valid lines only (torn or unparsable lines are skipped), at most `limit` lines (1–10000, default 1000; no sign, no leading zero) and **≤ 4 MiB**. Every `200` carries the headers **`X-Portcullis-Next: <cursor>`** (also when no line was served: then the position to poll from) and **`X-Portcullis-Truncated: true|false`** — `true` when the `limit` or the 4 MiB cut stopped the answer while another line was there; the Hub reads on with the cursor until it is `false`.
+- **Bounds.** At most 4 connections per port (more wait or are closed), each request within 30 s from its connection, one read at a time held until its answer is written.
+
+Every other method is `405`; an unknown or repeated parameter, a bad `from`, `cursor` or `limit` is `400`. The Hub (with `HUB_GATE_LOG_SOURCES=http`, set by the chart) finds the replicas with `pods` `list` (§6), pages through each with the cursor, and merges them by timestamp, then replica; an unreadable replica marks the result **incomplete**. group-gate prunes its own log to `GATE_OPENED_PRUNE_DAYS` (set by the chart); on Docker the Hub's file sources and pruning are unchanged.
 
 ### 20.11 Sites and the mesh across sites
 
