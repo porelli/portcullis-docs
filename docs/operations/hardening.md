@@ -833,6 +833,15 @@ policies and NetworkPolicies take their place. The full rules are in
   administrators' addresses. `status` and the doctor warn when either
   answers on the public address.
 
+- **Proxy trust and host-network pods (high availability).** Keycloak and
+  Grafana trust proxy headers from the pod CIDR, which in HA is how
+  Traefik's pods reach them. A pod with `hostNetwork` in a privileged
+  namespace (Longhorn's, the fencing operators') on the same node also
+  arrives from inside the pod CIDR (from `cni0`), so it would be trusted
+  too. Such a pod is already root-equivalent on its node, and no ordinary
+  pod has that route: apps can't use the host network, and Traefik itself
+  runs in the pod network.
+
 ### nodeadm (high availability)
 
 `nodeadm` enrols and removes cluster nodes
