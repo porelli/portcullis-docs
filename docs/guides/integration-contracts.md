@@ -7252,7 +7252,7 @@ The nodeagent serves **`https://<its mesh ip>:7443/v1`** only (no other listener
 
 The front door is the domains service's role `domains frontdoor` (§20.1): the **only** holder of the main domain's DNS credentials in HA (the Secret `frontdoor-env`, mounted by it alone; Traefik's resolver is off), with no API besides health on `:8090` and metrics on `:9106` (`portcullis_frontdoor_addresses{name}`, `portcullis_frontdoor_unhealthy_published_seconds{name,address}`, `portcullis_frontdoor_site_healthy{site}`, `portcullis_frontdoor_blind_probers{site}`). It writes only the main domain's `address` set (`<d>`, `*.<d>`), its `caa` and `_acme-challenge.<d>`; any other name is refused before the provider call. It issues the main domain's certificate with its **own** ACME account (§12.4). Its egress is §20.1's "Network flows" (the DNS provider's API, the ACME CA, nodeadm's `:8443`, the nodeagents' `:7443`, the API server); its client certificate is `frontdoor.control` (§17.5). The Hub is never in the DNS decision path.
 
-- **Health of an ingress node** = all of: the node is Ready and its Traefik pod is Ready (from nodeadm's `GET /v1/cluster`), and the HTTPS probe of §20.4 sent to its public address passes for a majority of the eligible, non-blind probers. An address is **removed only when a strict majority** of the non-blind eligible probers fail it for 3 rounds; a tie keeps it (fail static).
+- **Health of an ingress node** = all of: the node is Ready and its Traefik pod is Ready (from nodeadm's `GET /v1/cluster`), and the HTTPS probe of §20.4 sent to its public address isn't failed by a strict majority of the eligible, non-blind probers. An address is **removed only when a strict majority** of the non-blind eligible probers fail it for 3 rounds; a tie keeps it (fail static). It is **added back only when a strict majority** of them pass it for the 2 min below (with no eligible prober, readiness alone decides); a tie neither removes nor re-adds it, and restarts the 2 min (vector `2 sites: a tie (1 of 2 passing) doesn't re-add; …`). When two addresses of a name are due at once, the one unhealthy (or, for an addition, healthy) the longest goes first, then the lowest value.
     - **Eligible (spike S6):** only probers at **another site** than the target count; same-site results never do. A **single-site cluster is always internal-only**: it judges ingress nodes by node and Traefik readiness only, and raises `frontdoor_probes_internal_only` (§14.5).
     - **Blind (R10):** a prober that fails every target in a round, its own address included, **and** fails its `egress_ok` reference (§20.4) has lost its own uplink: its results are discarded for that round. (A prober whose targets all fail but whose egress works is not blind: the targets are down.)
     - **Two-site span:** with 2 or more sites holding eligible probers, an address is removed only when its failing probers span at least 2 sites. With exactly 2 sites only the other site can probe a target, so that site's probers alone decide, and only while they aren't blind.
@@ -7263,14 +7263,14 @@ The front door is the domains service's role `domains frontdoor` (§20.1): the *
 - **`frontdoor-status`** (ConfigMap in the core namespace, key `status.json`, written only by the front door's own Role; the Hub has `get`, §6):
 
     ```json
-    {"v": 1,
+    {"v": 1, "state": "leading",
      "names": {"<name>": {"addresses": ["198.51.100.7"], "ttl": 600, "worst_case_s": 630,
                           "last_change": "2026-11-18T10:00:00Z", "pending": {"op": "remove", "value": "198.51.100.8", "since": "…"}}},
      "probes": {"<node>": {"ok": true, "internal_only": false, "blind": false}},
      "sites": {"<site>": {"healthy": true, "ingress": ["n1", "n2"]}}}
     ```
 
-    `pending` is `null` or the change waiting for its hysteresis; `worst_case_s` = 30 s of detection + the TTL.
+    `state` is `leading` or `standing by` (§20.5); `pending` is `null` or the change waiting for its hysteresis (or for the rate limit, or for another address before the last one can go); `worst_case_s` = 30 s of detection + the TTL. `probes.<node>.ok` is the node's verdict that round (healthy), `internal_only` that no eligible prober judged it. The main domain's credentials are the Secret `frontdoor-env`'s one key `credentials.json`, `{"provider", "credentials"}` with the dns tool's provider names and keys (§12.2), mounted as a file (never argv or the environment); `frontdoor-control-tls` holds `tls.crt`, `tls.key` and `ca.crt` (the `pki_node` CA).
 
 - **Worst-case texts** (vectors: `frontdoor_vectors.json` `want_worst_case_text` per name and `want_site_worst_case_text` per site; the Hub's HA page renders both): `worst case ~<m> min for clients that hit the dead address first, on <provider>` and `if site <s> fails: worst case ~<m> min on <provider>`, `<m>` = `worst_case_s` / 60 **floored** to whole minutes, at least 1 (Porkbun: 630 s → "~10 min"; TTL 60: 90 s → "~1 min"; both cases are in the vectors), `<provider>` the provider's display name (e.g. "worst case ~10 min for clients that hit the dead address first, on Porkbun").
 
