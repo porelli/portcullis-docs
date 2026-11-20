@@ -863,6 +863,18 @@ nodeadm. Treat it like the CLI's own credentials.
   "node <id> was removed but registered again (its kubelet still runs):
   revoke it again and reinstall that machine". Do both, or power the
   machine off first.
+- **A compromised server holds more than its tokens.** A k3s server
+  node keeps the etcd peer certificates and the cluster CA keys on its own
+  disk. Revoking it and rotating both tokens cut its API access and its
+  joins, but they don't revoke those keys. Full recovery from a
+  compromised server needs a CA rotation, `k3s certificate rotate-ca`,
+  run by hand: it isn't automated in this version.
+- **A revoke without etcd quorum parks.** The security steps run at once:
+  the certificate is revoked, the bootstrap tokens are deleted, and the
+  server and agent tokens are rotated and given to the reachable nodes.
+  The Node object and the etcd member stay until etcd has a healthy
+  majority again; then the revoke finishes by itself. The HA page shows
+  it as parked.
 
 ### The Hub's write fence (high availability)
 
