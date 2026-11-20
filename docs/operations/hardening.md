@@ -833,6 +833,22 @@ policies and NetworkPolicies take their place. The full rules are in
   administrators' addresses. `status` and the doctor warn when either
   answers on the public address.
 
+### The Hub's write fence (high availability)
+
+The Hub writes only while it holds the Lease `portcullis-hub`. The
+contract's §20.5 has the timings.
+
+- **Standing by is final.** Once the Hub's last successful renewal is
+  10 s old, it stops writing for good. Its background work stops at once,
+  every write answers `503`, and 15 s later the process exits so a
+  restart re-reads the state. A renewal that still succeeds later never
+  reopens the fence.
+
+- **Restarts back off.** The kubelet restarts the Hub with its usual
+  back-off: 10 s, 20 s, 40 s and so on, up to 5 min. A few API-server
+  outages in a row can keep the Hub down for minutes after the API is
+  back. The back-off resets after 10 minutes without a restart.
+
 ## File sharing
 
 The Samba and Time Machine templates enforce hardened SMB3 and trust only the Local networks (§ [File Sharing](file-sharing.md)).
