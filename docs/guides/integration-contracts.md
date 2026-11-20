@@ -7031,7 +7031,7 @@ A Portcullis install on Kubernetes (§6 "On Kubernetes") of **3 or more nodes** 
 
     The class suggestion (nodeagent `class.Suggest`, vectors `nodeclass_vectors.json`): `small` below **3.5 GiB** of RAM (3 758 096 384 bytes, so a nominal 4 GB machine is `home`) or on a Pi model string (it contains `Raspberry Pi`), else `cloud` when a public address answers, else `home`. A `small` node gets the taint **`portcullis.io/small=true:NoSchedule`**; the Sentinels and the third Vault voter tolerate it, nothing else in core does, and an app only through *Runs on: Only* (§20.6).
 
-- **PriorityClasses** (core's chart; `globalDefault: true` only on `portcullis-normal`; the admission policy keeps `portcullis-core` off app pods, §6):
+- **PriorityClasses** (no `globalDefault` (every pod names its class: app pods get theirs from the translator, every core and infrastructure pod names `portcullis-core` or `portcullis-critical`; they are applied from `kube/priorityclasses.yaml` before anything that names them); the admission policy keeps `portcullis-core` off app pods, §6):
 
     | Class | Value | Preemption |
     |---|---|---|
