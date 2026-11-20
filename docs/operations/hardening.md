@@ -833,6 +833,30 @@ policies and NetworkPolicies take their place. The full rules are in
   administrators' addresses. `status` and the doctor warn when either
   answers on the public address.
 
+### nodeadm (high availability)
+
+`nodeadm` enrols and removes cluster nodes
+([contract §20.2](../guides/integration-contracts.md#202-the-nodeadm-api)).
+It is the only holder of the k3s server and agent tokens, and the only
+cluster-scoped actor besides the CLI.
+
+- **No etcd credential.** It runs in its own namespace
+  `portcullis-nodeadm` under PSA `restricted`, as uid 10010, with no
+  hostPath. An etcd member is removed by a surviving server's nodeagent,
+  and only for a node that is already listed `removed`.
+- **No admission rights.** It can't write any admission policy, binding
+  or params ConfigMap. Only the CLI's `kube params-sync` writes them.
+- **Rate limits.** Its public `/node/…` paths are rate-limited per source
+  and overall, before any work.
+- **Material once.** A node gets its k3s material once per enrolment.
+- **Revoke and a running kubelet.** A revoke removes the node object, the
+  etcd member, the node's certificate and its bootstrap tokens, and
+  rotates both cluster tokens. It can't stop a machine that is still
+  running: if its kubelet registers the node again, the HA page shows
+  "node <id> was removed but registered again (its kubelet still runs):
+  revoke it again and reinstall that machine". Do both, or power the
+  machine off first.
+
 ### The Hub's write fence (high availability)
 
 The Hub writes only while it holds the Lease `portcullis-hub`. The
