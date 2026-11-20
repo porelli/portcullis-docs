@@ -840,6 +840,13 @@ policies and NetworkPolicies take their place. The full rules are in
 It is the only holder of the k3s server and agent tokens, and the only
 cluster-scoped actor besides the CLI.
 
+**nodeadm is cluster-admin-equivalent.** The k3s server token it holds can
+fetch the cluster's bootstrap data, which includes the etcd and CA keys.
+Whoever controls nodeadm can therefore take over the whole cluster. The
+rules below (no etcd mount, no admission rights, PSA `restricted`) reduce
+its exposure, but they are **not a boundary** against a compromised
+nodeadm. Treat it like the CLI's own credentials.
+
 - **No etcd credential.** It runs in its own namespace
   `portcullis-nodeadm` under PSA `restricted`, as uid 10010, with no
   hostPath. An etcd member is removed by a surviving server's nodeagent,
