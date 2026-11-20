@@ -4827,25 +4827,26 @@ Under a non-identity map, `apply`, `restore` and `childfix` refuse (exit `2`, no
 
     **Forbidden roots.** Under Kubernetes the Docker-root rule (§13.15, §14.1) uses `PORTCULLIS_RUNTIME_ROOTS` from `core.env`: the containerd root and the local-path storage directory, space-separated. A path at, above or under one of them is refused like a path at Docker's data root.
 
-- **High availability (NEW, HA)** registers **sixteen** more kinds through the same check interface (Hub `internal/doctor/ha.go` `HAKinds`, in this order; input `HAIn{Snapshot, FrontdoorStatus, Published, LastBackup, Lease}`). They register only under `HUB_CONTAINER_RUNTIME=kubernetes` (under Docker and Podman they never fire), and all are explain-only. The first eight are the spec's (`template_no_memory_limit` judges the translator's default, §3.4); the last eight are added by the HA plan:
+- **High availability (NEW, HA)** registers **seventeen** more kinds through the same check interface (Hub `internal/doctor/ha.go` `HAKinds`, in this order; input `Inputs.HA` = `HAIn{Now, Enabled, Snapshot, SnapshotErr, LastNodes, Namespaces, NMinus1, NMinus1Err, MustFence, Sites, FrontdoorStatus, FrontdoorErr, LastBackup, BackupErr, Lease, NoMemoryLimit, NodeCerts}`; the four mesh kinds keep `Inputs.Mesh` and the two published-document kinds `Inputs.Published`). They register only under `HUB_CONTAINER_RUNTIME=kubernetes` (under Docker and Podman `Inputs.HA` is nil and they never fire), and all are explain-only. The timed kinds judge the Hub's clock. The doctor waits for nodeadm's snapshot (the HA page's shared read) at most **5 s**: past that, or with the snapshot unreadable, `SnapshotErr` is set and `ha_n_minus_1_insufficient` raises "can't judge" (never a pass). **Redundancy gate:** `ha_fencing_unavailable` and `ha_n_minus_1_insufficient` judge only a cluster that can fail over: HA on, or more than one node (in the snapshot, or in the last one read when it is unreadable); a single-node cluster without HA has no failover to lose (`node_down` covers it). The first eight are the spec's (`template_no_memory_limit` judges the translator's default, §3.4); the next eight are added by the HA plan, the last by the node certificates (§17.5):
     - `node_down` (Problem): a node NotReady for more than 1 min (`not_ready_since` in the snapshot, §20.2), naming it and its pods;
-    - `ha_quorum_at_risk` (Problem): a quorum system (`etcd`, `vault`, `sentinel`, §20.2) one healthy voter away from losing quorum, or below it;
+    - `ha_quorum_at_risk` (Problem): a quorum system (`etcd`, `vault`, `sentinel`, §20.2) of 2 or more voters one healthy voter away from losing quorum, or below it;
     - `volume_degraded` (Warning): a replicated-tier volume whose robustness isn't `healthy` for more than 10 min;
     - `pg_not_synchronous` (Warning): Postgres with no synchronous standby (`sync_standbys` 0 while `instances` ≥ 2): one more failure may lose the last writes;
     - `ha_fencing_unavailable` (Problem): a node holding replicated-tier pods whose fencing isn't ready (no watchdog, or Self Node Remediation unhealthy): no stateful failover happens there;
     - `ha_n_minus_1_insufficient`: the N−1 check (§20.7) — Problem for a red node, Warning for a yellow one, naming the node and the pods that wouldn't have room;
-    - `backup_stale` (Warning): HA is on and the last successful core backup to the destination is older than 26 h (or there is none);
+    - `backup_stale` (Warning): HA is on and the last successful core backup to the destination is older than 26 h (or there is none, or it can't be read);
     - `template_no_memory_limit` (Info, naming the instance): a service of an enabled instance has no `mem_limit`, so it runs with the 512 Mi default (§3.4);
-    - `frontdoor_probes_internal_only` (Warning): a single-site cluster (same-site probes never count, §20.8): the front door judges ingress nodes by in-cluster health only;
+    - `frontdoor_probes_internal_only` (Warning, HA on): a single-site cluster (same-site probes never count, §20.8), or an ingress node frontdoor-status reports `internal_only`: the front door judges those ingress nodes by in-cluster health only; and, as its own finding, frontdoor-status unreadable or not decoding ("The front door's probes can't be read.");
     - `published_doc_too_large` (Problem): a published document over 1 000 000 bytes was not published; the object keeps the last good one (§4), naming the document and its size;
     - `published_doc_stale` (Problem): a reader pod's `.rev-<doc>` is behind the published one for more than 120 s (§4), naming the document and the pod;
     - `ha_lease_lost` (Problem): this Hub lost or never got the Lease `portcullis-hub` (§20.5) and stands by: every write answers `503`;
     - `mesh_site_no_gateway` (Problem): a site with nodes but no reachable node left (its gateway is gone, §20.11): its NATed nodes can't reach the other sites;
     - `mesh_peer_stale` (Warning): a nodeagent missed the last peer plan (`PUT /v1/mesh/peers`, §20.4) for more than 5 min, naming the node;
     - `mesh_rtt_high` (Warning): a mesh round trip at 80 % or more of its limit (80 ms between servers, 200 ms from an agent to a server; §20.11), naming both nodes;
-    - `ha_two_sites_no_tiebreaker` (Warning): the cluster spans exactly 2 sites; its text is the two-site warning of §20.11.
+    - `ha_two_sites_no_tiebreaker` (Warning): the cluster spans exactly 2 sites; its text is the two-site warning of §20.11;
+    - `node_cert_expiring` (Problem): a node certificate the Hub holds (`hub.control`, §17.5) or pinned for a cluster node with less than 7 days left, or expired (its renewal at ⅓ has kept failing).
 
-    `kube_api_public` (above) is judged for **every** node's public address in the snapshot (§20.2), naming the exposed node.
+    `kube_api_public` (above) is judged per node, one finding per node naming it (fp `kube_api_public` + node): the Hub dials `:6443` and `:10250` (2 s each, in parallel, the result reused for 5 min) only on a public endpoint **on its own record** that never came from the Node object: the node's enrolment report, else its mesh record's endpoint once another site confirmed it by a handshake (`reachable`), and only when the front door would publish it (§20.11's public-endpoint rule: never private, loopback, link-local, CGNAT, special-purpose, documentation, nor the mesh, link, pod or service CIDRs). Anything else is never dialled. In a single-site cluster a node without such an endpoint gets an Info of the same kind, "Node <n>'s API and kubelet ports: not checked: no public address on record".
 
 - **Rootless Podman (NEW, rootless)** registers five more kinds through the same check interface (Hub `internal/doctor/engine.go`). They run only under `HUB_CONTAINER_RUNTIME=podman` (under Docker they never fire) and are all explain-only:
     - `runtime_mismatch` (Problem): the engine contradicts `HUB_CONTAINER_RUNTIME` (§6); every engine operation answers `503` until the Hub restarts against the right engine;
@@ -5689,6 +5690,7 @@ The only MCP server Portcullis writes: the Hub's, at `https://hub.<d>/mcp` (`/mc
     | `delete_field` | D | `DELETE /api/directory/fields/{name}` |
     | `import_apply` | D or W per call | `POST /api/directory/import/apply` |
     | `doctor_findings` | R | `GET /api/doctor` |
+    | `ha_findings` (**NEW (HA)**: the doctor's HA kinds and `kube_api_public` only, `{findings, counts, muted, kinds}`; `409` off Kubernetes) | R | `GET /api/doctor` |
     | `doctor_scan` | W | `POST /api/doctor/scan` |
     | `doctor_op` | R | `GET /api/doctor/op` |
     | `doctor_preview_fix` | R | `POST /api/doctor/findings/{fp}/preview` |
