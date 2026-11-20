@@ -645,7 +645,7 @@ The Hub writes `group-gate-policy.json` atomically (temp file + rename) to the `
 | Document | Kind | Object | Key | Mounted at | Readers |
 |---|---|---|---|---|---|
 | the policy file (§4) | ConfigMap | `pub-group-gate-policy` | `group-gate-policy.json` | `/hub-data` | group-gate |
-| user attributes (§4.1) | ConfigMap | `pub-user-attributes` | `user-attributes.json` | `/hub-data` | group-gate |
+| user attributes (§4.1) | ConfigMap | `pub-user-attributes` | `user-attributes.json` | `/hub-data` | group-gate, mcp-gate |
 | the portal list (§10) | ConfigMap | `pub-portal-apps` | `portal-apps.json` | `/hub-data` | group-gate |
 | `signin-keycloak.json` (§8.1) | ConfigMap | `pub-signin-keycloak` | `signin-keycloak.json` | `/hub-data` | keycloak |
 | `impersonation.json` (§8.1) | ConfigMap | `pub-impersonation` | `impersonation.json` | `/hub-data` | keycloak, group-gate |
