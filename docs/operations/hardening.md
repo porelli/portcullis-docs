@@ -873,8 +873,12 @@ nodeadm. Treat it like the CLI's own credentials.
   the certificate is revoked, the bootstrap tokens are deleted, and the
   server and agent tokens are rotated and given to the reachable nodes.
   The Node object and the etcd member stay until etcd has a healthy
-  majority again; then the revoke finishes by itself. The HA page shows
-  it as parked.
+  majority again. **A parked server is not fully cut off**: it stays an
+  etcd member until quorum returns, so it can still read the cluster's
+  data through etcd. Once quorum is back the revoke removes the member,
+  rotates both tokens a second time and finishes by itself. The HA page
+  shows it as parked. Treat a compromised server as needing
+  `k3s certificate rotate-ca` (above).
 
 ### The Hub's write fence (high availability)
 
