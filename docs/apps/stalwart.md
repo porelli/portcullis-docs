@@ -16,42 +16,43 @@
 | **Group Access** | :x: |
 | **Group Admin** | :x: |
 
-!!! info "Auth Notes"
-    Stalwart is a mail provider (contract §3.5, §19): installing it grants nothing. A full administrator wires it into the server's one mail slot in **Settings → Mail**; only then does the Hub publish its ports and hand it the mail certificate.
-
-    Once wired, the Hub publishes host ports 25, 465, 587 and 993 onto its listeners, attaches its adapter to the provider API network, routes the MTA-STS / autoconfig / autodiscover hosts to it and hands it the mail certificate and its secrets.
-
-    - `instances: single` because of those host ports and the one mail slot.
-    - The mailbox population is the Hub's `mail_users` group, never this template's.
-    - Mail passwords go through the provider API only (no `person_secret` here).
-
-    **Services:**
-
-    - `stalwart`: the Stalwart mail server. uid 2000, read-only, `cap_drop: ALL` plus `NET_BIND_SERVICE` (which the image's binary carries as a file capability). Listeners 10025 / 10465 / 10587 / 10993 behind the Hub's published ports.
-    - `adapter`: Portcullis' mailctl, uid 10010. The provider API, the well-known files, the spam rules, the checks and metrics; the only holder of Stalwart's API key.
-    - `resolver`: Unbound, a validating recursive resolver for the two.
-
-    **One-off jobs:**
-
-    - `adapter-bin` copies the pinned mailctl into a volume.
-    - `key-init` prepares the key volume (it holds the API key alone).
-    - `bootstrap` runs Stalwart in recovery mode inside its own container only (a random recovery password made in the job, a job-only session nonce). It applies the base plan once per store (only on an empty store; a store with data but no marker fails closed), writes the API key (0640, group `mailkey`, in the key volume only the job and the adapter mount) and exits 0 only once the recovery login is refused.
-        - It runs as Stalwart's uid and adds only `NET_BIND_SERVICE` (the Stalwart binary's file capability; no other), and is gated like the server.
-        - It re-runs on every cold start: a recovery start that checks the API key, then a normal start. A lost key gets a new key only, the settings untouched.
-        - It does nothing while the server holds the store lock.
-
-    **Start gate:** `stalwart` starts only when the Hub's slot files say so (`.present`, or the Hub's void mode with its session nonce); a raw `compose up` after a core restore stays stopped. A recovery-mode start outside the `bootstrap` job is refused.
-
-    **Networks:**
-
-    - `internal`: no internet; pinned 172.31.255.2 / .3 / .4 in the fixed subnet `172.31.255.0/28`. An existing network on that range stops the start.
-    - `egress`: `stalwart` and the resolver only.
-
-    Mail over IPv6 isn't supported.
-
-    The `dqs_key` setting reaches the adapter as an environment variable (the adapter moves it to a file before mailctl starts), so it shows in the adapter container's configuration (`docker inspect`): a third-party lookup key, not a Portcullis credential.
-
-    **Updates:** Stalwart is pinned. Any change to this template (an image bump included) holds the wired provider until an admin re-confirms it on the instance's **Mail** tab.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Stalwart is a mail provider (contract §3.5, §19): installing it grants nothing. A full administrator wires it into the server's one mail slot in <strong>Settings → Mail</strong>; only then does the Hub publish its ports and hand it the mail certificate.</p>
+<p>Once wired, the Hub publishes host ports 25, 465, 587 and 993 onto its listeners, attaches its adapter to the provider API network, routes the MTA-STS / autoconfig / autodiscover hosts to it and hands it the mail certificate and its secrets.</p>
+<ul>
+<li><code>instances: single</code> because of those host ports and the one mail slot.</li>
+<li>The mailbox population is the Hub's <code>mail_users</code> group, never this template's.</li>
+<li>Mail passwords go through the provider API only (no <code>person_secret</code> here).</li>
+</ul>
+<p><strong>Services:</strong></p>
+<ul>
+<li><code>stalwart</code>: the Stalwart mail server. uid 2000, read-only, <code>cap_drop: ALL</code> plus <code>NET_BIND_SERVICE</code> (which the image's binary carries as a file capability). Listeners 10025 / 10465 / 10587 / 10993 behind the Hub's published ports.</li>
+<li><code>adapter</code>: Portcullis' mailctl, uid 10010. The provider API, the well-known files, the spam rules, the checks and metrics; the only holder of Stalwart's API key.</li>
+<li><code>resolver</code>: Unbound, a validating recursive resolver for the two.</li>
+</ul>
+<p><strong>One-off jobs:</strong></p>
+<ul>
+<li><code>adapter-bin</code> copies the pinned mailctl into a volume.</li>
+<li><code>key-init</code> prepares the key volume (it holds the API key alone).</li>
+<li><code>bootstrap</code> runs Stalwart in recovery mode inside its own container only (a random recovery password made in the job, a job-only session nonce). It applies the base plan once per store (only on an empty store; a store with data but no marker fails closed), writes the API key (0640, group <code>mailkey</code>, in the key volume only the job and the adapter mount) and exits 0 only once the recovery login is refused.
+<ul>
+<li>It runs as Stalwart's uid and adds only <code>NET_BIND_SERVICE</code> (the Stalwart binary's file capability; no other), and is gated like the server.</li>
+<li>It re-runs on every cold start: a recovery start that checks the API key, then a normal start. A lost key gets a new key only, the settings untouched.</li>
+<li>It does nothing while the server holds the store lock.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Start gate:</strong> <code>stalwart</code> starts only when the Hub's slot files say so (<code>.present</code>, or the Hub's void mode with its session nonce); a raw <code>compose up</code> after a core restore stays stopped. A recovery-mode start outside the <code>bootstrap</code> job is refused.</p>
+<p><strong>Networks:</strong></p>
+<ul>
+<li><code>internal</code>: no internet; pinned 172.31.255.2 / .3 / .4 in the fixed subnet <code>172.31.255.0/28</code>. An existing network on that range stops the start.</li>
+<li><code>egress</code>: <code>stalwart</code> and the resolver only.</li>
+</ul>
+<p>Mail over IPv6 isn't supported.</p>
+<p>The <code>dqs_key</code> setting reaches the adapter as an environment variable (the adapter moves it to a file before mailctl starts), so it shows in the adapter container's configuration (<code>docker inspect</code>): a third-party lookup key, not a Portcullis credential.</p>
+<p><strong>Updates:</strong> Stalwart is pinned. Any change to this template (an image bump included) holds the wired provider until an admin re-confirms it on the instance's <strong>Mail</strong> tab.</p>
+</div>
 
 ## Mail provider
 

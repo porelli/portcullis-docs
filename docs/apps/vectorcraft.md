@@ -19,20 +19,21 @@
 | **Admin Group** | `admin_vectorcraft` |
 | **Subdomain** | `vectorcraft` |
 
-!!! info "Auth Notes"
-    [VectorCraft](https://github.com/storytold/vectorcraft) (Apache-2.0 OR MIT) is a static site: the app runs in the visitor's browser and has no user system, no server-side code and no server-side storage. Portcullis sign-in (forward-auth + group-gate) is the only login.
-
-    **In development upstream** (<https://getartcraft.com/apps>): expect missing features and breaking changes between versions.
-
-    - Every member of the access group gets the same app (there are no roles).
-    - Open uses the browser's file picker, Save/Export download files; preferences live in the browser's storage for this hostname.
-
-    **How it is served:** at every start the `vectorcraft-fetch` init container downloads the release's `vectorcraft-web-<version>.zip` from GitHub, checks its SHA-256 against the pin before unpacking, and swaps the unpacked site into the `vectorcraft-site` volume by rename. On any error it exits non-zero and the web server doesn't start (an unchanged pin skips the download).
-
-    - The host needs outbound HTTPS to github.com.
-    - The web server (nginx-unprivileged, read-only, no directory listing) answers only Traefik and itself.
-
-    **Version:** the **Release version** / **Release SHA-256** settings default to the pin in `compose.yml` (bumped with the template); set both together, from the release's `SHA256SUMS.txt`, to pin another release.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/storytold/vectorcraft">VectorCraft</a> (Apache-2.0 OR MIT) is a static site: the app runs in the visitor's browser and has no user system, no server-side code and no server-side storage. Portcullis sign-in (forward-auth + group-gate) is the only login.</p>
+<p><strong>In development upstream</strong> (<a target="_blank" rel="noopener noreferrer nofollow" href="https://getartcraft.com/apps">https://getartcraft.com/apps</a>): expect missing features and breaking changes between versions.</p>
+<ul>
+<li>Every member of the access group gets the same app (there are no roles).</li>
+<li>Open uses the browser's file picker, Save/Export download files; preferences live in the browser's storage for this hostname.</li>
+</ul>
+<p><strong>How it is served:</strong> at every start the <code>vectorcraft-fetch</code> init container downloads the release's <code>vectorcraft-web-&lt;version&gt;.zip</code> from GitHub, checks its SHA-256 against the pin before unpacking, and swaps the unpacked site into the <code>vectorcraft-site</code> volume by rename. On any error it exits non-zero and the web server doesn't start (an unchanged pin skips the download).</p>
+<ul>
+<li>The host needs outbound HTTPS to github.com.</li>
+<li>The web server (nginx-unprivileged, read-only, no directory listing) answers only Traefik and itself.</li>
+</ul>
+<p><strong>Version:</strong> the <strong>Release version</strong> / <strong>Release SHA-256</strong> settings default to the pin in <code>compose.yml</code> (bumped with the template); set both together, from the release's <code>SHA256SUMS.txt</code>, to pin another release.</p>
+</div>
 
 ## Routing
 

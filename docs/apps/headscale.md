@@ -19,31 +19,27 @@
 | **Admin Group** | `admin_headscale` |
 | **Subdomain** | `vpn-admin`, `vpn` |
 
-!!! info "Auth Notes"
-    Headscale, a Tailscale control server: people register nodes by signing in with OIDC, and the Headplane admin UI has its own OIDC client. It can also be this server's Portcullis VPN provider.
-
-    **Identity:** users are keyed on the OIDC subject (`iss` + `sub`) and named after `preferred_username` (the immutable LLDAP username); `email_verified_required` stays true, so the user-editable, unverified LLDAP email is never synced. Write ACL policy users as `"<username>@"`, never by email.
-
-    **Headplane:** the admin UI has its own OIDC client; it keys its users on `sub` and links them to the Headscale user with the same `sub` (its email fallback finds nothing because Headscale stores no unverified email). The first Headplane user becomes owner, later ones get the member role.
-
-    No group-based access restriction — all OIDC users can register nodes.
-
-    **Post-start step for Headplane:** create an API key with `docker exec portcullis-<instance>-headscale-1 headscale apikeys create --expiration 365d` (`portcullis-headscale-headscale-1` for the default instance), paste it into the **Headscale API key** setting, then restart the app. Renew it before it expires.
-
-    `config.yaml` is regenerated from the template on every start (so hostname and client changes apply), which means manual edits to it in the `headscale-config` volume are lost; change the template instead.
-
-    **Portcullis VPN provider** (`vpn:` below): once wired on this instance's VPN tab (**Settings → VPN** lists the providers and links there), the tailnet can carry VPN-only access to this server's apps.
-
-    - A gateway node (tailscale/tailscale in userspace mode, no TUN or capabilities, tagged `tag:portcullis-gateway`, registered by the `gateway-key` start hook with a single-use pre-auth key) forwards tailnet connections to Portcullis with PROXY v2.
-    - The `vpn-devices` hook tells Portcullis who owns each node: only nodes of Headscale users who signed in through Portcullis count (keyed on the OIDC subject), local Headscale users' nodes never do.
-    - The hooks use the **Headscale API key** setting: without it the gateway doesn't register and the device list goes stale (VPN-only apps are then denied), and when the key expires (365 days with the command above) the same happens until a new one is set.
-    - A removed node is reflected within the refresh interval (60 s).
-    - The `vpn-dns` hook writes the Portcullis hostnames into Headscale's extra DNS records (MagicDNS), so tailnet clients reach this server through the gateway.
-    - In whole-server VPN mode only the `headscale` router (coordination and DERP, which clients need to connect) stays on the internet; Headplane, an admin UI, becomes VPN-only.
-    - The gateway reaches headscale's control and DERP server at its public hostname through Traefik's published port on this host (stable across headscale restarts), trusting the Hub's CA bundle that `headscale-init` hands over through a read-only volume.
-    - The template adds no Headscale ACL policy (every node reaches every node, Headscale's default); an admin who adds one must let the VPN's people reach `tag:portcullis-gateway:443`, or the gateway is unreachable.
-
-    **Upgrades:** Headscale is pinned; upgrade one minor release at a time (its database migrations do not support skipping) and pick the Headplane release that supports that Headscale version.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Headscale, a Tailscale control server: people register nodes by signing in with OIDC, and the Headplane admin UI has its own OIDC client. It can also be this server's Portcullis VPN provider.</p>
+<p><strong>Identity:</strong> users are keyed on the OIDC subject (<code>iss</code> + <code>sub</code>) and named after <code>preferred_username</code> (the immutable LLDAP username); <code>email_verified_required</code> stays true, so the user-editable, unverified LLDAP email is never synced. Write ACL policy users as <code>&quot;&lt;username&gt;@&quot;</code>, never by email.</p>
+<p><strong>Headplane:</strong> the admin UI has its own OIDC client; it keys its users on <code>sub</code> and links them to the Headscale user with the same <code>sub</code> (its email fallback finds nothing because Headscale stores no unverified email). The first Headplane user becomes owner, later ones get the member role.</p>
+<p>No group-based access restriction — all OIDC users can register nodes.</p>
+<p><strong>Post-start step for Headplane:</strong> create an API key with <code>docker exec portcullis-&lt;instance&gt;-headscale-1 headscale apikeys create --expiration 365d</code> (<code>portcullis-headscale-headscale-1</code> for the default instance), paste it into the <strong>Headscale API key</strong> setting, then restart the app. Renew it before it expires.</p>
+<p><code>config.yaml</code> is regenerated from the template on every start (so hostname and client changes apply), which means manual edits to it in the <code>headscale-config</code> volume are lost; change the template instead.</p>
+<p><strong>Portcullis VPN provider</strong> (<code>vpn:</code> below): once wired on this instance's VPN tab (<strong>Settings → VPN</strong> lists the providers and links there), the tailnet can carry VPN-only access to this server's apps.</p>
+<ul>
+<li>A gateway node (tailscale/tailscale in userspace mode, no TUN or capabilities, tagged <code>tag:portcullis-gateway</code>, registered by the <code>gateway-key</code> start hook with a single-use pre-auth key) forwards tailnet connections to Portcullis with PROXY v2.</li>
+<li>The <code>vpn-devices</code> hook tells Portcullis who owns each node: only nodes of Headscale users who signed in through Portcullis count (keyed on the OIDC subject), local Headscale users' nodes never do.</li>
+<li>The hooks use the <strong>Headscale API key</strong> setting: without it the gateway doesn't register and the device list goes stale (VPN-only apps are then denied), and when the key expires (365 days with the command above) the same happens until a new one is set.</li>
+<li>A removed node is reflected within the refresh interval (60 s).</li>
+<li>The <code>vpn-dns</code> hook writes the Portcullis hostnames into Headscale's extra DNS records (MagicDNS), so tailnet clients reach this server through the gateway.</li>
+<li>In whole-server VPN mode only the <code>headscale</code> router (coordination and DERP, which clients need to connect) stays on the internet; Headplane, an admin UI, becomes VPN-only.</li>
+<li>The gateway reaches headscale's control and DERP server at its public hostname through Traefik's published port on this host (stable across headscale restarts), trusting the Hub's CA bundle that <code>headscale-init</code> hands over through a read-only volume.</li>
+<li>The template adds no Headscale ACL policy (every node reaches every node, Headscale's default); an admin who adds one must let the VPN's people reach <code>tag:portcullis-gateway:443</code>, or the gateway is unreachable.</li>
+</ul>
+<p><strong>Upgrades:</strong> Headscale is pinned; upgrade one minor release at a time (its database migrations do not support skipping) and pick the Headplane release that supports that Headscale version.</p>
+</div>
 
 ## Routing
 

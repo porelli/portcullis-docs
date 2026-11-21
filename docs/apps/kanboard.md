@@ -19,16 +19,17 @@
 | **Admin Group** | `admin_kanboard` |
 | **Subdomain** | `kanboard` |
 
-!!! info "Auth Notes"
-    Reverse proxy auth: users are matched on `X-Forwarded-User`, the immutable LLDAP username, and auto-created on first login. Access gated by group-gate.
-
-    - The header is honoured only from Traefik (`TRUSTED_PROXY_NETWORKS` = `PORTCULLIS_TRAEFIK_SOURCE`).
-    - `X-Forwarded-Email` (user-editable) only fills the profile email and is ignored from other peers too.
-    - The LLDAP user picked in **Kanboard administrator** (default `admin` = LLDAP's built-in admin) gets the Kanboard admin role; other roles are set in the Kanboard UI.
-
-    **No public exceptions:** Kanboard's router reads `?controller=&action=` before the path (`app/Core/Http/Router.php`), so any public prefix would reach every `APP_PUBLIC` action, local password login included.
-
-    Accounts created when the header carried the email are named after it; rename them to the LLDAP username in Kanboard.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Reverse proxy auth: users are matched on <code>X-Forwarded-User</code>, the immutable LLDAP username, and auto-created on first login. Access gated by group-gate.</p>
+<ul>
+<li>The header is honoured only from Traefik (<code>TRUSTED_PROXY_NETWORKS</code> = <code>PORTCULLIS_TRAEFIK_SOURCE</code>).</li>
+<li><code>X-Forwarded-Email</code> (user-editable) only fills the profile email and is ignored from other peers too.</li>
+<li>The LLDAP user picked in <strong>Kanboard administrator</strong> (default <code>admin</code> = LLDAP's built-in admin) gets the Kanboard admin role; other roles are set in the Kanboard UI.</li>
+</ul>
+<p><strong>No public exceptions:</strong> Kanboard's router reads <code>?controller=&amp;action=</code> before the path (<code>app/Core/Http/Router.php</code>), so any public prefix would reach every <code>APP_PUBLIC</code> action, local password login included.</p>
+<p>Accounts created when the header carried the email are named after it; rename them to the LLDAP username in Kanboard.</p>
+</div>
 
 ## Routing
 

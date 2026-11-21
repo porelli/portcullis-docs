@@ -19,25 +19,22 @@
 | **Admin Group** | `admin_motioneye` |
 | **Subdomain** | `cameras` |
 
-!!! info "Auth Notes"
-    motionEye 0.44 (motioneye-project, maintained: 0.44.0 in June 2026) has no SSO. Access is gated by forward-auth + group-gate on the whole host, and motionEye's own login (accounts `admin` and `user`) stays as a second step.
-
-    **Its two local accounts:** `admin` (full configuration) and `user` (view only), whose passwords are empty after a fresh install.
-
-    - `motioneye-init` sets each account with an empty password to a generated one before every start (`MOTIONEYE_ADMIN_PASSWORD` / `MOTIONEYE_USER_PASSWORD` in this instance's `.env`, Hub data `env/<instance>.env`; hashed by motionEye, argon2), so motionEye never runs with its well-known empty default, and the healthcheck fails while either is empty.
-    - Share the admin password with your camera administrators and the user password with viewers; a password changed in motionEye's settings is kept (clearing one sets the generated value again at the next start).
-    - motionEye doesn't read any identity header, so no LLDAP user name maps to these accounts.
-    - The admin account can do everything motionEye can, including commands run on motion events inside the container.
-
-    **The gate:** the UI is on the instance's private network only; the gate in front of it (nginx, the only container on `portcullis-proxy`) answers Traefik's address alone, never forwards the Portcullis session (`Authorization`, access-token headers, forward-auth cookies), and is healthy (= routed) only while motionEye refuses an empty password for the `admin` and `user` account names.
-
-    **Cameras:** network cameras by URL (RTSP, HTTP/MJPEG; added in motionEye, reached outbound from the container) and up to four local V4L2 cameras listed in the **Local cameras** setting (e.g. `/dev/video0`; only those are passed in, not privileged, so several instances can each use their own; a path that doesn't exist on the host stops the container from starting). Live view goes through motionEye's own UI; motion's direct streaming ports (8081+, "Video Streaming" in the camera settings) are not published, so direct stream URLs only work inside the instance.
-
-    **Storage:** set **Storage folder** to a host path (e.g. `/srv/cctv`) to record there instead of the instance's media volume; keep an eye on its size (motionEye's own "Preserve" settings delete old media).
-
-    Not available in a container: shutdown/reboot, and SMB share mounts.
-
-    **Shared folders:** motionEye runs as root (uid 0 / gid 0, the image's `motion` user; no compose `user:`) and writes the Storage folder, so it declares access `write` with `runs_as` uid 0 / gid 0. Root is what lets it write a shared folder: the entrypoint starts motionEye with `su -g`, which drops supplementary groups, so the folder group the Hub adds through `group_add` never reaches the process.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>motionEye 0.44 (motioneye-project, maintained: 0.44.0 in June 2026) has no SSO. Access is gated by forward-auth + group-gate on the whole host, and motionEye's own login (accounts <code>admin</code> and <code>user</code>) stays as a second step.</p>
+<p><strong>Its two local accounts:</strong> <code>admin</code> (full configuration) and <code>user</code> (view only), whose passwords are empty after a fresh install.</p>
+<ul>
+<li><code>motioneye-init</code> sets each account with an empty password to a generated one before every start (<code>MOTIONEYE_ADMIN_PASSWORD</code> / <code>MOTIONEYE_USER_PASSWORD</code> in this instance's <code>.env</code>, Hub data <code>env/&lt;instance&gt;.env</code>; hashed by motionEye, argon2), so motionEye never runs with its well-known empty default, and the healthcheck fails while either is empty.</li>
+<li>Share the admin password with your camera administrators and the user password with viewers; a password changed in motionEye's settings is kept (clearing one sets the generated value again at the next start).</li>
+<li>motionEye doesn't read any identity header, so no LLDAP user name maps to these accounts.</li>
+<li>The admin account can do everything motionEye can, including commands run on motion events inside the container.</li>
+</ul>
+<p><strong>The gate:</strong> the UI is on the instance's private network only; the gate in front of it (nginx, the only container on <code>portcullis-proxy</code>) answers Traefik's address alone, never forwards the Portcullis session (<code>Authorization</code>, access-token headers, forward-auth cookies), and is healthy (= routed) only while motionEye refuses an empty password for the <code>admin</code> and <code>user</code> account names.</p>
+<p><strong>Cameras:</strong> network cameras by URL (RTSP, HTTP/MJPEG; added in motionEye, reached outbound from the container) and up to four local V4L2 cameras listed in the <strong>Local cameras</strong> setting (e.g. <code>/dev/video0</code>; only those are passed in, not privileged, so several instances can each use their own; a path that doesn't exist on the host stops the container from starting). Live view goes through motionEye's own UI; motion's direct streaming ports (8081+, &quot;Video Streaming&quot; in the camera settings) are not published, so direct stream URLs only work inside the instance.</p>
+<p><strong>Storage:</strong> set <strong>Storage folder</strong> to a host path (e.g. <code>/srv/cctv</code>) to record there instead of the instance's media volume; keep an eye on its size (motionEye's own &quot;Preserve&quot; settings delete old media).</p>
+<p>Not available in a container: shutdown/reboot, and SMB share mounts.</p>
+<p><strong>Shared folders:</strong> motionEye runs as root (uid 0 / gid 0, the image's <code>motion</code> user; no compose <code>user:</code>) and writes the Storage folder, so it declares access <code>write</code> with <code>runs_as</code> uid 0 / gid 0. Root is what lets it write a shared folder: the entrypoint starts motionEye with <code>su -g</code>, which drops supplementary groups, so the folder group the Hub adds through <code>group_add</code> never reaches the process.</p>
+</div>
 
 ## Routing
 

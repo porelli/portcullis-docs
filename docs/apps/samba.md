@@ -17,38 +17,34 @@
 | **Group Admin** | :x: |
 | **Access Group** | `users_samba` |
 
-!!! info "Auth Notes"
-    No web page: file sharing over SMB. Each member of `users_samba` creates their own file-share password on My apps and gets a Home share plus the shared folders their groups allow.
-
-    **People and shares:**
-
-    - Each member of `users_samba` creates their own file-share password on My apps (`people.<domain>`) after a fresh passkey sign-in, and gets the share **Home**: their own folder `<homes>/<username>` (owned by their Hub uid, mode 0700).
-    - Up to 8 shared folders (slots 1–8): the admin assigns a slot a shared folder (**Settings → Shared folders**), a share name and reader and writer groups. Readers can read, writers can also write, nobody else in the instance can open it.
-    - Files land as `<the person's uid>:<the folder's gid>` (force group), mode 0660, directories 2770.
-    - To share a folder with everyone who has access, pick `users_samba` as its reader group.
-
-    **Passwords:** the password is shown once. The Hub keeps only its NT hash on the `hub_secrets` volume, mounted read-only here, never in a backup. Someone who leaves the access group, or whose account is deleted, loses the password at once, and someone who leaves a share's groups loses that share at once: the Hub's hook removes the account or the share and ends their open sessions within seconds (a change made directly in LLDAP within about a minute).
-
-    **Image:** ServerContainers samba (smbd-only, Samba 4.23 on Alpine). Its `/container/scripts/entrypoint.sh` never runs, so none of its `ACCOUNT_*`, `GROUP_*`, `SAMBA_*` or `AVAHI_*` variables does anything (setting one is ignored; an `ACCOUNT_*` would only put a password in `docker inspect`). The container starts with `portcullis-sync --boot` (shared with the Time Machine template), which writes the whole `smb.conf`, the passdb (smbpasswd on tmpfs) and the Unix accounts from the Hub's people file and hash files; then runit supervises smbd alone (no nmbd, avahi or wsdd2). The image has no default account.
-
-    **SMB is hardened and verified:** SMB3 only (3.1.1), encryption and signing required, NTLMv2 only, no guest or anonymous access, no NetBIOS, port 445 only, `hosts allow` = the Hub's Local networks (an empty list keeps the instance from starting). `testparm` must show exactly these values or smbd doesn't start. Publish 445 on the LAN or VPN only (`lan_only`); Docker's published ports bypass ufw.
-
-    **Capabilities:** `cap_drop: ALL`, then:
-
-    - `CHOWN`: a new person's home folder is created and given to their uid.
-    - `SETUID` and `SETGID`: smbd acts as each person with the folder's group; the Hub's files and each folder's size are read as their owner, a privilege drop with runit's `chpst` instead of `DAC_OVERRIDE` / `DAC_READ_SEARCH`, which this container never has.
-    - `NET_BIND_SERVICE`: port 445.
-
-    `no-new-privileges`. The root filesystem isn't read-only: `portcullis-sync` writes `/etc/passwd`, `/etc/group` and `/etc/shadow` (each person's Unix account and the `pfg<gid>` group of each shared folder) and the start writes runit's service directory (`/run/portcullis-sv`). The hashes, the passdb and Samba's state are on tmpfs, and `/shares` is a small tmpfs, so a slot without a shared folder has nothing to serve. A healthcheck reports unhealthy while `smb.conf` no longer verifies or smbd isn't running.
-
-    **Checks the doctor shows:**
-
-    - A home folder that belongs to a former account (an account deleted and created again gets a new uid) is never served; the File sharing tab and the doctor show it.
-    - Share names are refused, case-insensitively, when Samba reserves them (`global`, `homes`, `printers`, `print$`, `ipc$`, `home`) or another slot has the same name; the doctor shows it.
-
-    **Bonjour** is off by default: people connect with the `smb://` address shown on My apps (Finder → Go → Connect to Server). Bonjour opt-in mounts the host's Avahi services directory at `/portcullis/avahi` and writes `portcullis-<instance>.service` there, not the image's fixed `samba.service` (two instances would overwrite each other).
-
-    **Updates:** upstream tags name the Alpine and Samba versions (`smbd-only-a<alpine>-s<samba>-r<n>`); Dependabot follows them.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>No web page: file sharing over SMB. Each member of <code>users_samba</code> creates their own file-share password on My apps and gets a Home share plus the shared folders their groups allow.</p>
+<p><strong>People and shares:</strong></p>
+<ul>
+<li>Each member of <code>users_samba</code> creates their own file-share password on My apps (<code>people.&lt;domain&gt;</code>) after a fresh passkey sign-in, and gets the share <strong>Home</strong>: their own folder <code>&lt;homes&gt;/&lt;username&gt;</code> (owned by their Hub uid, mode 0700).</li>
+<li>Up to 8 shared folders (slots 1–8): the admin assigns a slot a shared folder (<strong>Settings → Shared folders</strong>), a share name and reader and writer groups. Readers can read, writers can also write, nobody else in the instance can open it.</li>
+<li>Files land as <code>&lt;the person's uid&gt;:&lt;the folder's gid&gt;</code> (force group), mode 0660, directories 2770.</li>
+<li>To share a folder with everyone who has access, pick <code>users_samba</code> as its reader group.</li>
+</ul>
+<p><strong>Passwords:</strong> the password is shown once. The Hub keeps only its NT hash on the <code>hub_secrets</code> volume, mounted read-only here, never in a backup. Someone who leaves the access group, or whose account is deleted, loses the password at once, and someone who leaves a share's groups loses that share at once: the Hub's hook removes the account or the share and ends their open sessions within seconds (a change made directly in LLDAP within about a minute).</p>
+<p><strong>Image:</strong> ServerContainers samba (smbd-only, Samba 4.23 on Alpine). Its <code>/container/scripts/entrypoint.sh</code> never runs, so none of its <code>ACCOUNT_*</code>, <code>GROUP_*</code>, <code>SAMBA_*</code> or <code>AVAHI_*</code> variables does anything (setting one is ignored; an <code>ACCOUNT_*</code> would only put a password in <code>docker inspect</code>). The container starts with <code>portcullis-sync --boot</code> (shared with the Time Machine template), which writes the whole <code>smb.conf</code>, the passdb (smbpasswd on tmpfs) and the Unix accounts from the Hub's people file and hash files; then runit supervises smbd alone (no nmbd, avahi or wsdd2). The image has no default account.</p>
+<p><strong>SMB is hardened and verified:</strong> SMB3 only (3.1.1), encryption and signing required, NTLMv2 only, no guest or anonymous access, no NetBIOS, port 445 only, <code>hosts allow</code> = the Hub's Local networks (an empty list keeps the instance from starting). <code>testparm</code> must show exactly these values or smbd doesn't start. Publish 445 on the LAN or VPN only (<code>lan_only</code>); Docker's published ports bypass ufw.</p>
+<p><strong>Capabilities:</strong> <code>cap_drop: ALL</code>, then:</p>
+<ul>
+<li><code>CHOWN</code>: a new person's home folder is created and given to their uid.</li>
+<li><code>SETUID</code> and <code>SETGID</code>: smbd acts as each person with the folder's group; the Hub's files and each folder's size are read as their owner, a privilege drop with runit's <code>chpst</code> instead of <code>DAC_OVERRIDE</code> / <code>DAC_READ_SEARCH</code>, which this container never has.</li>
+<li><code>NET_BIND_SERVICE</code>: port 445.</li>
+</ul>
+<p><code>no-new-privileges</code>. The root filesystem isn't read-only: <code>portcullis-sync</code> writes <code>/etc/passwd</code>, <code>/etc/group</code> and <code>/etc/shadow</code> (each person's Unix account and the <code>pfg&lt;gid&gt;</code> group of each shared folder) and the start writes runit's service directory (<code>/run/portcullis-sv</code>). The hashes, the passdb and Samba's state are on tmpfs, and <code>/shares</code> is a small tmpfs, so a slot without a shared folder has nothing to serve. A healthcheck reports unhealthy while <code>smb.conf</code> no longer verifies or smbd isn't running.</p>
+<p><strong>Checks the doctor shows:</strong></p>
+<ul>
+<li>A home folder that belongs to a former account (an account deleted and created again gets a new uid) is never served; the File sharing tab and the doctor show it.</li>
+<li>Share names are refused, case-insensitively, when Samba reserves them (<code>global</code>, <code>homes</code>, <code>printers</code>, <code>print$</code>, <code>ipc$</code>, <code>home</code>) or another slot has the same name; the doctor shows it.</li>
+</ul>
+<p><strong>Bonjour</strong> is off by default: people connect with the <code>smb://</code> address shown on My apps (Finder → Go → Connect to Server). Bonjour opt-in mounts the host's Avahi services directory at <code>/portcullis/avahi</code> and writes <code>portcullis-&lt;instance&gt;.service</code> there, not the image's fixed <code>samba.service</code> (two instances would overwrite each other).</p>
+<p><strong>Updates:</strong> upstream tags name the Alpine and Samba versions (<code>smbd-only-a&lt;alpine&gt;-s&lt;samba&gt;-r&lt;n&gt;</code>); Dependabot follows them.</p>
+</div>
 
 ## AI support
 

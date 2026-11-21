@@ -18,31 +18,27 @@
 | **Access Group** | `users_vikunja` |
 | **Subdomain** | `tasks` |
 
-!!! info "Auth Notes"
-    Native OIDC (Vikunja v2.7.1): the login page redirects straight to Portcullis, and only members of `users_vikunja` may sign in. Every SSO user is a regular user.
-
-    **No local accounts:** local accounts are off (`auth.local.enabled` false), so Vikunja registers no password login, sign-up, password reset or invite link route at all, and LDAP is off.
-
-    **Who may sign in:** Vikunja has no OIDC group restriction of its own, so the Hub enforces `users_vikunja` in Keycloak (`keycloak_access_role`: the client's access role and browser flow; direct grants and the other non-browser grants are off on the client).
-
-    **Identity:** accounts are created on the first SSO login, keyed on the OIDC issuer + `sub` and named after `preferred_username` (the LLDAP username; Vikunja picks a random one if that name is taken); they are never linked to an existing account by email or username (`emailfallback` / `usernamefallback` false). Users need an email in LLDAP (Vikunja requires the claim; it is display/notification only).
-
-    **Admins and teams:**
-
-    - Every SSO user is a regular user: Vikunja's instance admin is a paid feature (admin panel license) set only with the CLI, so `admin_vikunja` is not used.
-    - Team sync: Vikunja reads teams only from a custom `vikunja_groups` claim (objects with `name` and `oidcID`), which the Hub's Keycloak clients don't send; teams are managed in Vikunja.
-
-    **Tokens and sharing:**
-
-    - CalDAV and the API take Vikunja's own CalDAV / API tokens (created by a signed-in user), never a password.
-    - Public project links are off unless **Link sharing** is turned on.
-    - Outgoing requests to URLs users enter (webhooks, imports, avatars) may not reach private addresses.
-
-    **Revoking access:** removing a user from the group blocks new sign-ins (and the Hub signs them out of Keycloak), not Vikunja sessions or API / CalDAV tokens already issued. Refresh sessions end after 24 h without use (`VIKUNJA_SERVICE_JWTTTL`, upstream 72 h / 30 days); an active one keeps refreshing. Disable the user in Vikunja to end it, effective within 10 min (`vikunja user change-status`).
-
-    Mobile and desktop apps sign in through Vikunja's own OAuth flow in the browser, i.e. through Portcullis.
-
-    **Upgrades:** database migrations run when Vikunja starts; don't bump the PostgreSQL major.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Native OIDC (Vikunja v2.7.1): the login page redirects straight to Portcullis, and only members of <code>users_vikunja</code> may sign in. Every SSO user is a regular user.</p>
+<p><strong>No local accounts:</strong> local accounts are off (<code>auth.local.enabled</code> false), so Vikunja registers no password login, sign-up, password reset or invite link route at all, and LDAP is off.</p>
+<p><strong>Who may sign in:</strong> Vikunja has no OIDC group restriction of its own, so the Hub enforces <code>users_vikunja</code> in Keycloak (<code>keycloak_access_role</code>: the client's access role and browser flow; direct grants and the other non-browser grants are off on the client).</p>
+<p><strong>Identity:</strong> accounts are created on the first SSO login, keyed on the OIDC issuer + <code>sub</code> and named after <code>preferred_username</code> (the LLDAP username; Vikunja picks a random one if that name is taken); they are never linked to an existing account by email or username (<code>emailfallback</code> / <code>usernamefallback</code> false). Users need an email in LLDAP (Vikunja requires the claim; it is display/notification only).</p>
+<p><strong>Admins and teams:</strong></p>
+<ul>
+<li>Every SSO user is a regular user: Vikunja's instance admin is a paid feature (admin panel license) set only with the CLI, so <code>admin_vikunja</code> is not used.</li>
+<li>Team sync: Vikunja reads teams only from a custom <code>vikunja_groups</code> claim (objects with <code>name</code> and <code>oidcID</code>), which the Hub's Keycloak clients don't send; teams are managed in Vikunja.</li>
+</ul>
+<p><strong>Tokens and sharing:</strong></p>
+<ul>
+<li>CalDAV and the API take Vikunja's own CalDAV / API tokens (created by a signed-in user), never a password.</li>
+<li>Public project links are off unless <strong>Link sharing</strong> is turned on.</li>
+<li>Outgoing requests to URLs users enter (webhooks, imports, avatars) may not reach private addresses.</li>
+</ul>
+<p><strong>Revoking access:</strong> removing a user from the group blocks new sign-ins (and the Hub signs them out of Keycloak), not Vikunja sessions or API / CalDAV tokens already issued. Refresh sessions end after 24 h without use (<code>VIKUNJA_SERVICE_JWTTTL</code>, upstream 72 h / 30 days); an active one keeps refreshing. Disable the user in Vikunja to end it, effective within 10 min (<code>vikunja user change-status</code>).</p>
+<p>Mobile and desktop apps sign in through Vikunja's own OAuth flow in the browser, i.e. through Portcullis.</p>
+<p><strong>Upgrades:</strong> database migrations run when Vikunja starts; don't bump the PostgreSQL major.</p>
+</div>
 
 ## Routing
 

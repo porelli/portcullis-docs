@@ -177,8 +177,11 @@ for admins and keep it readable as plain text:
 - The Hub shows CommonMark plus GitHub tables and autolinks: paragraphs,
   emphasis, code, headings, quotes, lists, rules, tables and links. Raw HTML is
   never shown, and the validator refuses it; images are not shown (their alt
-  text is); only `http`, `https` and `mailto` links stay links, and they open
-  in a new tab.
+  text is) and are refused too; only `http`, `https` (no `user@` part) and
+  `mailto` links stay links, and they open in a new tab.
+- At most 16 KiB, block quotes and lists nested at most 16 deep, and no
+  hidden characters (controls other than newline and tab, bidi, zero-width
+  and similar).
 
 ```yaml
 auth:
@@ -1638,7 +1641,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - port `bind` values are IPs and `range` values are valid
 - `config_files` sources exist
 - `auth.native_login` only with `method: custom` and `sso: false`, and a `custom` app with `group_access: true` declares it
-- `auth.notes` has no raw HTML outside code spans and code blocks: every `<` followed by a letter, `/`, `!` or `?` must start an autolink (`<https://…>`, `<user@host>`); see [auth.notes](#authnotes)
+- `auth.notes` (parsed as CommonMark with markdown-it-py) has no raw HTML (`html_block` / `html_inline`), no image and no link the Hub turns into text (not http/https with a host and no userinfo, nor mailto); it is at most 16 KiB, nests at most 16 deep and has no hidden character; see [auth.notes](#authnotes)
 
 **Networks and volumes**
 
