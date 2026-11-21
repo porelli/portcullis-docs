@@ -22,28 +22,20 @@ permissions:
 
 jobs:
   deploy:
+    # Only main is ever published (a dispatch on another branch does
+    # nothing here): branches and pull requests run checks.yml.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # The same-named templates branch if there is one, else main.
-      - name: Templates ref
-        id: tref
-        env:
-          REF: ${{ github.ref_name }}
-        run: |
-          ref=main
-          url=https://github.com/porelli/portcullis-templates
-          if [[ "$REF" =~ ^[A-Za-z0-9._/-]+$ ]] && [ "$REF" != main ] && git ls-remote --exit-code --heads "$url" "$REF" >/dev/null; then ref="$REF"; fi
-          echo "portcullis-templates: $ref" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
-
-      # Read as data only: nothing from this checkout is ever run.
+      # The templates' main (this job runs on main only). Read as data
+      # only: nothing from this checkout is ever run.
       - name: Clone templates repo (for manifest-based catalog)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: porelli/portcullis-templates
-          ref: ${{ steps.tref.outputs.ref }}
+          ref: main
           path: portcullis-templates
           persist-credentials: false
 

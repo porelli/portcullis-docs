@@ -39,7 +39,7 @@
 <p>No group-based access restriction — all OIDC users can register nodes.</p>
 <p><strong>Post-start step for Headplane:</strong> create an API key with <code>docker exec portcullis-&lt;instance&gt;-headscale-1 headscale apikeys create --expiration 365d</code> (<code>portcullis-headscale-headscale-1</code> for the default instance), paste it into the <strong>Headscale API key</strong> setting, then restart the app. Renew it before it expires.</p>
 <p><code>config.yaml</code> is regenerated from the template on every start (so hostname and client changes apply), which means manual edits to it in the <code>headscale-config</code> volume are lost; change the template instead.</p>
-<p><strong>Portcullis VPN provider</strong> (<code>vpn:</code> below): once wired on this instance's VPN tab (<strong>Settings → VPN</strong> lists the providers and links there), the tailnet can carry VPN-only access to this server's apps.</p>
+<p><strong>Portcullis VPN provider</strong> (<code>vpn:</code> below): once wired on this instance's VPN tab (<strong>Settings → Network → VPN</strong> lists the providers and links there), the tailnet can carry VPN-only access to this server's apps.</p>
 <ul>
 <li>A gateway node (tailscale/tailscale in userspace mode, no TUN or capabilities, tagged <code>tag:portcullis-gateway</code>, registered by the <code>gateway-key</code> start hook with a single-use pre-auth key) forwards tailnet connections to Portcullis with PROXY v2.</li>
 <li>The <code>vpn-devices</code> hook tells Portcullis who owns each node: only nodes of Headscale users who signed in through Portcullis count (keyed on the OIDC subject), local Headscale users' nodes never do.</li>
