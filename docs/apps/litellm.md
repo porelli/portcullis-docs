@@ -19,8 +19,13 @@
 | **Admin Group** | `admin_litellm` |
 | **Subdomain** | `llm` |
 
-!!! info "Auth Notes"
-    OIDC login for the admin UI. The OpenAI-compatible API (and the management API the UI calls) has no forward-auth, so it is reachable with the master key or virtual API keys. The admin UI and all interactive login paths (/ui, /sso, /login, /v2/login, /fallback/login, /onboarding) sit behind forward-auth + group-gate: only members of users_litellm can sign in. SSO users default to the read-only internal_user_viewer role; LLDAP groups are mapped to roles (admin_litellm -> proxy_admin, users_litellm -> internal_user), but that mapping needs the Keycloak "groups" claim in the LiteLLM client's tokens; until the client has the groups scope, SSO users get internal_user_viewer and an admin (logged in with the master key) promotes them in the UI. Users created before this change keep their existing role; review them under Internal Users. Identity: SSO users are keyed on preferred_username (the immutable LLDAP username). LiteLLM would otherwise attach an SSO login to any existing user with the same email, and LLDAP emails are user-editable, so the template maps the email attribute to a claim that is never sent: SSO users have no email in LiteLLM. Users created before this change that were keyed on their email need their user_id changed to the LLDAP username.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>OIDC login for the admin UI, where only members of <code>users_litellm</code> can sign in. The OpenAI-compatible API has no forward-auth: it is reachable with the master key or virtual API keys.</p>
+<p><strong>What is gated:</strong> the OpenAI-compatible API (and the management API the UI calls) has no forward-auth. The admin UI and all interactive login paths (<code>/ui</code>, <code>/sso</code>, <code>/login</code>, <code>/v2/login</code>, <code>/fallback/login</code>, <code>/onboarding</code>) sit behind forward-auth + group-gate: only members of <code>users_litellm</code> can sign in.</p>
+<p><strong>Roles:</strong> SSO users default to the read-only <code>internal_user_viewer</code> role. LLDAP groups are mapped to roles (<code>admin_litellm</code> → <code>proxy_admin</code>, <code>users_litellm</code> → <code>internal_user</code>), but that mapping needs the Keycloak <code>groups</code> claim in the LiteLLM client's tokens; until the client has the <code>groups</code> scope, SSO users get <code>internal_user_viewer</code> and an admin (logged in with the master key) promotes them in the UI. Users created before this change keep their existing role; review them under <strong>Internal Users</strong>.</p>
+<p><strong>Identity:</strong> SSO users are keyed on <code>preferred_username</code> (the immutable LLDAP username). LiteLLM would otherwise attach an SSO login to any existing user with the same email, and LLDAP emails are user-editable, so the template maps the email attribute to a claim that is never sent: SSO users have no email in LiteLLM. Users created before this change that were keyed on their email need their <code>user_id</code> changed to the LLDAP username.</p>
+</div>
 
 ## Routing
 

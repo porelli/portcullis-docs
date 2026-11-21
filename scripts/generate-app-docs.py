@@ -22,6 +22,23 @@ import argparse
 from pathlib import Path
 
 import yaml
+from markdown_it import MarkdownIt
+
+# auth.notes renderer: CommonMark + tables, raw HTML escaped, no images;
+# markdown-it-py's link validation drops javascript:, vbscript:, file: and
+# data: URLs.
+NOTES_MD = MarkdownIt("commonmark", {"html": False}).enable("table").disable("image")
+
+
+def notes_html(notes: str) -> str:
+    """auth.notes as an HTML fragment with no blank line (one raw HTML
+    block for Python-Markdown); links open in a new tab, like the Hub's."""
+    out = NOTES_MD.render(notes).strip()
+    out = out.replace("<a href=", '<a target="_blank" rel="noopener noreferrer nofollow" href=')
+    # A blank line would end Python-Markdown's raw HTML block (code blocks).
+    while re.search(r"\n[ \t]*\n", out):
+        out = re.sub(r"\n[ \t]*\n", "\n&#10;", out)
+    return out
 
 
 def load_manifests(source_dir: Path) -> list[dict]:
@@ -579,9 +596,14 @@ def generate_app_page(app: dict, output_dir: Path):
     lines.append("")
 
     if notes:
-        lines.append('!!! info "Auth Notes"')
-        for line in str(notes).strip().splitlines():
-            lines.append(f"    {line}" if line.strip() else "")
+        # auth.notes is Markdown (contract §3) from a template source: render
+        # it here with markdown-it-py (CommonMark + tables, raw HTML off,
+        # images off) into a raw HTML block, so the site's own Markdown
+        # (raw HTML passed through, attr_list, md_in_html) never sees it.
+        lines.append('<div class="admonition info">')
+        lines.append('<p class="admonition-title">Auth Notes</p>')
+        lines.append(notes_html(str(notes)))
+        lines.append("</div>")
         lines.append("")
 
     # App's own login (auth.native_login)

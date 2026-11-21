@@ -100,7 +100,7 @@ links:
 | `native_login` | object | No | The app has its own login and no SSO (`method: custom` only); enables the Hub's Sign-in setting (see [auth.native_login](#authnative_login)) |
 | `keycloak_access_role` | boolean | No | `native-oidc` only, needs `access_group`. Keycloak itself refuses sign-in to anyone outside the instance's access group (see below) |
 | `identity_headers` | list of header names | If `method: header-auth` and `public_access` is set | Headers the app reads the user from (e.g. `X-Forwarded-User`); the Hub strips them on public paths |
-| `notes` | string | No | Free-text notes about the auth integration. Shown on the app's docs page, the portal (for an app without a web page), the policy view and the app detail. Upgrade constraints go here too |
+| `notes` | Markdown string | No | Notes about the app and its auth integration, for admins. Shown on the app's docs page, the portal (its first paragraph, for an app without a web page), the policy view and the app detail. Upgrade constraints go here too. Markdown (see [auth.notes](#authnotes)); no raw HTML |
 
 Constraints the schema enforces:
 
@@ -160,6 +160,40 @@ in the templates repo's contributing guide.
 - `true`: the user authenticates once in Keycloak and is logged into the app automatically.
 - `false`: the app has its own login form. Forward-auth only gates access, and the user logs in again.
 - `"partial"`: the app auto-creates users from the identity, but needs extra setup, e.g. role assignment.
+
+### auth.notes
+
+`auth.notes` is Markdown ([contract §3](integration-contracts.md)). Write it
+for admins and keep it readable as plain text:
+
+- Use a YAML literal block (`notes: |`) so blank lines and line breaks
+  survive; a folded block (`>`) or a quoted string joins everything into one
+  paragraph.
+- Open with a **summary paragraph** of one or two sentences: what the app is
+  and how sign-in works. It is the portal note of an app without a web page
+  (plain text, at most 300 characters, else the portal shows "No web page.").
+- Then short paragraphs or lists. Put commands, paths, variables, users and
+  image names in backticks.
+- The Hub shows CommonMark plus GitHub tables and autolinks: paragraphs,
+  emphasis, code, headings, quotes, lists, rules, tables and links. Raw HTML is
+  never shown, and the validator refuses it; images are not shown (their alt
+  text is) and are refused too; only `http`, `https` (no `user@` part) and
+  `mailto` links stay links, and they open in a new tab.
+- At most 16 KiB, block quotes and lists nested at most 16 deep, and no
+  hidden characters (controls other than newline and tab, bidi, zero-width
+  and similar).
+
+```yaml
+auth:
+  notes: |
+    Stalwart is the mail server. Portcullis manages it: accounts, domains and
+    DNS are set in **Settings → Mail**.
+
+    Services:
+
+    - `stalwart`: the mail server.
+    - `mailctl`: the adapter, the only holder of Stalwart's API key.
+```
 
 ### auth.native_login
 
@@ -1607,6 +1641,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - port `bind` values are IPs and `range` values are valid
 - `config_files` sources exist
 - `auth.native_login` only with `method: custom` and `sso: false`, and a `custom` app with `group_access: true` declares it
+- `auth.notes` (parsed as CommonMark with markdown-it-py) has no raw HTML (`html_block` / `html_inline`), no image and no link the Hub turns into text (not http/https with a host and no userinfo, nor mailto); it is at most 16 KiB, nests at most 16 deep and has no hidden character; see [auth.notes](#authnotes)
 
 **Networks and volumes**
 

@@ -19,8 +19,14 @@
 | **Admin Group** | `admin_netbird` |
 | **Subdomain** | `netbird` |
 
-!!! info "Auth Notes"
-    Dashboard uses OIDC. Management API validates JWT audience. No group-based access restriction — all OIDC users can access dashboard. Identity: management keys users on the token's sub (AuthUserIDClaim; no IdP manager, so nothing is matched by email). The dashboard sends the ID token to the management API (NETBIRD_TOKEN_SOURCE=idToken): its audience is the client id management checks; Keycloak access tokens would carry aud "account". Upgrades: netbird-management and netbird-signal are pinned to the same release and must move together (the dashboard has its own version line); follow the upstream upgrade notes and do not skip releases with migrations. Instances: coturn runs with host networking (a TURN relay advertises its relay ports to peers, so they must be the host's own ports) and binds the STUN/TURN and TURNS ports and the UDP media relay range itself. All three are per-instance port settings; the defaults (3478, 5349, 49152-65535) are taken by the first instance, so the Hub's port collision check refuses to start another instance until it is given free ports and a range that doesn't overlap (e.g. 3479, 5350, 40000-40999). management.json is generated once (it holds NetBird's DataStoreEncryptionKey); a later hostname, STUN port or TURN public IP change is applied to it in place on the next start.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Dashboard uses OIDC; the management API validates the JWT audience. No group-based access restriction — all OIDC users can access the dashboard.</p>
+<p><strong>Identity:</strong> management keys users on the token's <code>sub</code> (<code>AuthUserIDClaim</code>; no IdP manager, so nothing is matched by email). The dashboard sends the ID token to the management API (<code>NETBIRD_TOKEN_SOURCE=idToken</code>): its audience is the client id management checks; Keycloak access tokens would carry aud <code>account</code>.</p>
+<p><strong>Upgrades:</strong> <code>netbird-management</code> and <code>netbird-signal</code> are pinned to the same release and must move together (the dashboard has its own version line); follow the upstream upgrade notes and do not skip releases with migrations.</p>
+<p><strong>Instances:</strong> coturn runs with host networking (a TURN relay advertises its relay ports to peers, so they must be the host's own ports) and binds the STUN/TURN and TURNS ports and the UDP media relay range itself. All three are per-instance port settings; the defaults (3478, 5349, 49152-65535) are taken by the first instance, so the Hub's port collision check refuses to start another instance until it is given free ports and a range that doesn't overlap (e.g. 3479, 5350, 40000-40999).</p>
+<p><code>management.json</code> is generated once (it holds NetBird's <code>DataStoreEncryptionKey</code>); a later hostname, STUN port or TURN public IP change is applied to it in place on the next start.</p>
+</div>
 
 ## Routing
 

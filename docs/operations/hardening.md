@@ -348,6 +348,7 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/hub/invite/secret` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/invite/secret`, same value as enroll's `invite-api-secret`) |
 | `secrets/mcp-gate/age.key` | 10005 | 0640 (dir 0700) | mcp-gate (decrypts the AI credentials the Hub wrote) |
 | `secrets/mcp-gate/{age.pub,hub-secret}` | 10001 | 0640 | Hub (encrypts to `age.pub`; holds no identity) and mcp-gate (`hub-secret`, through group 10001) |
+| `secrets/lldap/key-seed` | 1000 | 0640 (dir 0700) | lldap (`LLDAP_KEY_SEED_FILE`: the seed of the key protecting stored passwords, see [LLDAP's key seed](#lldaps-key-seed)) |
 | `secrets/sessions/valkey.conf` | 1000 | 0640 (dir 0700) | sessions (its config and ACL users: the SHA-256 of `FORWARD_AUTH_REDIS_PASSWORD` / `FORWARD_AUTH_EXT_REDIS_PASSWORD`, never the passwords; rewritten from `.env` on every run) |
 | `secrets/wg/people.key` | 10006 | 0640 (dir 0750) | wg (the built-in VPN's private key, written by `./portcullis vpn init` inside a throwaway `wg` container, never printed; an empty file means the built-in VPN is off) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
@@ -368,6 +369,120 @@ holds only what templates may reference: `PORTCULLIS_DOMAIN`,
 `HUB_SHARED_ENV`. Core secrets are refused. `./portcullis up` rewrites the file
 in place. `secrets/` and `backups/` are masked from the Hub with empty tmpfs
 mounts.
+
+## LLDAP's key seed
+
+LLDAP stores each password as an OPAQUE record. The server key protecting
+those records is derived from `key_seed`. The upstream image's config
+template ships a **public** default seed (`"RanD0m STR1ng"`). With it,
+anyone holding `users.db` (for example a backup's `lldap_data.tar.gz`) could
+attack the stored passwords offline without any server secret. So every
+install has its own seed.
+
+**Where it lives.** `secrets/lldap/key-seed`: 48 bytes from the system's
+CSPRNG (`openssl rand`), base64, 64 characters, no newline.
+
+- `./portcullis init` makes it once, also with `--env-only`. It writes a 0600
+  temporary file, links it into place only if no seed exists, and checks the
+  result is 64 characters. An existing seed is never replaced.
+- `secrets_fix_perms` (every `up`, `upgrade`, `vault init`, `restore`) keeps
+  it operator-owned, group 1000 (the `-rootless` image's `lldap` user),
+  0640, in a 0700 directory. Only LLDAP mounts it, read-only at
+  `/run/portcullis/lldap/key-seed`. Under rootless Podman with SELinux it
+  is labelled `Z`.
+- On Kubernetes the CLI syncs it as the Secret `secrets-lldap` (key
+  `key-seed`), mounted 0440 with `fsGroup` 1000 in the lldap pod only.
+
+**How LLDAP reads it.**
+
+- Through `LLDAP_KEY_SEED_FILE`, never as a plain `LLDAP_KEY_SEED` value or
+  on a command line. `LLDAP_KEY_FILE` is empty, so a missing, empty or
+  unreadable seed makes LLDAP refuse to start instead of writing a random
+  key file.
+- LLDAP doesn't run the image's entrypoint, which copies the template
+  (public seed included) into `/data/lldap_config.toml`. It runs
+  `tini -- /app/lldap run --config-file /dev/null` and is configured by
+  environment only (`LLDAP_DATABASE_URL` and the rest).
+
+**Fail closed.**
+
+- `./portcullis up` and `upgrade` refuse when the seed is missing, empty, a
+  directory, shorter than 32 bytes of base64, not base64, or the public
+  default.
+- `./portcullis status` shows a Problem for those, and for what the running
+  container has: a plain `LLDAP_KEY_SEED`, no readable seed file, a
+  non-empty `LLDAP_KEY_FILE`, or any `key_seed` in `/data/lldap_config.toml`
+  (`lldap.key_seed` in `--json`).
+- LLDAP itself refuses to start when the seed doesn't match the key that
+  `users.db` was written with ("The private key encoding the passwords has
+  changed").
+
+**Backup and restore.**
+
+- The seed is part of `secrets/`, so every backup carries it: in clear in the
+  local `backups/` tree (0700, like `.env` and the Vault keys), encrypted by
+  restic offsite.
+- `restore` and `backup verify` refuse a backup without a usable seed, or
+  without `lldap_data.tar.gz`. A `users.db` is useless without its seed.
+- A restore puts the backup's seed back together with its `users.db`. The
+  seed it replaces stays in `backups/pre-restore-*`.
+- Backups made before the seed existed are refused (no back-compat).
+
+**Never regenerate the seed on an existing install.** A new seed voids every
+stored LLDAP password: admin's, `portcullis-hub`'s and anyone's set in
+LLDAP. LLDAP won't start until it is forced once. `init` refuses up front
+(Docker / Podman) when it would make a seed for an `lldap_data` volume that
+already holds a `users.db`.
+
+### Fixing an install made before the seed (by hand)
+
+An install made before this change has no `secrets/lldap/key-seed`, and its
+`/data/lldap_config.toml` carries the public default. `up` refuses until
+it's fixed.
+
+What it changes:
+
+- Every stored LLDAP password becomes invalid.
+- Admin's password record is re-written from `.env`'s
+  `LLDAP_ADMIN_PASSWORD`. It's the same value, so Keycloak, enroll and the
+  CLI keep working, and admin still signs in by security key.
+- `portcullis-hub`'s password is re-set by `up` from
+  `secrets/hub/lldap/password`.
+- Anyone else who had an LLDAP password set by hand gets a new one through
+  `./portcullis lldap-ui`.
+- Passkeys, certificates and the Hub's per-person SMB passwords aren't
+  affected.
+
+Do it in a quiet moment. Docker, in the install root:
+
+```sh
+# 1. The seed: refused if one exists, checked to be 64 characters, never printed
+( set -eu; f=secrets/lldap/key-seed; umask 077; mkdir -p secrets/lldap
+  if [ -e "$f" ]; then echo "$f exists: not overwriting"; exit 1; fi
+  t="$(mktemp secrets/lldap/.key-seed.XXXXXX)"
+  openssl rand -base64 48 | tr -d '\n' > "$t"
+  [ "$(wc -c < "$t" | tr -d ' ')" = 64 ] || { rm -f "$t"; echo "openssl failed"; exit 1; }
+  ln "$t" "$f" && rm -f "$t"
+  sudo chown "$(id -u)":1000 "$f" && chmod 640 "$f" && chmod 700 secrets/lldap
+  echo "seed written" )
+# 2. Stop what uses LLDAP, delete the old config copy (it carries the public default)
+docker compose stop hub keycloak lldap
+docker compose run --rm --no-deps -T --entrypoint rm lldap -f /data/lldap_config.toml
+# 3. ONE forced start: LLDAP records the new key and re-writes admin's record from .env
+log="$(mktemp)"
+docker compose run --rm --no-deps -T -e LLDAP_FORCE_UPDATE_PRIVATE_KEY=true -e LLDAP_FORCE_LDAP_USER_PASS_RESET=true \
+  --entrypoint sh lldap -c 'timeout 25 /app/lldap run --config-file /dev/null; true' > "$log" 2>&1
+grep -iE 'successfully \(re\)set password for "admin"|error' "$log"; rm -f "$log"
+# 4. Everything back up (re-sets portcullis-hub's password, restarts the Hub)
+./portcullis up
+./portcullis status   # "lldap key seed: this install's own"
+./portcullis backup   # the first backup with the seed
+```
+
+Run step 3 once. A forced start with an unchanged key refuses, and step 1
+refuses to replace the seed. If step 3 prints an error and no "successfully
+(re)set" line, don't go on: check `docker compose logs lldap`. Under rootless
+Podman, use `podman unshare chown 0:1000` instead of `sudo chown` in step 1.
 
 ## Settings data files and secrets
 
@@ -641,6 +756,32 @@ to start while the void is pending
 mail, to resolve DNS and for its checks; a spam filter's external lookups
 must stay off. How the `stalwart` app keeps that, and its own management
 API, key and role: [Stalwart](../apps/stalwart.md).
+
+**The read-only admin view** (`admin_view`, contract §19.13; `stalwart`'s
+`admin-view`). The one router a mail provider gets besides the well-known
+one is the Hub's admin view router on `mail-admin.<domain>`
+(`portcullis-auth` + `portcullis-groups`, VPN-only in modes admin / server).
+The view (`mailctl admin-view`, uid 10010, read-only root, no capability,
+only the `viewer_key` volume) answers nothing, and uses no credential,
+unless the request comes from Traefik's pinned address with the per-install
+route key the router's `portcullis-mail-admin-key` headers middleware sets
+after forward-auth (`hub_data/mail-admin-route-key`, 0600, also in the
+view's environment) **and** `X-Auth-Request-Groups` (an `authResponseHeaders`
+entry: Traefik deletes client copies) lists `lldap_admin`; it listens only
+on its `portcullis-proxy` address. A session starts only from the Hub's
+single-use 60 s ticket (posted in a form, never in a URL; MAC'd with a
+per-install ticket key that only the Hub and the view read as a file —
+never the route key, which is a Traefik label; spent nonces kept on disk
+until they expire) and ends after 30 min idle / 8 h. Stalwart's viewer
+role holds reads only, of objects whose plain fields can't hold a secret
+(the queue, reports and every store / directory / DNS / hook / tracer /
+lookup object are out; `includeSecrets` pinned off); the view forwards
+only `x:<Obj>/get` / `/query` of those objects and the web admin's
+canonical paths, never the browser's `Authorization` or cookies, and pins
+its TLS hop to Stalwart to the mail certificate's SPKI (chain checks
+skipped only with that pin, ruling). Rotation: delete `viewer-password`
+from `viewer_key` (a new password at the provider's next start) or
+`hub_data/mail-admin-route-key` (a new key at the next render).
 
 ## Rootless Podman
 

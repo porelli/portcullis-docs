@@ -19,8 +19,23 @@
 | **Admin Group** | `admin_cloudbeaver` |
 | **Subdomain** | `db` |
 
-!!! info "Auth Notes"
-    Access gated by forward-auth + group-gate. CloudBeaver's reverseProxy auth provider logs users in from X-Forwarded-User (the immutable LLDAP username; the provider has no email header) and trusts team/role headers from any peer with no allowlist, so CloudBeaver is kept off portcullis-proxy behind a small nginx gate (cloudbeaver-gate) that rejects (403) X-Forwarded-User or X-Forwarded-Email from anything but Traefik (PORTCULLIS_TRAEFIK_SOURCE) and strips the X-User/X-Team/X-Role/X-Role-TE/name and X-Forwarded-Email headers. Accounts created when the header carried the email are named after it; rename them to the LLDAP username in CloudBeaver's admin UI. Roles and connections are managed in CloudBeaver. The server is configured automatically at first start (CB_SERVER_* / CB_ADMIN_*), so nobody gets the initial-configuration wizard; its local administrator cbadmin-<CLOUDBEAVER_ADMIN_SUFFIX> (password CLOUDBEAVER_ADMIN_PASSWORD, both generated per instance) is break-glass only. reverseProxy logs a user in as the CloudBeaver account named like X-Forwarded-User, so the administrator's name is per instance and non-guessable, and cloudbeaver-gate refuses (403) any X-Forwarded-User starting with "cbadmin" (case-insensitive), so no LLDAP user can become the local administrator. Before every start, cloudbeaver-config (a one-shot, JSON-aware patch of workspace/.data/.cloudbeaver.runtime.conf) re-enables the reverseProxy provider with X-Forwarded-User, and CloudBeaver doesn't start if that fails. Anonymous access is off (fail closed); on the first start cloudbeaver-config seeds the runtime config before the automatic configuration runs, so users sign in by X-Forwarded-User from the start. cloudbeaver-gate is healthy only while CloudBeaver reports itself configured (no setup wizard) with anonymous access off; Traefik routes no unhealthy container, so a failed automatic configuration is never served.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Access gated by forward-auth + group-gate. CloudBeaver signs people in from <code>X-Forwarded-User</code> (the immutable LLDAP username); roles and connections are managed in CloudBeaver.</p>
+<p><strong>The gate:</strong> CloudBeaver's <code>reverseProxy</code> auth provider logs users in from <code>X-Forwarded-User</code> (the provider has no email header) and trusts team/role headers from any peer with no allowlist. So CloudBeaver is kept off <code>portcullis-proxy</code> behind a small nginx gate (<code>cloudbeaver-gate</code>) that rejects (403) <code>X-Forwarded-User</code> or <code>X-Forwarded-Email</code> from anything but Traefik (<code>PORTCULLIS_TRAEFIK_SOURCE</code>) and strips the <code>X-User</code>/<code>X-Team</code>/<code>X-Role</code>/<code>X-Role-TE</code>/name and <code>X-Forwarded-Email</code> headers.</p>
+<p>Accounts created when the header carried the email are named after it; rename them to the LLDAP username in CloudBeaver's admin UI.</p>
+<p><strong>Automatic configuration:</strong> the server is configured automatically at first start (<code>CB_SERVER_*</code> / <code>CB_ADMIN_*</code>), so nobody gets the initial-configuration wizard.</p>
+<ul>
+<li>Its local administrator <code>cbadmin-&lt;CLOUDBEAVER_ADMIN_SUFFIX&gt;</code> (password <code>CLOUDBEAVER_ADMIN_PASSWORD</code>, both generated per instance) is break-glass only.</li>
+<li><code>reverseProxy</code> logs a user in as the CloudBeaver account named like <code>X-Forwarded-User</code>, so the administrator's name is per instance and non-guessable, and <code>cloudbeaver-gate</code> refuses (403) any <code>X-Forwarded-User</code> starting with <code>cbadmin</code> (case-insensitive), so no LLDAP user can become the local administrator.</li>
+</ul>
+<p><strong>Fail closed:</strong></p>
+<ul>
+<li>Before every start, <code>cloudbeaver-config</code> (a one-shot, JSON-aware patch of <code>workspace/.data/.cloudbeaver.runtime.conf</code>) re-enables the <code>reverseProxy</code> provider with <code>X-Forwarded-User</code>, and CloudBeaver doesn't start if that fails.</li>
+<li>Anonymous access is off. On the first start <code>cloudbeaver-config</code> seeds the runtime config before the automatic configuration runs, so users sign in by <code>X-Forwarded-User</code> from the start.</li>
+<li><code>cloudbeaver-gate</code> is healthy only while CloudBeaver reports itself configured (no setup wizard) with anonymous access off; Traefik routes no unhealthy container, so a failed automatic configuration is never served.</li>
+</ul>
+</div>
 
 ## Routing
 

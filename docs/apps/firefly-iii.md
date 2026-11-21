@@ -19,8 +19,16 @@
 | **Admin Group** | `admin_firefly-iii` |
 | **Subdomain** | `finance` |
 
-!!! info "Auth Notes"
-    Uses remote_user_guard: the account is keyed on X-Forwarded-User, the immutable LLDAP username (stored in Firefly's email column; Firefly does not require an address there). X-Forwarded-Email (user-editable in LLDAP) only sets the notification address and never selects an account. remote_user_guard has no proxy allowlist, so the container's nginx rejects (403) any request carrying X-Forwarded-User or X-Forwarded-Email that does not come from Traefik (PORTCULLIS_TRAEFIK_SOURCE); TRUSTED_PROXIES is likewise limited to Traefik. Auto-creates user on first login. No group-based admin support. Upgrading from a release that keyed users on email: the old accounts are named after the email; rename them to the LLDAP username (users.email column) before users log in again, or they get new empty accounts.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Uses <code>remote_user_guard</code>: the account is keyed on <code>X-Forwarded-User</code>, the immutable LLDAP username. Auto-creates user on first login; no group-based admin support.</p>
+<ul>
+<li>The username is stored in Firefly's email column (Firefly does not require an address there).</li>
+<li><code>X-Forwarded-Email</code> (user-editable in LLDAP) only sets the notification address and never selects an account.</li>
+<li><code>remote_user_guard</code> has no proxy allowlist, so the container's nginx rejects (403) any request carrying <code>X-Forwarded-User</code> or <code>X-Forwarded-Email</code> that does not come from Traefik (<code>PORTCULLIS_TRAEFIK_SOURCE</code>); <code>TRUSTED_PROXIES</code> is likewise limited to Traefik.</li>
+</ul>
+<p><strong>Upgrading from a release that keyed users on email:</strong> the old accounts are named after the email; rename them to the LLDAP username (<code>users.email</code> column) before users log in again, or they get new empty accounts.</p>
+</div>
 
 ## Routing
 

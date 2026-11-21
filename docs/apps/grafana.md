@@ -19,8 +19,18 @@
 | **Admin Group** | `admin_grafana` |
 | **Subdomain** | `grafana` |
 
-!!! info "Auth Notes"
-    Proxy auth with X-Forwarded-User header, accepted only from Traefik (GF_AUTH_PROXY_WHITELIST = PORTCULLIS_TRAEFIK_SOURCE) and, while AI support is on, from the instance's grafana-mcp companion: its trust network mcp-trust (internal, members dashboards and grafana-mcp only) is added by trust.sh at every start, read from Grafana's own interface, without the gateway, broadcast and Grafana's own address. Auto-creates users. Each person's organization role (Viewer, Editor or Admin) comes from the instance's Role setting: group-gate sends it as X-Forwarded-Attr-Grafana-Role on every request and Grafana syncs it on every request (GF_AUTH_PROXY_SYNC_TTL 0). Members of the admin group are Admin by default, everyone else Viewer; other groups are set per group (privileged: only groups delegates can't steer). A role changed in the Grafana UI is overwritten by the next request. A request without the role header (the person's role can't be resolved, or group-gate can't read the Hub's attributes file) keeps the last synced role: Grafana doesn't fall back to Viewer, so remove a person from the instance's access group to take access away. Access gated by group-gate.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Grafana signs people in by proxy auth: group-gate gates access and sends the user and their organization role; Grafana auto-creates users.</p>
+<p><strong>Proxy auth:</strong> the <code>X-Forwarded-User</code> header is accepted only from Traefik (<code>GF_AUTH_PROXY_WHITELIST</code> = <code>PORTCULLIS_TRAEFIK_SOURCE</code>) and, while AI support is on, from the instance's <code>grafana-mcp</code> companion. Its trust network <code>mcp-trust</code> (internal, members <code>dashboards</code> and <code>grafana-mcp</code> only) is added by <code>trust.sh</code> at every start, read from Grafana's own interface, without the gateway, broadcast and Grafana's own address.</p>
+<p><strong>Roles:</strong> each person's organization role (Viewer, Editor or Admin) comes from the instance's <strong>Role</strong> setting. group-gate sends it as <code>X-Forwarded-Attr-Grafana-Role</code> on every request and Grafana syncs it on every request (<code>GF_AUTH_PROXY_SYNC_TTL</code> 0).</p>
+<ul>
+<li>Members of the admin group are Admin by default, everyone else Viewer; other groups are set per group (privileged: only groups delegates can't steer).</li>
+<li>A role changed in the Grafana UI is overwritten by the next request.</li>
+<li>A request without the role header (the person's role can't be resolved, or group-gate can't read the Hub's attributes file) keeps the last synced role: Grafana doesn't fall back to Viewer, so remove a person from the instance's access group to take access away.</li>
+</ul>
+<p>Access gated by group-gate.</p>
+</div>
 
 ## Public Exceptions
 

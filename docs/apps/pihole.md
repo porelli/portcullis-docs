@@ -19,8 +19,17 @@
 | **Admin Group** | `admin_pihole` |
 | **Subdomain** | `pihole` |
 
-!!! info "Auth Notes"
-    No SSO in Pi-hole; Portcullis sign-in (forward-auth + group-gate) is the only login. Pi-hole's own password is off (FTLCONF_webserver_api_password empty), which upstream allows: with no password the API needs no session. Safe here because Pi-hole's web server ACL (FTLCONF_webserver_acl, https://docs.pi-hole.net/ftldns/configfile/#acl) only lets Traefik and the container itself connect: other containers on portcullis-proxy get 403, and Traefik serves the host only through the gateway. The DNS ports (53) are unaffected; Pi-hole serves no DNS-over-HTTPS. Consequences: every member of users_pihole is a full Pi-hole admin (Pi-hole has no roles). Without a password FTL (v6.8, src/api/auth.c check_client_auth) still refuses browser requests sent by other websites, sibling hosts on the same parent domain included (Sec-Fetch-Site / Origin), and requests whose Host is not one of its own names (DNS rebinding); FTLCONF_webserver_domain is therefore set to the instance's hostname at every start. The previous PIHOLE_WEBPASSWORD is no longer used. Upgrades: keep an image with FTL v6.8 or later (these no-password checks).
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>No SSO in Pi-hole; Portcullis sign-in (forward-auth + group-gate) is the only login. Every member of <code>users_pihole</code> is a full Pi-hole admin (Pi-hole has no roles).</p>
+<p><strong>No Pi-hole password:</strong> Pi-hole's own password is off (<code>FTLCONF_webserver_api_password</code> empty), which upstream allows: with no password the API needs no session. Safe here because Pi-hole's web server ACL (<code>FTLCONF_webserver_acl</code>, <a target="_blank" rel="noopener noreferrer nofollow" href="https://docs.pi-hole.net/ftldns/configfile/#acl">https://docs.pi-hole.net/ftldns/configfile/#acl</a>) only lets Traefik and the container itself connect: other containers on <code>portcullis-proxy</code> get 403, and Traefik serves the host only through the gateway.</p>
+<ul>
+<li>The DNS ports (53) are unaffected; Pi-hole serves no DNS-over-HTTPS.</li>
+<li>Without a password FTL (v6.8, <code>src/api/auth.c</code> <code>check_client_auth</code>) still refuses browser requests sent by other websites, sibling hosts on the same parent domain included (<code>Sec-Fetch-Site</code> / <code>Origin</code>), and requests whose <code>Host</code> is not one of its own names (DNS rebinding). <code>FTLCONF_webserver_domain</code> is therefore set to the instance's hostname at every start.</li>
+<li>The previous <code>PIHOLE_WEBPASSWORD</code> is no longer used.</li>
+</ul>
+<p><strong>Upgrades:</strong> keep an image with FTL v6.8 or later (these no-password checks).</p>
+</div>
 
 ## Routing
 

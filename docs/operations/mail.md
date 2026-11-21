@@ -150,6 +150,56 @@ the provider: each call to it is bounded at 30 s, and the gate closes
 whatever it answers. Audited `mail.provider_unwired`. The wired instance
 can't be deleted: "unwire it first (Settings → Mail)".
 
+## The read-only admin view
+
+A mail provider is **managed by Portcullis**: Settings → Mail and the
+instance's Mail tab are where mail changes. A provider that offers it (the
+`stalwart` template does) also shows its mail server's **own admin screen,
+read-only**, to full administrators: **Open Stalwart's admin (read-only)** on
+Settings → Mail and on the Mail tab, next to the warning "Stalwart's own admin
+screen is read-only here. Make changes in Portcullis (Settings → Mail); changes
+made elsewhere would bypass Portcullis's mail safeguards."
+([contract §19.13](../guides/integration-contracts.md#1913-the-read-only-mail-admin-view))
+
+- **Open it from Portcullis.** The button opens
+  `https://mail-admin.<your domain>/` in a new tab with a one-time ticket
+  (valid 60 seconds, for you only, sent in a form, never in the address). Going to `mail-admin.<your domain>`
+  directly, from a bookmark or another tab, shows "Open it from Portcullis".
+  A session ends after 30 minutes idle or 8 hours; open it again from
+  Portcullis.
+- **Full administrators only** (`lldap_admin`): checked by Portcullis's
+  sign-in and group check and again by the view itself. Never a delegate, the
+  portal, MCP or AI. In VPN modes `admin` and `server` it is VPN-only, like
+  the Hub. Each opening is audited (`mail.admin_view_opened`, with the
+  link's id) and logged by the provider's `admin-view` container.
+- You never see or type a password: on Stalwart's first screen type any
+  name and press Continue. The view reads Stalwart as a dedicated **viewer**
+  account (`portcullis-viewer@portcullis-former.internal`) whose role holds
+  reads only.
+- **Nothing can be changed there.** Stalwart itself refuses every write the
+  viewer sends, and the view refuses everything but reads of the objects it
+  shows before they reach Stalwart.
+- **What you see:** accounts (credentials masked), groups and mailing lists,
+  domains and DKIM signatures (public keys; private keys masked), the
+  certificate, roles and the server's settings. **What you never see:** the
+  queue (no queued message or envelope), DMARC / TLS / ARF reports,
+  mailboxes, logs, credentials, and settings that can hold a secret in a
+  plain field (stores, directories, DNS servers, hooks, tracers, metrics
+  exporters, AI models, HTTP lookups, the blocklist servers, whose zone can
+  carry your Spamhaus key).
+- Stalwart's web admin bundle is pinned in the mailctl image (never
+  downloaded at run time), and served only at `/admin`.
+- `mail-admin.<your domain>` is reserved while mail is on: no app may use it.
+- **Rotation.** The viewer's password: delete `viewer-password` from the
+  provider's `viewer_key` volume and restart the provider (a new one is set).
+  The view's route key: delete `mail-admin-route-key` from the Hub's data
+  volume; its ticket key: delete `appfiles/<instance>/mail-admin/ticket-key`;
+  then restart the provider from its instance page.
+- Not on Kubernetes (mail isn't, yet). A store bootstrapped before the
+  view existed has no viewer account: the view then can't open ("the
+  read-only mail admin view can't open"); start from a fresh store, or
+  create the role and account by hand.
+
 ## The void
 
 A void destroys every mail password of every account. One is owed after

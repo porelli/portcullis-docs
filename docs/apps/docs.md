@@ -17,8 +17,10 @@
 | **Group Admin** | :x: |
 | **Subdomain** | `docs` |
 
-!!! info "Auth Notes"
-    Public documentation site — no authentication required.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Public documentation site — no authentication required.</p>
+</div>
 
 ## Routing
 
