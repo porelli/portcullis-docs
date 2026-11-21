@@ -2,7 +2,7 @@
 
 ![Vikunja logo](logos/vikunja.svg){ width="64" height="64" }
 
-<small>Logo: © 2018-present Vikunja and contributors, `AGPL-3.0-or-later`, [source](https://github.com/go-vikunja/vikunja/blob/5b9d4fcc720fe65548ab6c3f7c974c12b28d13af/frontend/originalMedia/images/logo.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+<p class="app-logo-credit"><small>Logo: © 2018-present Vikunja and contributors, <code>AGPL-3.0-or-later</code>, <a href="https://github.com/go-vikunja/vikunja/blob/5b9d4fcc720fe65548ab6c3f7c974c12b28d13af/frontend/originalMedia/images/logo.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
 
 > Self-hosted to-do lists, kanban boards and project planning
 

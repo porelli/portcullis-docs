@@ -2,7 +2,7 @@
 
 ![Headscale logo](logos/headscale.svg){ width="64" height="64" }
 
-<small>Logo: © 2020 Juan Font, `BSD-3-Clause`, [source](https://github.com/juanfont/headscale/blob/f00c412cde4a000cc091037f926519b99ceb7626/docs/assets/logo/headscale3-dots.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+<p class="app-logo-credit"><small>Logo: © 2020 Juan Font, <code>BSD-3-Clause</code>, <a href="https://github.com/juanfont/headscale/blob/f00c412cde4a000cc091037f926519b99ceb7626/docs/assets/logo/headscale3-dots.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
 
 > Self-hosted Tailscale control server with Headplane admin UI
 

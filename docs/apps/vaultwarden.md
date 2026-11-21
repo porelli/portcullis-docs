@@ -2,7 +2,7 @@
 
 ![Vaultwarden logo](logos/vaultwarden.svg){ width="64" height="64" }
 
-<small>Logo: © 2021 The Vaultwarden contributors, `AGPL-3.0-only`, [source](https://github.com/dani-garcia/vaultwarden/blob/d57b69952db6eb12987a9668fea6b72df79cfa41/resources/vaultwarden-icon.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+<p class="app-logo-credit"><small>Logo: © 2021 The Vaultwarden contributors, <code>AGPL-3.0-only</code>, <a href="https://github.com/dani-garcia/vaultwarden/blob/d57b69952db6eb12987a9668fea6b72df79cfa41/resources/vaultwarden-icon.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
 
 > Lightweight Bitwarden-compatible password manager
 

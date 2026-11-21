@@ -2,7 +2,7 @@
 
 ![Zigbee2MQTT logo](logos/zigbee2mqtt.svg){ width="64" height="64" }
 
-<small>Logo: © 2019 The Zigbee2MQTT contributors, `GPL-3.0-only`, [source](https://github.com/Koenkk/zigbee2mqtt/blob/9c505fd75f503a91a61244d6f0efa0e37d81a7b0/images/logo_vector.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+<p class="app-logo-credit"><small>Logo: © 2019 The Zigbee2MQTT contributors, <code>GPL-3.0-only</code>, <a href="https://github.com/Koenkk/zigbee2mqtt/blob/9c505fd75f503a91a61244d6f0efa0e37d81a7b0/images/logo_vector.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
 
 > Zigbee to MQTT bridge with its web frontend and a bundled, password-protected Mosquitto broker
 

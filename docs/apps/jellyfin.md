@@ -2,7 +2,7 @@
 
 ![Jellyfin logo](logos/jellyfin.svg){ width="64" height="64" }
 
-<small>Logo: © 2019 The Jellyfin contributors, `CC-BY-SA-4.0`, [source](https://github.com/jellyfin/jellyfin-ux/blob/9e27258e873f64edaa9c5955e753978975ed5589/branding/SVG/icon-transparent.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+<p class="app-logo-credit"><small>Logo: © 2019 The Jellyfin contributors, <code>CC-BY-SA-4.0</code>, <a href="https://github.com/jellyfin/jellyfin-ux/blob/9e27258e873f64edaa9c5955e753978975ed5589/branding/SVG/icon-transparent.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
 
 > Free and open-source media server — movies, TV, music, live TV
 

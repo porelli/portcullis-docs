@@ -90,6 +90,7 @@ zensical build --strict   # what CI runs
 
 ```bash
 bash scripts/check-branding.sh                      # logo/favicon are the pinned branding copies
+PORTCULLIS_TEMPLATES=../portcullis-templates python3 -m unittest discover -s scripts -p 'test_*.py'  # generator tests
 zensical build --strict --clean                     # no broken links/anchors
 python3 scripts/check-lists.py site && rm -rf site  # no literal "- " list markers in the built HTML
 grep -rnE 'bootstrap\.sh|apply-config|configure-keycloak|register-oidc|setup-vault-pki|vault-init\.sh|enroll-yubikey|renew-yubikey|revoke-cert|status\.sh|upgrade\.sh|restore\.sh|setup-dns|init-config|scripts/group-gate' docs   # must be empty
@@ -107,7 +108,7 @@ Push to `main` (or the daily schedule, which picks up template changes) → GitH
 | `docs/.nav.yml` | Top-level nav order |
 | `docs/<section>/.nav.yml` | Per-section nav order (setup, guides, operations) |
 | `docs/apps/.nav.yml` | Auto-generated (by `generate-app-docs.py`) |
-| `scripts/generate-app-docs.py` | Reads templates repo `manifest.yaml` + `compose.yml` → writes `docs/apps/*.md` + `docs/apps/.nav.yml`. `auth.notes` is rendered with markdown-it-py (`requirements.txt`; CommonMark + tables, raw HTML and images off) into a raw HTML admonition block, never pasted as Markdown (contract §3: the site's raw HTML / `attr_list` / `md_in_html` must not reach template text); `long_description` the same way, as an About section above the auth notes; `resources` as one header line; `logo` copied to `docs/apps/logos/<id>.svg` (stale copies removed on every run) and shown as an `<img>` with its REUSE attribution from `<logo>.license` (the site sets no CSP, so a same-origin image loads) |
+| `scripts/generate-app-docs.py` | Reads templates repo `manifest.yaml` + `compose.yml` → writes `docs/apps/*.md` + `docs/apps/.nav.yml`. `auth.notes` is rendered with markdown-it-py (`requirements.txt`; CommonMark + tables, raw HTML and images off) into a raw HTML admonition block, never pasted as Markdown (contract §3: the site's raw HTML / `attr_list` / `md_in_html` must not reach template text); `long_description` the same way, as an About section above the auth notes; `resources` as one header line; `logo` copied to `docs/apps/logos/<id>.svg` (stale copies removed on every run) and shown as an `<img>` with its REUSE attribution from `<logo>.license` (the site sets no CSP, so a same-origin image loads). A logo opened directly runs on the site's origin, so: nothing is read through a symlink or from outside the template dir (`read_asset`, `O_NOFOLLOW`), a logo is copied only if it passes the templates' own lint (`tests/svgsafe.py` of `--source`, needs `defusedxml`; no lint = no copy), and the credit is a raw HTML block of `html.escape`d values with an https-only source link (`source_url`). Tests: `python -m unittest discover -s scripts -p 'test_*.py'` (CI step "Generator tests") |
 | `scripts/check-branding.sh` | Pins `docs/assets/logo.svg` / `favicon.svg` to the branding source's sha256 (CI step "Branding copies") |
 | `scripts/check-lists.py` | Fails on a literal list marker in a built paragraph (CI step "No literal list markers") |
 | `docs/apps/index.md` | Auto-generated app catalog table |

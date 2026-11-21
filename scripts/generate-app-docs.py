@@ -16,10 +16,13 @@ Usage:
 """
 
 import html
+import importlib.util
 import os
 import re
+import stat
 import sys
 import argparse
+import urllib.parse
 from pathlib import Path
 
 import yaml
@@ -57,6 +60,11 @@ def load_manifests(source_dir: Path) -> list[dict]:
         manifest_path = entry / "manifest.yaml"
         if not manifest_path.is_file():
             continue
+        if entry.is_symlink() or manifest_path.is_symlink():
+            # Nothing is read through a symlink (a logo would be copied
+            # onto the docs site from wherever it points).
+            print(f"ERROR: {entry}: a template directory or manifest that is a symlink is refused", file=sys.stderr)
+            sys.exit(1)
         with open(manifest_path) as f:
             manifest = yaml.safe_load(f)
         settings = manifest.get("settings")
@@ -320,45 +328,133 @@ def resources_line(app: dict) -> str:
 
 # Logos (manifest logo:, contract §3) are copied next to the app pages and
 # shown with <img> only, never inlined. The site sets no Content Security
-# Policy (zensical.toml, GitHub Pages), so a same-origin image loads; the
-# templates repo's lint (tests/svgsafe.py) has already checked the file.
+# Policy (zensical.toml, GitHub Pages), so a same-origin image loads. A
+# logo opened directly would run as an SVG document on the site's origin,
+# so a copy is only ever one that passes the templates' own logo lint
+# (tests/svgsafe.py of the --source checkout), read without following a
+# symlink, from the template's own directory.
 LOGO_DIR = "logos"
+LOGO_MAX = 64 << 10
+LICENSE_MAX = 4 << 10
 LICENSE_KEYS = ("SPDX-FileCopyrightText:", "SPDX-License-Identifier:", "Source:")
+# A credit's source link: https, a host, nothing that could leave the
+# attribute or the URL (whitespace, quotes, brackets).
+SOURCE_BAD = re.compile(r"[\s)<>\"'`\\]")
 
 
-def logo_lines(app: dict, output_dir: Path) -> list[str]:
+class AssetError(Exception):
+    """A template asset the generator refuses (the message names it)."""
+
+
+def load_logo_lint(source_dir: Path):
+    """The templates repo's logo lint, tests/svgsafe.py: check(bytes) ->
+    None or the reason. None when the checkout has none (then no logo is
+    copied)."""
+    path = source_dir / "tests" / "svgsafe.py"
+    if path.is_symlink() or not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("portcullis_templates_svgsafe", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.check
+
+
+def read_asset(tdir: Path, name: str, limit: int) -> bytes:
+    """name's bytes from the template directory tdir: a regular file in
+    tdir itself (no directory part), never through a symlink (the file or
+    the directory), at most limit bytes."""
+    if tdir.is_symlink():
+        raise AssetError(f"{tdir.name}: the template directory is a symlink")
+    if "/" in name or "\\" in name or name in (".", ".."):
+        raise AssetError(f"{tdir.name}: {name!r} is not a file name")
+    path = tdir / name
+    if path.is_symlink():
+        raise AssetError(f"{tdir.name}/{name} is a symlink")
+    if path.resolve().parent != tdir.resolve():
+        raise AssetError(f"{tdir.name}/{name} resolves outside the template directory")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise AssetError(f"{tdir.name}/{name} is not a regular file")
+        if st.st_size > limit:
+            raise AssetError(f"{tdir.name}/{name} is over {limit} bytes")
+        with os.fdopen(fd, "rb") as f:
+            fd = -1
+            data = f.read(limit + 1)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+    if len(data) > limit:
+        raise AssetError(f"{tdir.name}/{name} is over {limit} bytes")
+    return data
+
+
+def source_url(value: str) -> str:
+    """The credit's Source: as a link target, or "" (no link)."""
+    if not value or SOURCE_BAD.search(value):
+        return ""
+    u = urllib.parse.urlsplit(value)
+    if u.scheme != "https" or not u.hostname or u.username or u.password:
+        return ""
+    return value
+
+
+def logo_credit(meta: dict) -> str:
+    """The REUSE attribution as one raw HTML block: Python-Markdown leaves
+    its content alone, so a value can't become Markdown (a link, an
+    image), and every value is HTML-escaped. "" without anything to say."""
+    def text(v) -> str:
+        # md_cell flattens newlines; its "\\|" is undone (this is HTML, not
+        # a table cell, where the backslash would show).
+        return html.escape(md_cell(v).replace("\\|", "|"), quote=False)
+    parts = []
+    if meta.get("SPDX-FileCopyrightText:"):
+        parts.append("© " + text(meta["SPDX-FileCopyrightText:"]))
+    if meta.get("SPDX-License-Identifier:"):
+        parts.append("<code>" + text(meta["SPDX-License-Identifier:"]) + "</code>")
+    url = source_url(meta.get("Source:", ""))
+    if url:
+        parts.append('<a href="' + html.escape(url, quote=True) + '" target="_blank" rel="noopener noreferrer nofollow">source</a>')
+    if not parts:
+        return ""
+    return ('<p class="app-logo-credit"><small>Logo: ' + ", ".join(parts) +
+            ". Shown only to identify the app; any trademark stays its owner's.</small></p>")
+
+
+def logo_lines(app: dict, output_dir: Path, lint) -> list[str]:
     """Copy the template's logo to apps/logos/<id>.svg and return the page
     lines: the image and its REUSE attribution (copyright, licence,
-    source), as the logo's licence asks. Nothing without a logo."""
+    source), as the logo's licence asks. Nothing without a logo, or
+    without the templates' lint to check it with."""
     logo = app.get("logo")
     tdir = app.get("_dir")
     if not isinstance(logo, str) or tdir is None:
         return []
-    src = tdir / logo
-    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}\.svg", logo) or not src.is_file():
-        print(f"ERROR: {app['_id']}: logo {logo!r} is not a file in the template folder", file=sys.stderr)
-        sys.exit(1)
-    dest = output_dir / LOGO_DIR / f"{app['_id']}.svg"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(src.read_bytes())
+    if lint is None:
+        print(f"WARNING: {app['_id']}: no tests/svgsafe.py in the templates checkout: its logo is not copied", file=sys.stderr)
+        return []
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}\.svg", logo):
+        raise AssetError(f"{app['_id']}: logo {logo!r} is not a logo file name")
+    data = read_asset(tdir, logo, LOGO_MAX)
+    why = lint(data)
+    if why is not None:
+        raise AssetError(f"{app['_id']}: logo {logo} fails the logo lint: {why}")
     meta = {}
-    lic = tdir / f"{logo}.license"
-    if lic.is_file():
-        for line in lic.read_text().splitlines():
+    if (tdir / f"{logo}.license").exists() or (tdir / f"{logo}.license").is_symlink():
+        lic = read_asset(tdir, f"{logo}.license", LICENSE_MAX).decode("utf-8", "replace")
+        for line in lic.splitlines():
             for key in LICENSE_KEYS:
                 if line.startswith(key):
                     meta[key] = line[len(key):].strip()
-    name = md_cell(str(app.get("name", app["_id"])))
-    lines = [f'![{name} logo]({LOGO_DIR}/{app["_id"]}.svg){{ width="64" height="64" }}', ""]
-    credit = []
-    if meta.get("SPDX-FileCopyrightText:"):
-        credit.append(f"© {md_cell(meta['SPDX-FileCopyrightText:'])}")
-    if meta.get("SPDX-License-Identifier:"):
-        credit.append(f"`{md_cell(meta['SPDX-License-Identifier:'])}`")
-    if meta.get("Source:", "").startswith("https://"):
-        credit.append(f"[source]({meta['Source:']})")
+    dest = output_dir / LOGO_DIR / f"{app['_id']}.svg"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    alt = re.sub(r"[^\w .+&()-]", "", str(app.get("name", app["_id"]))).strip() or app["_id"]
+    lines = [f'![{alt} logo]({LOGO_DIR}/{app["_id"]}.svg){{ width="64" height="64" }}', ""]
+    credit = logo_credit(meta)
     if credit:
-        lines += [f"<small>Logo: {', '.join(credit)}. Shown only to identify the app; any trademark stays its owner's.</small>", ""]
+        lines += [credit, ""]
     return lines
 
 
@@ -597,7 +693,7 @@ def generate_index(apps: list[dict], output_dir: Path):
     print(f"  Generated apps/index.md ({len(apps)} apps)")
 
 
-def generate_app_page(app: dict, output_dir: Path):
+def generate_app_page(app: dict, output_dir: Path, lint=None):
     """Generate a per-app detail page."""
     app_id = app["_id"]
     name = app.get("name", app_id)
@@ -631,7 +727,7 @@ def generate_app_page(app: dict, output_dir: Path):
         lines[-2] += "  "
         lines.insert(len(lines) - 1, res)
     # The logo goes under the title, before the description.
-    lines[2:2] = logo_lines(app, output_dir)
+    lines[2:2] = logo_lines(app, output_dir, lint)
 
     long_desc = app.get("long_description", "")
     if long_desc:
@@ -960,9 +1056,14 @@ def main():
     apps = load_manifests(source_dir)
     print(f"Found {len(apps)} app manifests")
 
+    lint = load_logo_lint(source_dir)
     generate_index(apps, docs_dir)
     for app in apps:
-        generate_app_page(app, docs_dir)
+        try:
+            generate_app_page(app, docs_dir, lint)
+        except AssetError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
         print(f"  Generated apps/{app['_id']}.md")
 
     generate_apps_pages(apps, docs_dir)

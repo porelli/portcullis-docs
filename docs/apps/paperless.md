@@ -2,7 +2,7 @@
 
 ![Paperless-ngx logo](logos/paperless.svg){ width="64" height="64" }
 
-<small>Logo: © 2026 The paperless-ngx contributors, `GPL-3.0-only`, [source](https://github.com/paperless-ngx/paperless-ngx/blob/fbadc2e1b8c34f80b48be0766cae7168e0e8ec24/docs/assets/logo_leaf.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+<p class="app-logo-credit"><small>Logo: © 2026 The paperless-ngx contributors, <code>GPL-3.0-only</code>, <a href="https://github.com/paperless-ngx/paperless-ngx/blob/fbadc2e1b8c34f80b48be0766cae7168e0e8ec24/docs/assets/logo_leaf.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
 
 > Document management with OCR, full-text search and automatic tagging
 
