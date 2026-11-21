@@ -757,6 +757,29 @@ mail, to resolve DNS and for its checks; a spam filter's external lookups
 must stay off. How the `stalwart` app keeps that, and its own management
 API, key and role: [Stalwart](../apps/stalwart.md).
 
+**The read-only admin view** (`admin_view`, contract §19.13; `stalwart`'s
+`admin-view`). The one router a mail provider gets besides the well-known
+one is the Hub's admin view router on `mail-admin.<domain>`
+(`portcullis-auth` + `portcullis-groups`, VPN-only in modes admin / server).
+The view (`mailctl admin-view`, uid 10010, read-only root, no capability,
+only the `viewer_key` volume) answers nothing, and uses no credential,
+unless the request comes from Traefik's pinned address with the per-install
+route key the router's `portcullis-mail-admin-key` headers middleware sets
+after forward-auth (`hub_data/mail-admin-route-key`, 0600, also in the
+view's environment) **and** `X-Auth-Request-Groups` (an `authResponseHeaders`
+entry: Traefik deletes client copies) lists `lldap_admin`; it listens only
+on its `portcullis-proxy` address. A session starts only from the Hub's
+single-use 60 s ticket and ends after 30 min idle / 8 h. Stalwart's viewer
+role holds reads only, of objects whose plain fields can't hold a secret
+(the queue, reports and every store / directory / DNS / hook / tracer /
+lookup object are out; `includeSecrets` pinned off); the view forwards
+only `x:<Obj>/get` / `/query` of those objects and the web admin's
+canonical paths, never the browser's `Authorization` or cookies, and pins
+its TLS hop to Stalwart to the mail certificate's SPKI (chain checks
+skipped only with that pin, ruling). Rotation: delete `viewer-password`
+from `viewer_key` (a new password at the provider's next start) or
+`hub_data/mail-admin-route-key` (a new key at the next render).
+
 ## Rootless Podman
 
 Under [rootless Podman](rootless-podman.md) every hardening item above holds
