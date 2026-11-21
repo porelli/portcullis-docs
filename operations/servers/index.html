@@ -1,0 +1,3890 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/servers/">
+      
+      
+      
+        <link rel="prev" href="../vpn/">
+      
+      
+        <link rel="next" href="../ssh-access/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Multiple Servers - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Multiple Servers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/stalwart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📬 Stalwart
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  The Portcullis CLI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubernetes (experimental)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Multiple Servers
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Multiple Servers
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setting up
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setting up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-link-role-on-the-primary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. The link role on the primary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-add-the-server-in-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Add the server in the Hub
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-join-on-the-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Join on the worker
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#folder-roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Folder roots
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#placing-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Placing apps
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Placing apps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-only-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Primary-only apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-cookie-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The cookie rule
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bandwidth" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bandwidth
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#moving-an-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Moving an instance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backups
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#revoking-and-removing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revoking and removing
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Revoking and removing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fresh-sign-in-and-typed-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fresh sign-in and typed ids
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quarantine" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quarantine
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-something-is-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When something is down
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-and-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Monitoring and status
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ssh-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SSH Access
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setting up
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setting up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-link-role-on-the-primary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. The link role on the primary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-add-the-server-in-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Add the server in the Hub
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-join-on-the-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Join on the worker
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#folder-roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Folder roots
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#placing-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Placing apps
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Placing apps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-only-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Primary-only apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-cookie-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The cookie rule
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bandwidth" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bandwidth
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#moving-an-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Moving an instance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backups
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#revoking-and-removing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Revoking and removing
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Revoking and removing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fresh-sign-in-and-typed-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fresh sign-in and typed ids
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quarantine" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quarantine
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-something-is-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When something is down
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-and-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Monitoring and status
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="multiple-servers">Multiple Servers<a class="headerlink" href="#multiple-servers" title="Permanent link">&para;</a></h1>
+<p>One Portcullis server, the <strong>primary</strong>, can run app <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> on other
+machines, the <strong><abbr title="Machines that run app instances for the primary Portcullis server: only their agent and socket proxy, reached over the link tunnel they dial out">worker servers</abbr></strong>: a NAS at home, a Raspberry Pi, a second
+VPS. People, groups, sign-in, certificates and the Hub stay on the primary;
+only the apps' containers run on the worker. The interfaces are in
+<a href="../../guides/integration-contracts/#17-servers-new-multiple-servers">contracts §17</a>.</p>
+<h2 id="the-model">The model<a class="headerlink" href="#the-model" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Every request enters through the primary.</strong> DNS keeps pointing at the
+  primary only. Its <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> terminates TLS and runs <abbr title="Auth method where Traefik delegates authentication to oauth2-proxy and authorization to group-gate">forward-auth</abbr>, <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr>
+  and the TLS tier for every host, including the hosts of <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> on a
+  worker, then hands the request to a small <strong>relay</strong> that carries it to the
+  worker over a WireGuard tunnel. So sign-in strength, group rules, public
+  exceptions and <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> access are the same on every server: there is
+  nothing on a worker that could drift.</li>
+<li><strong>Workers dial out.</strong> A worker needs no inbound port and no public
+  address: its <strong>agent</strong> connects out to the primary's link port (UDP 51821
+  by default), so a NAS behind home NAT can be a worker of a VPS. Every
+  connection inside the tunnel is still opened by the primary; the primary's
+  end of the tunnel listens on nothing.</li>
+<li><strong>A worker holds no keys to the kingdom.</strong> It has no <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> account, no DNS
+  credentials, no certificate of a person, no cookie secret, no proxy secret
+  and no core credential, and it never sees a Portcullis session cookie.</li>
+<li><strong>The worker runs two containers</strong> of its own: the agent and
+  <code>socket-proxy-agent</code>, the only thing that mounts the worker's engine
+  socket. The Hub never talks to a worker's engine directly: it calls the
+  agent's narrow API, and the agent checks everything again.</li>
+<li><strong>Fail closed.</strong> When the primary (or its link) is down, nothing routes to
+  a worker app. The worker's containers keep running.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>browser ─TLS─▶ primary Traefik ─(sign-in, groups, tier)─▶ relay ─▶ link ══WireGuard══▶ worker agent ─▶ app
+                                                      Hub ─▶ link ══mTLS in WireGuard══▶ worker agent ─▶ socket-proxy-agent ─▶ engine
+</code></pre></div>
+<p><strong>What it isn't:</strong> high availability, failover or a second primary; core
+services (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>, Vault, the Hub) on a worker; direct ingress on a
+worker; automatic placement. Placement is always an admin's choice.
+Kubernetes is not supported on either side (a Kubernetes primary shows
+"servers need a Docker or Podman primary").</p>
+<h2 id="setting-up">Setting up<a class="headerlink" href="#setting-up" title="Permanent link">&para;</a></h2>
+<h3 id="1-the-link-role-on-the-primary">1. The <abbr title="The third role of the wg service: the WireGuard server worker servers dial out to (UDP 51821, subnet 10.214.0.0/24)">link role</abbr> on the primary<a class="headerlink" href="#1-the-link-role-on-the-primary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./portcullis<span class="w"> </span>link<span class="w"> </span>init<span class="w">            </span><span class="c1"># --port N for another UDP port</span>
+</code></pre></div>
+<p><code>link init</code> turns on the third role of the VPN service <code>wg</code>, <strong>link</strong>: the
+WireGuard server workers connect out to, on UDP 51821 and the fixed tunnel
+subnet <code>10.214.0.0/24</code> (link is <code>10.214.0.1</code>, workers get <code>.10</code>–<code>.250</code>). It
+generates the link's keys in place (never printed), has Vault sign its
+<code>link.control</code> certificate, and starts <code>wg</code>, <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> and the Hub. The Hub
+must already be running. It refuses when <code>10.214.0.0/24</code> overlaps the
+built-in VPN's subnet, a core network, a Docker network, a Local network
+you entered in the Hub or a wired <abbr title="A path through which people's devices reach VPN-only apps: the built-in WireGuard VPN, or a Marketplace VPN app (Headscale) an admin wired on its VPN tab">VPN provider</abbr>'s range.</p>
+<p>Open <strong>UDP 51821</strong> in the primary's firewall. The workers dial the main
+domain's apex (<code>example.com:51821</code>): no new DNS record is needed.</p>
+<p>Until <code>link init</code> has run, <strong>Settings → Servers</strong> answers "run
+./portcullis link init on the primary", and the primary's own apps are
+unaffected.</p>
+<h3 id="2-add-the-server-in-the-hub">2. Add the server in the Hub<a class="headerlink" href="#2-add-the-server-in-the-hub" title="Permanent link">&para;</a></h3>
+<p>In <strong>Settings → Servers</strong>, type an id (lowercase, e.g. <code>nas</code>; <code>primary</code> is
+reserved) and a name (e.g. "Attic NAS"), then <strong>+ Add server…</strong>. This needs
+a <a href="#fresh-sign-in-and-typed-ids">fresh sign-in</a>. The Hub shows a <strong>join
+code</strong>:</p>
+<ul>
+<li>it is a secret: shown <strong>once</strong>, in that dialog only. <strong>Copy code</strong>
+  copies it; closing the dialog forgets it. The Hub keeps only a hash of
+  its secret, never the code: not in the audit, a log, the operation record
+  or an AI transcript (no <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> tool can create one);</li>
+<li>it works <strong>once</strong> and expires after <strong>15 minutes</strong>.</li>
+</ul>
+<p>The enrolment runs in the operation progress panel as <code>server_enrol</code>, in
+three steps: <strong>join</strong> (waiting for the worker), <strong>handshake</strong> (the worker
+checks the primary's certificate, the primary checks the worker's clock)
+and <strong>verify</strong> (the proof, the worker's certificate, the key swap). <strong>Stop
+enrolment</strong> during <em>join</em> leaves nothing behind; from <em>handshake</em> on it
+revokes the server.</p>
+<h3 id="3-join-on-the-worker">3. Join on the worker<a class="headerlink" href="#3-join-on-the-worker" title="Permanent link">&para;</a></h3>
+<p>The worker needs Docker, or <a href="../rootless-podman/"><abbr title="Podman run by an unprivileged account: container root is that account, not host root">rootless Podman</abbr></a>, and a
+checkout of core:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/opt/portcullis<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>chown<span class="w"> </span><span class="s2">"</span><span class="nv">$USER</span><span class="s2">"</span><span class="w"> </span>/opt/portcullis
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/porelli/portcullis.git<span class="w"> </span>/opt/portcullis
+<span class="nb">cd</span><span class="w"> </span>/opt/portcullis
+./portcullis<span class="w"> </span>worker<span class="w"> </span>join<span class="w">          </span><span class="c1"># paste the code when asked</span>
+</code></pre></div>
+<p>Or pipe it in: <code>./portcullis worker join &lt; code.txt</code>. The code is never
+accepted as an argument (it would land in the shell history and the process
+list): <code>worker join &lt;code&gt;</code> refuses with "the <abbr title="A one-time secret (pcj1.…) from Settings → Servers that ./portcullis worker join takes on stdin; valid 15 minutes, shown once">join code</abbr> is a secret: paste
+it when asked, or pipe it in".</p>
+<p><code>worker join</code> writes <code>.env</code> (<code>PORTCULLIS_ROLE=worker</code>), starts the agent and
+its <abbr title="Engine API gateway that exposes only the endpoints a service needs">socket proxy</abbr> (compose project <code>portcullis-worker</code>) and waits up to five
+minutes for the primary to enrol it. Then the server shows <strong>ready</strong> in
+Settings → Servers.</p>
+<div class="admonition warning">
+<p class="admonition-title">Not under /root</p>
+<p>The agent runs as uid 10008 and must read the checkout. <code>worker join</code>
+refuses an install under <code>/root</code>, also through a symlink ("…/root, which
+the agent (uid 10008) can't traverse"): put the checkout elsewhere, e.g.
+<code>/opt/portcullis</code>.</p>
+</div>
+<p>Before anything is written, <code>join</code> also refuses:</p>
+<ul>
+<li>a host that is a Portcullis primary (a worker needs a host, or at least a
+  checkout, of its own);</li>
+<li>Kubernetes (<code>--runtime kubernetes</code>, or <code>CONTAINER_RUNTIME=kubernetes</code>);</li>
+<li>a worker that already has an identity (<code>--force</code> joins again over it);</li>
+<li>a missing <strong>folder root</strong>, or a folder root that contains the install, its
+  <code>worker-data/</code>, the <abbr title="The container engine's API socket (Docker's, or the operator's Podman socket), mounted only by the two socket proxies">engine socket</abbr> or the engine's data root (every path
+  resolved first: <code>/var/run</code> is usually a link to <code>/run</code>,
+  <a href="#folder-roots">below</a>).</li>
+</ul>
+<p><strong>The clock.</strong> The worker's clock must be within <strong>5 minutes</strong> of the
+primary's. Otherwise the enrolment fails with "the worker's clock is <n>
+off; fix its time (NTP)". Keep NTP on both machines: the agent checks the
+primary's certificates against its own clock too.</p>
+<p>On a worker, every <code>./portcullis</code> command except <code>worker …</code>, <code>help</code>,
+<code>version</code> and <code>status</code> refuses: "this host is a Portcullis worker: use
+./portcullis worker …". The commands are in the
+<a href="../cli/#servers">CLI reference</a>.</p>
+<h3 id="folder-roots">Folder roots<a class="headerlink" href="#folder-roots" title="Permanent link">&para;</a></h3>
+<p>A worker app may bind host paths only under the worker's <strong>folder roots</strong>,
+<code>PORTCULLIS_WORKER_BIND_ROOTS</code> in the worker's <code>.env</code> (default
+<code>/srv:/mnt:/media</code>). Each root must exist when you join. The agent mounts
+every root <strong>read-only at the same path</strong> to check binds, and refuses to
+start if it can't see one. A template that binds an absolute path outside
+them can't be placed there.</p>
+<p>Shared folders work on workers: a folder records its server (<strong>Shared
+Folders</strong> has a Server column, and the server is chosen when you define the
+folder), and only folders on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s own server can be bound to it.
+The fixer runs on the worker, through its agent.</p>
+<p>The agent also sees the install directory and the engine's data root
+read-only at their host paths, and refuses any bind that equals, contains or
+sits inside them, the worker's data directory, the <abbr title="The container engine's API socket (Docker's, or the operator's Podman socket), mounted only by the two socket proxies">engine socket</abbr> or <code>/</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Aliases the agent can't see</p>
+<p>The agent compares directories by path and, for each folder in a bind
+source's path, by device and inode. Two kinds of alias escape that:</p>
+<ul>
+<li><strong>FUSE union filesystems</strong> such as Unraid's <code>/mnt/user</code> (a union of
+  <code>/mnt/disk*</code> and the cache) or mergerfs show the same files under
+  another device number;</li>
+<li><strong><code>mount --bind</code></strong> copies you make of a protected directory into a
+  folder root.</li>
+</ul>
+<p>Keep the checkout, its <code>worker-data/</code> and the engine's data root out of
+every folder root under any name. On Unraid, narrow
+<code>PORTCULLIS_WORKER_BIND_ROOTS</code> to the shares apps need (e.g.
+<code>/mnt/user/media</code>), and keep the checkout and Docker's data root out of
+them.</p>
+</div>
+<h2 id="placing-apps">Placing apps<a class="headerlink" href="#placing-apps" title="Permanent link">&para;</a></h2>
+<p><strong>Runs on</strong> in an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s setup form chooses the server (the primary by
+default), and shows each server's runtime, architecture, free data space and
+memory. Only the containers go to the worker: hostnames, <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> clients,
+groups, policy and the portal entry stay where they are.</p>
+<p>The Hub refuses, before anything is created, when the server isn't ready
+("server NAS is offline"), its rootless compatibility gate says refused, a
+pre-pull of the images fails there ("<image> has no <arch> image"), a host
+port is taken by another <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> <strong>of that server</strong> (each server has its
+own ports), or the template is <strong><abbr title="A template that can't run on a worker server (core volumes, TCP/UDP routers, AI, VPN providers, per-person secrets, …)">primary-only</abbr></strong>.</p>
+<h3 id="primary-only-apps">Primary-only apps<a class="headerlink" href="#primary-only-apps" title="Permanent link">&para;</a></h3>
+<p>A template is <abbr title="A template that can't run on a worker server (core volumes, TCP/UDP routers, AI, VPN providers, per-person secrets, …)">primary-only</abbr> when it needs something only the primary has.
+The Hub detects it, and refuses with "<app> can't run on a worker:
+<reason>", where the reason is one of:</p>
+<table>
+<thead>
+<tr>
+<th>Reason</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mounts the core volume <code>&lt;v&gt;</code></td>
+<td>Core volumes (<code>hub_data</code>, <code>hub_secrets</code>, the mail volumes, …) are on the primary. This covers the file-sharing apps (Samba, Time Machine)</td>
+</tr>
+<tr>
+<td>has a <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> TCP/UDP router</td>
+<td>A relay carries HTTP only</td>
+</tr>
+<tr>
+<td>has a per-person secret option</td>
+<td>Per-person secrets live in the primary's <code>hub_secrets</code></td>
+</tr>
+<tr>
+<td>has AI <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr></td>
+<td><code>mcp-gate</code> reaches <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr> on the primary's networks</td>
+</tr>
+<tr>
+<td>is an <abbr title="An ai-chat instance (LibreChat): a chat app whose models come from the admin's providers and whose tools are &quot;all my apps&quot;">AI page</abbr></td>
+<td>The model providers' secrets stay on the primary</td>
+</tr>
+<tr>
+<td>is a <abbr title="A path through which people's devices reach VPN-only apps: the built-in WireGuard VPN, or a Marketplace VPN app (Headscale) an admin wired on its VPN tab">VPN provider</abbr></td>
+<td>Its gateway joins the primary's <code>portcullis-vpn</code></td>
+</tr>
+<tr>
+<td>uses host-gateway</td>
+<td>The host would be the worker, not what the app expects</td>
+</tr>
+<tr>
+<td>binds <code>&lt;path&gt;</code> outside the server's folder roots</td>
+<td>See <a href="#folder-roots">Folder roots</a></td>
+</tr>
+<tr>
+<td>uses a non-HTTP backend scheme</td>
+<td>A relay carries plain HTTP</td>
+</tr>
+<tr>
+<td>passes a host device</td>
+<td>A device of the worker's host (anything but <code>/dev/null</code>)</td>
+</tr>
+<tr>
+<td>adds the capability <code>&lt;cap&gt;</code></td>
+<td>A capability beyond the <abbr title="The capabilities an app may add on Kubernetes: AUDIT_WRITE, CHOWN, DAC_OVERRIDE, FOWNER, FSETID, KILL, MKNOD, NET_BIND_SERVICE, SETFCAP, SETGID, SETPCAP, SETUID, SYS_CHROOT">Kubernetes baseline</abbr> (<code>CHOWN</code>, <code>SETUID</code>, <code>NET_BIND_SERVICE</code>, …), <code>ALL</code> or an unknown one</td>
+</tr>
+<tr>
+<td>delivers a settings secrets file</td>
+<td>Only the primary can hand a <code>&lt;name&gt;.secrets.json</code> to the app's reader (uid 10001, <code>0600</code>); a worker's agent refuses one too (<code>400</code>)</td>
+</tr>
+<tr>
+<td>is marked <code>placement: primary_only</code></td>
+<td>The template says so (<a href="../../guides/manifest-reference/#placement">manifest reference</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>A worker also refuses an image that isn't pinned by digest: "image <ref>
+isn't pinned by digest: templates must pin images to run on a worker". The
+Hub checks it on create and at every start, also for an image an admin
+overrides in Settings.</p>
+<p>So <strong>AI</strong> (<code>ai.mcp</code> <abbr title="The MCP servers of apps (built in, or upstream or vetted community images) that the AI talks to through mcp-gate">companions</abbr> and the AI chat page) and <strong>mail</strong> are
+<abbr title="A template that can't run on a worker server (core volumes, TCP/UDP routers, AI, VPN providers, per-person secrets, …)">primary-only</abbr>, as are <abbr title="Paths through which people's devices reach VPN-only apps: the built-in WireGuard VPN, and Marketplace VPN apps (Headscale) an admin wired on their VPN tab">VPN providers</abbr> and file sharing. An app that declares
+only <code>ai.unsupported</code> can run anywhere.</p>
+<p>The rule is checked again whenever the Hub renders the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (create,
+enable, restart, a template update, a move). If a template update makes a
+placed <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> <abbr title="A template that can't run on a worker server (core volumes, TCP/UDP routers, AI, VPN providers, per-person secrets, …)">primary-only</abbr>, the Hub stops it on the worker and the doctor
+shows <code>server_placement_invalid</code>: move it to the primary.</p>
+<h3 id="the-cookie-rule">The cookie rule<a class="headerlink" href="#the-cookie-rule" title="Permanent link">&para;</a></h3>
+<p>The relay changes cookies in both directions, so a worker app never sees a
+Portcullis session and its cookies never leave its own host:</p>
+<ul>
+<li><strong>Requests:</strong> every Portcullis cookie (<code>_oauth2_proxy…</code>,
+  <code>__Host-portcullis_ext…</code>) is removed before the request reaches the app;</li>
+<li><strong>Responses:</strong> every <code>Set-Cookie</code> of the app is made <strong>host-only</strong> (its
+  <code>Domain</code> attribute removed).</li>
+</ul>
+<p>An app that needs a cookie for a parent or sibling host (single sign-on
+across its own subdomains, for example) must stay on the primary: its
+template sets <code>placement: primary_only</code>.</p>
+<h3 id="bandwidth">Bandwidth<a class="headerlink" href="#bandwidth" title="Permanent link">&para;</a></h3>
+<p>All traffic of a worker app goes through the primary: browser → primary →
+worker and back. The primary's uplink carries it twice (in and out), plus
+one more hop. Streaming from a NAS at home to a phone at home, with a VPS
+primary, leaves the house and comes back. That is fine for home and
+small-office use; keep heavy media apps on the server people are closest
+to, or on the primary.</p>
+<h2 id="moving-an-instance">Moving an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr><a class="headerlink" href="#moving-an-instance" title="Permanent link">&para;</a></h2>
+<p><strong>Move…</strong> on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page (Server section) moves an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> to another
+server. Type the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> id to confirm. The app is <strong>down while it moves</strong>:</p>
+<ol>
+<li><strong>check</strong>: the target is ready and the placement rules pass. Bound shared
+   folders are refused ("unbind folders first; folder contents aren't
+   moved");</li>
+<li><strong>backup</strong> on the source (an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> backup, reason <code>move</code>), which
+   stops the app;</li>
+<li><strong>restore</strong> into the same id on the target;</li>
+<li><strong>switch</strong>: the routes go to the target (the relays get a new token, or
+   are removed when the target is the primary), and the app starts there;</li>
+<li><strong>keep</strong>: the old copy's volumes stay on the source, stopped.</li>
+</ol>
+<p>It runs in the operation progress panel and can be stopped. A failure or a
+Stop before <em>switch</em> starts the app on the source again: two routed copies
+never exist. If the Hub restarts mid-move, it routes back to the source and
+starts it there. If the target's copy can't be taken down, the app runs
+nowhere until it can: doctor <code>server_move_stuck</code>, retried every 30 s.</p>
+<p><strong>Undo move.</strong> For <strong>7 days</strong> the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page shows "Moved from <server>"
+with <strong>Undo move…</strong>: routing goes back to the old copy and the app starts
+there; the copy on the other server is stopped. <strong>Changes made since the
+move are lost.</strong> After 7 days <em>Undo move</em> is gone and the doctor shows
+<code>server_move_leftover</code> (Info): <strong>Remove the old copy…</strong> on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page
+deletes the old copy's volumes, after which no undo is possible. Both need a
+fresh sign-in and the typed <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> id.</p>
+<p><strong>Earlier copies on a worker.</strong> Creating an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> on a worker, or moving
+one there, is refused while that worker still holds a copy of the same
+<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> id — its bundle or its volumes, for example from a failed move — and
+also when the worker can't be asked. Remove the old copy first. A kept copy
+on a server that was revoked or removed can't be reached any more: deleting
+or forgetting the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> drops it from the record and audits it
+(<code>instance.copy_dropped</code>), and whatever is left on that machine is yours to
+wipe.</p>
+<h2 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h2>
+<p>An <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> on a worker is backed up like any other: the archive streams
+through the agent into the primary's <code>&lt;hub data&gt;/backups/&lt;instance-id&gt;/</code>, so
+the core backup and <code>--offsite</code> include it (<a href="../backups/">Backups</a>). Restore
+works the same way.</p>
+<p><strong>Scheduled backups</strong> are a per-server setting (the primary's too), in each
+server's <strong>Settings</strong> in Settings → Servers: <strong>off</strong> (the default),
+<strong>daily</strong> at an hour or <strong>weekly</strong> on a weekday at an hour, in the Hub's
+time zone. Each enabled <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> of that server is backed up in turn (it
+stops briefly, as any <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> backup). The 3 newest scheduled archives per
+<abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> are kept; manual, move and pre-delete archives are never pruned. A
+server that isn't ready is skipped, with a note in each <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s last
+operation ("scheduled backup skipped: server NAS is offline"). The doctor
+warns (<code>server_no_recent_backup</code>) about an enabled worker <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> without a
+backup in 14 days.</p>
+<h2 id="revoking-and-removing">Revoking and removing<a class="headerlink" href="#revoking-and-removing" title="Permanent link">&para;</a></h2>
+<p><strong>Revoke…</strong> (fresh sign-in, typed server id) is for a lost, stolen or
+compromised worker. It needs nothing from the worker and works while it is
+offline:</p>
+<ol>
+<li>the worker's peer and relays leave the tunnel's peer list: the tunnel and
+   every open connection drop at once;</li>
+<li>its certificate is revoked;</li>
+<li>its <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>' relays come down;</li>
+<li>what the worker held is rotated: each placed <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> client
+   secrets and relay token.</li>
+</ol>
+<p>Each step is retried every 30 seconds until it succeeds; a rotation that
+can't finish shows <code>server_secrets_not_rotated</code>. The server stays listed as
+revoked, and its <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> become <strong>orphaned</strong> (doctor <code>instance_orphaned</code>):
+restore an orphaned <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s last backup into a new <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (Backups tab;
+it lands on the primary, move it afterwards), or forget it
+(<code>DELETE /api/instances/&lt;id&gt;?forget=1</code> with <code>{"confirm": "&lt;id&gt;"}</code>: its
+state, clients and groups go, nothing on the worker is touched, its
+archives are kept).</p>
+<p><strong>Remove…</strong> (fresh sign-in, typed id) retires a worker you still have: it is
+refused while <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> remain ("move, restore or forget them first"); it
+tells the worker to take its apps down and wipe its identity, then revokes
+it. On the worker, <code>./portcullis worker leave</code> does the same from that side
+(and removes <code>worker-data/</code>); it fails, keeping the identity and
+<code>worker-data/</code>, while any app container is still there. Revoke or remove the
+server in the Hub too.</p>
+<h3 id="fresh-sign-in-and-typed-ids">Fresh sign-in and typed ids<a class="headerlink" href="#fresh-sign-in-and-typed-ids" title="Permanent link">&para;</a></h3>
+<p>Adding, revoking and removing a server, <em>Undo move</em>, <em>Remove the old copy</em>
+and <em>Lift quarantine</em> each need a <strong>fresh sign-in</strong> on the Hub (a popup
+opened from the Confirm click), and all but adding need the id typed in an
+inline confirmation row. They are never <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> tools, and the doctor never
+offers a one-click fix for them: its finding explains and points at the
+button. <em>Move…</em> needs the typed id but no fresh sign-in.</p>
+<h3 id="quarantine">Quarantine<a class="headerlink" href="#quarantine" title="Permanent link">&para;</a></h3>
+<p>The agent watches every container it starts. If one runs with a bind
+source that fails its check (a symlink someone planted, a directory swapped
+under a folder root), it kills the container, takes the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> down and
+<strong>quarantines</strong> it: it refuses to start it again, also after a restart and
+after a new bundle. The doctor shows <code>server_instance_quarantined</code>. Fix the
+cause on the worker, then <strong>Lift quarantine…</strong> on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page (fresh
+sign-in): the agent checks the bind sources again before it lifts it.</p>
+<h2 id="when-something-is-down">When something is down<a class="headerlink" href="#when-something-is-down" title="Permanent link">&para;</a></h2>
+<p><strong>The primary or its link is down:</strong></p>
+<ul>
+<li>nothing routes to worker apps (fail closed); their containers keep
+  running, and their data is safe;</li>
+<li><code>lan_only</code> ports a worker app publishes on the worker's LAN keep working,
+  as they are outside sign-in anyway;</li>
+<li>the break-glass on the worker still works:
+  <code>./portcullis worker stop &lt;instance&gt;</code> and <code>worker start &lt;instance&gt;</code>, as the
+  worker's operator (no root needed; they find the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> through the
+  engine). They never change what the primary routes;</li>
+<li>what stops: every routed app, scheduled backups, and the renewal of the
+  worker's certificate (30 days, renewed with a third of its life left).</li>
+</ul>
+<p><strong>A worker is offline</strong> (three missed 30-second polls, or no tunnel
+handshake for 3 minutes): its <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> show <code>unreachable</code>, their pages
+answer "<app> runs on <server>, which is offline", and lifecycle operations
+are refused ("server NAS is offline"). When it comes back, the Hub
+reconciles and runs the doctor.</p>
+<p><strong>Restoring the primary</strong> onto a new host (<a href="../backups/#on-a-new-host">Backups → On a new
+host</a>) restores the link's keys, the node CA in
+Vault and the Hub's state. The workers reconnect by themselves once the
+domain's apex points at the new host.</p>
+<p><strong>A dead worker:</strong> revoke it, then restore its <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>' last backups.
+Worker state isn't backed up: a re-join creates a new identity, and the Hub
+renders the apps again.</p>
+<h2 id="monitoring-and-status">Monitoring and status<a class="headerlink" href="#monitoring-and-status" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>./portcullis status</code> on the primary has a <strong>Servers</strong> block (each
+  worker's last handshake; a worker silent for more than 3 minutes is a
+  problem), and <code>./portcullis link status</code> shows the same. On a worker,
+  <code>./portcullis worker status</code>.</li>
+<li>The monitoring profile scrapes job <code>link</code> and alerts
+  <code>PortcullisServerDown</code>, <code>PortcullisServerDiskLow</code> and
+  <code>PortcullisServerContainerUnhealthy</code> (<a href="../monitoring/">Monitoring</a>).</li>
+<li>The doctor's server checks are listed on
+  <a href="../hub/#server-checks">Hub → Server checks</a>.</li>
+</ul>
+<h2 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h2>
+<p>The threat model, the agent's checks, the tunnel's rules and the per-service
+settings are on <a href="../hardening/#multiple-servers">Security &amp; Hardening → Multiple
+servers</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>
