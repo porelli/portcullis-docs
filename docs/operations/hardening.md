@@ -769,7 +769,10 @@ after forward-auth (`hub_data/mail-admin-route-key`, 0600, also in the
 view's environment) **and** `X-Auth-Request-Groups` (an `authResponseHeaders`
 entry: Traefik deletes client copies) lists `lldap_admin`; it listens only
 on its `portcullis-proxy` address. A session starts only from the Hub's
-single-use 60 s ticket and ends after 30 min idle / 8 h. Stalwart's viewer
+single-use 60 s ticket (posted in a form, never in a URL; MAC'd with a
+per-install ticket key that only the Hub and the view read as a file —
+never the route key, which is a Traefik label; spent nonces kept on disk
+until they expire) and ends after 30 min idle / 8 h. Stalwart's viewer
 role holds reads only, of objects whose plain fields can't hold a secret
 (the queue, reports and every store / directory / DNS / hook / tracer /
 lookup object are out; `includeSecrets` pinned off); the view forwards

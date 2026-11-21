@@ -162,8 +162,8 @@ made elsewhere would bypass Portcullis's mail safeguards."
 ([contract §19.13](../guides/integration-contracts.md#1913-the-read-only-mail-admin-view))
 
 - **Open it from Portcullis.** The button opens
-  `https://mail-admin.<your domain>/` in a new tab with a one-time link
-  (valid 60 seconds, for you only). Going to `mail-admin.<your domain>`
+  `https://mail-admin.<your domain>/` in a new tab with a one-time ticket
+  (valid 60 seconds, for you only, sent in a form, never in the address). Going to `mail-admin.<your domain>`
   directly, from a bookmark or another tab, shows "Open it from Portcullis".
   A session ends after 30 minutes idle or 8 hours; open it again from
   Portcullis.
@@ -193,7 +193,8 @@ made elsewhere would bypass Portcullis's mail safeguards."
 - **Rotation.** The viewer's password: delete `viewer-password` from the
   provider's `viewer_key` volume and restart the provider (a new one is set).
   The view's route key: delete `mail-admin-route-key` from the Hub's data
-  volume and restart the provider from its instance page.
+  volume; its ticket key: delete `appfiles/<instance>/mail-admin/ticket-key`;
+  then restart the provider from its instance page.
 - Not on Kubernetes (mail isn't, yet). A store bootstrapped before the
   view existed has no viewer account: the view then can't open ("the
   read-only mail admin view can't open"); start from a fresh store, or
