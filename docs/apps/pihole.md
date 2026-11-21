@@ -5,7 +5,15 @@
 **Category:** networking  
 **Tags:** `dns`, `adblock`, `privacy`, `filtering`  
 **Website:** <https://pi-hole.net/>  
-**Source:** <https://github.com/pi-hole/pi-hole>
+**Source:** <https://github.com/pi-hole/pi-hole>  
+**Minimum resources:** 512 MiB RAM, 2 GiB disk
+
+## About
+
+<div class="app-long-description">
+<p>Pi-hole is a DNS sinkhole that blocks ads and trackers for every device on the network. It filters queries with blocklists and shows a query log and statistics.</p>
+<p>Portcullis sign-in and the access group are the only login to the web interface. Pi-hole has no roles, so every member is a full administrator.</p>
+</div>
 
 ## Authentication
 

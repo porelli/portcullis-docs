@@ -103,7 +103,7 @@ Then:
   firewall and your cloud provider's firewall. Clients use the main domain
   as the endpoint (`<domain>:51820`), so its A record must point at this
   server, which the [DNS plan](../setup/dns.md) already does.
-- **Who may have devices**: Hub → **Settings → VPN** (below).
+- **Who may have devices**: Hub → **Settings → Network → VPN** (below).
 - **Add your own device** on `https://people.<domain>/vpn/`
   ([below](#devices-on-the-built-in-vpn)), or from the host with
   `./portcullis vpn add-device <you> <name>`.
@@ -114,9 +114,9 @@ file is emptied, so its devices stop working) and `vpn builtin on` back on
 (a new key when there is none). The edge, and every marketplace provider,
 keeps running either way.
 
-### Settings → VPN
+### Settings → Network → VPN { #settings-vpn }
 
-The Hub's **Settings → VPN** shows the mode and public enrolment (read-only:
+The Hub's **Settings → Network → VPN** shows the mode and public enrolment (read-only:
 they are set on the host, [below](#modes-and-the-public-set)), whether the VPN
 service is up, the built-in VPN's subnet, port and device count, any instance
 stopped because a narrowing failed, and every provider (source, wired, ranges,
@@ -223,7 +223,7 @@ provider at all leaves the app unreachable (doctor `vpn_no_providers`).
 When the Hub can't apply a change that narrows an app's access (to VPN-only,
 fewer providers, fewer ranges), it **stops the app** (data kept), raises
 doctor `vpn_reach_failed_closed` and starts it again after the next
-successful render. Settings → VPN lists such apps.
+successful render. Settings → Network → VPN lists such apps.
 
 ## Modes and the public set
 

@@ -7,6 +7,13 @@
 **Website:** <https://squidfunk.github.io/mkdocs-material/>  
 **Source:** <https://github.com/squidfunk/mkdocs-material>
 
+## About
+
+<div class="app-long-description">
+<p>A static documentation site built with Material for MkDocs: Markdown pages turned into a searchable website with navigation.</p>
+<p>It is public: anyone can read it, with no sign-in.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

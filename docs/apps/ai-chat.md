@@ -7,6 +7,13 @@
 **Website:** <https://www.librechat.ai/>  
 **Source:** <https://github.com/danny-avila/LibreChat>
 
+## About
+
+<div class="app-long-description">
+<p>AI Chat is LibreChat, a chat interface for large language models. People chat with the models the administrator has chosen on the instance's AI tab, keep their conversations, and can use presets and agents.</p>
+<p>Portcullis signs people in through OpenID Connect, limited to the access group, and connects LibreChat to one MCP server, &quot;All my apps&quot;: the AI can use the Portcullis apps the signed-in person may use, with that person's rights.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

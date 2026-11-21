@@ -5,7 +5,16 @@
 **Category:** monitoring  
 **Tags:** `monitoring`, `dashboards`, `metrics`  
 **Website:** <https://grafana.com/oss/grafana/>  
-**Source:** <https://github.com/grafana/grafana>
+**Source:** <https://github.com/grafana/grafana>  
+**Minimum resources:** 512 MiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>Grafana builds dashboards and alerts from metrics, logs and traces in many data sources, such as Prometheus, Loki and SQL databases.</p>
+<p>Portcullis signs people in and tells Grafana who they are and which role they have, set per group in the instance's settings. Dashboards can be shared publicly through share links when an admin lists them.</p>
+<p>With AI support on, the official Grafana MCP server lets people's AI assistants search dashboards and query data with their own permissions.</p>
+</div>
 
 ## Authentication
 

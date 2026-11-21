@@ -7,6 +7,13 @@
 **Website:** <https://github.com/ServerContainers/samba>  
 **Source:** <https://github.com/ServerContainers/samba>
 
+## About
+
+<div class="app-long-description">
+<p>Samba shares folders over SMB, the file-sharing protocol of Windows, macOS and Linux. Each person gets a home folder, and up to eight shared folders can be given to groups to read or to write.</p>
+<p>There is no web page. Each member of the access group sets their own file-share password on My apps.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

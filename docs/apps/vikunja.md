@@ -1,11 +1,22 @@
 # ✅ Vikunja
 
+![Vikunja logo](logos/vikunja.svg){ width="64" height="64" }
+
+<small>Logo: © 2018-present Vikunja and contributors, `AGPL-3.0-or-later`, [source](https://github.com/go-vikunja/vikunja/blob/5b9d4fcc720fe65548ab6c3f7c974c12b28d13af/frontend/originalMedia/images/logo.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+
 > Self-hosted to-do lists, kanban boards and project planning
 
 **Category:** productivity  
 **Tags:** `tasks`, `todo`, `kanban`, `projects`, `caldav`  
 **Website:** <https://vikunja.io/>  
 **Source:** <https://github.com/go-vikunja/vikunja>
+
+## About
+
+<div class="app-long-description">
+<p>Vikunja is a to-do and project planning app. Tasks live in projects, and each project can be viewed as a list, a Kanban board, a table or a Gantt chart. Tasks have labels, due dates, reminders and assignees.</p>
+<p>Portcullis signs people in through OpenID Connect, limited to the access group. Every person is a regular user.</p>
+</div>
 
 ## Authentication
 

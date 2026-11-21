@@ -7,6 +7,14 @@
 **Website:** <https://nextcloud.com/>  
 **Source:** <https://github.com/nextcloud/server>
 
+## About
+
+<div class="app-long-description">
+<p>Nextcloud is a productivity platform: file storage and sync, sharing, calendars, contacts and many more apps, with desktop and mobile clients.</p>
+<p>Portcullis signs people in through Nextcloud's official OpenID Connect app, with no password login. Only members of the access group can sign in, and members of the admin group are Nextcloud administrators. Files can be shared publicly through share links.</p>
+<p>With AI support on, an MCP server lets people's AI assistants work with their files, calendars and contacts.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

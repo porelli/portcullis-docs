@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/designcraft>  
 **Source:** <https://github.com/storytold/designcraft>
 
+## About
+
+<div class="app-long-description">
+<p>DesignCraft is ArtCraft's page layout and design editor. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: documents stay on the person's own device and the server only serves static files.</p>
+<p>DesignCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

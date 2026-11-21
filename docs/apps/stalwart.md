@@ -7,6 +7,13 @@
 **Website:** <https://stalw.art/>  
 **Source:** <https://github.com/stalwartlabs/stalwart>
 
+## About
+
+<div class="app-long-description">
+<p>Stalwart is a mail server: SMTP for sending and receiving, IMAP for mail clients, a spam filter, DKIM signing and MTA-STS.</p>
+<p>Here it is a mail provider. Installing it changes nothing until a full administrator wires it as the server's mail in Settings → Mail. Portcullis then manages every person's mailbox, address and mail password, the mail domains and their DNS records. Full administrators can open Stalwart's own admin screen read-only.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -273,6 +280,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 |---------|-------|--------|
 | `adapter` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
 | `adapter-bin` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
+| `admin-view` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
 | `bootstrap` | `docker.io/stalwartlabs/stalwart:v1.1.0` | `sha256:f772aa6ef8cd…` |
 | `key-init` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
 | `resolver` | `docker.io/klutchell/unbound:v1.26.2` | `sha256:50cbeb32b583…` |

@@ -7,6 +7,13 @@
 **Website:** <https://www.firefly-iii.org/>  
 **Source:** <https://github.com/firefly-iii/firefly-iii>
 
+## About
+
+<div class="app-long-description">
+<p>Firefly III is a personal finance manager based on double-entry bookkeeping. It tracks accounts, income and expenses, budgets, categories, bills and piggy banks, and has rules for automatic categorisation and an API for importers.</p>
+<p>Portcullis signs people in and passes their username to Firefly III, which creates their account on first sign-in.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

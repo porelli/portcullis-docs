@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/effectcraft>  
 **Source:** <https://github.com/storytold/effectcraft>
 
+## About
+
+<div class="app-long-description">
+<p>EffectCraft is ArtCraft's motion graphics and compositing tool. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: projects stay on the person's own device and the server only serves static files.</p>
+<p>EffectCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

@@ -7,6 +7,13 @@
 **Website:** <https://github.com/motioneye-project/motioneye>  
 **Source:** <https://github.com/motioneye-project/motioneye>
 
+## About
+
+<div class="app-long-description">
+<p>motionEye is a web interface for the motion video surveillance software. It shows live views of network and USB cameras, detects motion, and records movies and still images with schedules.</p>
+<p>Portcullis sign-in and the access group protect the whole web interface, and motionEye's own login stays as a second step.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

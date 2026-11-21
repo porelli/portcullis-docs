@@ -1,11 +1,22 @@
 # 📺 Jellyfin
 
+![Jellyfin logo](logos/jellyfin.svg){ width="64" height="64" }
+
+<small>Logo: © 2019 The Jellyfin contributors, `CC-BY-SA-4.0`, [source](https://github.com/jellyfin/jellyfin-ux/blob/9e27258e873f64edaa9c5955e753978975ed5589/branding/SVG/icon-transparent.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+
 > Free and open-source media server — movies, TV, music, live TV
 
 **Category:** media  
 **Tags:** `media`, `movies`, `tv`, `music`, `streaming`, `opensource`  
 **Website:** <https://jellyfin.org/>  
 **Source:** <https://github.com/jellyfin/jellyfin>
+
+## About
+
+<div class="app-long-description">
+<p>Jellyfin is a free media server for movies, TV shows, music, books and live TV. It organises libraries with artwork and metadata, streams to browsers, phones and TVs, and transcodes when a device needs it.</p>
+<p>Portcullis signs people in through Jellyfin's SSO plugin. Only members of the access group can sign in, and members of the admin group are Jellyfin administrators.</p>
+</div>
 
 ## Authentication
 

@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/craft-anything>  
 **Source:** <https://github.com/storytold/craft-anything>
 
+## About
+
+<div class="app-long-description">
+<p>Craft Anything is ArtCraft's tool for exploring how software works and building your own. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: files stay on the person's own device and the server only serves static files.</p>
+<p>Craft Anything is an early alpha. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

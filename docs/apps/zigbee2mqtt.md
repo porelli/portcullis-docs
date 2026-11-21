@@ -1,11 +1,22 @@
 # 🐝 Zigbee2MQTT
 
+![Zigbee2MQTT logo](logos/zigbee2mqtt.svg){ width="64" height="64" }
+
+<small>Logo: © 2019 The Zigbee2MQTT contributors, `GPL-3.0-only`, [source](https://github.com/Koenkk/zigbee2mqtt/blob/9c505fd75f503a91a61244d6f0efa0e37d81a7b0/images/logo_vector.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+
 > Zigbee to MQTT bridge with its web frontend and a bundled, password-protected Mosquitto broker
 
 **Category:** home-automation  
 **Tags:** `home-automation`, `zigbee`, `mqtt`, `iot`, `smart-home`  
 **Website:** <https://www.zigbee2mqtt.io/>  
 **Source:** <https://github.com/Koenkk/zigbee2mqtt>
+
+## About
+
+<div class="app-long-description">
+<p>Zigbee2MQTT connects Zigbee devices to MQTT through a Zigbee USB adapter, so you can use them without each vendor's hub. Its web frontend pairs devices, changes their settings and updates their firmware. Home Assistant picks the devices up through MQTT discovery.</p>
+<p>This template bundles a Mosquitto broker that requires passwords. Portcullis sign-in and the access group protect the frontend, and every member has full control.</p>
+</div>
 
 ## Authentication
 

@@ -3,6 +3,7 @@ nav:
   - 💬 AI Chat: ai-chat.md
   - 🤖 LiteLLM: litellm.md
   - 💬 Matrix (Synapse + Element): matrix.md
+  - 💬 Mattermost: mattermost.md
   - 📏 CADCraft: cadcraft.md
   - 📐 DesignCraft: designcraft.md
   - 🎬 EffectCraft: effectcraft.md
@@ -36,7 +37,6 @@ nav:
   - 🦊 Firefox Sync: firefox-sync.md
   - 🧮 GridCraft: gridcraft.md
   - 📋 Kanboard: kanboard.md
-  - 💬 Mattermost: mattermost.md
   - 🍽 Mealie: mealie.md
   - ☁️ Nextcloud: nextcloud.md
   - 🗂 OxiCloud: oxicloud.md

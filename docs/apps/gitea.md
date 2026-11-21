@@ -7,6 +7,14 @@
 **Website:** <https://about.gitea.com/>  
 **Source:** <https://github.com/go-gitea/gitea>
 
+## About
+
+<div class="app-long-description">
+<p>Gitea is a lightweight Git forge: repositories, issues, pull requests with code review, wikis, a package registry and Gitea Actions for CI.</p>
+<p>Portcullis signs people in through OpenID Connect. Only members of the access group can sign in, and members of the admin group are site administrators.</p>
+<p>With AI support on, the official Gitea MCP server lets people's AI assistants work with their repositories and issues.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

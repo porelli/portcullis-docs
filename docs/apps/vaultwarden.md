@@ -1,11 +1,22 @@
 # 🔐 Vaultwarden
 
+![Vaultwarden logo](logos/vaultwarden.svg){ width="64" height="64" }
+
+<small>Logo: © 2021 The Vaultwarden contributors, `AGPL-3.0-only`, [source](https://github.com/dani-garcia/vaultwarden/blob/d57b69952db6eb12987a9668fea6b72df79cfa41/resources/vaultwarden-icon.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+
 > Lightweight Bitwarden-compatible password manager
 
 **Category:** security  
 **Tags:** `passwords`, `bitwarden`, `vault`, `secrets`  
 **Website:** <https://github.com/dani-garcia/vaultwarden>  
 **Source:** <https://github.com/dani-garcia/vaultwarden>
+
+## About
+
+<div class="app-long-description">
+<p>Vaultwarden is a lightweight server compatible with the Bitwarden password manager clients: browser extensions, desktop and mobile apps. It stores encrypted vaults for passwords, notes and cards, and supports organisations for sharing.</p>
+<p>Portcullis signs people in through OpenID Connect and nothing else, limited to the access group. Each person still sets a master password, which only decrypts their vault.</p>
+</div>
 
 ## Authentication
 

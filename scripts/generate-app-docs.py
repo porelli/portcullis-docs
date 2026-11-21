@@ -5,6 +5,7 @@ Reads manifest.yaml files from the templates repo and generates:
   - docs/apps/index.md    (overview table)
   - docs/apps/<app>.md    (per-app detail page)
   - docs/apps/.nav.yml    (ordered nav list, consumed by Zensical's awesome-nav support)
+  - docs/apps/logos/<app>.svg (a copy of the template's logo, if it has one)
 
 Does NOT modify zensical.toml. awesome-nav reads .nav.yml files in each
 docs directory to build the site nav, so we generate apps/.nav.yml and let the
@@ -67,6 +68,7 @@ def load_manifests(source_dir: Path) -> list[dict]:
                   "(settings: {options: [...]}). Point --source at a v3 templates checkout.", file=sys.stderr)
             sys.exit(1)
         manifest["_id"] = entry.name
+        manifest["_dir"] = entry
         compose_path = entry / "compose.yml"
         manifest["_compose"] = {}
         if compose_path.is_file():
@@ -297,6 +299,67 @@ def links_line(app: dict) -> str:
     elif links.get("source_note"):
         parts.append(f"**Source:** none ({md_cell(links['source_note'])})")
     return "  \n".join(parts)
+
+
+def _size(mib: int) -> str:
+    """MiB as 'N GiB' when it is a whole number of GiB, else 'N MiB'."""
+    return f"{mib // 1024} GiB" if mib % 1024 == 0 else f"{mib} MiB"
+
+
+def resources_line(app: dict) -> str:
+    """resources: (contract §3, the project's documented minimum), one
+    line; empty when the template states none."""
+    res = app.get("resources") or {}
+    parts = []
+    if isinstance(res.get("min_memory_mib"), int):
+        parts.append(f"{_size(res['min_memory_mib'])} RAM")
+    if isinstance(res.get("min_disk_gib"), int):
+        parts.append(f"{res['min_disk_gib']} GiB disk")
+    return f"**Minimum resources:** {', '.join(parts)}" if parts else ""
+
+
+# Logos (manifest logo:, contract §3) are copied next to the app pages and
+# shown with <img> only, never inlined. The site sets no Content Security
+# Policy (zensical.toml, GitHub Pages), so a same-origin image loads; the
+# templates repo's lint (tests/svgsafe.py) has already checked the file.
+LOGO_DIR = "logos"
+LICENSE_KEYS = ("SPDX-FileCopyrightText:", "SPDX-License-Identifier:", "Source:")
+
+
+def logo_lines(app: dict, output_dir: Path) -> list[str]:
+    """Copy the template's logo to apps/logos/<id>.svg and return the page
+    lines: the image and its REUSE attribution (copyright, licence,
+    source), as the logo's licence asks. Nothing without a logo."""
+    logo = app.get("logo")
+    tdir = app.get("_dir")
+    if not isinstance(logo, str) or tdir is None:
+        return []
+    src = tdir / logo
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}\.svg", logo) or not src.is_file():
+        print(f"ERROR: {app['_id']}: logo {logo!r} is not a file in the template folder", file=sys.stderr)
+        sys.exit(1)
+    dest = output_dir / LOGO_DIR / f"{app['_id']}.svg"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(src.read_bytes())
+    meta = {}
+    lic = tdir / f"{logo}.license"
+    if lic.is_file():
+        for line in lic.read_text().splitlines():
+            for key in LICENSE_KEYS:
+                if line.startswith(key):
+                    meta[key] = line[len(key):].strip()
+    name = md_cell(str(app.get("name", app["_id"])))
+    lines = [f'![{name} logo]({LOGO_DIR}/{app["_id"]}.svg){{ width="64" height="64" }}', ""]
+    credit = []
+    if meta.get("SPDX-FileCopyrightText:"):
+        credit.append(f"© {md_cell(meta['SPDX-FileCopyrightText:'])}")
+    if meta.get("SPDX-License-Identifier:"):
+        credit.append(f"`{md_cell(meta['SPDX-License-Identifier:'])}`")
+    if meta.get("Source:", "").startswith("https://"):
+        credit.append(f"[source]({meta['Source:']})")
+    if credit:
+        lines += [f"<small>Logo: {', '.join(credit)}. Shown only to identify the app; any trademark stays its owner's.</small>", ""]
+    return lines
 
 
 def sso_badge(sso_val) -> str:
@@ -563,6 +626,24 @@ def generate_app_page(app: dict, output_dir: Path):
         # Below the tags, as part of the same block (Markdown line breaks).
         lines[-2] += "  "
         lines.insert(len(lines) - 1, links)
+    res = resources_line(app)
+    if res:
+        lines[-2] += "  "
+        lines.insert(len(lines) - 1, res)
+    # The logo goes under the title, before the description.
+    lines[2:2] = logo_lines(app, output_dir)
+
+    long_desc = app.get("long_description", "")
+    if long_desc:
+        # long_description is Markdown (contract §3 "Catalog fields") with
+        # the auth.notes rules: the same renderer, into a raw HTML block,
+        # above the sign-in notes.
+        lines.append("## About")
+        lines.append("")
+        lines.append('<div class="app-long-description">')
+        lines.append(notes_html(str(long_desc)))
+        lines.append("</div>")
+        lines.append("")
 
     # Auth section
     lines.append("## Authentication")
@@ -871,6 +952,10 @@ def main():
     print(f"Output: {docs_dir}")
 
     docs_dir.mkdir(parents=True, exist_ok=True)
+    # Logos are rewritten from the templates on every run: drop the old
+    # copies so a removed logo doesn't linger.
+    for old in (docs_dir / LOGO_DIR).glob("*.svg"):
+        old.unlink()
 
     apps = load_manifests(source_dir)
     print(f"Found {len(apps)} app manifests")

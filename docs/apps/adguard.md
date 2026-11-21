@@ -7,6 +7,13 @@
 **Website:** <https://adguard.com/en/adguard-home/overview.html>  
 **Source:** <https://github.com/AdguardTeam/AdGuardHome>
 
+## About
+
+<div class="app-long-description">
+<p>AdGuard Home is a network-wide DNS server that blocks ads and trackers for every device that uses it. It filters with blocklists and custom rules, can answer over DNS-over-HTTPS, DNS-over-TLS and DNS-over-QUIC, and shows a query log and statistics per client.</p>
+<p>Portcullis puts its sign-in and the access group in front of the web interface. AdGuard Home has no single sign-on, so its own admin password stays as a second step.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

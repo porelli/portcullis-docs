@@ -1,11 +1,23 @@
 # 🌐 Headscale
 
+![Headscale logo](logos/headscale.svg){ width="64" height="64" }
+
+<small>Logo: © 2020 Juan Font, `BSD-3-Clause`, [source](https://github.com/juanfont/headscale/blob/f00c412cde4a000cc091037f926519b99ceb7626/docs/assets/logo/headscale3-dots.svg). Shown only to identify the app; any trademark stays its owner's.</small>
+
 > Self-hosted Tailscale control server with Headplane admin UI
 
 **Category:** vpn  
 **Tags:** `vpn`, `wireguard`, `mesh`, `tailscale`  
 **Website:** <https://headscale.net/>  
 **Source:** <https://github.com/juanfont/headscale>
+
+## About
+
+<div class="app-long-description">
+<p>Headscale is an open-source implementation of the Tailscale control server. Tailscale clients register with it to join a private WireGuard mesh network that you run yourself. The bundled Headplane gives it a web admin interface.</p>
+<p>People register their devices by signing in through OpenID Connect, limited to the access group.</p>
+<p>Headscale can also be this server's Portcullis VPN provider, so apps can be reachable only from the VPN.</p>
+</div>
 
 ## Authentication
 

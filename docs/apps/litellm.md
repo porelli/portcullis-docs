@@ -7,6 +7,13 @@
 **Website:** <https://www.litellm.ai/>  
 **Source:** <https://github.com/BerriAI/litellm>
 
+## About
+
+<div class="app-long-description">
+<p>LiteLLM is a proxy that puts many large-language-model providers behind one OpenAI-compatible API. It adds virtual API keys, budgets, rate limits, fallbacks and spend tracking.</p>
+<p>Portcullis signs people in to the admin UI through OpenID Connect, limited to the access group. The API itself is reached with the master key or virtual keys.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

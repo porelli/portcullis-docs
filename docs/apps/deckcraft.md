@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/deckcraft>  
 **Source:** <https://github.com/storytold/deckcraft>
 
+## About
+
+<div class="app-long-description">
+<p>DeckCraft is ArtCraft's presentation app for building slides and running slide shows. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: presentations stay on the person's own device and the server only serves static files.</p>
+<p>DeckCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

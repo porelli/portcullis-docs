@@ -5,7 +5,15 @@
 **Category:** devops  
 **Tags:** `git`, `ci-cd`, `devops`, `registry`, `issues`  
 **Website:** <https://about.gitlab.com/>  
-**Source:** <https://gitlab.com/gitlab-org/gitlab>
+**Source:** <https://gitlab.com/gitlab-org/gitlab>  
+**Minimum resources:** 8 GiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>GitLab is a complete DevOps platform: Git repositories, merge requests, issues and boards, CI/CD pipelines, a container and package registry and a wiki, in one application.</p>
+<p>Portcullis signs people in through OpenID Connect, and only members of the access group can sign in or get an account. Git over HTTPS, the API, the registry and CI runners use personal access tokens.</p>
+</div>
 
 ## Authentication
 

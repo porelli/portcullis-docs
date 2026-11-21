@@ -7,6 +7,13 @@
 **Website:** <https://kanboard.org/>  
 **Source:** <https://github.com/kanboard/kanboard>
 
+## About
+
+<div class="app-long-description">
+<p>Kanboard is a minimalist Kanban project management tool: boards with columns and swimlanes, tasks with subtasks, due dates and comments, and simple analytics.</p>
+<p>Portcullis signs people in and passes their username to Kanboard, which creates their account on first sign-in.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

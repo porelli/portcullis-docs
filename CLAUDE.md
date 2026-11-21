@@ -62,7 +62,7 @@ Pages under `docs/apps/` are **auto-generated** from each template's `manifest.y
 
 1. Edit the app's `manifest.yaml` in `porelli/portcullis-templates`
 2. Run: `python3 scripts/generate-app-docs.py --source /Volumes/workspace/portcullis/portcullis-templates`
-3. Commit the regenerated `docs/apps/*.md` and `docs/apps/.nav.yml`
+3. Commit the regenerated `docs/apps/*.md`, `docs/apps/logos/*.svg` and `docs/apps/.nav.yml`
 
 The generator writes `docs/apps/.nav.yml` (the nav for that directory) but does **not** modify `zensical.toml`.
 
@@ -107,7 +107,7 @@ Push to `main` (or the daily schedule, which picks up template changes) → GitH
 | `docs/.nav.yml` | Top-level nav order |
 | `docs/<section>/.nav.yml` | Per-section nav order (setup, guides, operations) |
 | `docs/apps/.nav.yml` | Auto-generated (by `generate-app-docs.py`) |
-| `scripts/generate-app-docs.py` | Reads templates repo `manifest.yaml` + `compose.yml` → writes `docs/apps/*.md` + `docs/apps/.nav.yml`. `auth.notes` is rendered with markdown-it-py (`requirements.txt`; CommonMark + tables, raw HTML and images off) into a raw HTML admonition block, never pasted as Markdown (contract §3: the site's raw HTML / `attr_list` / `md_in_html` must not reach template text) |
+| `scripts/generate-app-docs.py` | Reads templates repo `manifest.yaml` + `compose.yml` → writes `docs/apps/*.md` + `docs/apps/.nav.yml`. `auth.notes` is rendered with markdown-it-py (`requirements.txt`; CommonMark + tables, raw HTML and images off) into a raw HTML admonition block, never pasted as Markdown (contract §3: the site's raw HTML / `attr_list` / `md_in_html` must not reach template text); `long_description` the same way, as an About section above the auth notes; `resources` as one header line; `logo` copied to `docs/apps/logos/<id>.svg` (stale copies removed on every run) and shown as an `<img>` with its REUSE attribution from `<logo>.license` (the site sets no CSP, so a same-origin image loads) |
 | `scripts/check-branding.sh` | Pins `docs/assets/logo.svg` / `favicon.svg` to the branding source's sha256 (CI step "Branding copies") |
 | `scripts/check-lists.py` | Fails on a literal list marker in a built paragraph (CI step "No literal list markers") |
 | `docs/apps/index.md` | Auto-generated app catalog table |

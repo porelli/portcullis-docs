@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/filmcraft>  
 **Source:** <https://github.com/storytold/filmcraft>
 
+## About
+
+<div class="app-long-description">
+<p>FilmCraft is ArtCraft's non-linear video editor. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: footage and projects stay on the person's own device and the server only serves static files.</p>
+<p>FilmCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/vectorcraft>  
 **Source:** <https://github.com/storytold/vectorcraft>
 
+## About
+
+<div class="app-long-description">
+<p>VectorCraft is ArtCraft's vector illustration tool. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: drawings stay on the person's own device and the server only serves static files.</p>
+<p>VectorCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
