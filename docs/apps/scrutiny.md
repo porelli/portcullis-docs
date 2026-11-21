@@ -20,7 +20,13 @@
 | **Subdomain** | `disks` |
 
 !!! info "Auth Notes"
-    No SSO or user system. Access gated by group-gate middleware. All authenticated users have full access. Disks: list the host disks this instance monitors in the Disks setting (up to 8, e.g. /dev/sda, /dev/nvme0); only those are passed into the container, read-only, so several instances can each monitor their own disks. The container is not privileged: it gets SYS_RAWIO for SATA/SAS SMART passthrough, plus SYS_ADMIN only if "NVMe capability" is set to SYS_ADMIN (NVMe SMART logs need it). With no disk listed the dashboard stays empty. A listed path that doesn't exist on the host stops the container from starting.
+    No SSO or user system. Access gated by group-gate middleware; all authenticated users have full access.
+
+    **Disks:** list the host disks this instance monitors in the **Disks** setting (up to 8, e.g. `/dev/sda`, `/dev/nvme0`). Only those are passed into the container, read-only, so several instances can each monitor their own disks.
+
+    - The container is not privileged: it gets `SYS_RAWIO` for SATA/SAS SMART passthrough, plus `SYS_ADMIN` only if **NVMe capability** is set to `SYS_ADMIN` (NVMe SMART logs need it).
+    - With no disk listed the dashboard stays empty.
+    - A listed path that doesn't exist on the host stops the container from starting.
 
 ## Routing
 
