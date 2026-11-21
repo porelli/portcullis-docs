@@ -4773,10 +4773,11 @@ Under a non-identity map, `apply`, `restore` and `childfix` refuse (exit `2`, no
     - the shared-folder kinds → `#settings/storage`; the file-sharing kinds of one instance → its File sharing tab;
     - `server_*` and `link_subnet_overlap` → `#settings/servers`; an instance's own (`server_instance_quarantined`, `server_move_*`, `server_copy_not_removed`, `server_placement_invalid`, `instance_orphaned`) → its page;
     - `ssh_ca_missing`, `ssh_cli_client_conflict` → `#settings/ssh`; `ssh_host_*` → `#access/ssh/hosts`; `ssh_hostgroup_unused` → `#access/ssh/hostgroups`; `ssh_privileged_grant` → `#access/ssh/grants`; `ssh_breakglass_*`, `ssh_revocation_incomplete` → `#access/ssh/certs`;
-    - `signin_totp_policy_drift`, `signin_login_errors_capped` → `#settings/signin`;
-    - `disk_nearly_full`, `storage_measure_partial` → `#usage/storage`; `usage_not_measured` → `#usage`;
+    - `signin_totp_policy_drift`, `signin_login_errors_capped`, `signin_fido_list_unavailable` → `#settings/signin`;
+    - `disk_nearly_full`, `storage_measure_partial` → `#usage/storage` (a check's own instance link first); `usage_not_measured` → `#usage`; `memory_near_limit`, `oom_killed`, `pids_near_limit` → the instance's Usage tab;
+    - `ai_*` → the instance's AI tab; `person_option` → the instance's Settings at the option;
     - `custom_override_mount` → the instance's Expert tab; `lan_only_exposed`, `host_network` → its Settings; `reload_degraded`, `undeclared_template` → its page;
-    - no link: the host-level kinds with no page (the engine's, the Kubernetes cluster's) and a person's own (`signin_totp_guessing`, `ssh_username_collision`).
+    - no link (`TestEveryKindHasALinkOrNone` pins the list): the host-level kinds with no page (`runtime_mismatch`, `limits_not_enforced`, `selinux_label_missing`, `udp_source_rewritten`, `netpol_not_enforced`, `admission_guard_missing`, `cluster_unverified`, `kube_api_public`) and a person's own (`signin_totp_guessing`, `ssh_username_collision`).
 - **Fingerprint** `fp` = the first 16 hex digits of sha256(`<kind>\x00<subjects, sorted, joined by \x00>`): stable across runs and order.
 - **Mutes:** an admin mutes a finding with a reason (non-empty, ≤ 200 characters). The mute stores the finding's inputs digest; the finding comes back as soon as its inputs change. Muted findings stay in the answer with `muted`, outside `counts`. Mutes and unmutes are audited. Unknown `fp` → `404`.
 - **Config checks** (state, manifests, overrides, ports, settings values, the directory's group membership) are cheap: they run on every `GET /api/doctor` and after every relevant save or restore. **Disk checks** (fixer `scan`) run on demand (`POST /api/doctor/scan`), after every folder apply, and daily; results are cached with their time in `<data>/doctor/scans.json` (`0600`) and survive a Hub restart. One scan at a time (`409` busy). Scheduled scans skip a folder whose lock is held and keep its previous result.
