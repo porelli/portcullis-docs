@@ -1,6 +1,6 @@
 # Site build + deploy (deploy.yml, and the local preview in CLAUDE.md).
 # Zensical is pre-1.0: pin exactly and bump deliberately.
-zensical==0.0.74
+zensical==0.1.2
 ghp-import==2.1.0
 PyYAML==6.0.3
 markdown-it-py==4.3.0
