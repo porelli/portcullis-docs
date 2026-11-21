@@ -150,6 +150,41 @@ the provider: each call to it is bounded at 30 s, and the gate closes
 whatever it answers. Audited `mail.provider_unwired`. The wired instance
 can't be deleted: "unwire it first (Settings → Mail)".
 
+## The read-only admin view
+
+A mail provider is **managed by Portcullis**: Settings → Mail and the
+instance's Mail tab are where mail changes. A provider that offers it (the
+`stalwart` template does) also shows its mail server's **own admin screen,
+read-only**, to full administrators: **Open Stalwart's admin (read-only)** on
+Settings → Mail and on the Mail tab, next to the warning "Stalwart's own admin
+screen is read-only here. Make changes in Portcullis (Settings → Mail); changes
+made elsewhere would bypass Portcullis's mail safeguards."
+([contract §19.13](../guides/integration-contracts.md#1913-the-read-only-mail-admin-view))
+
+- It opens `https://mail-admin.<your domain>/admin/` in a new tab, behind
+  Portcullis's sign-in, for **full administrators** (`lldap_admin`) only: never
+  a delegate, never the portal, never MCP or AI. In VPN modes `admin` and
+  `server` it is VPN-only, like the Hub. Each opening is audited
+  (`mail.admin_view_opened`); the provider's `admin-view` container logs each
+  sign-in with the admin's username.
+- You never see or type a password: the view signs in to Stalwart as a
+  dedicated **viewer** account (`portcullis-viewer@portcullis-former.internal`)
+  whose role holds reads only. On the sign-in screen, type any name and press
+  Continue.
+- **Nothing can be changed there.** Stalwart itself refuses every write the
+  viewer sends (accounts, domains, aliases, passwords, roles, DKIM keys,
+  certificates, listeners, the queue, settings, actions and tasks), and the
+  view's proxy refuses them before they reach Stalwart. Secrets read back
+  masked (`****`) or as file paths: passwords, API keys, DKIM and TLS private
+  keys. The viewer can't sign in to IMAP or SMTP and reads no mailbox.
+- Stalwart's web admin bundle is pinned in the mailctl image (never
+  downloaded at run time), and served only at `/admin`.
+- `mail-admin.<your domain>` is reserved while mail is on: no app may use it.
+- Not on Kubernetes (mail isn't, yet). A store bootstrapped before the
+  view existed has no viewer account: the link then fails with "the
+  read-only mail admin view isn't set up on this mail server" (start from a
+  fresh store, or create the role and account by hand).
+
 ## The void
 
 A void destroys every mail password of every account. One is owed after
