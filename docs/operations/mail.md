@@ -176,7 +176,9 @@ made elsewhere would bypass Portcullis's mail safeguards."
   certificates, listeners, the queue, settings, actions and tasks), and the
   view's proxy refuses them before they reach Stalwart. Secrets read back
   masked (`****`) or as file paths: passwords, API keys, DKIM and TLS private
-  keys. The viewer can't sign in to IMAP or SMTP and reads no mailbox.
+  keys. The viewer can't sign in to IMAP or SMTP and reads no mailbox, no
+  queued message and no DMARC, TLS or ARF report (the queue and the reports
+  are left out of the view).
 - Stalwart's web admin bundle is pinned in the mailctl image (never
   downloaded at run time), and served only at `/admin`.
 - `mail-admin.<your domain>` is reserved while mail is on: no app may use it.
