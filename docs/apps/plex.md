@@ -7,6 +7,13 @@
 **Website:** <https://www.plex.tv/personal-media-server/>  
 **Source:** none (Plex Media Server is proprietary; Plex publishes no source code for it)
 
+## About
+
+<div class="app-long-description">
+<p>Plex Media Server organises movies, TV shows, music and photos and streams them to Plex apps on phones, TVs and browsers, transcoding when a device needs it.</p>
+<p>Plex signs people in with their plex.tv accounts, so single sign-on isn't possible. By default Portcullis sign-in and the access group come before Plex's own login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

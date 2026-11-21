@@ -5,7 +5,15 @@
 **Category:** media  
 **Tags:** `photos`, `videos`, `backup`, `ai`, `gallery`  
 **Website:** <https://immich.app/>  
-**Source:** <https://github.com/immich-app/immich>
+**Source:** <https://github.com/immich-app/immich>  
+**Minimum resources:** 6 GiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>Immich backs up photos and videos from phones and computers and organises them in a timeline. It recognises faces, finds pictures by what they show using machine learning, and has albums, shared albums, a map and partner sharing.</p>
+<p>Portcullis signs people in through OpenID Connect, with password login off. Members of the admin group are Immich administrators, and storage quotas can be set per group. Albums can be shared publicly through share links.</p>
+</div>
 
 ## Authentication
 

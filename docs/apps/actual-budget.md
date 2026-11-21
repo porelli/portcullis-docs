@@ -7,6 +7,14 @@
 **Website:** <https://actualbudget.org/>  
 **Source:** <https://github.com/actualbudget/actual>
 
+## About
+
+<div class="app-long-description">
+<p>Actual Budget is a personal finance app built around envelope budgeting: you assign your income to budget categories, then track spending against them. It handles accounts, transactions, rules, schedules and reports, and can import bank files or sync with supported bank-sync providers.</p>
+<p>The server stores the budget files and syncs them between your devices; the app itself works locally in the browser.</p>
+<p>Portcullis signs people in through OpenID Connect, limited to the instance's access group. Actual has no roles, so every member has the same access.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

@@ -40,9 +40,13 @@ field.
 | `name` | single line, 1–64 chars | Yes | Display name shown in the Hub |
 | `description` | single line, 1–200 chars | Yes | One-line description of what the app does |
 | `icon` | single line, 1–16 chars | Yes | Unicode emoji for the Marketplace card and Apps list, e.g. `"\U0001F4CA"` |
-| `category` | `^[a-z][a-z0-9-]{0,31}$` | Yes | Catalog category |
+| `category` | one of the 16 slugs below | Yes | Catalog category: the Marketplace's chips and their order |
 | `tags` | list of unique strings `^[a-z0-9][a-z0-9.+-]{0,31}$` | Yes | Searchable tags (lowercase) |
 | `links` | object | Yes | The app's own website and source repository. See [links](#links) |
+| `long_description` | Markdown, ≤ 16 KiB | No | **NEW (ux3).** The Marketplace's detail drawer and the docs app page. See [Catalog fields](#catalog-fields) |
+| `logo` | SVG file name in the template folder | No | **NEW (ux3).** Shown instead of the emoji `icon`. See [Catalog fields](#catalog-fields) |
+| `resources` | object `{min_memory_mib, min_disk_gib}` | No | **NEW (ux3).** The minimum the project documents. See [Catalog fields](#catalog-fields) |
+| `screenshots` | list of `{file, caption}`, ≤ 6 | No | **NEW (ux3).** See [Catalog fields](#catalog-fields) |
 | `auth` | object | Yes | See [auth](#auth) |
 | `settings` | object `{sections, options}` | No | Options set in the Hub (template contract v3). See [settings](#settings) |
 | `files` | list | No | Data files for file deliveries. See [files](#files) |
@@ -62,9 +66,30 @@ field.
 | `placement` | `any` or `primary_only` | No (default `any`) | **NEW (multiple servers).** Whether an instance may run on a worker server. See [placement](#placement) |
 | `mail` | object | No | **NEW (mail provider).** The app is a mail server the Hub can wire into the mail slot. See [mail](#mail) |
 
-**Categories in use:** `monitoring`, `media`, `productivity`, `security`,
-`networking`, `ai`, `devops`, `finance`, `vpn`, `remote-access`, `public`,
-`mail`.
+**Categories** (`category`; the schema refuses any other slug), in the
+Marketplace's order, with the label the Hub shows:
+
+| Slug | Label |
+|------|-------|
+| `productivity` | Productivity |
+| `communication` | Communication |
+| `mail` | Mail |
+| `storage` | Files & storage |
+| `media` | Media |
+| `creative` | Creative tools |
+| `home-automation` | Home automation |
+| `ai` | AI |
+| `finance` | Finance |
+| `devops` | Developer tools |
+| `monitoring` | Monitoring |
+| `networking` | Networking |
+| `vpn` | VPN |
+| `remote-access` | Remote access |
+| `security` | Security |
+| `public` | Public sites |
+
+A community template source's slug outside the list still loads in the Hub:
+it is labelled from the slug (`weird-thing` → "Weird thing") and sorted last.
 
 ## links
 
@@ -83,6 +108,65 @@ repository, and non-repository URLs on known code hosts.
 links:
   website: https://jellyfin.org/
   source: https://github.com/jellyfin/jellyfin
+```
+
+## Catalog fields
+
+**NEW (ux3).** What the Hub's [Marketplace](../operations/hub.md#marketplace)
+shows about a template beyond its name, icon, description and tags
+(contract §3 "Catalog fields"). All are optional. The Marketplace links
+`links.website` as the app's homepage; there is no separate `homepage` key.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `long_description` | Markdown string, ≤ 16 KiB | What the app is, what it is good for and what Portcullis wires (sign-in, groups, AI, VPN, mail), in 2–5 short paragraphs. Write it as a literal block (`|`). The [auth.notes](#authnotes) rules apply: no raw HTML or images, only `http`, `https` and `mailto` links, nesting ≤ 16, no hidden characters. Never a copy of `auth.notes`: the detail drawer shows both. Errors read `long_description: …` |
+| `logo` | file name `^[a-z0-9][a-z0-9_-]{0,62}\.svg$` | An SVG in the template folder itself (no directory part, no symlink), UTF-8, at most 64 KiB, passing the logo lint (below). Without one the emoji `icon` is shown |
+| `resources.min_memory_mib` | integer 16–1048576 | Minimum RAM in MiB, as the project's own documentation states it |
+| `resources.min_disk_gib` | integer 1–65536 | Minimum disk in GiB, as the project's own documentation states it. Leave a figure out when upstream documents none; `resources: {}` adds nothing |
+| `screenshots[].file` | `^[a-z0-9][a-z0-9_-]{0,62}\.(png|jpg|webp)$` | A file in the template folder, at most 512 KiB, whose leading bytes match its extension; at most 4096 × 4096 pixels (`tests/validate.py`). No template ships screenshots yet |
+| `screenshots[].caption` | single line, 1–120 chars | Shown under the screenshot |
+
+**Logos.** The Hub only ever shows a logo as an `<img>` served from its own
+route with a sandboxing Content-Security-Policy, so a logo can't run script.
+Both the Hub and `tests/validate.py` still lint it at load (an allowlist,
+`tests/svgsafe.py`) and refuse the template with the reason. The root is an
+`<svg>` with a `viewBox`; only plain shapes, groups, gradients, clip paths,
+masks, `<use>`, `<symbol>`, `<title>` and `<desc>` are allowed, with
+presentation attributes (`fill`, `stroke-*`, `transform`, …). Refused:
+`<script>`, `<foreignObject>`, `<style>` elements and `style` attributes,
+`on*` attributes, any reference but a local `#id` (`href`, `url(#id)`),
+`<!DOCTYPE>`, entities and CDATA, quotes, backslashes and CSS image
+functions in attribute values, text outside `<title>` / `<desc>`, more than 32
+`<use>` elements or a `<use>` whose target contains one, nesting deeper than
+64, an encoding other than UTF-8 and an XML version other than 1.0. Write
+styles as presentation attributes (`fill="#00a4dc"`), not CSS classes.
+Ship a logo only when the
+project publishes it under terms that allow redistribution and the mark's
+terms allow this use, with a REUSE sidecar `logo.svg.license` next to it:
+
+```text
+SPDX-FileCopyrightText: 2019 The Jellyfin contributors
+SPDX-License-Identifier: CC-BY-SA-4.0
+
+Source: https://github.com/jellyfin/jellyfin-ux/blob/<commit>/branding/SVG/icon-transparent.svg
+Modified (where present): …
+```
+
+The licence text goes in the templates repo's `LICENSES/<identifier>.txt`, and
+the source in its `CHANGELOG.md`. The docs app page shows the logo with that
+attribution.
+
+```yaml
+long_description: |
+  Jellyfin is a free media server for movies, TV shows, music, books and live TV.
+
+  Portcullis signs people in through Jellyfin's SSO plugin.
+logo: logo.svg
+```
+
+```yaml
+resources:
+  min_memory_mib: 8192   # gitlab: the minimum GitLab documents
 ```
 
 ## auth
@@ -1255,7 +1339,7 @@ provider, but any instance can still be made VPN-only.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `label` | single line, 1–64 chars | Yes | Shown on Settings → VPN, the instance and the device lists |
+| `label` | single line, 1–64 chars | Yes | Shown on Settings → Network → VPN, the instance and the device lists |
 | `ranges` | list of 1–8 IPv4 prefixes | Yes | The addresses the app hands to its clients, each /8–/30, no overlaps. Each entry is a literal prefix or exactly `{{setting:<key>}}`, naming a `string` option with `format: cidr` and `scope: instance`; the Hub resolves it per instance, and an unset or invalid value refuses the wiring |
 | `ingress` | `{service, proxy_protocol}` | Yes | `service`: the compose service the Hub joins to `portcullis-vpn` (the gateway); `proxy_protocol`: exactly `v2` |
 | `identity` | `{source, hook, owner, refresh}` | Yes | How the device list is built: `source: hook` (with `hook` and `owner`) or `source: static` (no `hook`, no `owner`; the admin assigns addresses on the VPN tab). `refresh`: a Go duration, `15s`–`10m`, default `60s` |

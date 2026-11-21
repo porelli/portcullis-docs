@@ -1,11 +1,22 @@
 # 📄 Paperless-ngx
 
+![Paperless-ngx logo](logos/paperless.svg){ width="64" height="64" }
+
+<p class="app-logo-credit"><small>Logo: © 2026 The paperless-ngx contributors, <code>GPL-3.0-only</code>, <a href="https://github.com/paperless-ngx/paperless-ngx/blob/fbadc2e1b8c34f80b48be0766cae7168e0e8ec24/docs/assets/logo_leaf.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
+
 > Document management with OCR, full-text search and automatic tagging
 
 **Category:** productivity  
 **Tags:** `documents`, `ocr`, `scanning`, `archive`, `pdf`  
 **Website:** <https://docs.paperless-ngx.com/>  
 **Source:** <https://github.com/paperless-ngx/paperless-ngx>
+
+## About
+
+<div class="app-long-description">
+<p>Paperless-ngx turns paper and PDF documents into a searchable archive. It runs OCR on scans, indexes the text for full-text search, and assigns tags, correspondents and document types automatically from what it learns.</p>
+<p>Portcullis signs people in through OpenID Connect, with no password login, limited to the access group. Members of the admin group are Paperless superusers.</p>
+</div>
 
 ## Authentication
 

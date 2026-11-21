@@ -386,7 +386,7 @@ a setting's variable (`ECHO_STOP_GRACE`) are refused with `400`, the reset
 - two instances, two groups: each user reaches only their instance;
 - a backup longer than 60 s through `hub.<domain>`: `202`, a concurrent
   request `409`, the op record ends ok (Traefik keeps its default timeouts);
-- `domains_dns_panel`: in Settings → Domains, the **DNS** button of
+- `domains_dns_panel`: in Settings → Network → Domains, the **DNS** button of
   `team-b.test` opens its [DNS panel](hub.md#the-dns-panel); every `caa`
   row's status is `ok` and the CAA line says "would issue: yes" (the
   e2e-instances domains override sets `DNS_CAA_ISSUER=pebble.test`).

@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/figcraft>  
 **Source:** <https://github.com/storytold/figcraft>
 
+## About
+
+<div class="app-long-description">
+<p>FigCraft is ArtCraft's interface design and prototyping tool. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: designs stay on the person's own device and the server only serves static files.</p>
+<p>FigCraft is an early alpha. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

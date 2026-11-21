@@ -7,6 +7,13 @@
 **Website:** <https://github.com/mbentley/docker-timemachine>  
 **Source:** <https://github.com/mbentley/docker-timemachine>
 
+## About
+
+<div class="app-long-description">
+<p>Time Machine is macOS's built-in backup. This template offers a network backup destination over SMB, so Macs back up to your server instead of a local disk.</p>
+<p>There is no web page. Each member of the access group sets their own file-share password on My apps and gets one backup share in their own folder.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

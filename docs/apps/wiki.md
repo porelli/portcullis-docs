@@ -5,7 +5,15 @@
 **Category:** productivity  
 **Tags:** `wiki`, `docs`, `knowledge-base`  
 **Website:** <https://js.wiki/>  
-**Source:** <https://github.com/requarks/wiki>
+**Source:** <https://github.com/requarks/wiki>  
+**Minimum resources:** 1 GiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>Wiki.js is a wiki with a visual editor and a Markdown editor, page history, full-text search and fine-grained permissions.</p>
+<p>Portcullis signs people in through OpenID Connect, with no password login. Members of the access group are editors, and members of the admin group are Wiki.js administrators.</p>
+</div>
 
 ## Authentication
 

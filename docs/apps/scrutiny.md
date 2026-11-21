@@ -7,6 +7,13 @@
 **Website:** <https://github.com/AnalogJ/scrutiny>  
 **Source:** <https://github.com/AnalogJ/scrutiny>
 
+## About
+
+<div class="app-long-description">
+<p>Scrutiny monitors hard drives and SSDs through their S.M.A.R.T. data. Its dashboard shows each disk's health, temperature and history, judged against failure rates seen in real drives, and it can send alerts.</p>
+<p>Portcullis sign-in and the access group protect the dashboard. Scrutiny has no users of its own, so every member has full access.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

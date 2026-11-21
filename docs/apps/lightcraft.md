@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/lightcraft>  
 **Source:** <https://github.com/storytold/lightcraft>
 
+## About
+
+<div class="app-long-description">
+<p>LightCraft is ArtCraft's non-destructive photo editor and library. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: photos stay on the person's own device and the server only serves static files.</p>
+<p>LightCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

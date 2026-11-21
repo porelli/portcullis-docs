@@ -7,6 +7,13 @@
 **Website:** <https://element-hq.github.io/synapse/>  
 **Source:** <https://github.com/element-hq/synapse>
 
+## About
+
+<div class="app-long-description">
+<p>Matrix is an open standard for secure, decentralised chat. This template runs Synapse, the reference homeserver, and Element Web, its browser client: rooms, direct messages, end-to-end encryption and file sharing.</p>
+<p>Portcullis signs people in through OpenID Connect, and only members of the access group get an account. Federation with other servers is off unless an admin lists peers.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

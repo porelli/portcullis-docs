@@ -597,7 +597,7 @@ For local development without a real domain or ACME:
 
 Beyond the main domain, Portcullis can serve **extra domains** with their own
 wildcard website certificates (HTTPS). Extra domains are added in the Hub's
-**Settings → Domains** section with **+ Add domain** (see [Hub Management](../operations/hub.md#adding-extra-domains)).
+**Settings → Network → Domains** section with **+ Add domain** (see [Hub Management](../operations/hub.md#adding-extra-domains)).
 
 Each added domain:
 

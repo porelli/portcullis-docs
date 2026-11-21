@@ -12,6 +12,7 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 💬 [AI Chat](ai-chat.md) | `ai` | ai | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: | AI page |
 | 🤖 [LiteLLM](litellm.md) | `llm` | ai | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: | :x: |
 | 💬 [Matrix (Synapse + Element)](matrix.md) | `element`, `matrix` | communication | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :x: | :x: |
+| 💬 [Mattermost](mattermost.md) | `chat` | communication | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📏 [CADCraft](cadcraft.md) | `cadcraft` | creative | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📐 [DesignCraft](designcraft.md) | `designcraft` | creative | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 🎬 [EffectCraft](effectcraft.md) | `effectcraft` | creative | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
@@ -45,7 +46,6 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 🦊 [Firefox Sync](firefox-sync.md) | `firefox-sync` | productivity | `custom` | :x: No | :x: | :x: | :x: |
 | 🧮 [GridCraft](gridcraft.md) | `gridcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📋 [Kanboard](kanboard.md) | `kanboard` | productivity | `header-auth` | :warning: Partial | :white_check_mark: | :x: | :x: |
-| 💬 [Mattermost](mattermost.md) | `chat` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 🍽 [Mealie](mealie.md) | `recipes` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :x: |
 | ☁️ [Nextcloud](nextcloud.md) | `cloud` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | 🗂 [OxiCloud](oxicloud.md) | `drive` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :x: |

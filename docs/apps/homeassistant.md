@@ -7,6 +7,14 @@
 **Website:** <https://www.home-assistant.io/>  
 **Source:** <https://github.com/home-assistant/core>
 
+## About
+
+<div class="app-long-description">
+<p>Home Assistant is a home automation platform that connects thousands of devices and services. It offers dashboards, automations, scenes, energy monitoring and voice control.</p>
+<p>Portcullis signs people in through OpenID Connect, its only sign-in. Members of the access group can sign in, and members of the admin group are Home Assistant administrators.</p>
+<p>With AI support on, Home Assistant's MCP server integration lets people's AI assistants control the exposed devices.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

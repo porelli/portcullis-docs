@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/soundcraft>  
 **Source:** <https://github.com/storytold/soundcraft>
 
+## About
+
+<div class="app-long-description">
+<p>SoundCraft is ArtCraft's digital audio workstation. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: projects stay on the person's own device and the server only serves static files.</p>
+<p>SoundCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

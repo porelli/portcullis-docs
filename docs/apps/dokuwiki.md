@@ -7,6 +7,13 @@
 **Website:** <https://www.dokuwiki.org/>  
 **Source:** <https://github.com/dokuwiki/dokuwiki>
 
+## About
+
+<div class="app-long-description">
+<p>DokuWiki is a wiki that stores its pages as plain text files instead of in a database, so backups and moves are simple file copies. It has page history, access control lists and a large plugin collection.</p>
+<p>Portcullis signs people in through OpenID Connect. Members of the access group can read, edit and upload; members of the admin group are DokuWiki superusers.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

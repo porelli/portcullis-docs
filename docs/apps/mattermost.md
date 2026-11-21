@@ -2,10 +2,18 @@
 
 > Team chat with channels, threads, file sharing and integrations (Team Edition)
 
-**Category:** productivity  
+**Category:** communication  
 **Tags:** `chat`, `messaging`, `team`, `collaboration`, `slack-alternative`  
 **Website:** <https://mattermost.com/>  
-**Source:** <https://github.com/mattermost/mattermost>
+**Source:** <https://github.com/mattermost/mattermost>  
+**Minimum resources:** 2 GiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>Mattermost is team chat: channels, threads, direct messages, file sharing, search and integrations through webhooks, slash commands and plugins. This template runs the free Team Edition.</p>
+<p>The whole site is behind Portcullis sign-in and the access group. Mattermost keeps its own accounts behind it.</p>
+</div>
 
 ## Authentication
 

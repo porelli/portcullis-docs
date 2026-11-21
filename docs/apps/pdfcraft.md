@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/pdfcraft>  
 **Source:** <https://github.com/storytold/pdfcraft>
 
+## About
+
+<div class="app-long-description">
+<p>PdfCraft is ArtCraft's PDF reader and editor. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: documents stay on the person's own device and the server only serves static files.</p>
+<p>PdfCraft is an early alpha. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

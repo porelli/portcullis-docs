@@ -7,6 +7,13 @@
 **Website:** <https://atalayalabs.github.io/OxiCloud/>  
 **Source:** <https://github.com/AtalayaLabs/OxiCloud>
 
+## About
+
+<div class="app-long-description">
+<p>OxiCloud is a lightweight file storage and sync server written in Rust. It stores and shares files in the browser and serves them over WebDAV, with calendars over CalDAV and contacts over CardDAV.</p>
+<p>Portcullis signs people in through OpenID Connect, its only login, limited to the access group.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

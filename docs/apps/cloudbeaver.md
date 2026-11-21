@@ -7,6 +7,13 @@
 **Website:** <https://dbeaver.com/docs/cloudbeaver/>  
 **Source:** <https://github.com/dbeaver/cloudbeaver>
 
+## About
+
+<div class="app-long-description">
+<p>CloudBeaver is DBeaver's web-based database manager. It connects to PostgreSQL, MySQL, MariaDB, SQLite and other databases, and lets people browse schemas, edit data and run SQL from the browser.</p>
+<p>Portcullis signs people in and passes their username to CloudBeaver, which creates their account. Roles and database connections are managed inside CloudBeaver.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

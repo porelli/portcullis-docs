@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/photocraft>  
 **Source:** <https://github.com/storytold/photocraft>
 
+## About
+
+<div class="app-long-description">
+<p>PhotoCraft is ArtCraft's photo and image editor. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: images stay on the person's own device and the server only serves static files.</p>
+<p>PhotoCraft is an early alpha. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |

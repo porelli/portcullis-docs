@@ -4,3 +4,6 @@ zensical==0.0.74
 ghp-import==2.1.0
 PyYAML==6.0.3
 markdown-it-py==4.3.0
+# The templates' logo lint (tests/svgsafe.py), run on every logo before the
+# generator copies it (scripts/generate-app-docs.py). Same pin as templates.
+defusedxml==0.7.1
