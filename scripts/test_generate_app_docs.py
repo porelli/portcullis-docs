@@ -7,7 +7,6 @@ the templates' own lint is copied, and the REUSE credit's values can't
 become markup or a script link.
 """
 import importlib.util
-import os
 import sys
 import tempfile
 import unittest
@@ -142,15 +141,19 @@ class LogoTest(unittest.TestCase):
         self.assertIn("© 2019 A &amp; B", html_)
 
 
-@unittest.skipUnless(os.environ.get("PORTCULLIS_TEMPLATES"), "PORTCULLIS_TEMPLATES (a templates checkout) not set")
-class RealLintTest(unittest.TestCase):
-    """The real tests/svgsafe.py loads and refuses a script."""
+class VendoredLintTest(unittest.TestCase):
+    """The generator's lint is this repo's copy: it loads, passes a clean
+    logo and refuses a script."""
 
-    def test_real_lint(self):
-        check = gen.load_logo_lint(Path(os.environ["PORTCULLIS_TEMPLATES"]))
-        self.assertIsNotNone(check)
+    def test_vendored_lint(self):
+        check = gen.load_logo_lint()
         self.assertIsNone(check(GOOD_SVG))
         self.assertIsNotNone(check(b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><script/></svg>'))
+
+    def test_never_runs_templates_code(self):
+        src = (HERE / "generate-app-docs.py").read_text()
+        self.assertNotIn('"tests" / "svgsafe.py"', src)
+        self.assertNotIn("source_dir / \"tests\"", src)
 
 
 if __name__ == "__main__":

@@ -26,11 +26,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The same-named templates branch if there is one, else main.
+      - name: Templates ref
+        id: tref
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          ref=main
+          url=https://github.com/porelli/portcullis-templates
+          if [[ "$REF" =~ ^[A-Za-z0-9._/-]+$ ]] && [ "$REF" != main ] && git ls-remote --exit-code --heads "$url" "$REF" >/dev/null; then ref="$REF"; fi
+          echo "portcullis-templates: $ref" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      # Read as data only: nothing from this checkout is ever run.
       - name: Clone templates repo (for manifest-based catalog)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: porelli/portcullis-templates
+          ref: ${{ steps.tref.outputs.ref }}
           path: portcullis-templates
+          persist-credentials: false
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -43,10 +58,13 @@ jobs:
       - name: Install dependencies
         run: pip install --disable-pip-version-check -r requirements.txt
 
+      # scripts/svgsafe.py (the logo lint the generator runs) is a byte copy
+      # of the templates' tests/svgsafe.py, compared as data.
+      - name: svgsafe copy matches the templates repo
+        run: python scripts/check-svgsafe-copy.py portcullis-templates
+
       # The generator's logo copy and credit (symlinks, the lint, escaping).
       - name: Generator tests
-        env:
-          PORTCULLIS_TEMPLATES: portcullis-templates
         run: python -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Generate app catalog from manifests

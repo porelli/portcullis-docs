@@ -331,8 +331,8 @@ def resources_line(app: dict) -> str:
 # Policy (zensical.toml, GitHub Pages), so a same-origin image loads. A
 # logo opened directly would run as an SVG document on the site's origin,
 # so a copy is only ever one that passes the templates' own logo lint
-# (tests/svgsafe.py of the --source checkout), read without following a
-# symlink, from the template's own directory.
+# (scripts/svgsafe.py, a byte copy of tests/svgsafe.py), read without
+# following a symlink, from the template's own directory.
 LOGO_DIR = "logos"
 LOGO_MAX = 64 << 10
 LICENSE_MAX = 4 << 10
@@ -346,14 +346,14 @@ class AssetError(Exception):
     """A template asset the generator refuses (the message names it)."""
 
 
-def load_logo_lint(source_dir: Path):
-    """The templates repo's logo lint, tests/svgsafe.py: check(bytes) ->
-    None or the reason. None when the checkout has none (then no logo is
-    copied)."""
-    path = source_dir / "tests" / "svgsafe.py"
-    if path.is_symlink() or not path.is_file():
-        return None
-    spec = importlib.util.spec_from_file_location("portcullis_templates_svgsafe", path)
+def load_logo_lint():
+    """The logo lint: scripts/svgsafe.py, this repo's byte copy of the
+    templates' tests/svgsafe.py (check(bytes) -> None or the reason).
+    Nothing from the templates checkout is ever imported or run: it is
+    only read as data (scripts/check-svgsafe-copy.py keeps the copy in
+    step)."""
+    path = Path(__file__).parent / "svgsafe.py"
+    spec = importlib.util.spec_from_file_location("portcullis_docs_svgsafe", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod.check
@@ -432,7 +432,7 @@ def logo_lines(app: dict, output_dir: Path, lint) -> list[str]:
     if not isinstance(logo, str) or tdir is None:
         return []
     if lint is None:
-        print(f"WARNING: {app['_id']}: no tests/svgsafe.py in the templates checkout: its logo is not copied", file=sys.stderr)
+        # No lint, no copy (tests only: main always passes the copy's).
         return []
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}\.svg", logo):
         raise AssetError(f"{app['_id']}: logo {logo!r} is not a logo file name")
@@ -1056,7 +1056,7 @@ def main():
     apps = load_manifests(source_dir)
     print(f"Found {len(apps)} app manifests")
 
-    lint = load_logo_lint(source_dir)
+    lint = load_logo_lint()
     generate_index(apps, docs_dir)
     for app in apps:
         try:
