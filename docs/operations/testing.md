@@ -255,7 +255,8 @@ the internal PKI) and verifies:
   same-site`, `Origin: https://hub.portcullis.local`, `text/plain`) answers `302` to exactly
   `https://portcullis.local/signed-out`; the ticket is then gone from the
   store, the old cookie gets 401 at `/oauth2/auth`, this sign-in's Keycloak
-  session is gone, the portal redirects to sign-in, and the Signed out page
+  session is gone, Traefik's access log gained no `id_token_hint` and
+  oauth2-proxy logged no backend-logout error, the portal redirects to sign-in, and the Signed out page
   answers 200 without a session.
 - **CLI.** `./portcullis status`.
 - **Backup round-trip.** It runs, in order:

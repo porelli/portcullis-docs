@@ -1309,7 +1309,16 @@ came back forever (upstream issue
   - **What it ends.** `forward-auth` calls Keycloak's end-session endpoint
     server-side with the session's `id_token_hint`
     (alpha.yaml's `backendLogoutURL` from `PORTCULLIS_BACKEND_LOGOUT_URL`, only on `forward-auth`; no `post_logout_redirect_uri`, so no
-    Keycloak page in the browser), deletes the ticket from the session store
+    Keycloak page in the browser). The call goes straight to
+    `http://keycloak:8080` on the `portcullis` network, never through
+    Traefik: its access log would record the ID token, and the `keycloak`
+    router's `rate-limit-auth` (shared by every refresh from the gateway
+    address) could refuse it, which would leave the SSO session alive
+    behind a Signed out page. On Kubernetes it goes to
+    `keycloak-internal:8081` (Traefik's `kcinternal`, no rate limit),
+    because only Traefik may reach Keycloak's 8080 there; Traefik's access
+    log there still records that request's URL, ID token included (an open
+    item). Then it deletes the ticket from the session store
     and expires the cookie. The client's `post.logout.redirect.uris` is
     pinned to the Signed out page by `keycloak configure`.
   - **Extra-domain hosts.** Their host-only `__Host-portcullis_ext` cookie
