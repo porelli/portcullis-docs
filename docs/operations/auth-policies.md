@@ -456,7 +456,10 @@ page and the sign-in pages) shows:
 
 Apps can't show this line. Stop is also at
 `https://people.<domain>/impersonation/stop`. When it ends, the next
-request shows "Your session as alice has ended." with a link to sign out.
+request shows "Your session as alice has ended." with a **Sign out**
+button. **Sign out** in the site bar while you are signed in as someone
+else also ends it: on the people pages it stops the impersonation and
+signs you out, and on the portal it opens the Stop page.
 
 **What it can do.** You open the apps the person may open, as them. Your
 own sign-in counts, not theirs: an app opens only when **your** session's
@@ -610,6 +613,10 @@ never moves.
 - **Refused.** A wrong password, a refused key or certificate, or a sign-in
   that isn't strong enough keeps the gate down, and the usual error or
   needs-stronger page shows.
+- **Signed out.** After **Sign out** (the shared bar of every Portcullis
+  page, [Hub → Signing out](hub.md#signing-out)) the **Signed out** page
+  shows the same arch with the gate down and still. Its **Sign in again**
+  opens the sign-in page, where the gate drops.
 - **Reduce motion.** With "reduce motion" turned on in your system
   (`prefers-reduced-motion: reduce`), the gate is shown closed and still on
   every page, and the "Let through" moment is skipped: you go on to the app

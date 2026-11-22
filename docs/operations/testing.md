@@ -243,7 +243,18 @@ the internal PKI) and verifies:
   (no `_oauth2_proxy_0…`), under 512 bytes, whose value decodes to an
   oauth2-proxy ticket `v2.<id>.<secret>` with id `_oauth2_proxy-<32 hex>`,
   and the store holds that key (not readable by `forward-auth-ext`).
-  `/oauth2/sign_out` deletes it, and the old cookie then gets 401.
+  Then sign-out (contract §5 "Sign out"): a cross-site GET of
+  `/oauth2/sign_out` (also with `?rd=` and a longer path) gets the `405`
+  confirmation page and ends nothing; a cross-site POST, a POST with a
+  foreign `Origin`, a same-site POST with `?rd=` and a form-encoded one are
+  `403` and end nothing (each time the ticket is still in the store,
+  `/oauth2/auth` still answers 202 and testuser's Keycloak session — the
+  admin API — is still there). The site bar's POST (`Sec-Fetch-Site:
+  same-site`, `Origin: null`, `text/plain`) answers `302` to exactly
+  `https://portcullis.local/signed-out`; the ticket is then gone from the
+  store, the old cookie gets 401 at `/oauth2/auth`, this sign-in's Keycloak
+  session is gone, the portal redirects to sign-in, and the Signed out page
+  answers 200 without a session.
 - **CLI.** `./portcullis status`.
 - **Backup round-trip.** It runs, in order:
     - `./portcullis backup` with nothing stopped, then `backup verify --local`. A deliberately damaged backup must fail verification.
@@ -710,7 +721,8 @@ restored policy). In order:
     - **`imp_refused_concurrent`:** root's second start → `409` "Stop it
       first"; sam on alice → `409` "root is signed in as alice right now".
     - **`imp_stop`:** Stop on the portal → the Stop page POSTs, the browser
-      goes through `/oauth2/sign_out`, then to the sign-in page, or, since
+      POSTs `/oauth2/sign_out` and lands on the Signed out page; its **Sign
+      in again** leads to the sign-in page, or, since
       the browser presents root's YubiKey certificate, to the portal as root
       with no `act` / `pc_imp`; within 20 s alice has no impersonated
       Keycloak session; the old `_oauth2_proxy` cookie replayed on the app
@@ -725,6 +737,15 @@ restored policy). In order:
       in a new context: the notice reads "root signed in as you on … UTC
       for … min: checking quota.", Continue reaches her app, and her next
       sign-in shows no notice.
+    - **`site_bar_sign_out`:** alice's own YubiKey-certificate session: the
+      portal's and the Sign-in page's site bar show "Signed in as alice"
+      and the POST Sign out (screenshots `sign-out-bar-portal`,
+      `sign-out-bar-signin`); a link from another page to
+      `/oauth2/sign_out?rd=…` (a cross-site navigation) shows the
+      confirmation and her cookie still opens `echo-std`; Sign out on the
+      Sign-in page lands on the Signed out page (`sign-out-signed-out`),
+      the old `_oauth2_proxy` cookie no longer gets `200`, her Keycloak
+      session is gone, and **Sign in again** goes to sign-in.
     - **`imp_refused_proofs`:** sam's synced-passkey proof, root's
       browser-certificate proof and bob's proof → `403`; reason "ab" →
       `400`. (The password case is the Hub's unit test: root has no

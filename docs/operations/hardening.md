@@ -1262,8 +1262,8 @@ came back forever (upstream issue
   Keycloak's 12 h maximum. The 202's `Set-Cookie` therefore doesn't have to
   reach the browser, and the forward-auth middlewares have no
   `addAuthCookiesToResponse`.
-- **Sign-out** (`/oauth2/sign_out`) deletes the session from the store: a copy
-  of the cookie stops working at once.
+- **Sign-out** (`/oauth2/sign_out`, only through the guard below) deletes the
+  session from the store: a copy of the cookie stops working at once.
 - **`people.<domain>`** (the Hub's directory listener `:8889`,
   [contract §5.1](../guides/integration-contracts.md)) is open to any signed-in
   user: `people=*` in `group-gate-map.conf` (`*` is valid only there; in the
@@ -1281,6 +1281,45 @@ came back forever (upstream issue
   Traefik answers 421 on it. group-gate's step-up page therefore sends the
   browser to `https://auth.<domain>/oauth2/start?pc_method=…&rd=<app>`. CI
   rejects router rules without `Host(`.
+- **Sign out** ([contract §5 "Sign out"](../guides/integration-contracts.md)).
+  The site bar's **Sign out** is a POST form with no fields
+  (`enctype="text/plain"`) to `https://auth.<domain>/oauth2/sign_out`. The
+  router `oauth2-signout` (`PathPrefix(/oauth2/sign_out)`, priority 1001,
+  above `oauth2-callback`) puts group-gate's `/signout-guard` in front of
+  oauth2-proxy (forwardAuth, `trustForwardHeader: false`, only
+  `X-Auth-Request-Redirect` handed on). It lets through only a `POST` of
+  exactly that path (no query: nobody passes an `rd`), `Content-Type`
+  `text/plain` or none (oauth2-proxy reads an `rd` only from a urlencoded
+  body), `Sec-Fetch-Site` `same-origin` / `same-site` when sent, and an
+  `Origin` on the domain or `null` (the Hub's pages are
+  `Referrer-Policy: no-referrer`); it names the landing page itself,
+  `https://<domain>/signed-out`. A `GET` — a link, an image, a cross-site
+  navigation, which carries the `SameSite=Lax` cookie — gets a confirmation
+  page (`405`); other refusals get it with a note (`403`). So no other site
+  can sign anyone out, and the sign-out is never an open redirect. Apps on
+  hosts under the domain are the same site; they can already overwrite the
+  `.<domain>` cookie, and the guard doesn't tell them apart.
+  - **What it ends.** `forward-auth` calls Keycloak's end-session endpoint
+    server-side with the session's `id_token_hint`
+    (`OAUTH2_PROXY_BACKEND_LOGOUT_URL`, no `post_logout_redirect_uri`, so no
+    Keycloak page in the browser), deletes the ticket from the session store
+    and expires the cookie. The client's `post.logout.redirect.uris` is
+    pinned to the Signed out page by `keycloak configure`.
+  - **Extra-domain hosts.** Their host-only `__Host-portcullis_ext` cookie
+    can't be cleared from the main domain. `forward-auth-ext` refreshes a
+    session with Keycloak once it is a minute old (`cookie_refresh` 1m); with
+    the Keycloak session gone the refresh fails and the session is dropped,
+    so it stops working **within a minute**. `forward-auth-ext` has no
+    backend logout: its `/oauth2/sign_out` on an extra-domain host is behind
+    the Hub's unguarded per-host routers, so it ends only that host's
+    ticket, never the Keycloak session.
+  - **Not ended.** Apps with their own OIDC session (Nextcloud, Gitea, …)
+    keep it until it ends or they check with Keycloak (or get Keycloak's
+    back-channel logout, if they registered one).
+  - **The Signed out page** (router `signed-out`,
+    `Host(<domain>) && Path(/signed-out)`, no forward-auth) is group-gate's
+    static page: no session, nothing read from the request, CSP with its
+    style hash, `form-action 'none'`, `frame-ancestors 'none'`.
 - **Keycloak's `/admin` and `/realms/master` router** uses
   `portcullis-auth-console`: the same forward-auth, minus `Authorization` in
   `authResponseHeaders`. The admin console sends its own bearer token to the
