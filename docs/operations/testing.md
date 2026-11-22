@@ -1817,8 +1817,13 @@ certificate sign-in, and checks it targets the required action;
 `PROVIDER_IDS` lists `portcullis-let-through`. The unit tests
 (`LetThroughTest`) cover when it is added (a method ran, not the SSO cookie
 alone, not an application-initiated action or action token, at most once),
-the host (the `redirect_uri`'s, oauth2-proxy's `state` only inside the
-callback's domain) and the page's escaping.
+the host (the `redirect_uri`'s; oauth2-proxy's `state` only for
+`portcullis-forward-auth` on exactly `auth.<domain>` and only a host in
+`app_hosts`: an extra-domain apex such as `example.co.uk`, a
+`*.duckdns.org` parent, a crafted state for an unpublished host under
+`<domain>` and a published one are each covered) and the page's escaping;
+`SigninConfigTest` the `app_hosts` rules. The Hub's `appHosts` tests, and
+e2e-signin's check of the published `app_hosts`, cover the list itself.
 
 ## AI support manual checklist
 
