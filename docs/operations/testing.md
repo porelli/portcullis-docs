@@ -246,11 +246,13 @@ the internal PKI) and verifies:
   Then sign-out (contract §5 "Sign out"): a cross-site GET of
   `/oauth2/sign_out` (also with `?rd=` and a longer path) gets the `405`
   confirmation page and ends nothing; a cross-site POST, a POST with a
-  foreign `Origin`, a same-site POST with `?rd=` and a form-encoded one are
+  foreign `Origin`, one from an app (`Origin: https://app.portcullis.local`,
+  same-site), a same-site one with `Origin: null`, a same-site POST with
+  `?rd=` and a form-encoded one are
   `403` and end nothing (each time the ticket is still in the store,
   `/oauth2/auth` still answers 202 and testuser's Keycloak session — the
-  admin API — is still there). The site bar's POST (`Sec-Fetch-Site:
-  same-site`, `Origin: null`, `text/plain`) answers `302` to exactly
+  admin API — is still there). The Hub's site-bar POST (`Sec-Fetch-Site:
+  same-site`, `Origin: https://hub.portcullis.local`, `text/plain`) answers `302` to exactly
   `https://portcullis.local/signed-out`; the ticket is then gone from the
   store, the old cookie gets 401 at `/oauth2/auth`, this sign-in's Keycloak
   session is gone, the portal redirects to sign-in, and the Signed out page

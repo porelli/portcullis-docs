@@ -1290,15 +1290,22 @@ came back forever (upstream issue
   `X-Auth-Request-Redirect` handed on). It lets through only a `POST` of
   exactly that path (no query: nobody passes an `rd`), `Content-Type`
   `text/plain` or none (oauth2-proxy reads an `rd` only from a urlencoded
-  body), `Sec-Fetch-Site` `same-origin` / `same-site` when sent, and an
-  `Origin` on the domain or `null` (the Hub's pages are
-  `Referrer-Policy: no-referrer`); it names the landing page itself,
+  body), and either `Sec-Fetch-Site: same-origin` (the confirmation page on
+  `auth.<domain>`) or an `Origin` that is exactly a core page's —
+  `https://<domain>`, `https://hub.<domain>`, `https://people.<domain>`,
+  `https://auth.<domain>` — never another host under the domain: apps are
+  same-site but third-party code, so same-site is never proof, and
+  `Origin: null` counts only with same-origin. The Hub's pages are
+  `Referrer-Policy: no-referrer` (a cross-origin POST from them would say
+  `Origin: null`); their Sign out switches the page to `strict-origin`
+  right before the submit, so the POST carries the page's origin and the
+  `Referer` only that origin. It names the landing page itself,
   `https://<domain>/signed-out`. A `GET` — a link, an image, a cross-site
   navigation, which carries the `SameSite=Lax` cookie — gets a confirmation
-  page (`405`); other refusals get it with a note (`403`). So no other site
-  can sign anyone out, and the sign-out is never an open redirect. Apps on
-  hosts under the domain are the same site; they can already overwrite the
-  `.<domain>` cookie, and the guard doesn't tell them apart.
+  page (`405`); other refusals get it with a note (`403`). So neither
+  another site nor an app under the domain can sign anyone out, and the
+  sign-out is never an open redirect. The impersonation ended page, which
+  shows on app hosts, links the confirmation page instead of posting.
   - **What it ends.** `forward-auth` calls Keycloak's end-session endpoint
     server-side with the session's `id_token_hint`
     (`OAUTH2_PROXY_BACKEND_LOGOUT_URL`, no `post_logout_redirect_uri`, so no

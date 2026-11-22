@@ -456,8 +456,8 @@ page and the sign-in pages) shows:
 
 Apps can't show this line. Stop is also at
 `https://people.<domain>/impersonation/stop`. When it ends, the next
-request shows "Your session as alice has ended." with a **Sign out**
-button. **Sign out** in the site bar while you are signed in as someone
+request shows "Your session as alice has ended." with **Sign out**
+(it asks once more, then signs out). **Sign out** in the site bar while you are signed in as someone
 else also ends it: on the people pages it stops the impersonation and
 signs you out, and on the portal it opens the Stop page.
 
