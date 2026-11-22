@@ -85,6 +85,22 @@ The Vault metrics token is an orphan token without the default policy, with a
 `vault init` recreates it when less than a year is left (it raises the
 `token/` mount's max TTL to allow this).
 
+### Front-door metrics (high availability)
+
+The front door (`domains frontdoor`) serves on `:9106`:
+
+| Metric | Meaning |
+|--------|---------|
+| `portcullis_frontdoor_addresses{name}` | Addresses the name's set publishes |
+| `portcullis_frontdoor_unhealthy_published_seconds{name,address}` | How long a published address has been unhealthy (0 while healthy) |
+| `portcullis_frontdoor_site_healthy{site}` | 1 while an ingress node of the site is ok, else 0; a site that leaves the cluster loses its series |
+| `portcullis_frontdoor_blind_probers{site}` | Probers of the site whose last counted round was blind (their uplink lost) |
+| `portcullis_frontdoor_snapshot_ok` | 1 when the last round read nodeadm's snapshot; at 0 the site series are the last good round's (stale) |
+
+The added domains follow the front door through the domains service: its
+problems (a stale or refused `frontdoor-status`, records it keeps) are
+Warning items of the domains' DNS plans and of the main domain's plan.
+
 ## Usage history
 
 The Hub's [Usage](hub.md#usage) page keeps one hour in memory. With the

@@ -905,6 +905,59 @@ contract's §20.5 has the timings.
   outages in a row can keep the Hub down for minutes after the API is
   back. The back-off resets after 10 minutes without a restart.
 
+### The front door and the added domains (high availability)
+
+The front door alone holds the main domain's DNS credentials; the domains
+service writes each added domain's address set from the front door's
+`frontdoor-status` with that domain's own credentials. The contract's
+§12.4 and §20.8 have the rules.
+
+- **Who may write `frontdoor-status`.** RBAC gives `update` to the front
+  door's ServiceAccount, and the admission policy
+  `portcullis-frontdoor-status` narrows it: only that ServiceAccount (by
+  `UPDATE`, as the pod its token is bound to — the document's `leader` must
+  be that pod) and the CLI may write it. Another ServiceAccount, or an
+  operator with cluster-wide ConfigMap rights (Longhorn's), is refused.
+- **What the domains service trusts.** A document whose two `leader`
+  values disagree, that is older than one seen before, that is more than
+  120 s old, or that names an address that isn't an active node's public
+  address in `portcullis-cluster-addresses` changes nothing: the last good
+  set stays and the plan says why. So even the front door's own identity
+  can point an added domain only at the cluster's nodes.
+- **What the domains service may delete.** Only address records it wrote:
+  a record of the zone in use whose value is live and, on Porkbun and
+  Hetzner, whose provider record ID is still the one it wrote. A foreign
+  record (one it didn't write, one re-created by someone else, one written
+  before the domain's credentials were replaced) is never deleted: it is
+  kept and named in the domain's DNS plan. Nor does it ever delete the
+  last address of a type.
+- **No Lease for the domains service.** It is one replica (Recreate, its
+  RWO volume); each provider write is bounded to 30 s.
+- **Residual.** A provider without record IDs (Cloudflare, Route 53,
+  DigitalOcean, Hetzner Cloud) can't tell a record it wrote from an
+  identical one someone else put back between two of its reads; the
+  follower then may delete that copy when the front door drops the address.
+
+### Cluster DNS on edge nodes (high availability)
+
+Every node outside `main`, and every small node at `main`, runs a CoreDNS
+of the DaemonSet `portcullis-dns-small` (k3s's own CoreDNS runs only on
+`main`'s other nodes): an edge pod's lookups stay on its node. The pod is
+restricted (non-root, read-only root, drop ALL plus `NET_BIND_SERVICE` for
+port 53, RuntimeDefault, ConfigMap volumes only) and runs as its own
+ServiceAccount `portcullis-dns`, which may only list and watch Services,
+EndpointSlices and Namespaces — what CoreDNS's kubernetes plugin reads
+with k3s's Corefile — never Pods or Endpoints, so a compromised edge node
+can't read the cluster's pod specs through it. `tests/k8s_hardening.py`
+holds the shape, the placement and the exact rules.
+
+### The kubelet on agent nodes (high availability)
+
+Agents join with `--bind-address=<mesh ip>`: their kubelet (port 10250)
+listens on the node mesh address only — not on the public or LAN address
+and not on loopback — and k3s's agent tunnel reaches it there, so
+`kubectl logs`, `exec` and `port-forward` work on agents.
+
 ## File sharing
 
 The Samba and Time Machine templates enforce hardened SMB3 and trust only the Local networks (§ [File Sharing](file-sharing.md)).
