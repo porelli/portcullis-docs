@@ -96,6 +96,7 @@ The front door (`domains frontdoor`) serves on `:9106`:
 | `portcullis_frontdoor_site_healthy{site}` | 1 while an ingress node of the site is ok, else 0; a site that leaves the cluster loses its series |
 | `portcullis_frontdoor_blind_probers{site}` | Probers of the site whose last counted round was blind (their uplink lost) |
 | `portcullis_frontdoor_snapshot_ok` | 1 when the last round read nodeadm's snapshot; at 0 the site series are the last good round's (stale) |
+| `portcullis_frontdoor_certificate_expiry_timestamp_seconds` | When the main domain's certificate in `frontdoor-cert` expires (Unix seconds; 0 = none yet or unreadable). The leader renews it with 30 days left |
 
 The added domains follow the front door through the domains service: its
 problems (a stale or refused `frontdoor-status`, records it keeps) are

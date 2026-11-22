@@ -938,6 +938,44 @@ service writes each added domain's address set from the front door's
   identical one someone else put back between two of its reads; the
   follower then may delete that copy when the front door drops the address.
 
+### The main domain's certificate in high availability
+
+Several Traefik replicas can't share Traefik's ACME resolver (each would
+register its own account and break the CAA `accounturi` pin), so in HA the
+front door orders the main domain's certificate with its **own** ACME
+account, never the added-domains one (contract §12.4, §20.8).
+
+- **Where the keys live.** The ACME account key: the Secret
+  `frontdoor-acme` (key `frontdoor`), mounted by nobody and read through
+  the API only by the front door's Role (`get` / `update` by name). The
+  certificate and its private key: `frontdoor-cert`, written by the front
+  door the same way and mounted read-only (`tls.crt`, `tls.key` only) by
+  the domains service alone, which serves it to every Traefik replica over
+  its mTLS HTTP provider after `servableHA` (exactly `<d>` and `*.<d>`, the
+  key its own, valid now, never `MAIL_HOSTNAME`). The Hub's core Role has no
+  access to either; Traefik never reads them (its namespace is
+  `portcullis-ingress`). Both are kept on `helm uninstall`
+  (`helm.sh/resource-policy: keep`): losing the account the CAA pins would
+  need a new account switch.
+- **Who orders.** Only the Lease holder registers, orders and writes;
+  the challenge TXT goes only to `_acme-challenge.<d>`, each provider call
+  under the fence. A first certificate of an account is ordered only when
+  `./portcullis` asks, after the CAA has been relaxed and every cache of
+  the old pin has expired (relax → settle → issue → re-pin); the leader
+  renews only a certificate of its current account on its own.
+- **The control listener.** `127.0.0.1:8091` inside the front door's pod,
+  reached only by `kubectl exec` with the CLI's identity (the
+  `portcullis-core-exec` policy refuses the Hub there).
+- **Egress.** Public 443 (the provider's API, the CA) and public 53 (lego
+  asks the zone's authoritative nameservers); nothing in the cluster but
+  its own paths.
+- **Residuals.** lego has no context: an order runs on after the Lease
+  is lost, but its challenge writes are refused (fenced), so it fails. A
+  challenge value whose delete was cut off by the fence stays at
+  `_acme-challenge.<d>` (harmless; never another name). Before the first
+  account switch in HA no main-domain certificate is served at all (the
+  conversion, plan Task 31, runs the switch before Traefik moves).
+
 ### Cluster DNS on edge nodes (high availability)
 
 Every node outside `main`, and every small node at `main`, runs a CoreDNS
