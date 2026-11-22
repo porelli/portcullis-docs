@@ -591,11 +591,13 @@ arch never moves.
 - **Let through.** After you sign in (with your YubiKey certificate, a
   security key or passkey, a password, or a password and an authenticator
   code), a short page says "Let through — opening &lt;app's host&gt;…" while the
-  gate rises, and about half a second later you are on the app. The page is
+  gate rises, and about a second later you are on the app. The page is
   the last step of Portcullis's sign-in in Keycloak, so it looks the same for
-  every app, whether it signs in with OIDC itself or behind forward-auth (for
-  forward-auth apps the host is the app you opened, never `auth.<domain>`; a
-  host outside your domain is never shown). It appears only after a sign-in
+  every app, whether it signs in with OIDC itself or behind forward-auth. An
+  app that signs in with OIDC itself shows the host Keycloak sends you back
+  to; for forward-auth, only a host the Hub knows is shown (one of your
+  apps' or core pages' hostnames), otherwise the page says "Let through —
+  opening your app…". It appears only after a sign-in
   where you actually used a method: never when the app opens on your existing
   session (single sign-on), never on an app's silent token refresh, and not
   in the middle of an action such as adding or removing a sign-in method. It
@@ -862,9 +864,11 @@ change) have no Level-of-Authentication steps any more:
   cookie alone, an application-initiated action or an email action link) and
   only once; its form posts back to the required action, after which Keycloak
   continues as it would have. Its host is the authorization request's
-  validated `redirect_uri` host, or, for oauth2-proxy's callback, the app's
-  host from oauth2-proxy's `state` when it is inside the callback host's
-  domain ([contract §8.1](../guides/integration-contracts.md)).
+  validated `redirect_uri` host; for the main forward-auth callback
+  (`auth.<domain>/oauth2/callback`) it is the app's host from
+  oauth2-proxy's `state` only when that is one of the hostnames the Hub
+  publishes in `signin-keycloak.json` (`app_hosts`), else none
+  ([contract §8.1](../guides/integration-contracts.md)).
 
 ## Identity
 
