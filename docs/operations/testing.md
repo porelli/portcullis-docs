@@ -45,6 +45,7 @@ exactly as on a real install. Every step drives the stack through
     - `invite --replace-keys` deletes every passkey kind (`webauthn`, `webauthn-passwordless`, `portcullis-device-passkey`, `portcullis-security-key`), never a password or OTP credential, then signs the person out
     - `keycloak configure` re-reads the passkey policy after its PUT and fails when it still differs; `status` fails on a drifted passkey policy (a ✗ line, `--json` `keycloak.passkey_policy`, the textfile gauge)
     - `keycloak configure` ensures the impersonation mapper on `acr` (once, by `protocolMapper`) and enables the `portcullis-impersonation-notice` required action, failing when the realm lacks it
+    - `keycloak configure` registers a missing `portcullis-let-through` required action and enables it at priority 1000, never a default action; `realm-export.json` holds exactly the pinned entry (`KC_LET_THROUGH`)
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - `dns plan / setup / check` (stub `docker`): the tool's stdin JSON maps each provider's `.env` variables to its credential keys and never puts a value on a command line; a missing credential fails naming the variable (never its value) before the tool starts, while `dns check` works without credentials; plan / confirm / `--yes` (required without a terminal), `--only`, `DNS_NOMAIL`, `DNS_CAA=yes` refused; a `--check` option on `dns setup` is a usage error pointing to `dns check`; the Traefik account URI read from an `acme.json` fixture (`dns setup` keeps Traefik's pin; an unreadable account leaves the live CAA alone); `config apply` on an `ACME_STAGING` flip relaxes the CAA **before** clearing `acme.json`, and refuses mixed Hetzner credentials; `up` writes `main-domain.env` (0600) and tightens the pin; `status`'s DNS block, its `--json` `dns` and the two textfile metrics, the lost-account Problem
@@ -72,7 +73,7 @@ exactly as on a real install. Every step drives the stack through
     - the identity headers and attribute headers returned on allow
     - `expiring` array: membership treated as absent once `now >= at`, token withholding (`Authorization` and `X-Forwarded-Access-Token` withheld when an expired membership is stripped)
     - branding (`BrandingTest`): the inline mark and `data:` favicon match the pinned sha256 of `concept-1-mark-dark.svg` and `favicon.svg`; every group-gate page (portal, step-up, present-certificate, needs-stronger in both forms, ended, deny) carries both; `PORTAL_CSP` and `SIGNIN_CSP` allow `img-src data:`; no page loads anything external
-- **`tests/test_branding.py`** (step "branding copies"): the Keycloak login theme's favicon and mark are byte copies of the branding source (the pinned sha256 of `favicon.ico` and `concept-1-mark-dark.svg`), `theme.properties` loads `css/portcullis.css` after `css/styles.css`, and that stylesheet puts `../img/portcullis-mark.svg` in `#kc-header-wrapper::before`.
+- **`tests/test_branding.py`** (step "branding copies"): the Keycloak login theme's favicon and mark are byte copies of the branding source (the pinned sha256 of `favicon.ico` and `concept-1-mark-dark.svg`), `theme.properties` loads `css/portcullis.css` after `css/styles.css`, and that stylesheet puts `../img/portcullis-mark.svg` in `#kc-header-wrapper::before`; the gate's art (`portcullis-arch.svg`, `portcullis-gate.svg`: the logo's colours and arch, viewBox 32 × 34, no script), `scripts=js/portcullis-gate.js`, and the stylesheet's drop / rise / still / reduced-motion rules.
 - **`tests/test_e2e_fsops.py`** (step "e2e helper unit tests"). It runs with the same venv's interpreter, and needs nothing but the standard library. It tests `run_op` from `tests/e2e/e2e_fsops.py`, the module `e2e_filesharing.py` takes it from, against a fake Hub API. No stack, network or Playwright is involved:
     - a busy `409` whose record is the Hub's own running `restart` is waited for, polled by that restart's `op_id`. If the restart ends ok, the operation is sent exactly once more; if it ends failed, the test fails with its record.
     - any other `409` fails at once: another op, a restart that is no longer running, plain text, or a second `409` after the resend.
@@ -312,7 +313,7 @@ them. Any password field fails the test.
 4. The session reaches the app.
 5. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped. A forged unsigned `X-Forwarded-Access-Token` / `Authorization` (amr `hwk`, `mtls`, the user's own name) never reaches the app, and on `mtls.` the real session still gets group-gate's step-up to `yubikey_cert` (a forged amr `mtls` reaching group-gate would show present-certificate instead).
 6. `path_groups`: `/admin` needs `admin_e2e`. `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` are denied, while `/administrator` is allowed.
-7. A second login in a fresh browser with the same key is one passkey assertion.
+7. A second login in a fresh browser with the same key is one passkey assertion, through exactly one "Let through — opening hwk.&lt;domain&gt;…" page (the forward-auth app's host from oauth2-proxy's state, never `auth.<domain>`), which continues to the app on its own.
 8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
 9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link, after one step-up asking for any passkey (`pc_method=passkey`).
 10. An unused setup link, redeemed and then steered to another client's authorize endpoint with `kc_idp_hint=portcullis-invite` (client `e2e-invite-bypass`, created by the job), is denied by the invite post-broker flow: no code for the client, no passkey registered.
@@ -322,7 +323,7 @@ them. Any password field fails the test.
 13. A revoked YubiKey certificate is rejected.
 14. A certificate from a foreign CA is rejected in the TLS handshake.
 
-`login_theme_brand`: on the first Keycloak sign-in page the `portcullis` theme loads `css/portcullis.css`, the header's `::before` shows `portcullis-mark.svg`, and the page's `link[rel=icon]` answers `200` with the pinned `favicon.ico` bytes.
+`login_theme_brand`: on the first Keycloak sign-in page the `portcullis` theme loads `css/portcullis.css`, the header's `::before` shows `portcullis-mark.svg`, and the page's `link[rel=icon]` answers `200` with the pinned `favicon.ico` bytes; the gate is drawn (`#keycloak-bg::before` shows `portcullis-gate.svg`, `::after` `portcullis-arch.svg`, the drop animation, `js/portcullis-gate.js` loaded).
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
 checks (registration, no password, `--expect-amr hwk` in CI: the token's passkey method is exactly that one; the re-invite counts one step-up click and one passkey click; the step-up after the link with one more
@@ -1808,6 +1809,16 @@ sign-in with the password and a `pyotp` code, amr `pwd` + `otp`;
 Keycloak's page, mask it and take no screenshot while it is shown;
 `PROVIDER_IDS` lists `portcullis-otp` and `CONFIGURE_TOTP`, and `pyotp` is
 pinned with hashes in its own `.github/smoke/requirements-totp.txt`.
+The "Let through" page (contract §8.1 "Let through"): the live sign-in run
+sees exactly one after the password sign-in and the passkey registration
+(continued by its own script) and none on SSO reuse; "x509 kinds" (plain
+HTTP, no browser) posts the page's form as the script would, once per
+certificate sign-in, and checks it targets the required action;
+`PROVIDER_IDS` lists `portcullis-let-through`. The unit tests
+(`LetThroughTest`) cover when it is added (a method ran, not the SSO cookie
+alone, not an application-initiated action or action token, at most once),
+the host (the `redirect_uri`'s, oauth2-proxy's `state` only inside the
+callback's domain) and the page's escaping.
 
 ## AI support manual checklist
 
