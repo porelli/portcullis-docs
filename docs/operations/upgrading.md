@@ -288,6 +288,10 @@ the same notes in its `CHANGELOG.md`.
 - The Hub refuses to start without `HUB_CONTAINER_RUNTIME`, which core's
   compose sets from `CONTAINER_RUNTIME`: upgrade the Hub and core together.
 
+### Sign-in gate (Hub, portcullis-keycloak)
+
+- The Hub and the portcullis-keycloak image must be upgraded together: `signin-keycloak.json` gains the required `app_hosts`, and a Keycloak image or Hub on either side of the change refuses the other's file, so nobody signs in until both match (only a concern if you pin `HUB_IMAGE` or `KEYCLOAK_IMAGE` yourself; a release pins both).
+
 ### Kubernetes support (Hub, core, templates)
 
 - Postgres's health start period is now 300 s on every runtime, so a Postgres that has really failed is reported unhealthy later (after up to five minutes instead of one).
