@@ -953,10 +953,22 @@ holds the shape, the placement and the exact rules.
 
 ### The kubelet on agent nodes (high availability)
 
-Agents join with `--bind-address=<mesh ip>`: their kubelet (port 10250)
-listens on the node mesh address only — not on the public or LAN address
-and not on loopback — and k3s's agent tunnel reaches it there, so
-`kubectl logs`, `exec` and `port-forward` work on agents.
+Agents join with `--bind-address=<mesh ip>` (the nodeagent refuses a join
+without it): their kubelet (port 10250) listens on the node mesh address
+only, and k3s's agent tunnel reaches it there, so `kubectl logs`, `exec`
+and `port-forward` work on agents. A socket bound to the mesh address is
+not yet "reachable over the mesh only": under Linux's weak host model a
+LAN / VPC neighbour can route a packet for that address through the
+uplink. So every node keeps the chain `PORTCULLIS-MESH-IN`, jumped from
+INPUT (k3s's own INPUT chains go first, and they accept only marked pod
+traffic, NodePorts and load-balancer ports): a packet to the mesh address
+on 10250 (and, on a server, 6443, 2379 and 2380) is dropped unless it
+arrives on `pcmesh`, loopback or the node's pod bridge `cni0` (another
+node's pods arrive over `pcmesh`). The nodeagent keeps it
+on every node; on the first node the CLI's `pcmesh` config builds the same
+chain at every `wg-quick up` (`tests/fixtures/mesh-input-rules.txt`, the
+list both hold to). The kubelet's own authentication (no anonymous access,
+webhook authorisation) still applies behind it.
 
 ## File sharing
 
