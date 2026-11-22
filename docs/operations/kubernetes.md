@@ -190,8 +190,9 @@ The commands are the same as on Docker:
   ConfigMaps, re-runs the cluster setup and the NetworkPolicy probe, and
   runs `helm upgrade --install --wait` (up to 10 minutes). Then it writes
   the **cluster check** the Hub reads (the ConfigMap
-  `portcullis-cluster-check`: the apps namespace's PSA labels and the six
-  admission bindings).
+  `portcullis-cluster-check`: the apps namespace's PSA labels and the
+  admission bindings — eleven with high availability's, listed in the
+  CLI's `KUBE_BINDINGS`).
 - **The cluster check expires.** The Hub refuses every runtime operation
   once the check is more than 24 hours old. `init` installs
   `portcullis-kube-check.timer` (system units, every 6 hours, after
