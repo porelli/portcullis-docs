@@ -585,13 +585,14 @@ sign-in, and the needs-stronger page) shows a large stone arch around the
 page with a brass portcullis inside it, behind the sign-in card. When the
 first sign-in page of a sign-in opens, the gate drops quickly into the arch;
 the pages after it in the same sign-in (the password form after "Try another
-way", a wrong password, the needs-stronger page) show it already down. The
-arch never moves.
+way", a wrong password, the needs-stronger page) show it already down.
+Reloading a page plays the drop again (an error page stays down). The arch
+never moves.
 
 - **Let through.** After you sign in (with your YubiKey certificate, a
   security key or passkey, a password, or a password and an authenticator
   code), a short page says "Let through — opening &lt;app's host&gt;…" while the
-  gate rises, and about a second later you are on the app. The page is
+  gate rises and stays up, and about a second later you are on the app. The page is
   the last step of Portcullis's sign-in in Keycloak, so it looks the same for
   every app, whether it signs in with OIDC itself or behind forward-auth. An
   app that signs in with OIDC itself shows the host Keycloak sends you back
