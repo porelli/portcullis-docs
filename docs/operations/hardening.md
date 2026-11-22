@@ -1316,9 +1316,11 @@ came back forever (upstream issue
     address) could refuse it, which would leave the SSO session alive
     behind a Signed out page. On Kubernetes it goes to
     `keycloak-internal:8081` (Traefik's `kcinternal`, no rate limit),
-    because only Traefik may reach Keycloak's 8080 there; Traefik's access
-    log there still records that request's URL, ID token included (an open
-    item). Then it deletes the ticket from the session store
+    because only Traefik may reach Keycloak's 8080 there (it trusts proxy
+    headers from the whole pod CIDR); that path has its own router,
+    `kcinternal-logout` (exactly the logout path, `kcinternal`'s middleware
+    and service, `observability.accessLogs: false`), so the ID token isn't
+    logged there either. Then it deletes the ticket from the session store
     and expires the cookie. The client's `post.logout.redirect.uris` is
     pinned to the Signed out page by `keycloak configure`.
   - **Extra-domain hosts.** Their host-only `__Host-portcullis_ext` cookie
