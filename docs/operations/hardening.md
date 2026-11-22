@@ -1308,7 +1308,7 @@ came back forever (upstream issue
   shows on app hosts, links the confirmation page instead of posting.
   - **What it ends.** `forward-auth` calls Keycloak's end-session endpoint
     server-side with the session's `id_token_hint`
-    (`OAUTH2_PROXY_BACKEND_LOGOUT_URL`, no `post_logout_redirect_uri`, so no
+    (alpha.yaml's `backendLogoutURL` from `PORTCULLIS_BACKEND_LOGOUT_URL`, only on `forward-auth`; no `post_logout_redirect_uri`, so no
     Keycloak page in the browser), deletes the ticket from the session store
     and expires the cookie. The client's `post.logout.redirect.uris` is
     pinned to the Signed out page by `keycloak configure`.
