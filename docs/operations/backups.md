@@ -359,7 +359,7 @@ are read and written:
   domains-image helper pod (the data never on disk in clear, never on
   argv). A restore puts them back after the release, so a fresh cluster
   serves the main certificate at once and still holds the account the CAA
-  pins; a backup with the Secrets present that can't be sealed fails.
+  pins. The step is skipped only when neither Secret exists; a backup that can't read them (an API error, one of the two missing) or can't seal them fails.
 - **The CLI's own Kubernetes state** (`secrets/kube/`: rendered values,
   digests, the setup record) isn't archived: the next `up` regenerates it.
 - **Restore order**: the Hub and every instance that mounts per-person

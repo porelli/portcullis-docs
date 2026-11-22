@@ -946,8 +946,9 @@ front door orders the main domain's certificate with its **own** ACME
 account, never the added-domains one (contract §12.4, §20.8).
 
 - **Where the keys live.** The ACME account keys: the Secret
-  `frontdoor-acme` (one key per CA, `frontdoor-<CA host>`: an
-  `ACME_STAGING` flip never overwrites the account the CAA pins), mounted by nobody and read through
+  `frontdoor-acme` (one key per CA, `frontdoor-<CA host>-<hash>`: an
+  `ACME_STAGING` flip never overwrites the account the CAA pins; another
+  CA's account under a key is refused), mounted by nobody and read through
   the API only by the front door's Role (`get` / `update` by name). The
   certificate and its private key: `frontdoor-cert`, written by the front
   door the same way and mounted read-only (`tls.crt`, `tls.key` only) by
@@ -979,11 +980,16 @@ account, never the added-domains one (contract §12.4, §20.8).
   intentionally emptied `frontdoor-cert` is still served by the domains
   service from memory until that certificate expires or its pod restarts
   (the last-good rule that bridges a torn read).
+- **Certificate slots.** `frontdoor-cert` keeps one certificate per CA;
+  the served pair is the active CA's once it holds one, so after a flip
+  back the served certificate is again the one that CA renews.
 - **Backups.** A core backup holds both Secrets as `frontdoor.age`,
   age-encrypted to `secrets/domains/age.key` (like `store.age`) inside a
   domains-image helper pod: the data never touches the disk in clear and
   never argv; a restore puts them back after the release, so a fresh
-  cluster serves the certificate and holds the account the CAA pins.
+  cluster serves the certificate and holds the account the CAA pins. The
+  front-door step is skipped only when neither Secret exists; any other
+  answer fails the backup.
 - **The flip.** `config apply` relaxes and settles before anything of
   the front door changes, runs under the CLI lock, and the chart (not a
   patch) moves the front door onto the new CA at the next `up`.
