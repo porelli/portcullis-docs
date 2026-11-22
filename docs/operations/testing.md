@@ -744,10 +744,11 @@ restored policy). In order:
       and the POST Sign out (screenshots `sign-out-bar-portal`,
       `sign-out-bar-signin`); a link from another page to
       `/oauth2/sign_out?rd=…` (a cross-site navigation) shows the
-      confirmation and her cookie still opens `echo-std`; Sign out on the
-      Sign-in page lands on the Signed out page (`sign-out-signed-out`),
-      the old `_oauth2_proxy` cookie no longer gets `200`, her Keycloak
-      session is gone, and **Sign in again** goes to sign-in.
+      confirmation and her ticket still answers `202` at `/oauth2/auth`;
+      Sign out on the Sign-in page lands on the Signed out page
+      (`sign-out-signed-out`), the old `_oauth2_proxy` ticket then gets
+      `401` there and `echo-std` redirects to sign-in, her Keycloak session
+      is gone, and **Sign in again** goes to sign-in.
     - **`imp_refused_proofs`:** sam's synced-passkey proof, root's
       browser-certificate proof and bob's proof → `403`; reason "ab" →
       `400`. (The password case is the Hub's unit test: root has no
