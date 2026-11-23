@@ -278,11 +278,11 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `adapter` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
-| `adapter-bin` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
-| `admin-view` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
+| `adapter` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
+| `adapter-bin` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
+| `admin-view` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
 | `bootstrap` | `docker.io/stalwartlabs/stalwart:v1.1.0` | `sha256:f772aa6ef8cd…` |
-| `key-init` | `ghcr.io/porelli/portcullis-mailctl:main-0134a52` | `sha256:267cd1087aec…` |
+| `key-init` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
 | `resolver` | `docker.io/klutchell/unbound:v1.26.2` | `sha256:50cbeb32b583…` |
 | `stalwart` | `docker.io/stalwartlabs/stalwart:v1.1.0` | `sha256:f772aa6ef8cd…` |
 

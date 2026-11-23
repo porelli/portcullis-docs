@@ -39,7 +39,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `actual` | `budget.<domain>` | all | `authaware@file` | :x: |
+| `actual` | `budget.<domain>` | all | `default` | :x: |
 
 ## AI support
 

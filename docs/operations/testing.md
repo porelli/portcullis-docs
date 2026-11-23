@@ -30,7 +30,7 @@ exactly as on a real install. Every step drives the stack through
     - the realm export's sign-in flows (contract §8.1): `portcullis-universal` = REQUIRED `portcullis-authenticate` + REQUIRED `portcullis-template`, `portcullis-signin` (x509 · passkey sub-flow · password form), one conditional sub-flow per passkey kind with its `kind` and `method` configs, no `conditional-level-of-authentication` anywhere, `acr.loa.map` `{}`, every reference config `maxAge` 36000, the invite configs `inv`, brute force, the passwordless policy, every config used once
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
     - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
-    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `authaware` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
+    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `default` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `tls.options: default` (Traefik's own default options); `authaware` and `default@file` appear nowhere in the tracked config, compose files, chart, admission policies, scripts, CI or e2e; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
     - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else; its SSH part is exactly contract §18.7's (role TTLs exactly the twelve whole hours up to 12 h)
     - `ssh_setup` (stub vault): a fresh Vault gets both mounts, caps, CAs and the host role; a second run creates nothing; another cap, CA key type or engine at `ssh_user` / `ssh_host` fails naming it and changes nothing
     - `cert list --all` (stub `vault`) shows KIND `YubiKey` / `Browser` and revoked rows; `cert revoke` finds a `pki_file` serial after `pki_int`, revokes it there and rotates `pki_file`'s CRL; `cert enroll`'s renewal hint names `https://people.<domain>/signin`
@@ -86,6 +86,7 @@ exactly as on a real install. Every step drives the stack through
     - `navigate`: `page.goto` / `page.reload` through `network_retries` (checked with a fake page: a raised abort, a `chrome-error://` page, the reload, the bound, another error not retried).
     - `mail_status_view` / `sync_problem`: `./portcullis mail status --json` is read at exit 0 and 1 (1 only says a check is a Problem); exit 2, no JSON, or a document whose `problem` disagrees with the exit is a failed read. The sync has converged when the provider is wired, reachable, owes no void, isn't held, and has applied the Hub's generation.
     - `confirm_phrase` / `pending_uuids`: the phrase the Hub's `400` asks to be typed (also inside a JSON error body), and the pending removal's uuids. A missing, confirmed, empty or blank-uuid pending removal fails.
+    - `admin_view_problems`: the read-only mail admin view's flow as the browser saw it (method, status, URL per response). Every step of `ADMIN_VIEW_STEPS` (the Hub's `POST /api/mail/admin-view`, the start page and its script, the ticket's `POST /portcullis/open`, `/admin/`, `/api/discover/`, `/login`, `POST /auth/token`, `POST /jmap`) answered below 400 at least once, and no 421 or 403 anywhere; a missing or failed step, or a 421 / 403, is a problem. URLs are reported without their query.
 
     The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
 
@@ -204,6 +205,7 @@ the internal PKI) and verifies:
     - runs as non-root
     - talks to Docker only via its proxy
     - answers 403 without the proxy secret
+    - no 421 for a reused connection (contract §5 "TLS tier per host"): `curl --http2` with SNI `mail.<d>` (no HTTPS router of its own, so Traefik's `default` TLS options) and `Host: hub.<d>` on one connection reaches the hub router (302 / 401 / 403 over HTTP/2), never 421 Misdirected Request. It answered 421 while the core routers were on `authaware@file`
     - on a fresh install publishes policy file v6 with the four starting methods, Standard the default and Strong on `hub` / `people` (`GET /api/signin` agrees), which group-gate applies to an app without its own pick: a step-up for no session, through for a synced passkey, a security key or a bound certificate
     - an admin's `PUT /api/signin/default` to Strong reaches group-gate (a synced session gets the step-up or needs-stronger page, a bound certificate still opens the app), and back to Standard
     - the revocation test's precondition is live: testuser's bound `mtls` session opens the test router before the revocation, so only the revocation can turn 200 into 403
@@ -605,7 +607,7 @@ restored policy). In order:
       without it; `echo-anycert` on `protected@file`, since the switch drops
       `browser_cert` from every compiled rule and `e2e-anycert` becomes
       any[`yubikey_cert`]; `echo-file`, on the default Standard meanwhile,
-      on `authaware@file`): on `echo-file` the same valid `.p12` alone leaves
+      on `default`): on `echo-file` the same valid `.p12` alone leaves
       the browser on Keycloak's passkey prompt with no LOGIN event, and
       alice's earlier file session gets `403`.
       Everything is switched back in a `finally` (`echo-file` /
@@ -672,21 +674,21 @@ restored policy). In order:
       already used", `404`).
 16. **TLS follows the switches** (last; it restarts apps): with both
     certificate methods on, `echo-std` and `echo-basic` are on
-    `authaware@file` and `openssl s_client -servername <host>` shows
+    `default` and `openssl s_client -servername <host>` shows
     "Acceptable client certificate CA names". Standard saved as
     any[`family:passkey`], the instances off the certificate templates,
     `hub` / `people` on `standard`, Strong, YubiKey + certificate,
     `e2e-cert`, `e2e-file` and `e2e-anycert` disabled → `echo-std` on
     `public@file` with no CA names; `echo-basic` (Basic still names
-    `family:certificate`) stays on `authaware@file` while `browser_cert` alone
+    `family:certificate`) stays on `default` while `browser_cert` alone
     is on — checked on six samples over 30 s once the Hub has applied
     `yubikey_cert` off (both published files without it, the Hub's own tier
-    for `echo-basic` `authaware@file`, no `echo-basic` op running) — and moves only when both `yubikey_cert` and `browser_cert` are
+    for `echo-basic` `default`, no `echo-basic` op running) — and moves only when both `yubikey_cert` and `browser_cert` are
     switched off. `auth.<d>` and `hub.<d>` keep their CA names (core routers
-    stay on `authaware`). Then everything is put back (in a `finally`, also
+    stay on `default`). Then everything is put back (in a `finally`, also
     when a step failed) and compared with the snapshot taken before (methods,
     templates and rules, default, core pages, instance picks), and both apps
-    are back on `authaware@file` with CA names.
+    are back on `default` with CA names.
 
 17. **Signing in as someone else** (the job's `.env` sets
     `IMPERSONATION_MAX_MINUTES=2`, for every case). Each case starts with
@@ -1009,6 +1011,7 @@ attempts, each noted in the job summary. **Nothing leaves the runner:** outbound
 fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 
 - **setup**: people in and out of `mail_users`, the list `team`, every account answering RCPT, DKIM Ed25519 and RSA active for both domains (`./portcullis mail rotate`), and the mail passwords created on the Sign-in page (fresh-auth popup, shown once).
+- **17 admin_view_end_to_end** (first, while `stalwart` is wired): root opens the read-only admin view from the Hub's Mail tab (`#apps/stalwart/mail`, **Open … admin (read-only)**). The start page takes the ticket over its MessageChannel and posts it. Stalwart's web admin shows its sign-in form, the test types any name, the view answers discovery, sign-in and token, and a JMAP read answers 200 (screenshots `admin-view-<leg>-signin` / `-readonly`). Then, in a fresh context with root's cookies, `https://mail.<d>/` first (no HTTPS router: Traefik's `default` TLS options) and the view after it, in Chromium and in WebKit (`E2E_WEBKIT=1`; CI installs Playwright's WebKit). In every leg `admin_view_problems` must find nothing: no 421 or 403 anywhere, every step answered (contract §5 "TLS tier per host": a 421 there means the core pages' options aren't Traefik's `default`).
 - **1 exchange_both_ways**: the remote's `Authentication-Results` show `dkim=pass` for an Ed25519 and an RSA signature, `spf=pass` and `dmarc=pass`; mail from the remote arrives; the remote's DMARC aggregate report reaches `dmarc-reports@` and shows in `GET /api/mail/checks`.
 - **2 enrolled_domain_alias**: a person receives at and sends as their `team-b.test` address.
 - **3 gtube_rejected_at_data**: GTUBE in the Subject is refused with `550 5.7.1` at DATA; a message scoring between the thresholds lands in Junk with `X-Spam-*` (`between_thresholds_to_junk`).

@@ -40,8 +40,8 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `litellm` | `llm.<domain>` | all | `authaware@file` | :x: |
-| `litellm-ui` | `llm.<domain>` | `/ui`, `/sso`, `/login`, `/v2/login`, `/fallback/login`, `/onboarding` | `authaware@file` | :white_check_mark: |
+| `litellm` | `llm.<domain>` | all | `default` | :x: |
+| `litellm-ui` | `llm.<domain>` | `/ui`, `/sso`, `/login`, `/v2/login`, `/fallback/login`, `/onboarding` | `default` | :white_check_mark: |
 
 ## AI support
 

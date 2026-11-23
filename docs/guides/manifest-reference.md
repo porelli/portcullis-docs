@@ -1755,7 +1755,7 @@ violations, `2` usage or setup error. Besides the schema, it checks:
 - every router has a rule of the form `` Host(`${PORTCULLIS_HOST_<ROUTER>:-<sub>.portcullis.local}`) `` (**NEW**, contract v2), optionally `&& <path matchers>`, where `<ROUTER>` is the host router of that hostname; `single` templates may still use `` Host(`<sub>.${PORTCULLIS_DOMAIN:-portcullis.local}`) ``. No core subdomain
 - each hostname has exactly one host router, no two host routers map to the same variable, and the template doesn't mix the two rule forms
 - no router, service or middleware name contains `_` (**NEW**, contract v2)
-- `entrypoints: websecure`, and `tls.options` one of `authaware@file`, `public@file`, `protected@file` (`mtls` apps need `protected@file`)
+- `entrypoints: websecure`, and `tls.options` one of `default`, `public@file`, `protected@file` (`mtls` apps need `protected@file`)
 - `security-headers@file` is in the middlewares
 - `portcullis-auth@docker` and `portcullis-groups@docker` always appear together, in that order
 - forward-auth and header-auth routers use them; native-OIDC host-wide routers don't

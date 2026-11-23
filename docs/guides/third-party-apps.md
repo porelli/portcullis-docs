@@ -27,7 +27,7 @@ services:
       traefik.enable: "true"
       traefik.http.routers.myapp.rule: Host(`myapp.${PORTCULLIS_DOMAIN}`)
       traefik.http.routers.myapp.entrypoints: websecure
-      traefik.http.routers.myapp.tls.options: authaware@file
+      traefik.http.routers.myapp.tls.options: default
       traefik.http.routers.myapp.middlewares: client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file
       traefik.http.services.myapp.loadbalancer.server.port: "8080"
     restart: unless-stopped
@@ -137,7 +137,7 @@ services:
       traefik.enable: "true"
       traefik.http.routers.myapp.rule: Host(`myapp.${PORTCULLIS_DOMAIN}`)
       traefik.http.routers.myapp.entrypoints: websecure
-      traefik.http.routers.myapp.tls.options: authaware@file
+      traefik.http.routers.myapp.tls.options: default
       traefik.http.routers.myapp.middlewares: client-headers@file,security-headers@file
       traefik.http.services.myapp.loadbalancer.server.port: "8080"
     restart: unless-stopped

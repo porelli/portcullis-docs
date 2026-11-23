@@ -49,7 +49,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `effectcraft` | `effectcraft.<domain>` | all | `authaware@file` | :white_check_mark: |
+| `effectcraft` | `effectcraft.<domain>` | all | `default` | :white_check_mark: |
 
 ## AI support
 

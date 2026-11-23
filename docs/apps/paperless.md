@@ -62,10 +62,10 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `paperless` | `paperless.<domain>` | all | `authaware@file` | :x: |
-| `paperless-admin` | `paperless.<domain>` | `/admin` | `authaware@file` | :white_check_mark: |
-| `paperless-headless` | `paperless.<domain>` | `/api/auth/headless/browser/v1/auth/provider`, `/api/auth/headless/app/v1/auth/provider` | `authaware@file` | :white_check_mark: |
-| `paperless-sso` | `paperless.<domain>` | `/accounts/oidc` | `authaware@file` | :white_check_mark: |
+| `paperless` | `paperless.<domain>` | all | `default` | :x: |
+| `paperless-admin` | `paperless.<domain>` | `/admin` | `default` | :white_check_mark: |
+| `paperless-headless` | `paperless.<domain>` | `/api/auth/headless/browser/v1/auth/provider`, `/api/auth/headless/app/v1/auth/provider` | `default` | :white_check_mark: |
+| `paperless-sso` | `paperless.<domain>` | `/accounts/oidc` | `default` | :white_check_mark: |
 
 ## AI support
 

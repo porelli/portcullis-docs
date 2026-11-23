@@ -65,7 +65,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `homeassistant` | `home.<domain>` | all | `authaware@file` | :x: |
+| `homeassistant` | `home.<domain>` | all | `default` | :x: |
 
 ## AI support
 

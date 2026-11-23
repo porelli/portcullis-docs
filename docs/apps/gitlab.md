@@ -51,8 +51,8 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `gitlab` | `git.<domain>` | all | `authaware@file` | :x: |
-| `gitlab-login` | `git.<domain>` | `/users` | `authaware@file` | :white_check_mark: |
+| `gitlab` | `git.<domain>` | all | `default` | :x: |
+| `gitlab-login` | `git.<domain>` | `/users` | `default` | :white_check_mark: |
 
 ## AI support
 

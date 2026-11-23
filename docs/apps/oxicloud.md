@@ -51,8 +51,8 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `oxicloud` | `drive.<domain>` | all | `authaware@file` | :x: |
-| `oxicloud-sso` | `drive.<domain>` | `/api/auth/oidc/authorize` | `authaware@file` | :white_check_mark: |
+| `oxicloud` | `drive.<domain>` | all | `default` | :x: |
+| `oxicloud-sso` | `drive.<domain>` | `/api/auth/oidc/authorize` | `default` | :white_check_mark: |
 
 ## AI support
 

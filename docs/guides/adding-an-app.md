@@ -529,7 +529,7 @@ lets nobody sync.
     - No `_` in Traefik router, service or middleware names (the Hub renames
       them per instance with `<instance-id>_<name>`).
     - Set `entrypoints: websecure`.
-    - Set `tls.options` to `authaware@file`, `public@file` or `protected@file`.
+    - Set `tls.options` to `default`, `public@file` or `protected@file`.
       The Hub overrides it from the app's access policy.
     - Include `security-headers@file` in the middlewares.
 - **Middleware order** for gated routers:
@@ -577,7 +577,7 @@ services:
       traefik.enable: "true"
       traefik.http.routers.myapp.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`)
       traefik.http.routers.myapp.entrypoints: websecure
-      traefik.http.routers.myapp.tls.options: authaware@file
+      traefik.http.routers.myapp.tls.options: default
       traefik.http.routers.myapp.middlewares: client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file
       traefik.http.services.myapp.loadbalancer.server.port: "8080"
 
@@ -615,7 +615,7 @@ services:
       traefik.enable: "true"
       traefik.http.routers.myapp.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`)
       traefik.http.routers.myapp.entrypoints: websecure
-      traefik.http.routers.myapp.tls.options: authaware@file
+      traefik.http.routers.myapp.tls.options: default
       traefik.http.routers.myapp.middlewares: security-headers@file
       traefik.http.services.myapp.loadbalancer.server.port: "8080"
 
@@ -646,7 +646,7 @@ Gate an admin path of a native-OIDC app with a second router and
       traefik.http.routers.myapp-admin.rule: Host(`${PORTCULLIS_HOST_MYAPP:-myapp.portcullis.local}`) && PathPrefix(`/admin`)
       traefik.http.routers.myapp-admin.priority: "100"
       traefik.http.routers.myapp-admin.entrypoints: websecure
-      traefik.http.routers.myapp-admin.tls.options: authaware@file
+      traefik.http.routers.myapp-admin.tls.options: default
       traefik.http.routers.myapp-admin.middlewares: client-headers@file,portcullis-auth@docker,portcullis-groups@docker,security-headers@file
       traefik.http.routers.myapp-admin.service: myapp
 ```

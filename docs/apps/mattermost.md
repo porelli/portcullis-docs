@@ -72,7 +72,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `mattermost` | `chat.<domain>` | all | `authaware@file` | :white_check_mark: |
+| `mattermost` | `chat.<domain>` | all | `default` | :white_check_mark: |
 
 ## AI support
 

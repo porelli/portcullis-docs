@@ -95,7 +95,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `nextcloud` | `cloud.<domain>` | all | `authaware@file` | :x: |
+| `nextcloud` | `cloud.<domain>` | all | `default` | :x: |
 
 ## AI support
 

@@ -56,9 +56,9 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `vaultwarden` | `passwords.<domain>` | all | `authaware@file` | :x: |
-| `vaultwarden-admin` | `passwords.<domain>` | `/admin` | `authaware@file` | :white_check_mark: |
-| `vaultwarden-sso` | `passwords.<domain>` | `/identity/connect/authorize`, `/identity/connect/oidc-signin` | `authaware@file` | :white_check_mark: |
+| `vaultwarden` | `passwords.<domain>` | all | `default` | :x: |
+| `vaultwarden-admin` | `passwords.<domain>` | `/admin` | `default` | :white_check_mark: |
+| `vaultwarden-sso` | `passwords.<domain>` | `/identity/connect/authorize`, `/identity/connect/oidc-signin` | `default` | :white_check_mark: |
 
 ## AI support
 

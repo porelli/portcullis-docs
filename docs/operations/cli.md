@@ -758,7 +758,7 @@ Creates the internal certificate authority in Vault
 
 It writes `certs/root-ca.crt`, `intermediate-ca.crt`, `yubikey-ca.crt`,
 `browser-ca.crt`, `ca-chain.crt` (root + both intermediates: Traefik's
-`protected-any` and `authaware` options), `ca-chain-yubikey.crt` (the
+`protected-any` and `default` options), `ca-chain-yubikey.crt` (the
 YubiKey CA alone, no root: Traefik's `protected` option; Go trusts every CA
 in it as an anchor, so a root would also admit browser certificates) and Keycloak's
 truststore (`certs/truststore/portcullis-ca-chain.pem`,
