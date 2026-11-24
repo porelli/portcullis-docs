@@ -1478,7 +1478,7 @@ notes ([Stalwart](../apps/stalwart.md)).
 The Hub delivers:
 
 - `PORTCULLIS_MAIL_SENDER_HOST` (= `MAIL_HOSTNAME`)
-- `PORTCULLIS_MAIL_SENDER_PORT` (`587`)
+- `PORTCULLIS_MAIL_SENDER_PORT` (`587`, STARTTLS: the normal submission listener; the sender follows LAN-only like everyone, and the provider limits it to 10 messages a minute and 60 an hour)
 - `PORTCULLIS_MAIL_SENDER_USER` (= the sender's address, `portcullis-app-<instance>@<primary_domain>`)
 - `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env`; never logged or audited)
 - `PORTCULLIS_MAIL_SENDER_FROM` (`"<label> <address>"`)

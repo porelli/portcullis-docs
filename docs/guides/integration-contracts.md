@@ -6789,7 +6789,7 @@ Portcullis runs a full mail server for the main domain and for every added domai
     - RCPT to the parking domain `portcullis-former.internal` is refused on every listener (§19.6).
 - **Obligations (MUST, P11: a mail password opens only mail):** a mail password authenticates IMAPS and submission only. It never opens the provider API, a management or admin interface, a web or JMAP interface, or Portcullis sign-in (it is no LLDAP or Keycloak credential). The conformance suite tries one on the API listener and expects a refusal.
 - **LAN-only** (`MAIL_SUBMISSION_LAN_ONLY=true`, core CLI only): §19.6.
-- **Internal submission path — NEW (Firefox own accounts).** App senders (§19.14) submit through an **internal submission listener** on port 10587 of `portcullis-mailctl` (the adapter network, admitted only from Portcullis app networks, never the public submission listeners 465/587). This path applies sender credential `allowed_ips` but not `submission_lan_only` or `client_ip: rewritten`, which govern the public listeners only.
+- **App mail senders — NEW (Firefox own accounts).** App senders (§19.14) submit on the normal submission listener, `MAIL_HOSTNAME:587` with STARTTLS, with their sender password, like everyone else: there is no internal submission path. They follow `submission_lan_only` with no exemption (an app on the same server connects from a local address).
 
 ### 19.3 The mail certificate, TLSA and the timer
 
@@ -6877,7 +6877,7 @@ The provider serves the Hub only, on `api.service`'s `portcullis-mail-api` addre
     - `id`: the provider's credential id, a string of 1–64 characters `[A-Za-z0-9._-]`. A provider may reuse ids, so the Hub matches a row to a live credential on (`uuid`, `id`, `created_at`) together.
     - `uuid` is echoed on every row and must be the one asked for: a row with another uuid fails the whole answer.
     - `expires_at` and `last_used`: RFC 3339 or `null`. `allowed_ips` `[]` means anywhere; otherwise the prefixes the credential may authenticate from (§19.6).
-    - **Create:** `username`, `uuid`, `label` and `expires_at` are required; **NEW (Firefox own accounts):** `allowed_ips` is **optional** (when absent, the credential may submit from any address; when present, it is the list of CIDR subnets the credential may submit from). `label` 1–64 characters on one line; `expires_at` RFC 3339 in the future or `null`. `409` `account_mismatch` (`"the account <username> belongs to another person"`) when the document's account for `username` has another uuid, the live account under that name has another uuid, or the uuid's account is parked; `409` `limit` when the account has 5 active credentials. One snapshot of the document and one live read decide all of it, and the uuid is asserted again right before the create. The secret exists in the provider's memory once, for that one answer, and is never logged.
+    - **Create:** `username`, `uuid`, `label` and `expires_at` are required; **NEW (Firefox own accounts):** `allowed_ips` is **optional**, for a person's mail password only: when absent, today's behaviour (anywhere, or the Local networks under LAN-only); when present, 1–64 networks (canonical, none amounting to anywhere, §19.5 `local_networks`' bounds) the password may authenticate from. `400` for `[]`, `null`, a malformed or over-wide network, `allowed_ips` while `submission_lan_only` is on (a person's passwords are then always the Local networks), and `allowed_ips` on a sender's credential (§19.14). `label` 1–64 characters on one line; `expires_at` RFC 3339 in the future or `null`. `409` `account_mismatch` (`"the account <username> belongs to another person"`) when the document's account for `username` has another uuid, the live account under that name has another uuid, or the uuid's account is parked; `409` `limit` when the account has 5 active credentials. One snapshot of the document and one live read decide all of it, and the uuid is asserted again right before the create. The secret exists in the provider's memory once, for that one answer, and is never logged.
     - **Revoke** takes exactly the `uuid` parameter and revokes `{id}` inside the account whose uuid it is, live or parked, never the username's current holder. An unknown uuid or id is `204` too (idempotent).
 - **Mass removal.** A document that would remove more than 50 % of the live accounts is refused unless `"confirm_mass_removal": true`; `removed` lists the live accounts it would remove (from one live read, sorted by username).
 - **The Hub's side of it** (it never relies on the provider's guard):
@@ -7169,17 +7169,18 @@ The list also holds **Portcullis's own sender**, `portcullis-hub-mail` / `portcu
 
 **What the provider creates.** For each sender the provider MUST:
 
-- create a submission-only account with no mailbox and no IMAP: the account authenticates to the **internal submission path** (§19.2, **NEW:** port 10587 on `portcullis-mailctl`, admitted only from Portcullis app networks, never the public submission listeners) and may use `MAIL FROM` / `From:` = `address` only (any other `From:` is refused at DATA);
+- create a submission-only account with no mailbox access (no IMAP, JMAP or POP3; nothing is ever delivered to it): the account authenticates on the normal submission listener (§19.2: `MAIL_HOSTNAME:587` with STARTTLS; 465 too), with its sender password only, and may use `MAIL FROM` / `From:` = `address` only (any other `From:` is refused at DATA);
 - refuse RCPT addressed to it with `550 5.1.1` (the account receives nothing: an inbound message for it bounces at RCPT);
-- apply the provider's standard `limits` (the Hub's MailState sets none for senders);
+- apply the provider's standard `limits` (the Hub's MailState sets none for senders) and `submission_lan_only` as for every mail password (no exemption);
+- **rate-limit each sender** (MUST): at most **10 messages in any one minute** (the burst) and **60 in any one hour**, per sender, counted per message at `MAIL FROM`. A message over either limit is refused with a temporary SMTP reply (`4xx`; the `stalwart` provider answers `452 4.4.5 Rate limit exceeded`), never accepted and queued; the app retries later. The conformance suite's full level sends 11 messages in a row as a fresh sender and expects the eleventh refused;
 - never list the sender in `Accounts` (it isn't a person), `mail_users` (it has no mail password) or `MyMail` (it isn't the Hub).
 
-**The credential.** The Hub asks for the sender's credential through the existing `POST /v1/credentials` (§19.5). **NEW (Firefox own accounts):** `allowed_ips` becomes an **optional** field: when present, it is the list of CIDR subnets the credential may submit from; when absent, today's behaviour (the credential may submit from any address). For senders, the Hub sets it to the sending instance's container network subnet(s), as the Hub knows them from the engine.
+**The credential.** The Hub asks for the sender's credential through the existing `POST /v1/credentials` (§19.5), **without** `allowed_ips` (refused `400` for a sender). The credential holds the sender's permissions only (submission) and follows `submission_lan_only` like a person's: anywhere without it, the Local networks with it.
 
 **Instance environment.** The Hub's override (§11.2) writes five variables into the `.env` of every instance whose template declares `mail_sender`, for the app to read at run time (§2):
 
 - `PORTCULLIS_MAIL_SENDER_HOST` (= `MAIL_HOSTNAME`, §19.1)
-- `PORTCULLIS_MAIL_SENDER_PORT` (`587`)
+- `PORTCULLIS_MAIL_SENDER_PORT` (`587`, STARTTLS)
 - `PORTCULLIS_MAIL_SENDER_USER` (= address)
 - `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env` on `appfiles`; never logged or audited)
 - `PORTCULLIS_MAIL_SENDER_FROM` (`"<label> <address>"`)
