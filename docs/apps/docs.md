@@ -47,7 +47,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `docs` | `squidfunk/mkdocs-material:9.8.0` | `sha256:dc3b5de76c6e…` |
+| `docs` | `squidfunk/mkdocs-material:9.8.2` | `sha256:fd13d78a4b1d…` |
 
 ## Access URLs
 
