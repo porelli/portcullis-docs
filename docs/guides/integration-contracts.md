@@ -150,7 +150,7 @@ Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_SOURCE:-172.31.250.2/32}
 
     - **`long_description`** (string): Markdown, with exactly the `auth.notes` pipeline and limits (above: 16 KiB, nesting 16, no hidden character; raw HTML, images and links the Hub would turn into text refused by the validator). Errors name the field as `long_description: <what>` (fix round 1, the Hub and the validator alike; e.g. "long_description: is 16385 bytes, at most 16384 allowed", "long_description: has raw HTML: …"; `auth.notes` keeps its "auth.notes is …" form). The Hub renders it once at template load to **`long_description_html`** (never read from the manifest). Templates write it as a YAML literal block, 2–5 short paragraphs: what the app is, what it is good for, what Portcullis wires (sign-in, groups, AI, VPN, mail). It never repeats `auth.notes`: the Marketplace's detail drawer shows both.
     - **`logo`** (string): an SVG file in the template directory itself, named `^[a-z0-9][a-z0-9_-]{0,62}\.svg$` (no directory part, no `..`), a regular file (a symlink is refused), at most **64 KiB**, UTF-8. Without a logo the emoji `icon` is shown. A logo only identifies its app; any trademark stays its owner's. A template ships one only when the project publishes it under terms that allow redistribution and the mark's terms allow this use. **Every logo has a REUSE sidecar `<logo>.license`** next to it (required by the templates validator): `SPDX-FileCopyrightText` (the upstream copyright and holder), `SPDX-License-Identifier`, the source URL and, when the file was changed, what was modified; the licence text is in the templates repo's `LICENSES/<identifier>.txt`. The source is also listed in the templates `CHANGELOG.md`.
-    - **`resources`** (`{min_memory_mib, min_disk_gib}`): the minimum RAM (MiB, 16–1048576) and disk (GiB, 1–65536) the project's own documentation states; both optional, no other key; a figure given is in range (`0` is refused: leave the figure out instead; fix round 1). A template leaves a figure out when upstream documents none.
+    - **`resources`** (`{min_memory_mib, min_disk_gib}`): the minimum RAM (MiB, 16–1048576) and disk (GiB, 1–65536) **the project's own documentation states**; both optional, no other key; a figure given is in range (`0` is refused: leave the figure out instead; fix round 1). A template leaves a figure out when upstream documents none. **NEW (Firefox own accounts):** A figure may be summed from upstream's documented sizes (PVCs), and `long_description` says so.
     - **`screenshots`** (`[{file, caption}]`): at most 6 entries; `file` is named `^[a-z0-9][a-z0-9_-]{0,62}\.(png|jpg|webp)$` in the template directory itself (a regular file), at most **512 KiB**, and its leading bytes must match its extension (PNG, JPEG or WebP; "screenshots[0]: not a PNG" otherwise); the templates validator also caps it at 4096 × 4096 pixels (read from the PNG IHDR, JPEG SOF or WebP VP8 / VP8L / VP8X header), while **the Hub checks only the size cap and the leading bytes** (no image decoder); `caption` is one line of at most 120 characters. **NEW (ux3 final review):** the Hub keeps at most **64 MiB** of screenshots in memory per template source; a template whose screenshots would pass that is still loaded, without its screenshots (`screenshot_urls` empty, logged "screenshots dropped: the source's 64 MiB budget is spent"), in directory order.
     - **No symlinks (NEW, ux3 final review).** A template directory, its `manifest.yaml` or its `compose.yml` that is a symbolic link is refused ("<file> is a symlink"; the Hub's loader and the docs generator alike), as the logo and screenshots are.
 - **Logo lint — NEW (ux3).** The Hub and the templates validator (`tests/svgsafe.py`, `defusedxml`; shared vectors `tests/svg_vectors.json`) check a logo against an allowlist and refuse the template with the reason. The lint catches mistakes and obvious hostile content; **it is not the security boundary.** That is how a logo is shown: only ever as `<img src>` from the Hub's catalog route with a sandboxing CSP (§11.7), never inlined, never in `innerHTML`, never as `<object>`, `<embed>` or `<iframe>` (a browser runs no script in an SVG loaded as an image). The Hub reads the file once at template load and serves those checked bytes from memory, never the file again.
@@ -160,6 +160,10 @@ Always use the default form, e.g. `${PORTCULLIS_TRAEFIK_SOURCE:-172.31.250.2/32}
     - **Paint values:** `url(#<id>)` (unquoted, the same `<id>` grammar) is allowed in an attribute value; any other `url(` (`url('#a')`, an external or `data:` URL) is refused. **A backslash anywhere in an attribute value is refused** ("backslash refused"): a CSS escape such as `\75 rl(` decodes to `url(` in a browser. **Fix round 1:** after `url(`, a quote (`'` or `"`) anywhere in an attribute value, as decoded from XML (`&quot;` and `&#39;` included), is refused ("quote refused": no allowed attribute needs a CSS string), and so are the other CSS image functions `image-set(`, `src(` and `cross-fade(` (any case, `-webkit-` forms included; "<name>() refused", e.g. "image-set() refused").
     - **`use` — fix round 1:** at most 32 `use` elements ("more than 32 use elements", counted in document order); a `use` whose target (the element with that `id`, itself included) is or contains a `use` is refused ("use target #<id> contains a use"), so references never chain or fan out at render time. Checked after the whole file is read.
     - **Refused outright:** a DOCTYPE, an entity declaration (`<!ENTITY`; character references and the predefined entities such as `&amp;` are decoded as XML and then checked), a processing instruction other than the XML declaration, CDATA, a `style` element or attribute, any `on*` attribute, any element or attribute outside the lists (`script`, `foreignObject`, `image`, `a`, `text`, `animate`, `set`, …), and any namespace other than SVG and XLink.
+
+- **`mail_sender` — NEW (Firefox own accounts; §19.14).** A template whose app sends outbound mail (sign-up codes, notifications) may declare `mail_sender: {label}` at the manifest's top level. `label` is ≤ 64 characters, one line. The Hub asks the mail provider (§19) for a submission-only account, and delivers five `PORTCULLIS_MAIL_SENDER_*` variables to the instance: `HOST`, `PORT` (587), `USER` (the sender's address), `PASSWORD` and `FROM` (`"<label> <address>"`). All five are empty while no provider is wired or mail is off. Manifest reference.
+
+- **`hosts.reasons` — NEW (Firefox own accounts; §11.7 bypass badges).** A template may declare `hosts: {reasons: {<host router>: "<reason>"}}` to give a per-host reason for open routers (§5.1). Each key is one of the template's host routers; each value is one line, ≤ 200 runes. For an `open_router` bypass badge on that host, `Note` = the reason. It falls back to the first paragraph of `auth.notes`. Manifest reference.
 
 ### 3.1 Template contract v2: instances and hostname variables — NEW (contract v2)
 
@@ -1040,6 +1044,12 @@ Next to the policy file, in the same `hub_data` directory, the Hub writes **`mcp
     | `protected-any` | `RequireAndVerifyClientCert` | `/certs/ca-chain.crt` (root + `pki_int` + `pki_file`) | templates where every alternative has a certificate method and at least one alternative accepts `browser_cert` |
     | `default` | `VerifyClientCertIfGiven` | `/certs/ca-chain.crt` | templates where some alternative has a certificate; every core router; every name without a router of its own |
     | `public` | — (no `clientAuth`) | — | everything else |
+
+    **TLS option per host — NEW (Firefox own accounts).** An instance's routers may use different TLS options for different hosts. The Hub (`policy.HostTier`) picks each host's tier from that host's routers:
+
+    - A host whose routers all lack `portcullis-auth` (open to the internet, no sign-in) gets `public@file`.
+    - A host that mixes open and gated routers (some with `portcullis-auth`, some without) gets `HostTier(tier, true)`: the tier with certificate downgraded to `default` (open paths admit Firefox, which presents no certificate).
+    - A host with only gated routers keeps the instance tier.
 
     **How routers name them.** On Docker and Podman a router's label is `tls.options: default` (bare: Traefik's `default` is never provider-qualified, and `default@file` names nothing), `protected@file`, `protected-any@file` or `public@file`. On Kubernetes an IngressRoute on `default` has **no** `tls.options` (an IngressRoute's `options: {name: default}` would mean a TLSOption `default` in its own namespace); the others name `protected@file`, `protected-any@file` or `public@file`. Only the file provider defines `default`: a second provider defining it makes Traefik drop it, and every router on it fails. TCP routers with TLS and no options of their own (core and the Hub have none) would get `default` too, which only asks for an optional certificate.
 
@@ -2727,6 +2737,32 @@ The administrators' impersonation routes on a person (§8.1 "Impersonation"). Di
 
 On the Hub listener the start route is API only: no Hub page offers it. The page that does is the person's Sign-in tab on people.<domain> (§5.1, [Hub → A person's page](../operations/hub.md#a-persons-page)).
 
+### 9.8 Verified emails — NEW (Firefox own accounts)
+
+A person's email is **verified** when `directory.yaml` `email_verified.<lldap uuid>` = `{email, at, by}` holds the person's current LLDAP email (compared trimmed and lowercased). `by` is `code` or `admin:<username>`.
+
+Any change of the LLDAP email, through the Hub or LLDAP's own UI, makes it unverified, since the stored email no longer matches.
+
+**Admin verification.** An email set by someone other than the person, with `edit_details` (create, invite, CSV import, `PUT /api/directory/users/{u}`), is stored verified with `by: admin:<caller>`. **NEW (Firefox own accounts fix):** admin verification counts only when the admin's change sets a new email, never when an admin merely saves a person's page with the email unchanged. So is `POST /api/directory/users/{u}/email/verified` (an admin re-confirms an existing email; `204`, audited `user.email_verified`).
+
+**Self-service routes,** refused while impersonating (`RefuseWhileImpersonated`):
+
+- `POST /api/me/email/verify` → `202 {"expires_at"}`, `409` "mail isn't set up on this server" (no Portcullis sender, §19.14), `429` "too many codes: try again later";
+- `POST /api/me/email/verify/confirm {"code"}` → `200 {"verified": true}`, `400 {"attempts_left"}`, `410` "this code has expired: ask for a new one" (expired, used up, or the email changed since it was sent).
+
+**Code rules (from Global Constraints):**
+
+- the code is 8 digits, valid **15 min**, with **5** wrong entries per code;
+- sends are limited to **3 per hour** and **10 per day** per person;
+- only an HMAC-SHA256 hash of the code is kept, in memory;
+- the code is bound to the email it was sent to.
+
+**Mail text (exact):** subject `Your Portcullis email code`, body `Your code is <8 digits>. It expires in 15 minutes. If you didn't ask for it, you can ignore this email.`
+
+**Audit:** `email.code_sent` and `email.verified`, never the code.
+
+**Person views** gain `email_verified: bool`.
+
 ## 10. Landing portal app list (Hub → core)
 
 - **File.** The Hub writes `portal-apps.json` atomically into `hub_data` (`/data`, next to `group-gate-policy.json`, mode 0644) whenever it writes the policy file (enable, disable, template sync, settings). A core landing portal reads it like group-gate reads the policy file: mount `hub_data` read-only.
@@ -3034,6 +3070,8 @@ Instance and domain operations live on the Hub listener only (never on the peopl
 Listener-wide headers (`Referrer-Policy: no-referrer`, §11.7's listener chain) and `Content-Length` come on top of these (fix round 1).
 
 The UI shows a logo or screenshot only as `<img src>` with one of these URLs, never inlined, never through `innerHTML`, `<object>`, `<embed>` or `<iframe>`.
+
+**Resource warnings — NEW (Firefox own accounts; §3 `resources`).** The Marketplace card and the setup form warn when `memory_bytes < min_memory_mib·2^20` or the `docker_data` disk's free bytes are below `min_disk_gib·2^30`. They warn and never block: the Install button stays enabled. `GET /api/usage` `hosts.<id>.disk_free_bytes` (int64 or null) gives the cached free bytes of that host's `docker_data` disk.
 
 **VPN state (`state.yaml`, NEW):**
 
@@ -3890,6 +3928,16 @@ Each type has validation constraints:
 - Values are never parsed from an admin ("set by the Hub"); displayed as the number (admin panel and File sharing tab only)
 - Only on router-less `custom` templates with `group_access: true` and an `access_group` (§3)
 
+**verified_email** (**NEW**, Firefox own accounts)
+
+- The person's verified email (§9.8), for email-keyed apps (email = account identity)
+- Effective scope `person`. The Hub sets it, and any admin input is refused "set by the Hub". `scope`, `default`, `required`, `resolve`, `resolve_choices`, `group_values`, `privileged`, `requires` and `requires_any` are refused
+- `self_visible`: required, exactly `false` (never shown on My apps)
+- `delivery`: only `file` deliveries (`{file: {name, field}}`): the person's verified email in the data file's people section. Every other delivery is refused. Env, claim, header and hook deliveries are refused
+- The value is the person's verified email. A person without one is left out of the file (§13.7)
+- The panel's `population.no_verified_email` lists them, and the instance page shows their count
+- Only on templates with `group_access: true` and an `access_group` (§3). Router-less templates are allowed
+
 Neither type is a SaveSettings key, a panel instance value, a seeded default, a pruned value, an env name (no implicit `UPPER(key)` env) or a My apps value.
 
 **Reserved types.** `folder` stays reserved: it is refused with "a shared folder is a type: path option with a folder block" (shared folders add no type: they are `path` values, §13.15). A Hub without §14 refuses the option keys `folder` and `checks` as reserved (§1); a Hub without file sharing refuses the types `person_secret` and `person_id` and the `folder` fields `runs_as.uid_from` / `gid_from`.
@@ -4094,7 +4142,7 @@ Every file is owned by the Hub (uid 10001) and written atomically. Secret values
 ```
 
 - `values`: instance-scoped option values (key → rendered value)
-- `people`: per-person resolved values, keyed by lowercase username. Each user maps to their fields
+- `people`: per-person resolved values, keyed by lowercase username. Each user maps to their fields. **NEW (Firefox own accounts):** A person without a verified email (§9.8) is left out of the file when a `verified_email` option is delivered: the person is in the population but has no entry in `people` (no row in `tsv` either)
 - `groups`: per-group records for `scope: group` options. Each option key maps to an array of `{group, value}` records
 - `entries`: person-entered values for `scope: person_entered` options. Each field (the delivery's `field`, default the option key) maps to an array of `{user, value}` entries, sorted by user. Only population members whose stored LLDAP uuid matches their current account; under `unique`, only the earliest of equal values (§13.13). Person-entered values never appear under `people`
 - Every section is always an object (never `null`); `version` is 1
@@ -7097,3 +7145,36 @@ The read-only mail admin view (§19.13) follows: it isn't available on Kubernete
 - **Hub.** `POST /api/mail/admin-view` (Hub listener, `adminOnly`, proxy-secret and CSRF guards, an empty JSON body; an AI or MCP caller `403`): `200` `{"url": "https://mail-admin.<main domain>/portcullis/open", "ticket": "<ticket>"}` (the page navigates its tab to `url` and hands the ticket over the start page's channel, above) and the audit record, `409` "the mail provider has no read-only admin view" when the wired provider's block has no `admin_view`, `503` "mail isn't running right now" when nothing is wired or the wired instance isn't in normal mode. `GET /api/mail/status`'s `provider` and `GET /api/instances/{id}/mail-provider` carry `"admin_view": <bool>` (true while the wired provider's block has `admin_view` and it runs in normal mode; a flag only, never the link), the latter also the block's `label`. The UI (Settings → Mail and the provider instance's Mail tab) shows the link **Open `<label>`'s admin (read-only)** next to the warning "`<label>`'s own admin screen is read-only here. Make changes in Portcullis (Settings → Mail); changes made elsewhere would bypass Portcullis's mail safeguards." (`<label>` = the block's `label`, e.g. Stalwart; both set as text, never markup). A mail provider's app is shown as **Managed by Portcullis**, never "No web page".
 - **Kubernetes.** Mail isn't available on Kubernetes (§19.12), so neither is the admin view.
 - **The `stalwart` template** (its app page is normative for it): the service `admin-view` runs `mailctl admin-view` from the adapter image. The bootstrap job (the recovery admin) makes the role `portcullis-viewer` (`sys<Obj>Get` / `sys<Obj>Query` for the objects of "What it shows" only, judged field by field against the schema snapshot — every plain field that could carry a secret (string maps, uri / text / Sieve bodies, blobs, expressions and secret-sounding names) is listed and judged — and data-flow tested: each secret mailctl writes from its sources (the DQS key, DKIM private keys, the passwords it sets) reaches only a denied object or a masked secret field; no write, action, task, live, protocol or blob permission) and the account `portcullis-viewer@portcullis-former.internal`, and writes its password to the volume `viewer_key` (only the job and `admin-view` mount it); `includeSecrets` is pinned off by the base plan and every document; Stalwart's web admin is served from the bundle pinned in the mailctl image, at `/admin` only, on a TLS listener answered only to `admin-view`'s address. `admin-view` forwards only canonical paths of the web admin and JMAP calls on an allowlist derived from the role (`x:<Obj>/get` and `x:<Obj>/query` of exactly the role's objects; a strict body, forwarded re-encoded); everything else is refused there.
+
+### 19.14 App mail senders — NEW (Firefox own accounts)
+
+An app instance whose template declares `mail_sender: {label}` (§3, Manifest reference) gets a submission-only mail account with the provider. The Hub asks for it in every MailState (§19.5), and the provider MUST create and wire it.
+
+**The list.** MailState (§19.5) gains **`senders: [{username, uuid, address}]`**, for every enabled instance whose template has `mail_sender: {label}` (≤ 64 characters, one line). For those, `username` = `portcullis-app-<instance>` and `address` = `<username>@<primary_domain>`.
+
+The list also holds **Portcullis's own sender**, `portcullis-hub-mail` / `portcullis-hub-mail@<primary_domain>` (label `Portcullis`), whenever a provider is wired and mail is on. This sender is used for the Hub's own outbound mail (email verification codes, §9.8).
+
+The provider MUST tolerate `senders` absent (old Hubs) or empty (no apps ask for it, and mail is off so the Hub's sender isn't listed). **NEW (Firefox own accounts fix):** when `senders` is absent or empty the provider creates no senders and applies no changes to any existing ones.
+
+**What the provider creates.** For each sender the provider MUST:
+
+- create a submission-only account with no mailbox and no IMAP: the account authenticates to the submission listener (587) and may use `MAIL FROM` / `From:` = `address` only (any other `From:` is refused at DATA);
+- refuse RCPT addressed to it with `550 5.1.1` (the account receives nothing: an inbound message for it bounces at RCPT);
+- apply the provider's standard `limits` (the Hub's MailState sets none for senders);
+- never list the sender in `Accounts` (it isn't a person), `mail_users` (it has no mail password) or `MyMail` (it isn't the Hub).
+
+**The credential.** The Hub asks for the sender's credential through the existing `POST /v1/credentials` (§19.5), with `allowed_ips: []` (submission from the app's container, which has no fixed address).
+
+**Instance environment.** The Hub's override (§11.2) writes five variables into every instance's `.env` for the app to read at run time (§2):
+
+- `PORTCULLIS_MAIL_SENDER_HOST` (= `MAIL_HOSTNAME`, §19.1)
+- `PORTCULLIS_MAIL_SENDER_PORT` (`587`)
+- `PORTCULLIS_MAIL_SENDER_USER` (= address)
+- `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env` on `appfiles`)
+- `PORTCULLIS_MAIL_SENDER_FROM` (`"<label> <address>"`)
+
+All five are **empty while no provider is wired or mail is off.** The Hub leaves them out of Kubernetes (§11.10): mail isn't available on Kubernetes (§19.12).
+
+**Voids.** Wiring, switching or a restore voids every credential. New ones are created at the next sync, and the instances restart.
+
+**Doctor kind.** `mail_sender_unwired` (Warning): an instance's template has `mail_sender` but no provider is wired or mail is off (its five env values are empty).

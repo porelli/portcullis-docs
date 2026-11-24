@@ -2633,7 +2633,8 @@ people (admins see all of it; others the parts their permissions allow).
 - **Header**: display name, username, email, custom fields (a person field
   links to that person's page), "since … · account created by …", and
   **Edit details** (admins; delegates with `edit_details` for the accounts
-  they may edit).
+  they may edit). **NEW (Firefox own accounts):** the email shows **Verified**
+  or **Not verified** ([contracts §9.8](../guides/integration-contracts.md#98-verified-emails-new-firefox-own-accounts)).
 - **Groups**: one row per group, linking to the group's page, with how they
   are in it: matches the rule, added by hand · until … · "reason", kept out ·
   "reason", member · until. **Add to group…** (admins) picks a group (rule-based

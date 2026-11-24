@@ -59,8 +59,9 @@ field.
 | `urls` | list | No | See [urls](#urls) |
 | `tests` | object | Yes, for templates in the default catalog (`tests.signin`; validate.py) | CI only, the Hub ignores it. See [tests.signin](#testssignin) |
 | `instances` | `multi` or `single` | No (default `single`) | **NEW (contract v2).** Whether the Hub may run more than the default instance. See [instances](#instances) |
-| `hosts` | object | No | Per-host properties by host router name; today only `immutable`. See [hosts.immutable](#hostsimmutable) |
+| `hosts` | object | No | **NEW (Firefox own accounts): `reasons`.** Per-host properties by host router name: `immutable`, `reasons`. See [hosts.immutable](#hostsimmutable) and [hosts.reasons](#hostsreasons) |
 | `jobs` | list of compose service names | No | **NEW (apps).** One-off setup services that exit when done. See [jobs](#jobs) |
+| `mail_sender` | object `{label}` | No | **NEW (Firefox own accounts).** The Hub asks the mail provider for a submission-only sender. See [mail_sender](#mail_sender) |
 | `ai` | object | Yes | **NEW (AI support).** `mcp` (companions) or `unsupported` (the reason). See [ai](#ai) |
 | `vpn` | object | No | **NEW (VPN).** The app is a VPN the Hub can wire as a VPN provider. See [vpn](#vpn) |
 | `placement` | `any` or `primary_only` | No (default `any`) | **NEW (multiple servers).** Whether an instance may run on a worker server. See [placement](#placement) |
@@ -604,6 +605,7 @@ refused) and durations with a unit (`30d`, `90m`, `60s`). `default`, `min` /
 | `group` / `groups` | One / a set of LLDAP groups | `groups`: `min_items` / `max_items`. Instance values are bound to the groups' LLDAP ids: a deleted or re-created group grants nothing and is purged. A file delivery may render the members instead (`render.expand_members`) |
 | `person_secret` | A per-person file-share password; the Hub keeps only its hash | See [Per-person credentials and ids](#per-person-credentials-and-ids-person_secret-person_id) |
 | `person_id` | A Hub-allocated per-person number (a Unix uid) | See [Per-person credentials and ids](#per-person-credentials-and-ids-person_secret-person_id) |
+| `verified_email` | **NEW (Firefox own accounts).** The person's verified email ([contracts §9.8](integration-contracts.md#98-verified-emails-new-firefox-own-accounts)) | Effective scope `person`. The Hub sets it (`self_visible: false` required). Only `{file: {name, field}}` deliveries. Only on templates with `group_access: true` and an `access_group`. People without a verified email are left out of the file |
 | `user` / `users` | One / a set of LLDAP usernames (lowercased; never an email) | `users`: `min_items` / `max_items` |
 
 **Refused:** the contract v2 types `text`, `boolean`, `select` and `paths`
@@ -1465,6 +1467,30 @@ mail:
 The app page of such a template shows the block and the provider's own
 notes ([Stalwart](../apps/stalwart.md)).
 
+## mail_sender
+
+**NEW (Firefox own accounts), optional.** The template sends outbound mail (sign-up codes, notifications). The Hub asks the mail provider ([contracts §19.14](integration-contracts.md#1914-app-mail-senders-new-firefox-own-accounts)) for a submission-only account and delivers five `PORTCULLIS_MAIL_SENDER_*` env variables.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | single line, 1–64 chars | Yes | The sender's display name, e.g. `Firefox accounts`. Shown as `"<label> <address>"` |
+
+The Hub delivers:
+
+- `PORTCULLIS_MAIL_SENDER_HOST` (= `MAIL_HOSTNAME`)
+- `PORTCULLIS_MAIL_SENDER_PORT` (`587`)
+- `PORTCULLIS_MAIL_SENDER_USER` (= the sender's address, `portcullis-app-<instance>@<primary_domain>`)
+- `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env`)
+- `PORTCULLIS_MAIL_SENDER_FROM` (`"<label> <address>"`)
+
+All five are **empty while no provider is wired or mail is off**. The doctor kind `mail_sender_unwired` (Warning) names the instance.
+
+```yaml
+# manifest.yaml
+mail_sender:
+  label: Firefox accounts
+```
+
 ## config_files
 
 Files the Hub copies from the template directory into the core checkout when
@@ -1694,6 +1720,18 @@ hostname for such routers
 ([contract §11.3, §11.6](integration-contracts.md#11-app-instances-hub-new-instances)).
 `tests/validate.py` requires the list where it knows the app needs it
 (`IMMUTABLE_HOSTS`: matrix).
+
+### hosts.reasons
+
+**NEW (Firefox own accounts).** A per-host reason for open routers, shown on the bypass badge:
+
+```yaml
+hosts:
+  reasons:
+    firefox-sync-api: "Firefox calls the accounts API in the background, without cookies; the sign-up list decides who may create an account."
+```
+
+Each key is one of the template's host routers; each value is one line, ≤ 200 runes. For an `open_router` bypass badge on that host ([contracts §5](integration-contracts.md#5-hub-traefik)), `Note` = the reason. It falls back to the first paragraph of `auth.notes`.
 
 ## Validation
 
