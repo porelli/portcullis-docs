@@ -247,18 +247,33 @@ next restart.
 
 Besides the neutral catalog
 ([contracts §19.8](../guides/integration-contracts.md#198-checks-report-trust-spam-outbound-and-metrics)),
-the adapter reports two checks of its own, shown by the doctor as
+the adapter reports three checks of its own, shown by the doctor as
 `mail_provider_check` (explain-only, never a one-click fix):
 
 | Check | Title | Not ok when | Steps |
 |-------|-------|-------------|-------|
 | `x-spam_rules` | Spam filter rules | Problem: "Stalwart has no spam rules: the import hasn't run yet (the adapter retries every minute; the spam filter scores nothing meanwhile)", with the import's error | Check mailctl's log (the stalwart instance's adapter logs) for "spam rules"; restarting the stalwart instance asks for the import again. |
+| `x-sender_rcpt` | App mail senders refuse inbound mail | Problem: "the mail server accepts mail for the app sender address <address> (<reply>): its store has no RCPT rule for app mail senders" (asked on the MX listener for the first sender's address and a sub-address of it, null sender, never DATA; also a line in mailctl's log); Info when the server couldn't be asked; ok without senders | Add the senders' RCPT rule by hand (below), or rebuild the store. |
 | `x-external_lookups` | Spam filter external lookups | Problem: "the spam rules' external lookups may be on and couldn't be turned off (the spam filter may contact outside feeds)", with the error; Info before the first check | Check mailctl's log (the stalwart instance's adapter logs) for "spam rules"; the adapter retries every minute. |
 
 DMARC and TLS aggregate reports are display-only with this provider:
 Stalwart v1.1.0 gives no DKIM result for report messages, so none is
 authenticated, and `dmarc_reports` / `tlsrpt_reports` say "shown only, never
 acted on".
+
+### App mail senders
+
+App mail senders (contracts §19.14) are Stalwart accounts `portcullis-sender:<uuid>` whose permissions replace every inherited one with `authenticate` and `emailSend`; their one address is their login. Each sender's address and the glob `<local>+*@<domain>` (Stalwart's sub-addressing is on by default) are keys of the lookup namespace `portcullis-senders`, which the base plan's RCPT rule refuses with `550 5.1.1`. Two `MtaInboundThrottle`s limit each sender, keyed on the login: `portcullis: sender messages per minute` (10) and `portcullis: sender messages per hour` (60); over either, `452 4.4.5`.
+
+#### Stores bootstrapped before app mail senders
+
+The bootstrap job writes the base plan only into a new store, so a store bootstrapped by an older adapter lacks the senders' RCPT rule (check `x-sender_rcpt`): mail to a sender is accepted and bounced later. Add it by hand as the recovery admin (the adapter's key can't): set the singleton `x:MtaStageRcpt`'s field `script` to
+
+```json
+{"else":"false","match":{"0":{"if":"key_exists('portcullis-senders', rcpt)","then":"'parked-reject'"},"1":{"if":"rcpt_domain == 'portcullis-former.internal'","then":"'parked-reject'"},"2":{"if":"key_exists('list-members-only', rcpt) && !key_exists('list-posters', rcpt + '|' + authenticated_as)","then":"'list-reject'"}}}
+```
+
+then run the action `ReloadSettings`. Rules 1 and 2 are the store's own; only rule 0 is new.
 
 ### Updates
 
