@@ -1480,7 +1480,7 @@ The Hub delivers:
 - `PORTCULLIS_MAIL_SENDER_HOST` (= `MAIL_HOSTNAME`)
 - `PORTCULLIS_MAIL_SENDER_PORT` (`587`)
 - `PORTCULLIS_MAIL_SENDER_USER` (= the sender's address, `portcullis-app-<instance>@<primary_domain>`)
-- `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env`)
+- `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env`; never logged or audited)
 - `PORTCULLIS_MAIL_SENDER_FROM` (`"<label> <address>"`)
 
 All five are **empty while no provider is wired or mail is off**. The doctor kind `mail_sender_unwired` (Warning) names the instance.
@@ -1728,7 +1728,7 @@ hostname for such routers
 ```yaml
 hosts:
   reasons:
-    firefox-sync-api: "Firefox calls the accounts API in the background, without cookies; the sign-up list decides who may create an account."
+    firefox-sync-fxa-api: "Firefox calls the accounts API in the background, without cookies; the sign-up list decides who may create an account."
 ```
 
 Each key is one of the template's host routers; each value is one line, ≤ 200 runes. For an `open_router` bypass badge on that host ([contracts §5](integration-contracts.md#5-hub-traefik)), `Note` = the reason. It falls back to the first paragraph of `auth.notes`.
