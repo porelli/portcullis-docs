@@ -7,6 +7,13 @@
 **Website:** <https://www.plex.tv/personal-media-server/>  
 **Source:** none (Plex Media Server is proprietary; Plex publishes no source code for it)
 
+## About
+
+<div class="app-long-description">
+<p>Plex Media Server organises movies, TV shows, music and photos and streams them to Plex apps on phones, TVs and browsers, transcoding when a device needs it.</p>
+<p>Plex signs people in with their plex.tv accounts, so single sign-on isn't possible. By default Portcullis sign-in and the access group come before Plex's own login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -18,8 +25,14 @@
 | **Access Group** | `users_plex` |
 | **Subdomain** | `plex` |
 
-!!! info "Auth Notes"
-    Plex uses its own plex.tv account system; no SSO is possible. By default the Hub puts Portcullis sign-in (users_plex) in front of Plex's own login; the Hub's Sign-in setting can switch to Plex's own login only (no Portcullis, TLS tier public), which Plex's native apps need. Claim token required for initial setup. Shared folders: pms-docker's first-run script sets the plex user's uid / gid from PLEX_UID / PLEX_GID, and Plex starts through s6-setuidgid plex, which resets the supplementary groups to plex's own in /etc/group (a group_add gid wouldn't reach Plex). So the library settings join a shared folder's group through PLEX_GID (joins_group gid_env): the Hub writes the folder gid there. Keep all three library settings on the same shared folder (subfolders are fine), or all on host paths; a library left empty doesn't count.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Plex uses its own plex.tv account system; no SSO is possible. By default the Hub puts Portcullis sign-in (<code>users_plex</code>) in front of Plex's own login.</p>
+<p>The Hub's <strong>Sign-in</strong> setting can switch to Plex's own login only (no Portcullis, TLS tier public), which Plex's native apps need.</p>
+<p>Claim token required for initial setup.</p>
+<p><strong>Shared folders:</strong> pms-docker's first-run script sets the <code>plex</code> user's uid / gid from <code>PLEX_UID</code> / <code>PLEX_GID</code>, and Plex starts through <code>s6-setuidgid plex</code>, which resets the supplementary groups to plex's own in <code>/etc/group</code> (a <code>group_add</code> gid wouldn't reach Plex). So the library settings join a shared folder's group through <code>PLEX_GID</code> (<code>joins_group: gid_env</code>): the Hub writes the folder gid there.</p>
+<p>Keep all three library settings on the same shared folder (subfolders are fine), or all on host paths; a library left empty doesn't count.</p>
+</div>
 
 ## Sign-in
 

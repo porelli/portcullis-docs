@@ -7,6 +7,14 @@
 **Website:** <https://actualbudget.org/>  
 **Source:** <https://github.com/actualbudget/actual>
 
+## About
+
+<div class="app-long-description">
+<p>Actual Budget is a personal finance app built around envelope budgeting: you assign your income to budget categories, then track spending against them. It handles accounts, transactions, rules, schedules and reports, and can import bank files or sync with supported bank-sync providers.</p>
+<p>The server stores the budget files and syncs them between your devices; the app itself works locally in the browser.</p>
+<p>Portcullis signs people in through OpenID Connect, limited to the instance's access group. Actual has no roles, so every member has the same access.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -19,8 +27,11 @@
 | **Admin Group** | `admin_actual-budget` |
 | **Subdomain** | `budget` |
 
-!!! info "Auth Notes"
-    OpenID login with auto-register. No native group/role support — all SSO users get equal access. Identity: Actual keys users on preferred_username (falling back to login, email, sub only when that claim is absent); Keycloak always sends it via the profile scope, so accounts follow the immutable LLDAP username, never the user-editable email.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>OpenID login with auto-register. No native group/role support — all SSO users get equal access.</p>
+<p><strong>Identity:</strong> Actual keys users on <code>preferred_username</code> (falling back to <code>login</code>, <code>email</code>, <code>sub</code> only when that claim is absent). Keycloak always sends it via the <code>profile</code> scope, so accounts follow the immutable LLDAP username, never the user-editable email.</p>
+</div>
 
 ## Routing
 
@@ -28,7 +39,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `actual` | `budget.<domain>` | all | `authaware@file` | :x: |
+| `actual` | `budget.<domain>` | all | `default` | :x: |
 
 ## AI support
 

@@ -206,7 +206,7 @@ sequenceDiagram
 
 ### YubiKey and browser certificates
 
-When the YubiKey certificate method is on, the browser presents the certificate stored in the YubiKey's PIV slot during the TLS handshake; when the browser certificate method is on, it can present a browser certificate (a `.p12` the person created on the [Sign-in page](operations/auth-policies.md#the-sign-in-page)) the same way. Traefik verifies it against the chain of the host's TLS option (`protected`: root + the YubiKey CA only, so a browser certificate never passes; `protected-any` and `authaware`: root + both intermediates), but **does not check revocation**; that happens in group-gate and Keycloak. Both tell the two kinds apart by the issuing CA: `pki_int` (YubiKey) or `pki_file` (browser).
+When the YubiKey certificate method is on, the browser presents the certificate stored in the YubiKey's PIV slot during the TLS handshake; when the browser certificate method is on, it can present a browser certificate (a `.p12` the person created on the [Sign-in page](operations/auth-policies.md#the-sign-in-page)) the same way. Traefik verifies it against the chain of the host's TLS option (`protected`: root + the YubiKey CA only, so a browser certificate never passes; `protected-any` and `default`: root + both intermediates), but **does not check revocation**; that happens in group-gate and Keycloak. Both tell the two kinds apart by the issuing CA: `pki_int` (YubiKey) or `pki_file` (browser).
 
 ```mermaid
 sequenceDiagram
@@ -243,7 +243,7 @@ Traefik's static `traefik/dynamic/tls.yml` defines four TLS option sets. The Hub
 |------|-------------------|---------------------|----------|
 | **protected** | `RequireAndVerifyClientCert`, `certs/ca-chain-yubikey.crt` (the YubiKey CA alone, no root) | A YubiKey certificate required -- the TLS handshake fails without one (a browser certificate never passes) | `mtls`-method apps; templates where every alternative needs the YubiKey certificate |
 | **protected-any** | `RequireAndVerifyClientCert`, `certs/ca-chain.crt` | A YubiKey or browser certificate required | Templates where every alternative needs a certificate and at least one accepts the browser certificate |
-| **authaware** | `VerifyClientCertIfGiven`, `certs/ca-chain.crt` | Optional -- verified if present, passkeys otherwise | Apps whose template has a certificate in some alternative (Standard, Strong); every core page |
+| **default** | `VerifyClientCertIfGiven`, `certs/ca-chain.crt` | Optional -- verified if present, passkeys otherwise | Apps whose template has a certificate in some alternative (Standard, Strong); every core page |
 | **public** | no `clientAuth` | Not requested | Templates with no certificate method on, apps that manage their own auth |
 
 With both certificate methods off, no app asks for a certificate (except `mtls`-method apps, whose certificate is their sign-in); core pages always offer an optional one. See [Sign-in Methods and Templates](operations/auth-policies.md#traefik-tls-tier).

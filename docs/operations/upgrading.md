@@ -51,7 +51,7 @@ up first.
    enabled app's template away is reset to the previous one — nothing is
    opened. Apps still without a valid template are named, with the fix. An
    older Hub image (one that doesn't report syncs) gets a warning instead:
-   press **Sync All Sources** in the Template sources section at the bottom of the Hub's Marketplace. See
+   press **Sync All Sources** in the Hub's Settings → Template sources. See
    [Template sources](hub.md#template-sources).
 
 It also checks the Hub image: before the upgrade it warns when `HUB_IMAGE` is
@@ -287,6 +287,10 @@ the same notes in its `CHANGELOG.md`.
   internal archive layout; cross-runtime restores work). No file is relabelled.
 - The Hub refuses to start without `HUB_CONTAINER_RUNTIME`, which core's
   compose sets from `CONTAINER_RUNTIME`: upgrade the Hub and core together.
+
+### Sign-in gate (Hub, portcullis-keycloak)
+
+- The Hub and the portcullis-keycloak image must be upgraded together: `signin-keycloak.json` gains the required `app_hosts`, and a Keycloak image or Hub on either side of the change refuses the other's file, so nobody signs in until both match (only a concern if you pin `HUB_IMAGE` or `KEYCLOAK_IMAGE` yourself; a release pins both).
 
 ### Kubernetes support (Hub, core, templates)
 

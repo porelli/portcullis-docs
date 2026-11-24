@@ -7,6 +7,13 @@
 **Website:** <https://github.com/AnalogJ/scrutiny>  
 **Source:** <https://github.com/AnalogJ/scrutiny>
 
+## About
+
+<div class="app-long-description">
+<p>Scrutiny monitors hard drives and SSDs through their S.M.A.R.T. data. Its dashboard shows each disk's health, temperature and history, judged against failure rates seen in real drives, and it can send alerts.</p>
+<p>Portcullis sign-in and the access group protect the dashboard. Scrutiny has no users of its own, so every member has full access.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -19,8 +26,16 @@
 | **Admin Group** | `admin_scrutiny` |
 | **Subdomain** | `disks` |
 
-!!! info "Auth Notes"
-    No SSO or user system. Access gated by group-gate middleware. All authenticated users have full access. Disks: list the host disks this instance monitors in the Disks setting (up to 8, e.g. /dev/sda, /dev/nvme0); only those are passed into the container, read-only, so several instances can each monitor their own disks. The container is not privileged: it gets SYS_RAWIO for SATA/SAS SMART passthrough, plus SYS_ADMIN only if "NVMe capability" is set to SYS_ADMIN (NVMe SMART logs need it). With no disk listed the dashboard stays empty. A listed path that doesn't exist on the host stops the container from starting.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>No SSO or user system. Access gated by group-gate middleware; all authenticated users have full access.</p>
+<p><strong>Disks:</strong> list the host disks this instance monitors in the <strong>Disks</strong> setting (up to 8, e.g. <code>/dev/sda</code>, <code>/dev/nvme0</code>). Only those are passed into the container, read-only, so several instances can each monitor their own disks.</p>
+<ul>
+<li>The container is not privileged: it gets <code>SYS_RAWIO</code> for SATA/SAS SMART passthrough, plus <code>SYS_ADMIN</code> only if <strong>NVMe capability</strong> is set to <code>SYS_ADMIN</code> (NVMe SMART logs need it).</li>
+<li>With no disk listed the dashboard stays empty.</li>
+<li>A listed path that doesn't exist on the host stops the container from starting.</li>
+</ul>
+</div>
 
 ## Routing
 
@@ -28,7 +43,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `scrutiny` | `disks.<domain>` | all | `authaware@file` | :white_check_mark: |
+| `scrutiny` | `disks.<domain>` | all | `default` | :white_check_mark: |
 
 ## AI support
 

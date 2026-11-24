@@ -66,7 +66,7 @@ reach an app. What a turned-on exception exposes:
 - **Uploads** where the app allows them on a share (Nextcloud file drop via
   `/public.php/dav`).
 - **The host's TLS tier.** With a certificate-only template the host drops from
-  `protected@file` (or `protected-any@file`) to `authaware@file`: group-gate still enforces the
+  `protected@file` (or `protected-any@file`) to `default`: group-gate still enforces the
   certificate per request on gated routers, but native-OIDC apps then check it
   only at login (Keycloak's template check), and routers without group-gate not at all.
 
@@ -283,7 +283,7 @@ CI fails if any of these is missing.
 | postgres | 70:70 | read-only (`tmpfs /var/run/postgresql`, `/tmp`) | — | `pg_isready` | `/var/lib/postgresql` is postgres-owned in the image, so the entrypoint needs no `chown` |
 | vault | 100:1000 | read-only (`tmpfs /tmp`) | — | `vault status` | `disable_mlock` (raft), so no `IPC_LOCK`. Reads `secrets/vault-unseal/` via group 1000 |
 | lldap | 1000 (`-rootless` image) | read-only (`tmpfs /tmp`) | — | `lldap healthcheck` | |
-| keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`). Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider (and the sign-in extension's providers) are build options; never `--optimized`. Reads `hub_data` read-only (`/hub-data/signin-keycloak.json`, the Hub's sign-in methods and templates; missing or invalid = nobody signs in) |
+| keycloak | 1000 (image) | **writable** (`tmpfs /tmp`) | — | `/health/ready` | Image `ghcr.io/porelli/portcullis-keycloak` (`KEYCLOAK_IMAGE`). Exception: `start` re-augments the server into `/opt/keycloak/lib` because the x509 lookup provider (and the sign-in extension's providers) are build options; never `--optimized`. Reads `hub_data` read-only (`/hub-data/signin-keycloak.json`, the Hub's sign-in methods and templates, and `impersonation.json`, both 0644; missing, unreadable or invalid = nobody signs in). It has no Hub group: on Docker / Podman the volume root is the Hub image's 0755 `/data`; on Kubernetes the `hub-data` PVC root is 0751, so Keycloak opens those files by name but can't list the volume, and the Hub's 0600 / 0640 files stay out of its reach |
 | sessions (Valkey) | 999:1000 (the image's `valkey`) | read-only (`tmpfs /data`) | — | an unauthenticated `PING` must answer `NOAUTH` | Image `valkey/valkey` alpine, pinned. The [session store](#session-store-sessions) of both oauth2-proxies: no ports, only on `portcullis-sessions`, no persistence (`save ""`, `appendonly no`), `maxmemory 64mb` with `volatile-ttl`, `mem_limit` 128m, `pids_limit` 64. Reads `secrets/sessions/valkey.conf` read-only |
 | forward-auth (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Exception: the image has no shell or HTTP client. Sessions in `sessions` (user `forward-auth`), starts once it is healthy |
 | forward-auth-ext (oauth2-proxy) | 65532 (distroless) | read-only | — | **none** | Same image, provider config, client and cookie secret as forward-auth; serves extra-domain hosts only (contract §5): relative callback `/oauth2/callback` built from the request host (`X-Forwarded-Host`, trusted from `OAUTH2_PROXY_TRUSTED_PROXY_IPS` only), host-only cookie `__Host-portcullis_ext` (`Secure`, no `Domain`, `Path=/`), no redirect whitelist (only relative redirects are accepted). Both oauth2-proxies send PKCE S256 and the `portcullis-forward-auth` client requires it (`pkce.code.challenge.method`), so a code delivered to a stale callback URI is useless without the verifier. Routed only by the Hub's per-host `Host(<h>) && PathPrefix(/oauth2/)` routers. Its middleware `portcullis-auth-ext` lists the same `authResponseHeaders` / `authResponseHeadersRegex` as `portcullis-auth` (CI compares them) |
@@ -348,6 +348,7 @@ operator can still rewrite them and nobody else can read them. It repairs them
 | `secrets/hub/invite/secret` | 10001 | 0640 (dir 0750) | Hub (`/run/portcullis/invite/secret`, same value as enroll's `invite-api-secret`) |
 | `secrets/mcp-gate/age.key` | 10005 | 0640 (dir 0700) | mcp-gate (decrypts the AI credentials the Hub wrote) |
 | `secrets/mcp-gate/{age.pub,hub-secret}` | 10001 | 0640 | Hub (encrypts to `age.pub`; holds no identity) and mcp-gate (`hub-secret`, through group 10001) |
+| `secrets/lldap/key-seed` | 1000 | 0640 (dir 0700) | lldap (`LLDAP_KEY_SEED_FILE`: the seed of the key protecting stored passwords, see [LLDAP's key seed](#lldaps-key-seed)) |
 | `secrets/sessions/valkey.conf` | 1000 | 0640 (dir 0700) | sessions (its config and ACL users: the SHA-256 of `FORWARD_AUTH_REDIS_PASSWORD` / `FORWARD_AUTH_EXT_REDIS_PASSWORD`, never the passwords; rewritten from `.env` on every run) |
 | `secrets/wg/people.key` | 10006 | 0640 (dir 0750) | wg (the built-in VPN's private key, written by `./portcullis vpn init` inside a throwaway `wg` container, never printed; an empty file means the built-in VPN is off) |
 | `secrets/monitoring/prometheus/{vault-token,tls-targets.json}` | 65534 | 0640 (dir 0750) | Prometheus (Vault metrics token: policy `portcullis-metrics`) |
@@ -368,6 +369,120 @@ holds only what templates may reference: `PORTCULLIS_DOMAIN`,
 `HUB_SHARED_ENV`. Core secrets are refused. `./portcullis up` rewrites the file
 in place. `secrets/` and `backups/` are masked from the Hub with empty tmpfs
 mounts.
+
+## LLDAP's key seed
+
+LLDAP stores each password as an OPAQUE record. The server key protecting
+those records is derived from `key_seed`. The upstream image's config
+template ships a **public** default seed (`"RanD0m STR1ng"`). With it,
+anyone holding `users.db` (for example a backup's `lldap_data.tar.gz`) could
+attack the stored passwords offline without any server secret. So every
+install has its own seed.
+
+**Where it lives.** `secrets/lldap/key-seed`: 48 bytes from the system's
+CSPRNG (`openssl rand`), base64, 64 characters, no newline.
+
+- `./portcullis init` makes it once, also with `--env-only`. It writes a 0600
+  temporary file, links it into place only if no seed exists, and checks the
+  result is 64 characters. An existing seed is never replaced.
+- `secrets_fix_perms` (every `up`, `upgrade`, `vault init`, `restore`) keeps
+  it operator-owned, group 1000 (the `-rootless` image's `lldap` user),
+  0640, in a 0700 directory. Only LLDAP mounts it, read-only at
+  `/run/portcullis/lldap/key-seed`. Under rootless Podman with SELinux it
+  is labelled `Z`.
+- On Kubernetes the CLI syncs it as the Secret `secrets-lldap` (key
+  `key-seed`), mounted 0440 with `fsGroup` 1000 in the lldap pod only.
+
+**How LLDAP reads it.**
+
+- Through `LLDAP_KEY_SEED_FILE`, never as a plain `LLDAP_KEY_SEED` value or
+  on a command line. `LLDAP_KEY_FILE` is empty, so a missing, empty or
+  unreadable seed makes LLDAP refuse to start instead of writing a random
+  key file.
+- LLDAP doesn't run the image's entrypoint, which copies the template
+  (public seed included) into `/data/lldap_config.toml`. It runs
+  `tini -- /app/lldap run --config-file /dev/null` and is configured by
+  environment only (`LLDAP_DATABASE_URL` and the rest).
+
+**Fail closed.**
+
+- `./portcullis up` and `upgrade` refuse when the seed is missing, empty, a
+  directory, shorter than 32 bytes of base64, not base64, or the public
+  default.
+- `./portcullis status` shows a Problem for those, and for what the running
+  container has: a plain `LLDAP_KEY_SEED`, no readable seed file, a
+  non-empty `LLDAP_KEY_FILE`, or any `key_seed` in `/data/lldap_config.toml`
+  (`lldap.key_seed` in `--json`).
+- LLDAP itself refuses to start when the seed doesn't match the key that
+  `users.db` was written with ("The private key encoding the passwords has
+  changed").
+
+**Backup and restore.**
+
+- The seed is part of `secrets/`, so every backup carries it: in clear in the
+  local `backups/` tree (0700, like `.env` and the Vault keys), encrypted by
+  restic offsite.
+- `restore` and `backup verify` refuse a backup without a usable seed, or
+  without `lldap_data.tar.gz`. A `users.db` is useless without its seed.
+- A restore puts the backup's seed back together with its `users.db`. The
+  seed it replaces stays in `backups/pre-restore-*`.
+- Backups made before the seed existed are refused (no back-compat).
+
+**Never regenerate the seed on an existing install.** A new seed voids every
+stored LLDAP password: admin's, `portcullis-hub`'s and anyone's set in
+LLDAP. LLDAP won't start until it is forced once. `init` refuses up front
+(Docker / Podman) when it would make a seed for an `lldap_data` volume that
+already holds a `users.db`.
+
+### Fixing an install made before the seed (by hand)
+
+An install made before this change has no `secrets/lldap/key-seed`, and its
+`/data/lldap_config.toml` carries the public default. `up` refuses until
+it's fixed.
+
+What it changes:
+
+- Every stored LLDAP password becomes invalid.
+- Admin's password record is re-written from `.env`'s
+  `LLDAP_ADMIN_PASSWORD`. It's the same value, so Keycloak, enroll and the
+  CLI keep working, and admin still signs in by security key.
+- `portcullis-hub`'s password is re-set by `up` from
+  `secrets/hub/lldap/password`.
+- Anyone else who had an LLDAP password set by hand gets a new one through
+  `./portcullis lldap-ui`.
+- Passkeys, certificates and the Hub's per-person SMB passwords aren't
+  affected.
+
+Do it in a quiet moment. Docker, in the install root:
+
+```sh
+# 1. The seed: refused if one exists, checked to be 64 characters, never printed
+( set -eu; f=secrets/lldap/key-seed; umask 077; mkdir -p secrets/lldap
+  if [ -e "$f" ]; then echo "$f exists: not overwriting"; exit 1; fi
+  t="$(mktemp secrets/lldap/.key-seed.XXXXXX)"
+  openssl rand -base64 48 | tr -d '\n' > "$t"
+  [ "$(wc -c < "$t" | tr -d ' ')" = 64 ] || { rm -f "$t"; echo "openssl failed"; exit 1; }
+  ln "$t" "$f" && rm -f "$t"
+  sudo chown "$(id -u)":1000 "$f" && chmod 640 "$f" && chmod 700 secrets/lldap
+  echo "seed written" )
+# 2. Stop what uses LLDAP, delete the old config copy (it carries the public default)
+docker compose stop hub keycloak lldap
+docker compose run --rm --no-deps -T --entrypoint rm lldap -f /data/lldap_config.toml
+# 3. ONE forced start: LLDAP records the new key and re-writes admin's record from .env
+log="$(mktemp)"
+docker compose run --rm --no-deps -T -e LLDAP_FORCE_UPDATE_PRIVATE_KEY=true -e LLDAP_FORCE_LDAP_USER_PASS_RESET=true \
+  --entrypoint sh lldap -c 'timeout 25 /app/lldap run --config-file /dev/null; true' > "$log" 2>&1
+grep -iE 'successfully \(re\)set password for "admin"|error' "$log"; rm -f "$log"
+# 4. Everything back up (re-sets portcullis-hub's password, restarts the Hub)
+./portcullis up
+./portcullis status   # "lldap key seed: this install's own"
+./portcullis backup   # the first backup with the seed
+```
+
+Run step 3 once. A forced start with an unchanged key refuses, and step 1
+refuses to replace the seed. If step 3 prints an error and no "successfully
+(re)set" line, don't go on: check `docker compose logs lldap`. Under rootless
+Podman, use `podman unshare chown 0:1000` instead of `sudo chown` in step 1.
 
 ## Settings data files and secrets
 
@@ -641,6 +756,32 @@ to start while the void is pending
 mail, to resolve DNS and for its checks; a spam filter's external lookups
 must stay off. How the `stalwart` app keeps that, and its own management
 API, key and role: [Stalwart](../apps/stalwart.md).
+
+**The read-only admin view** (`admin_view`, contract §19.13; `stalwart`'s
+`admin-view`). The one router a mail provider gets besides the well-known
+one is the Hub's admin view router on `mail-admin.<domain>`
+(`portcullis-auth` + `portcullis-groups`, VPN-only in modes admin / server).
+The view (`mailctl admin-view`, uid 10010, read-only root, no capability,
+only the `viewer_key` volume) answers nothing, and uses no credential,
+unless the request comes from Traefik's pinned address with the per-install
+route key the router's `portcullis-mail-admin-key` headers middleware sets
+after forward-auth (`hub_data/mail-admin-route-key`, 0600, also in the
+view's environment) **and** `X-Auth-Request-Groups` (an `authResponseHeaders`
+entry: Traefik deletes client copies) lists `lldap_admin`; it listens only
+on its `portcullis-proxy` address. A session starts only from the Hub's
+single-use 60 s ticket (posted in a form, never in a URL; MAC'd with a
+per-install ticket key that only the Hub and the view read as a file —
+never the route key, which is a Traefik label; spent nonces kept on disk
+until they expire) and ends after 30 min idle / 8 h. Stalwart's viewer
+role holds reads only, of objects whose plain fields can't hold a secret
+(the queue, reports and every store / directory / DNS / hook / tracer /
+lookup object are out; `includeSecrets` pinned off); the view forwards
+only `x:<Obj>/get` / `/query` of those objects and the web admin's
+canonical paths, never the browser's `Authorization` or cookies, and pins
+its TLS hop to Stalwart to the mail certificate's SPKI (chain checks
+skipped only with that pin, ruling). Rotation: delete `viewer-password`
+from `viewer_key` (a new password at the provider's next start) or
+`hub_data/mail-admin-route-key` (a new key at the next render).
 
 ## Rootless Podman
 
@@ -1314,8 +1455,8 @@ came back forever (upstream issue
   Keycloak's 12 h maximum. The 202's `Set-Cookie` therefore doesn't have to
   reach the browser, and the forward-auth middlewares have no
   `addAuthCookiesToResponse`.
-- **Sign-out** (`/oauth2/sign_out`) deletes the session from the store: a copy
-  of the cookie stops working at once.
+- **Sign-out** (`/oauth2/sign_out`, only through the guard below) deletes the
+  session from the store: a copy of the cookie stops working at once.
 - **`people.<domain>`** (the Hub's directory listener `:8889`,
   [contract §5.1](../guides/integration-contracts.md)) is open to any signed-in
   user: `people=*` in `group-gate-map.conf` (`*` is valid only there; in the
@@ -1333,6 +1474,63 @@ came back forever (upstream issue
   Traefik answers 421 on it. group-gate's step-up page therefore sends the
   browser to `https://auth.<domain>/oauth2/start?pc_method=…&rd=<app>`. CI
   rejects router rules without `Host(`.
+- **Sign out** ([contract §5 "Sign out"](../guides/integration-contracts.md)).
+  The site bar's **Sign out** is a POST form with no fields
+  (`enctype="text/plain"`) to `https://auth.<domain>/oauth2/sign_out`. The
+  router `oauth2-signout` (`PathPrefix(/oauth2/sign_out)`, priority 1001,
+  above `oauth2-callback`) puts group-gate's `/signout-guard` in front of
+  oauth2-proxy (forwardAuth, `trustForwardHeader: false`, only
+  `X-Auth-Request-Redirect` handed on). It lets through only a `POST` of
+  exactly that path (no query: nobody passes an `rd`), `Content-Type`
+  `text/plain` or none (oauth2-proxy reads an `rd` only from a urlencoded
+  body), and either `Sec-Fetch-Site: same-origin` (the confirmation page on
+  `auth.<domain>`) or an `Origin` that is exactly a core page's —
+  `https://<domain>`, `https://hub.<domain>`, `https://people.<domain>`,
+  `https://auth.<domain>` — never another host under the domain: apps are
+  same-site but third-party code, so same-site is never proof, and
+  `Origin: null` counts only with same-origin. The Hub's pages are
+  `Referrer-Policy: no-referrer` (a cross-origin POST from them would say
+  `Origin: null`); their Sign out switches the page to `strict-origin`
+  right before the submit, so the POST carries the page's origin and the
+  `Referer` only that origin. It names the landing page itself,
+  `https://<domain>/signed-out`. A `GET` — a link, an image, a cross-site
+  navigation, which carries the `SameSite=Lax` cookie — gets a confirmation
+  page (`405`); other refusals get it with a note (`403`). So neither
+  another site nor an app under the domain can sign anyone out, and the
+  sign-out is never an open redirect. The impersonation ended page, which
+  shows on app hosts, links the confirmation page instead of posting.
+  - **What it ends.** `forward-auth` calls Keycloak's end-session endpoint
+    server-side with the session's `id_token_hint`
+    (alpha.yaml's `backendLogoutURL` from `PORTCULLIS_BACKEND_LOGOUT_URL`, only on `forward-auth`; no `post_logout_redirect_uri`, so no
+    Keycloak page in the browser). The call goes straight to
+    `http://keycloak:8080` on the `portcullis` network, never through
+    Traefik: its access log would record the ID token, and the `keycloak`
+    router's `rate-limit-auth` (shared by every refresh from the gateway
+    address) could refuse it, which would leave the SSO session alive
+    behind a Signed out page. On Kubernetes it goes to
+    `keycloak-internal:8081` (Traefik's `kcinternal`, no rate limit),
+    because only Traefik may reach Keycloak's 8080 there (it trusts proxy
+    headers from the whole pod CIDR); that path has its own router,
+    `kcinternal-logout` (exactly the logout path, `kcinternal`'s middleware
+    and service, `observability.accessLogs: false`), so the ID token isn't
+    logged there either. Then it deletes the ticket from the session store
+    and expires the cookie. The client's `post.logout.redirect.uris` is
+    pinned to the Signed out page by `keycloak configure`.
+  - **Extra-domain hosts.** Their host-only `__Host-portcullis_ext` cookie
+    can't be cleared from the main domain. `forward-auth-ext` refreshes a
+    session with Keycloak once it is a minute old (`cookie_refresh` 1m); with
+    the Keycloak session gone the refresh fails and the session is dropped,
+    so it stops working **within a minute**. `forward-auth-ext` has no
+    backend logout: its `/oauth2/sign_out` on an extra-domain host is behind
+    the Hub's unguarded per-host routers, so it ends only that host's
+    ticket, never the Keycloak session.
+  - **Not ended.** Apps with their own OIDC session (Nextcloud, Gitea, …)
+    keep it until it ends or they check with Keycloak (or get Keycloak's
+    back-channel logout, if they registered one).
+  - **The Signed out page** (router `signed-out`,
+    `Host(<domain>) && Path(/signed-out)`, no forward-auth) is group-gate's
+    static page: no session, nothing read from the request, CSP with its
+    style hash, `form-action 'none'`, `frame-ancestors 'none'`.
 - **Keycloak's `/admin` and `/realms/master` router** uses
   `portcullis-auth-console`: the same forward-auth, minus `Authorization` in
   `authResponseHeaders`. The admin console sends its own bearer token to the

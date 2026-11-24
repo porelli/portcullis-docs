@@ -22,15 +22,22 @@ permissions:
 
 jobs:
   deploy:
+    # Only main is ever published (a dispatch on another branch does
+    # nothing here): branches and pull requests run checks.yml.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The templates' main (this job runs on main only). Read as data
+      # only: nothing from this checkout is ever run.
       - name: Clone templates repo (for manifest-based catalog)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: porelli/portcullis-templates
+          ref: main
           path: portcullis-templates
+          persist-credentials: false
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -42,6 +49,15 @@ jobs:
 
       - name: Install dependencies
         run: pip install --disable-pip-version-check -r requirements.txt
+
+      # scripts/svgsafe.py (the logo lint the generator runs) is a byte copy
+      # of the templates' tests/svgsafe.py, compared as data.
+      - name: svgsafe copy matches the templates repo
+        run: python scripts/check-svgsafe-copy.py portcullis-templates
+
+      # The generator's logo copy and credit (symlinks, the lint, escaping).
+      - name: Generator tests
+        run: python -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Generate app catalog from manifests
         run: python scripts/generate-app-docs.py --source portcullis-templates

@@ -7,6 +7,13 @@
 **Website:** <https://kanboard.org/>  
 **Source:** <https://github.com/kanboard/kanboard>
 
+## About
+
+<div class="app-long-description">
+<p>Kanboard is a minimalist Kanban project management tool: boards with columns and swimlanes, tasks with subtasks, due dates and comments, and simple analytics.</p>
+<p>Portcullis signs people in and passes their username to Kanboard, which creates their account on first sign-in.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -19,8 +26,17 @@
 | **Admin Group** | `admin_kanboard` |
 | **Subdomain** | `kanboard` |
 
-!!! info "Auth Notes"
-    No public exceptions: Kanboard's router reads ?controller=&action= before the path (app/Core/Http/Router.php), so any public prefix would reach every APP_PUBLIC action, local password login included. Reverse proxy auth: users are matched on X-Forwarded-User, the immutable LLDAP username, honoured only from Traefik (TRUSTED_PROXY_NETWORKS = PORTCULLIS_TRAEFIK_SOURCE). X-Forwarded-Email (user-editable) only fills the profile email and is ignored from other peers too. Auto-creates users on first login. The LLDAP user picked in "Kanboard administrator" (default admin = LLDAP's built-in admin) gets the Kanboard admin role; other roles are set in the Kanboard UI. Access gated by group-gate. Accounts created when the header carried the email are named after it; rename them to the LLDAP username in Kanboard.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Reverse proxy auth: users are matched on <code>X-Forwarded-User</code>, the immutable LLDAP username, and auto-created on first login. Access gated by group-gate.</p>
+<ul>
+<li>The header is honoured only from Traefik (<code>TRUSTED_PROXY_NETWORKS</code> = <code>PORTCULLIS_TRAEFIK_SOURCE</code>).</li>
+<li><code>X-Forwarded-Email</code> (user-editable) only fills the profile email and is ignored from other peers too.</li>
+<li>The LLDAP user picked in <strong>Kanboard administrator</strong> (default <code>admin</code> = LLDAP's built-in admin) gets the Kanboard admin role; other roles are set in the Kanboard UI.</li>
+</ul>
+<p><strong>No public exceptions:</strong> Kanboard's router reads <code>?controller=&amp;action=</code> before the path (<code>app/Core/Http/Router.php</code>), so any public prefix would reach every <code>APP_PUBLIC</code> action, local password login included.</p>
+<p>Accounts created when the header carried the email are named after it; rename them to the LLDAP username in Kanboard.</p>
+</div>
 
 ## Routing
 
@@ -28,7 +44,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `kanboard` | `kanboard.<domain>` | all | `authaware@file` | :white_check_mark: |
+| `kanboard` | `kanboard.<domain>` | all | `default` | :white_check_mark: |
 
 ## AI support
 

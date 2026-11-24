@@ -30,7 +30,7 @@ exactly as on a real install. Every step drives the stack through
     - the realm export's sign-in flows (contract §8.1): `portcullis-universal` = REQUIRED `portcullis-authenticate` + REQUIRED `portcullis-template`, `portcullis-signin` (x509 · passkey sub-flow · password form), one conditional sub-flow per passkey kind with its `kind` and `method` configs, no `conditional-level-of-authentication` anywhere, `acr.loa.map` `{}`, every reference config `maxAge` 36000, the invite configs `inv`, brute force, the passwordless policy, every config used once
     - `docker-compose.yml`: the keycloak image is `${KEYCLOAK_IMAGE:-ghcr.io/porelli/portcullis-keycloak:edge}` and it mounts `hub_data:/hub-data:ro`; the theme's `webauthn-register.ftl` passes `portcullisHints` and `webauthnRegister.js` asks for direct attestation and sets `hints`
     - `version` shows the Keycloak image and honours `KEYCLOAK_IMAGE`
-    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `authaware` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `authaware@file`; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
+    - static TLS options (contract §5 "TLS tier per host"): `MTLS_ENABLED` appears nowhere in `portcullis`, `scripts/lib`, `docker-compose.yml` or `.env.example`; tracked `traefik/dynamic/tls.yml` defines exactly `protected` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain-yubikey.crt`), `protected-any` (`RequireAndVerifyClientCert`, `caFiles` exactly `/certs/ca-chain.crt`), `default` (`VerifyClientCertIfGiven`, `/certs/ca-chain.crt`) and `public` (no `clientAuth`), each `VersionTLS12`, `sniStrict: false`; `config apply` leaves it byte-identical and writes nothing else under `traefik/`; every core router in `docker-compose.yml` uses `tls.options: default` (Traefik's own default options); `authaware` and `default@file` appear nowhere in the tracked config, compose files, chart, admission policies, scripts, CI or e2e; the Hub mounts the checkout read-only, no writable mount of the hub service (short or long syntax: bind, volume, tmpfs) has `traefik` in its source or target, the writable ones are exactly `./templates`, `./appfiles`, the two masking tmpfs, `hub_data` and `hub_secrets`, and the check itself catches a planted short- and long-syntax rw bind of `./traefik`
     - enroll's Vault policy `vault/policies/enroll.hcl` grants exactly the contract §8.1 paths (sign with `client-cert` / `browser-cert`, list and read certificates, revoke and rotate the CRL, on `pki_int` and `pki_file`) and nothing else; its SSH part is exactly contract §18.7's (role TTLs exactly the twelve whole hours up to 12 h)
     - `ssh_setup` (stub vault): a fresh Vault gets both mounts, caps, CAs and the host role; a second run creates nothing; another cap, CA key type or engine at `ssh_user` / `ssh_host` fails naming it and changes nothing
     - `cert list --all` (stub `vault`) shows KIND `YubiKey` / `Browser` and revoked rows; `cert revoke` finds a `pki_file` serial after `pki_int`, revokes it there and rotates `pki_file`'s CRL; `cert enroll`'s renewal hint names `https://people.<domain>/signin`
@@ -45,6 +45,7 @@ exactly as on a real install. Every step drives the stack through
     - `invite --replace-keys` deletes every passkey kind (`webauthn`, `webauthn-passwordless`, `portcullis-device-passkey`, `portcullis-security-key`), never a password or OTP credential, then signs the person out
     - `keycloak configure` re-reads the passkey policy after its PUT and fails when it still differs; `status` fails on a drifted passkey policy (a ✗ line, `--json` `keycloak.passkey_policy`, the textfile gauge)
     - `keycloak configure` ensures the impersonation mapper on `acr` (once, by `protocolMapper`) and enables the `portcullis-impersonation-notice` required action, failing when the realm lacks it
+    - `keycloak configure` registers a missing `portcullis-let-through` required action and enables it at priority 1000, never a default action; `realm-export.json` holds exactly the pinned entry (`KC_LET_THROUGH`)
     - `keycloak configure`'s `portcullis-forward-auth` patch: the main callback plus every `https://<valid hostname>/oauth2/callback` the Hub added (extra-domain hosts), nothing else, idempotent
     - the realm export's invite post-broker flow `portcullis-invite-session`: client-scope check (`portcullis-invite-client`, not negated), deny unless admitted, then amr `inv` (10 h) and `portcullis-template`; the marker scope is no default anywhere in the export
     - `dns plan / setup / check` (stub `docker`): the tool's stdin JSON maps each provider's `.env` variables to its credential keys and never puts a value on a command line; a missing credential fails naming the variable (never its value) before the tool starts, while `dns check` works without credentials; plan / confirm / `--yes` (required without a terminal), `--only`, `DNS_NOMAIL`, `DNS_CAA=yes` refused; a `--check` option on `dns setup` is a usage error pointing to `dns check`; the Traefik account URI read from an `acme.json` fixture (`dns setup` keeps Traefik's pin; an unreadable account leaves the live CAA alone); `config apply` on an `ACME_STAGING` flip relaxes the CAA **before** clearing `acme.json`, and refuses mixed Hetzner credentials; `up` writes `main-domain.env` (0600) and tightens the pin; `status`'s DNS block, its `--json` `dns` and the two textfile metrics, the lost-account Problem
@@ -72,7 +73,7 @@ exactly as on a real install. Every step drives the stack through
     - the identity headers and attribute headers returned on allow
     - `expiring` array: membership treated as absent once `now >= at`, token withholding (`Authorization` and `X-Forwarded-Access-Token` withheld when an expired membership is stripped)
     - branding (`BrandingTest`): the inline mark and `data:` favicon match the pinned sha256 of `concept-1-mark-dark.svg` and `favicon.svg`; every group-gate page (portal, step-up, present-certificate, needs-stronger in both forms, ended, deny) carries both; `PORTAL_CSP` and `SIGNIN_CSP` allow `img-src data:`; no page loads anything external
-- **`tests/test_branding.py`** (step "branding copies"): the Keycloak login theme's favicon and mark are byte copies of the branding source (the pinned sha256 of `favicon.ico` and `concept-1-mark-dark.svg`), `theme.properties` loads `css/portcullis.css` after `css/styles.css`, and that stylesheet puts `../img/portcullis-mark.svg` in `#kc-header-wrapper::before`.
+- **`tests/test_branding.py`** (step "branding copies"): the Keycloak login theme's favicon and mark are byte copies of the branding source (the pinned sha256 of `favicon.ico` and `concept-1-mark-dark.svg`), `theme.properties` loads `css/portcullis.css` after `css/styles.css`, and that stylesheet puts `../img/portcullis-mark.svg` in `#kc-header-wrapper::before`; the gate's art (`portcullis-arch.svg`, `portcullis-gate.svg`: the logo's colours and arch, viewBox 32 × 34, no script), `scripts=js/portcullis-gate.js`, and the stylesheet's drop / rise / still / reduced-motion rules.
 - **`tests/test_e2e_fsops.py`** (step "e2e helper unit tests"). It runs with the same venv's interpreter, and needs nothing but the standard library. It tests `run_op` from `tests/e2e/e2e_fsops.py`, the module `e2e_filesharing.py` takes it from, against a fake Hub API. No stack, network or Playwright is involved:
     - a busy `409` whose record is the Hub's own running `restart` is waited for, polled by that restart's `op_id`. If the restart ends ok, the operation is sent exactly once more; if it ends failed, the test fails with its record.
     - any other `409` fails at once: another op, a restart that is no longer running, plain text, or a second `409` after the resend.
@@ -85,6 +86,7 @@ exactly as on a real install. Every step drives the stack through
     - `navigate`: `page.goto` / `page.reload` through `network_retries` (checked with a fake page: a raised abort, a `chrome-error://` page, the reload, the bound, another error not retried).
     - `mail_status_view` / `sync_problem`: `./portcullis mail status --json` is read at exit 0 and 1 (1 only says a check is a Problem); exit 2, no JSON, or a document whose `problem` disagrees with the exit is a failed read. The sync has converged when the provider is wired, reachable, owes no void, isn't held, and has applied the Hub's generation.
     - `confirm_phrase` / `pending_uuids`: the phrase the Hub's `400` asks to be typed (also inside a JSON error body), and the pending removal's uuids. A missing, confirmed, empty or blank-uuid pending removal fails.
+    - `admin_view_problems`: the read-only mail admin view's flow as the browser saw it (method, status, URL per response). Every step of `ADMIN_VIEW_STEPS` (the Hub's `POST /api/mail/admin-view`, the start page and its script, the ticket's `POST /portcullis/open`, `/admin/`, `/api/discover/`, `/login`, `POST /auth/token`, `POST /jmap`) answered below 400 at least once, and no 421 or 403 anywhere; a missing or failed step, or a 421 / 403, is a problem. URLs are reported without their query.
 
     The Python unit tests are plain `unittest` scripts, run one by one; CI has no pytest. Locally, `python3 -m pytest -q tests/` collects the same files.
 
@@ -203,6 +205,7 @@ the internal PKI) and verifies:
     - runs as non-root
     - talks to Docker only via its proxy
     - answers 403 without the proxy secret
+    - no 421 for a reused connection (contract §5 "TLS tier per host"): `curl --http2` with SNI `mail.<d>` (no HTTPS router of its own, so Traefik's `default` TLS options) and `Host: hub.<d>` on one connection reaches the hub router (302 / 401 / 403 over HTTP/2), never 421 Misdirected Request. It answered 421 while the core routers were on `authaware@file`
     - on a fresh install publishes policy file v6 with the four starting methods, Standard the default and Strong on `hub` / `people` (`GET /api/signin` agrees), which group-gate applies to an app without its own pick: a step-up for no session, through for a synced passkey, a security key or a bound certificate
     - an admin's `PUT /api/signin/default` to Strong reaches group-gate (a synced session gets the step-up or needs-stronger page, a bound certificate still opens the app), and back to Standard
     - the revocation test's precondition is live: testuser's bound `mtls` session opens the test router before the revocation, so only the revocation can turn 200 into 403
@@ -242,7 +245,21 @@ the internal PKI) and verifies:
   (no `_oauth2_proxy_0…`), under 512 bytes, whose value decodes to an
   oauth2-proxy ticket `v2.<id>.<secret>` with id `_oauth2_proxy-<32 hex>`,
   and the store holds that key (not readable by `forward-auth-ext`).
-  `/oauth2/sign_out` deletes it, and the old cookie then gets 401.
+  Then sign-out (contract §5 "Sign out"): a cross-site GET of
+  `/oauth2/sign_out` (also with `?rd=` and a longer path) gets the `405`
+  confirmation page and ends nothing; a cross-site POST, a POST with a
+  foreign `Origin`, one from an app (`Origin: https://app.portcullis.local`,
+  same-site), a same-site one with `Origin: null`, a same-site POST with
+  `?rd=` and a form-encoded one are
+  `403` and end nothing (each time the ticket is still in the store,
+  `/oauth2/auth` still answers 202 and testuser's Keycloak session — the
+  admin API — is still there). The Hub's site-bar POST (`Sec-Fetch-Site:
+  same-site`, `Origin: https://hub.portcullis.local`, `text/plain`) answers `302` to exactly
+  `https://portcullis.local/signed-out`; the ticket is then gone from the
+  store, the old cookie gets 401 at `/oauth2/auth`, this sign-in's Keycloak
+  session is gone, Traefik's access log gained no `id_token_hint` and
+  oauth2-proxy logged no backend-logout error, the portal redirects to sign-in, and the Signed out page
+  answers 200 without a session.
 - **CLI.** `./portcullis status`.
 - **Backup round-trip.** It runs, in order:
     - `./portcullis backup` with nothing stopped, then `backup verify --local`. A deliberately damaged backup must fail verification.
@@ -312,7 +329,7 @@ them. Any password field fails the test.
 4. The session reaches the app.
 5. Apps get the **username** as `X-Forwarded-User`, and spoofed identity headers are dropped. A forged unsigned `X-Forwarded-Access-Token` / `Authorization` (amr `hwk`, `mtls`, the user's own name) never reaches the app, and on `mtls.` the real session still gets group-gate's step-up to `yubikey_cert` (a forged amr `mtls` reaching group-gate would show present-certificate instead).
 6. `path_groups`: `/admin` needs `admin_e2e`. `/%61dmin`, `//admin`, `/x/../admin` and `/ADMIN` are denied, while `/administrator` is allowed.
-7. A second login in a fresh browser with the same key is one passkey assertion.
+7. A second login in a fresh browser with the same key is one passkey assertion, through exactly one "Let through — opening hwk.&lt;domain&gt;…" page (the forward-auth app's host from oauth2-proxy's state, never `auth.<domain>`), which continues to the app on its own.
 8. Group denial for a user not in `users_e2e` (also onboarded by setup link).
 9. The bootstrap admin's link lands on the portal (`https://<domain>/`) with the Hub link, after one step-up asking for any passkey (`pc_method=passkey`).
 10. An unused setup link, redeemed and then steered to another client's authorize endpoint with `kc_idp_hint=portcullis-invite` (client `e2e-invite-bypass`, created by the job), is denied by the invite post-broker flow: no code for the client, no passkey registered.
@@ -322,7 +339,7 @@ them. Any password field fails the test.
 13. A revoked YubiKey certificate is rejected.
 14. A certificate from a foreign CA is rejected in the TLS handshake.
 
-`login_theme_brand`: on the first Keycloak sign-in page the `portcullis` theme loads `css/portcullis.css`, the header's `::before` shows `portcullis-mark.svg`, and the page's `link[rel=icon]` answers `200` with the pinned `favicon.ico` bytes.
+`login_theme_brand`: on the first Keycloak sign-in page the `portcullis` theme loads `css/portcullis.css`, the header's `::before` shows `portcullis-mark.svg`, and the page's `link[rel=icon]` answers `200` with the pinned `favicon.ico` bytes; the gate is drawn (`#keycloak-bg::before` shows `portcullis-gate.svg`, `::after` `portcullis-arch.svg`, the drop animation, `js/portcullis-gate.js` loaded).
 
 `tests/e2e/e2e_invite.py <setup-link> <landing-url>` runs the setup-link
 checks (registration, no password, `--expect-amr hwk` in CI: the token's passkey method is exactly that one; the re-invite counts one step-up click and one passkey click; the step-up after the link with one more
@@ -386,7 +403,7 @@ a setting's variable (`ECHO_STOP_GRACE`) are refused with `400`, the reset
 - two instances, two groups: each user reaches only their instance;
 - a backup longer than 60 s through `hub.<domain>`: `202`, a concurrent
   request `409`, the op record ends ok (Traefik keeps its default timeouts);
-- `domains_dns_panel`: in Settings → Domains, the **DNS** button of
+- `domains_dns_panel`: in Settings → Network → Domains, the **DNS** button of
   `team-b.test` opens its [DNS panel](hub.md#the-dns-panel); every `caa`
   row's status is `ok` and the CAA line says "would issue: yes" (the
   e2e-instances domains override sets `DNS_CAA_ISSUER=pebble.test`).
@@ -590,7 +607,7 @@ restored policy). In order:
       without it; `echo-anycert` on `protected@file`, since the switch drops
       `browser_cert` from every compiled rule and `e2e-anycert` becomes
       any[`yubikey_cert`]; `echo-file`, on the default Standard meanwhile,
-      on `authaware@file`): on `echo-file` the same valid `.p12` alone leaves
+      on `default`): on `echo-file` the same valid `.p12` alone leaves
       the browser on Keycloak's passkey prompt with no LOGIN event, and
       alice's earlier file session gets `403`.
       Everything is switched back in a `finally` (`echo-file` /
@@ -657,21 +674,21 @@ restored policy). In order:
       already used", `404`).
 16. **TLS follows the switches** (last; it restarts apps): with both
     certificate methods on, `echo-std` and `echo-basic` are on
-    `authaware@file` and `openssl s_client -servername <host>` shows
+    `default` and `openssl s_client -servername <host>` shows
     "Acceptable client certificate CA names". Standard saved as
     any[`family:passkey`], the instances off the certificate templates,
     `hub` / `people` on `standard`, Strong, YubiKey + certificate,
     `e2e-cert`, `e2e-file` and `e2e-anycert` disabled → `echo-std` on
     `public@file` with no CA names; `echo-basic` (Basic still names
-    `family:certificate`) stays on `authaware@file` while `browser_cert` alone
+    `family:certificate`) stays on `default` while `browser_cert` alone
     is on — checked on six samples over 30 s once the Hub has applied
     `yubikey_cert` off (both published files without it, the Hub's own tier
-    for `echo-basic` `authaware@file`, no `echo-basic` op running) — and moves only when both `yubikey_cert` and `browser_cert` are
+    for `echo-basic` `default`, no `echo-basic` op running) — and moves only when both `yubikey_cert` and `browser_cert` are
     switched off. `auth.<d>` and `hub.<d>` keep their CA names (core routers
-    stay on `authaware`). Then everything is put back (in a `finally`, also
+    stay on `default`). Then everything is put back (in a `finally`, also
     when a step failed) and compared with the snapshot taken before (methods,
     templates and rules, default, core pages, instance picks), and both apps
-    are back on `authaware@file` with CA names.
+    are back on `default` with CA names.
 
 17. **Signing in as someone else** (the job's `.env` sets
     `IMPERSONATION_MAX_MINUTES=2`, for every case). Each case starts with
@@ -709,7 +726,8 @@ restored policy). In order:
     - **`imp_refused_concurrent`:** root's second start → `409` "Stop it
       first"; sam on alice → `409` "root is signed in as alice right now".
     - **`imp_stop`:** Stop on the portal → the Stop page POSTs, the browser
-      goes through `/oauth2/sign_out`, then to the sign-in page, or, since
+      POSTs `/oauth2/sign_out` and lands on the Signed out page; its **Sign
+      in again** leads to the sign-in page, or, since
       the browser presents root's YubiKey certificate, to the portal as root
       with no `act` / `pc_imp`; within 20 s alice has no impersonated
       Keycloak session; the old `_oauth2_proxy` cookie replayed on the app
@@ -724,6 +742,16 @@ restored policy). In order:
       in a new context: the notice reads "root signed in as you on … UTC
       for … min: checking quota.", Continue reaches her app, and her next
       sign-in shows no notice.
+    - **`site_bar_sign_out`:** alice's own YubiKey-certificate session: the
+      portal's and the Sign-in page's site bar show "Signed in as alice"
+      and the POST Sign out (screenshots `sign-out-bar-portal`,
+      `sign-out-bar-signin`); a link from another page to
+      `/oauth2/sign_out?rd=…` (a cross-site navigation) shows the
+      confirmation and her ticket still answers `202` at `/oauth2/auth`;
+      Sign out on the Sign-in page lands on the Signed out page
+      (`sign-out-signed-out`), the old `_oauth2_proxy` ticket then gets
+      `401` there and `echo-std` redirects to sign-in, her Keycloak session
+      is gone, and **Sign in again** goes to sign-in.
     - **`imp_refused_proofs`:** sam's synced-passkey proof, root's
       browser-certificate proof and bob's proof → `403`; reason "ab" →
       `400`. (The password case is the Hub's unit test: root has no
@@ -983,6 +1011,7 @@ attempts, each noted in the job summary. **Nothing leaves the runner:** outbound
 fake zone's. `tests/e2e/e2e_mail.py` runs, in order:
 
 - **setup**: people in and out of `mail_users`, the list `team`, every account answering RCPT, DKIM Ed25519 and RSA active for both domains (`./portcullis mail rotate`), and the mail passwords created on the Sign-in page (fresh-auth popup, shown once).
+- **17 admin_view_end_to_end** (first, while `stalwart` is wired): root opens the read-only admin view from the Hub's Mail tab (`#apps/stalwart/mail`, **Open … admin (read-only)**). The start page takes the ticket over its MessageChannel and posts it. Stalwart's web admin shows its sign-in form, the test types any name, the view answers discovery, sign-in and token, and a JMAP read answers 200 (screenshots `admin-view-<leg>-signin` / `-readonly`). Then, in a fresh context with root's cookies, `https://mail.<d>/` first (no HTTPS router: Traefik's `default` TLS options) and the view after it, in Chromium and in WebKit (`E2E_WEBKIT=1`; CI installs Playwright's WebKit). In every leg `admin_view_problems` must find nothing: no 421 or 403 anywhere, every step answered (contract §5 "TLS tier per host": a 421 there means the core pages' options aren't Traefik's `default`).
 - **1 exchange_both_ways**: the remote's `Authentication-Results` show `dkim=pass` for an Ed25519 and an RSA signature, `spf=pass` and `dmarc=pass`; mail from the remote arrives; the remote's DMARC aggregate report reaches `dmarc-reports@` and shows in `GET /api/mail/checks`.
 - **2 enrolled_domain_alias**: a person receives at and sends as their `team-b.test` address.
 - **3 gtube_rejected_at_data**: GTUBE in the Subject is refused with `550 5.7.1` at DATA; a message scoring between the thresholds lands in Junk with `X-Spam-*` (`between_thresholds_to_junk`).
@@ -1255,6 +1284,7 @@ The whole stack on a real k3s on `ubuntu-26.04` (90 min), never kind or k3d ([Ku
     - `e2e-k3s-chart-admission.sh`: every chart object in the apps and edge namespaces admitted as the CLI's identity, and the ones the policies judge refused as the Hub's;
     - `e2e-k3s-rebind.sh`: while the Hub's ServiceAccount creates a route on a reserved host in a loop, two `up`s change the params generation; not one create may be admitted, and afterwards exactly one generation's six bindings exist.
 - **The Hub** (`tests/e2e/e2e_k3s.py`): instances deployed, backed up, restored and deleted; the fixer.
+- **Sign out** (`.github/ci/e2e-k3s-signout.sh`, after the Hub phase): first Keycloak can read `/hub-data/signin-keycloak.json` but can't list or write `hub-data`; then testuser's YubiKey-certificate sign-in through forward-auth (curl, the Let through form posted), then the site bar's POST to `/oauth2/sign_out`: `302` to `https://<domain>/signed-out`, the old ticket `401` at `/oauth2/auth`, this sign-in's Keycloak session gone (admin API through a port-forward), oauth2-proxy logged no backend-logout error, and Traefik's access log gained no `id_token_hint` line (the backend logout goes to `keycloak-internal:8081`, whose logout path is the access-log-free router `kcinternal-logout`).
 - **VPN**: `vpn init` with the built-in VPN on, a device handshake through `wg-people`, `vpn mode admin` and the break-glass `vpn mode apps`.
 - **Docker → Kubernetes restore**: the Docker phase's backup restored onto the cluster.
 
@@ -1808,6 +1838,21 @@ sign-in with the password and a `pyotp` code, amr `pwd` + `otp`;
 Keycloak's page, mask it and take no screenshot while it is shown;
 `PROVIDER_IDS` lists `portcullis-otp` and `CONFIGURE_TOTP`, and `pyotp` is
 pinned with hashes in its own `.github/smoke/requirements-totp.txt`.
+The "Let through" page (contract §8.1 "Let through"): the live sign-in run
+sees exactly one after the password sign-in and the passkey registration
+(continued by its own script) and none on SSO reuse; "x509 kinds" (plain
+HTTP, no browser) posts the page's form as the script would, once per
+certificate sign-in, and checks it targets the required action;
+`PROVIDER_IDS` lists `portcullis-let-through`. The unit tests
+(`LetThroughTest`) cover when it is added (a method ran, not the SSO cookie
+alone, not an application-initiated action or action token, at most once),
+the host (the `redirect_uri`'s; oauth2-proxy's `state` only for
+`portcullis-forward-auth` on exactly `auth.<domain>` and only a host in
+`app_hosts`: an extra-domain apex such as `example.co.uk`, a
+`*.duckdns.org` parent, a crafted state for an unpublished host under
+`<domain>` and a published one are each covered) and the page's escaping;
+`SigninConfigTest` the `app_hosts` rules. The Hub's `appHosts` tests, and
+e2e-signin's check of the published `app_hosts`, cover the list itself.
 
 ## AI support manual checklist
 

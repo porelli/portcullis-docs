@@ -7,6 +7,13 @@
 **Website:** <https://getartcraft.com/apps/filmcraft>  
 **Source:** <https://github.com/storytold/filmcraft>
 
+## About
+
+<div class="app-long-description">
+<p>FilmCraft is ArtCraft's non-linear video editor. It is written in Rust and compiled to WebAssembly, so it runs entirely in the browser: footage and projects stay on the person's own device and the server only serves static files.</p>
+<p>FilmCraft is in development. Portcullis sign-in and the access group are its only login.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -19,8 +26,21 @@
 | **Admin Group** | `admin_filmcraft` |
 | **Subdomain** | `filmcraft` |
 
-!!! info "Auth Notes"
-    In development upstream (https://getartcraft.com/apps): expect missing features and breaking changes between versions. FilmCraft (https://github.com/storytold/filmcraft, Apache-2.0 OR MIT) is a static site: the app runs in the visitor's browser and has no user system, no server-side code and no server-side storage. Open uses the browser's file picker, Save/Export download files; preferences live in the browser's storage for this hostname. Portcullis sign-in (forward-auth + group-gate) is the only login; every member of the access group gets the same app (there are no roles). At every start the filmcraft-fetch init container downloads the release's filmcraft-web-<version>.zip from GitHub, checks its SHA-256 against the pin before unpacking, and swaps the unpacked site into the filmcraft-site volume by rename; on any error it exits non-zero and the web server doesn't start (an unchanged pin skips the download). The host needs outbound HTTPS to github.com. The web server (nginx-unprivileged, read-only, no directory listing) answers only Traefik and itself. Version: the Release version / Release SHA-256 settings default to the pin in compose.yml (bumped with the template); set both together, from the release's SHA256SUMS.txt, to pin another release.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/storytold/filmcraft">FilmCraft</a> (Apache-2.0 OR MIT) is a static site: the app runs in the visitor's browser and has no user system, no server-side code and no server-side storage. Portcullis sign-in (forward-auth + group-gate) is the only login.</p>
+<p><strong>In development upstream</strong> (<a target="_blank" rel="noopener noreferrer nofollow" href="https://getartcraft.com/apps">https://getartcraft.com/apps</a>): expect missing features and breaking changes between versions.</p>
+<ul>
+<li>Every member of the access group gets the same app (there are no roles).</li>
+<li>Open uses the browser's file picker, Save/Export download files; preferences live in the browser's storage for this hostname.</li>
+</ul>
+<p><strong>How it is served:</strong> at every start the <code>filmcraft-fetch</code> init container downloads the release's <code>filmcraft-web-&lt;version&gt;.zip</code> from GitHub, checks its SHA-256 against the pin before unpacking, and swaps the unpacked site into the <code>filmcraft-site</code> volume by rename. On any error it exits non-zero and the web server doesn't start (an unchanged pin skips the download).</p>
+<ul>
+<li>The host needs outbound HTTPS to github.com.</li>
+<li>The web server (nginx-unprivileged, read-only, no directory listing) answers only Traefik and itself.</li>
+</ul>
+<p><strong>Version:</strong> the <strong>Release version</strong> / <strong>Release SHA-256</strong> settings default to the pin in <code>compose.yml</code> (bumped with the template); set both together, from the release's <code>SHA256SUMS.txt</code>, to pin another release.</p>
+</div>
 
 ## Routing
 
@@ -28,7 +48,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `filmcraft` | `filmcraft.<domain>` | all | `authaware@file` | :white_check_mark: |
+| `filmcraft` | `filmcraft.<domain>` | all | `default` | :white_check_mark: |
 
 ## AI support
 

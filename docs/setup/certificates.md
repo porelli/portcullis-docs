@@ -150,15 +150,31 @@ and defines four TLS option sets:
 |------|---------------|--------|----------|
 | **protected** | `RequireAndVerifyClientCert` | `certs/ca-chain-yubikey.crt` (the YubiKey CA alone) | A **YubiKey** certificate is **required**. Without one, the TLS handshake fails; a browser certificate never passes |
 | **protected-any** | `RequireAndVerifyClientCert` | `certs/ca-chain.crt` (root + both CAs) | A YubiKey or browser certificate is **required** |
-| **authaware** | `VerifyClientCertIfGiven` | `certs/ca-chain.crt` | A certificate is **optional**, verified if present |
+| **default** | `VerifyClientCertIfGiven` | `certs/ca-chain.crt` | A certificate is **optional**, verified if present |
 | **public** | no `clientAuth` | — | No certificate requested |
 
 Which method a certificate counts as decides Keycloak and group-gate by its
 issuer.
 
+**Why the optional tier is Traefik's `default`.** Browsers reuse one HTTP/2
+connection for every name under your domain (same address, wildcard
+certificate). On a reused connection Traefik compares the *names* of the TLS
+options the connection was made with and the ones the requested page's router
+uses, and answers `421 Misdirected Request` when they differ. A name with no
+HTTPS router of its own (`mail.<domain>`, a typo) always gets Traefik's
+`default` options. Because the optional tier **is** `default`, opening such a
+name never breaks the core pages or the apps on that tier afterwards. Routers
+name it `tls.options: default` (bare, never `default@file`); on Kubernetes an
+IngressRoute on this tier has no `tls.options`.
+
+Hosts on `public`, `protected` or `protected-any` still use options of another
+name. Chromium retries a 421 on a new connection, but WebKit (Safari) doesn't.
+In Safari, a page of such an app can still make a core page answer 421 on the
+same connection.
+
 **Certificate requests follow the switches.** All core routers (`auth`,
 `hub`, `people`, the portal, `enroll-invite`, `traefik`, `directory`,
-`metrics`, `mcp`) always use `authaware`: core pages always offer an optional
+`metrics`, `mcp`) always use `default`: core pages always offer an optional
 certificate, and a browser without one shows nothing. For apps, the Hub picks
 the tier from the app's
 [sign-in template](../operations/auth-policies.md#traefik-tls-tier) and the
@@ -170,12 +186,12 @@ compose override:
   `protected`;
 - every alternative needs a certificate, and at least one accepts the
   browser certificate → `protected-any`;
-- some alternative has one → `authaware`;
+- some alternative has one → `default`;
 - none has one (for example both certificate methods are off), or the app
   has no Portcullis sign-in → `public`, so the browser is never asked.
 
 While an app has open [public exceptions](../operations/auth-policies.md#public-exceptions),
-`protected` and `protected-any` become `authaware` for all of its routers.
+`protected` and `protected-any` become `default` for all of its routers.
 
 You change it in the Hub (Settings → Sign-in, or the app's template), not in
 the template's `compose.yml`.
@@ -271,7 +287,7 @@ fewer than `CERT_EXPIRY_WARN_DAYS` (default 7) days left:
 
 ### Certificate login through Keycloak
 
-`auth.<domain>` uses the **authaware** tier, so the browser can present a
+`auth.<domain>` uses the **default** tier, so the browser can present a
 YubiKey or browser certificate to Keycloak:
 
 1. Traefik verifies the certificate against `certs/ca-chain.crt`.
@@ -455,7 +471,7 @@ intermediates signed by it, one per certificate kind:
   certificates only, EC P-256 keys, the CN never taken from a request,
   `max_ttl=$CLIENT_CERT_TTL`) and is rewritten on every run.
 - `certs/ca-chain.crt` is root + `pki_int` + `pki_file`, in that order (the
-  `protected-any` and `authaware` TLS options), `certs/ca-chain-yubikey.crt`
+  `protected-any` and `default` TLS options), `certs/ca-chain-yubikey.crt`
   is `pki_int` alone, without the root (the `protected` option, so a browser
   certificate never passes it: Traefik trusts every certificate in that file
   as an anchor and uses the intermediates the browser sends, and a browser

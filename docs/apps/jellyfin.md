@@ -1,11 +1,22 @@
 # 📺 Jellyfin
 
+![Jellyfin logo](logos/jellyfin.svg){ width="64" height="64" }
+
+<p class="app-logo-credit"><small>Logo: © 2019 The Jellyfin contributors, <code>CC-BY-SA-4.0</code>, <a href="https://github.com/jellyfin/jellyfin-ux/blob/9e27258e873f64edaa9c5955e753978975ed5589/branding/SVG/icon-transparent.svg" target="_blank" rel="noopener noreferrer nofollow">source</a>. Shown only to identify the app; any trademark stays its owner's.</small></p>
+
 > Free and open-source media server — movies, TV, music, live TV
 
 **Category:** media  
 **Tags:** `media`, `movies`, `tv`, `music`, `streaming`, `opensource`  
 **Website:** <https://jellyfin.org/>  
 **Source:** <https://github.com/jellyfin/jellyfin>
+
+## About
+
+<div class="app-long-description">
+<p>Jellyfin is a free media server for movies, TV shows, music, books and live TV. It organises libraries with artwork and metadata, streams to browsers, phones and TVs, and transcodes when a device needs it.</p>
+<p>Portcullis signs people in through Jellyfin's SSO plugin. Only members of the access group can sign in, and members of the admin group are Jellyfin administrators.</p>
+</div>
 
 ## Authentication
 
@@ -19,8 +30,21 @@
 | **Admin Group** | `admin_jellyfin` |
 | **Subdomain** | `media` |
 
-!!! info "Auth Notes"
-    SSO-Auth plugin with group enforcement. Users must be in access_group to log in. Members of admin_group get Jellyfin admin. The plugin is pinned (version + SHA-256, jellyfin/plugin.py) and installed by the jellyfin-plugin one-shot before Jellyfin starts (Jellyfin doesn't start if the download doesn't match); the plugin catalog is not used. The jellyfin-setup sidecar configures it at every start. Jellyfin's own login form stays on the ungated router (the Jellyfin apps use it), but no account set up by Portcullis can sign in with a password: SSO-created accounts get a random password and the plugin's authentication provider, and setup moves the local admin it creates to that provider too (setup then authenticates with its own API key, kept in the config volume). Break-glass: admin_jellyfin members are Jellyfin administrators through SSO. Local users an administrator creates by hand do get a password login there; avoid them, or use strong passwords. TV and mobile apps sign in with Quick Connect from a signed-in browser session. Identity: the plugin creates and matches Jellyfin users by preferred_username (the immutable LLDAP username; DefaultUsernameClaim) and never sees the email (no email scope). An SSO login whose username equals an existing local Jellyfin user (e.g. the LLDAP "admin" and the local admin created by setup) is linked to it. Shared folders: the jellyfin image runs as root (no USER, no compose user:), so the library settings declare runs_as uid 0 / gid 0, read-only; on a shared folder Jellyfin joins the folder's group through group_add.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>SSO-Auth plugin with group enforcement. Users must be in <code>access_group</code> to log in; members of <code>admin_group</code> get Jellyfin admin.</p>
+<p><strong>The plugin:</strong> pinned (version + SHA-256, <code>jellyfin/plugin.py</code>) and installed by the <code>jellyfin-plugin</code> one-shot before Jellyfin starts (Jellyfin doesn't start if the download doesn't match); the plugin catalog is not used. The <code>jellyfin-setup</code> sidecar configures it at every start.</p>
+<p><strong>Password login:</strong> Jellyfin's own login form stays on the ungated router (the Jellyfin apps use it), but no account set up by Portcullis can sign in with a password:</p>
+<ul>
+<li>SSO-created accounts get a random password and the plugin's authentication provider.</li>
+<li>Setup moves the local admin it creates to that provider too (setup then authenticates with its own API key, kept in the config volume).</li>
+<li>Break-glass: <code>admin_jellyfin</code> members are Jellyfin administrators through SSO.</li>
+<li>Local users an administrator creates by hand do get a password login there; avoid them, or use strong passwords.</li>
+</ul>
+<p>TV and mobile apps sign in with Quick Connect from a signed-in browser session.</p>
+<p><strong>Identity:</strong> the plugin creates and matches Jellyfin users by <code>preferred_username</code> (the immutable LLDAP username; <code>DefaultUsernameClaim</code>) and never sees the email (no <code>email</code> scope). An SSO login whose username equals an existing local Jellyfin user (e.g. the LLDAP <code>admin</code> and the local admin created by setup) is linked to it.</p>
+<p><strong>Shared folders:</strong> the jellyfin image runs as root (no <code>USER</code>, no compose <code>user:</code>), so the library settings declare <code>runs_as</code> uid 0 / gid 0, read-only; on a shared folder Jellyfin joins the folder's group through <code>group_add</code>.</p>
+</div>
 
 ## Routing
 
@@ -28,7 +52,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `jellyfin` | `media.<domain>` | all | `authaware@file` | :x: |
+| `jellyfin` | `media.<domain>` | all | `default` | :x: |
 
 ## AI support
 

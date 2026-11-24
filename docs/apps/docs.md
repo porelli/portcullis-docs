@@ -7,6 +7,13 @@
 **Website:** <https://squidfunk.github.io/mkdocs-material/>  
 **Source:** <https://github.com/squidfunk/mkdocs-material>
 
+## About
+
+<div class="app-long-description">
+<p>A static documentation site built with Material for MkDocs: Markdown pages turned into a searchable website with navigation.</p>
+<p>It is public: anyone can read it, with no sign-in.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -17,8 +24,10 @@
 | **Group Admin** | :x: |
 | **Subdomain** | `docs` |
 
-!!! info "Auth Notes"
-    Public documentation site — no authentication required.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Public documentation site — no authentication required.</p>
+</div>
 
 ## Routing
 

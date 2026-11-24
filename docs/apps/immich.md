@@ -5,7 +5,15 @@
 **Category:** media  
 **Tags:** `photos`, `videos`, `backup`, `ai`, `gallery`  
 **Website:** <https://immich.app/>  
-**Source:** <https://github.com/immich-app/immich>
+**Source:** <https://github.com/immich-app/immich>  
+**Minimum resources:** 6 GiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>Immich backs up photos and videos from phones and computers and organises them in a timeline. It recognises faces, finds pictures by what they show using machine learning, and has albums, shared albums, a map and partner sharing.</p>
+<p>Portcullis signs people in through OpenID Connect, with password login off. Members of the admin group are Immich administrators, and storage quotas can be set per group. Albums can be shared publicly through share links.</p>
+</div>
 
 ## Authentication
 
@@ -19,8 +27,19 @@
 | **Admin Group** | `admin_immich` |
 | **Subdomain** | `photos` |
 
-!!! info "Auth Notes"
-    Full OIDC with auto-register and auto-launch; password login is disabled while OIDC is configured. Storage quota and role come from the instance settings as the token claims immich_quota (GiB, -1 = unlimited) and immich_role: members of the admin group are Immich administrators (privileged setting), and Immich re-reads both at every sign-in. Trash days and machine learning are rendered into config.json at every start. Identity: OAuth users are keyed on the OIDC sub. Immich also links a login to an existing user with the same email and cannot be told not to, while LLDAP emails are user-editable; so on every start a one-shot job (immich-lock-local-users) gives local, unlinked users (such as the initial admin@portcullis.local) a placeholder OAuth id, and Immich then refuses the email link. Do not create local users in the Immich UI (they are only locked at the next restart); let users sign in with SSO instead. A user who unlinks OAuth in their settings is locked out of SSO until an admin clears the placeholder. Public exceptions (Hub, off by default): shared links still work for signed-in users; turning them on only matters when the policy requires a client certificate at the TLS handshake, which it then no longer does for any path of photos.<domain> (mTLS stays enforced at login via the Keycloak acr). Upgrades: immich-server and immich-machine-learning are pinned to the same release and must always move together; read the upstream release notes for breaking changes and keep immich-db on the image upstream specifies. Shared folders: immich-server runs as root (no compose user:), so External photo library declares runs_as uid 0 / gid 0, read-only; on a shared folder it joins the folder's group through group_add.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Full OIDC with auto-register and auto-launch; password login is disabled while OIDC is configured. Members of the admin group are Immich administrators.</p>
+<p><strong>Settings:</strong> storage quota and role come from the instance settings as the token claims <code>immich_quota</code> (GiB, -1 = unlimited) and <code>immich_role</code>: members of the admin group are Immich administrators (privileged setting), and Immich re-reads both at every sign-in. Trash days and machine learning are rendered into <code>config.json</code> at every start.</p>
+<p><strong>Identity:</strong> OAuth users are keyed on the OIDC <code>sub</code>. Immich also links a login to an existing user with the same email and cannot be told not to, while LLDAP emails are user-editable. So on every start a one-shot job (<code>immich-lock-local-users</code>) gives local, unlinked users (such as the initial <code>admin@portcullis.local</code>) a placeholder OAuth id, and Immich then refuses the email link.</p>
+<ul>
+<li>Do not create local users in the Immich UI (they are only locked at the next restart); let users sign in with SSO instead.</li>
+<li>A user who unlinks OAuth in their settings is locked out of SSO until an admin clears the placeholder.</li>
+</ul>
+<p><strong>Public exceptions</strong> (Hub, off by default): shared links still work for signed-in users. Turning them on only matters when the policy requires a client certificate at the TLS handshake, which it then no longer does for any path of <code>photos.&lt;domain&gt;</code> (mTLS stays enforced at login via the Keycloak acr).</p>
+<p><strong>Upgrades:</strong> <code>immich-server</code> and <code>immich-machine-learning</code> are pinned to the same release and must always move together; read the upstream release notes for breaking changes and keep <code>immich-db</code> on the image upstream specifies.</p>
+<p><strong>Shared folders:</strong> <code>immich-server</code> runs as root (no compose <code>user:</code>), so <strong>External photo library</strong> declares <code>runs_as</code> uid 0 / gid 0, read-only; on a shared folder it joins the folder's group through <code>group_add</code>.</p>
+</div>
 
 ## Public Exceptions
 
@@ -55,7 +74,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `immich` | `photos.<domain>` | all | `authaware@file` | :x: |
+| `immich` | `photos.<domain>` | all | `default` | :x: |
 
 ## AI support
 

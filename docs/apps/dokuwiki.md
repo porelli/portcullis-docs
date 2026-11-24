@@ -7,6 +7,13 @@
 **Website:** <https://www.dokuwiki.org/>  
 **Source:** <https://github.com/dokuwiki/dokuwiki>
 
+## About
+
+<div class="app-long-description">
+<p>DokuWiki is a wiki that stores its pages as plain text files instead of in a database, so backups and moves are simple file copies. It has page history, access control lists and a large plugin collection.</p>
+<p>Portcullis signs people in through OpenID Connect. Members of the access group can read, edit and upload; members of the admin group are DokuWiki superusers.</p>
+</div>
+
 ## Authentication
 
 | Property | Value |
@@ -19,8 +26,24 @@
 | **Admin Group** | `admin_dokuwiki` |
 | **Subdomain** | `dokuwiki` |
 
-!!! info "Auth Notes"
-    Native OIDC through the oauth + oauthgeneric plugins (https://www.dokuwiki.org/plugin:oauth, https://www.dokuwiki.org/plugin:oauthgeneric; maintained by CosmoCode, DokuWiki's authors), vendored in the template (dokuwiki/plugins, see VENDORED; no download at start) and configured by init.sh at every start (conf/local.protected.php, which the admin UI can't override). Fail closed: init.sh first locks the wiki down (install.php deleted, no auth backend so DokuWiki grants nothing, login disabled) and only its last step writes the OIDC configuration, so a failed start leaves a wiki that nobody can read or sign in to (the container log says why). One Portcullis login: the login page only offers the Portcullis button. Why not header auth: the header plugins in the DokuWiki repository (authserversso, genericsso, authremoteuser, authenvvars) read a server variable from any client, have no proxy allowlist, map no groups and are barely maintained (https://www.dokuwiki.org/plugins?pluginsort=p&plugintype=128). Identity: the oauth plugin finds accounts by their email, and LLDAP emails are user-editable, so init.sh maps the plugin's mail field to preferred_username (the immutable LLDAP username) and disables profile edits; the account name is the username too. DokuWiki therefore has no real email addresses (no subscription mails). Rights: anonymous visitors get nothing (ACL "* @ALL 0", re-applied at every start together with "* @users_dokuwiki 8"; rules for @ALL, @user and @generic are replaced, others kept), members of users_dokuwiki read, edit and upload, and members of admin_dokuwiki are superusers. Groups follow the groups claim at each login (overwrite-groups); a realm user outside access_group can't sign in (Keycloak denies it, see below) and would get no rights anyway. Removing a user from the groups takes effect at their next login. Break-glass: there is no password form (singleService); with shell access, add a local user with bin/plugin.php usermanager and set singleService to 0 in conf/local.protected.php (until the next restart). Hostname: init.sh writes baseurl from the instance's hostname at every start, so a hostname change only needs a restart. install.php is deleted at every start (the configuration is written by init.sh). Existing local accounts keep their pages but can't sign in with a password; an LLDAP user whose name is taken by a local account gets a numbered account name (e.g. admin1). Sign-in is restricted to access_group in Keycloak (keycloak_access_role, contract §8 Access role): only access_group members can sign in, so a member of admin_group who is not also in access_group is denied — put the wiki's admins in both groups.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Native OIDC through the oauth + oauthgeneric plugins: the login page only offers the Portcullis button. Members of <code>users_dokuwiki</code> read, edit and upload; members of <code>admin_dokuwiki</code> are superusers (they must be in both groups).</p>
+<p><strong>Plugins:</strong> oauth and oauthgeneric (<a target="_blank" rel="noopener noreferrer nofollow" href="https://www.dokuwiki.org/plugin:oauth">https://www.dokuwiki.org/plugin:oauth</a>, <a target="_blank" rel="noopener noreferrer nofollow" href="https://www.dokuwiki.org/plugin:oauthgeneric">https://www.dokuwiki.org/plugin:oauthgeneric</a>; maintained by CosmoCode, DokuWiki's authors), vendored in the template (<code>dokuwiki/plugins</code>, see <code>VENDORED</code>; no download at start) and configured by <code>init.sh</code> at every start (<code>conf/local.protected.php</code>, which the admin UI can't override).</p>
+<p><strong>Fail closed:</strong> <code>init.sh</code> first locks the wiki down (<code>install.php</code> deleted, no auth backend so DokuWiki grants nothing, login disabled) and only its last step writes the OIDC configuration, so a failed start leaves a wiki that nobody can read or sign in to (the container log says why).</p>
+<p><strong>Why not header auth:</strong> the header plugins in the DokuWiki repository (authserversso, genericsso, authremoteuser, authenvvars) read a server variable from any client, have no proxy allowlist, map no groups and are barely maintained (<a target="_blank" rel="noopener noreferrer nofollow" href="https://www.dokuwiki.org/plugins?pluginsort=p&amp;plugintype=128">https://www.dokuwiki.org/plugins?pluginsort=p&amp;plugintype=128</a>).</p>
+<p><strong>Identity:</strong> the oauth plugin finds accounts by their email, and LLDAP emails are user-editable, so <code>init.sh</code> maps the plugin's mail field to <code>preferred_username</code> (the immutable LLDAP username) and disables profile edits; the account name is the username too. DokuWiki therefore has no real email addresses (no subscription mails).</p>
+<p><strong>Rights:</strong></p>
+<ul>
+<li>Anonymous visitors get nothing (ACL <code>* @ALL 0</code>, re-applied at every start together with <code>* @users_dokuwiki 8</code>; rules for <code>@ALL</code>, <code>@user</code> and <code>@generic</code> are replaced, others kept).</li>
+<li>Members of <code>users_dokuwiki</code> read, edit and upload, and members of <code>admin_dokuwiki</code> are superusers.</li>
+<li>Groups follow the <code>groups</code> claim at each login (overwrite-groups); a realm user outside <code>access_group</code> can't sign in (Keycloak denies it, see below) and would get no rights anyway. Removing a user from the groups takes effect at their next login.</li>
+<li>Sign-in is restricted to <code>access_group</code> in Keycloak (<code>keycloak_access_role</code>, contract §8 Access role): only <code>access_group</code> members can sign in, so a member of <code>admin_group</code> who is not also in <code>access_group</code> is denied — put the wiki's admins in both groups.</li>
+</ul>
+<p><strong>Break-glass:</strong> there is no password form (<code>singleService</code>). With shell access, add a local user with <code>bin/plugin.php usermanager</code> and set <code>singleService</code> to 0 in <code>conf/local.protected.php</code> (until the next restart).</p>
+<p><strong>Hostname:</strong> <code>init.sh</code> writes <code>baseurl</code> from the instance's hostname at every start, so a hostname change only needs a restart. <code>install.php</code> is deleted at every start (the configuration is written by <code>init.sh</code>).</p>
+<p>Existing local accounts keep their pages but can't sign in with a password; an LLDAP user whose name is taken by a local account gets a numbered account name (e.g. <code>admin1</code>).</p>
+</div>
 
 ## Routing
 
@@ -28,7 +51,7 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `dokuwiki` | `dokuwiki.<domain>` | all | `authaware@file` | :x: |
+| `dokuwiki` | `dokuwiki.<domain>` | all | `default` | :x: |
 
 ## AI support
 

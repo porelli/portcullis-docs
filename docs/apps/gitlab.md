@@ -5,7 +5,15 @@
 **Category:** devops  
 **Tags:** `git`, `ci-cd`, `devops`, `registry`, `issues`  
 **Website:** <https://about.gitlab.com/>  
-**Source:** <https://gitlab.com/gitlab-org/gitlab>
+**Source:** <https://gitlab.com/gitlab-org/gitlab>  
+**Minimum resources:** 8 GiB RAM
+
+## About
+
+<div class="app-long-description">
+<p>GitLab is a complete DevOps platform: Git repositories, merge requests, issues and boards, CI/CD pipelines, a container and package registry and a wiki, in one application.</p>
+<p>Portcullis signs people in through OpenID Connect, and only members of the access group can sign in or get an account. Git over HTTPS, the API, the registry and CI runners use personal access tokens.</p>
+</div>
 
 ## Authentication
 
@@ -19,8 +27,23 @@
 | **Admin Group** | `admin_gitlab` |
 | **Subdomain** | `git` |
 
-!!! info "Auth Notes"
-    Full OIDC with Keycloak. git-over-HTTPS, the API, the registry and CI runners are not behind forward-auth and work with personal access tokens. The sign-in, sign-up and OIDC paths (/users/...) are behind forward-auth + group-gate, so only members of users_gitlab can log in or have an account auto-created (GitLab CE has no OIDC group restriction; required_groups and admin_groups are Premium/Ultimate only). Existing GitLab sessions survive removal from the group until they expire; block the user in GitLab to cut access immediately. Admin rights are granted in GitLab (root account uses GITLAB_ROOT_PASSWORD); admin_gitlab is not mapped. Password logins outside the gated /users paths: GitLab's "password authentication for Git over HTTP(S)" and the OAuth password grant (/oauth/token, grant_type=password) are application settings, not gitlab.rb options, so the template can't switch them off. SSO-created accounts have no password (GitLab generates one nobody knows; resetting it goes through the gated /users/password); the root account's is GITLAB_ROOT_PASSWORD (generated). After the first start, turn off Admin > Settings > General > Sign-in restrictions > "Allow password authentication for Git over HTTP(S)" and enable two-factor authentication for root (GitLab refuses both for 2FA accounts). Identity: OIDC identities are keyed on preferred_username (uid_field, the immutable LLDAP username) and omniauth_auto_link_user is false, so an email match never attaches an OIDC login to an existing GitLab account (GitLab instead asks for that account's password). The email is not synced from Keycloak after the account is created. CA trust: GitLab's embedded OpenSSL uses the Hub's certs/ca-bundle.crt (system CAs + Portcullis' internal CA) in place of its bundled cacert.pem, so OIDC to auth.<domain> verifies with an ACME or internal certificate. Upgrades: the image is pinned; GitLab must be upgraded along its documented upgrade path (required stops between versions), never by jumping straight to the newest release.
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Full OIDC with Keycloak. Only members of <code>users_gitlab</code> can log in or have an account auto-created; git-over-HTTPS, the API, the registry and CI runners work with personal access tokens.</p>
+<p><strong>What is gated:</strong> git-over-HTTPS, the API, the registry and CI runners are not behind forward-auth. The sign-in, sign-up and OIDC paths (<code>/users/...</code>) are behind forward-auth + group-gate, so only members of <code>users_gitlab</code> can log in or have an account auto-created (GitLab CE has no OIDC group restriction; <code>required_groups</code> and <code>admin_groups</code> are Premium/Ultimate only).</p>
+<ul>
+<li>Existing GitLab sessions survive removal from the group until they expire; block the user in GitLab to cut access immediately.</li>
+<li>Admin rights are granted in GitLab (root account uses <code>GITLAB_ROOT_PASSWORD</code>); <code>admin_gitlab</code> is not mapped.</li>
+</ul>
+<p><strong>Password logins outside the gated <code>/users</code> paths:</strong> GitLab's &quot;password authentication for Git over HTTP(S)&quot; and the OAuth password grant (<code>/oauth/token</code>, <code>grant_type=password</code>) are application settings, not <code>gitlab.rb</code> options, so the template can't switch them off.</p>
+<ul>
+<li>SSO-created accounts have no password (GitLab generates one nobody knows; resetting it goes through the gated <code>/users/password</code>); the root account's is <code>GITLAB_ROOT_PASSWORD</code> (generated).</li>
+<li>After the first start, turn off <strong>Admin &gt; Settings &gt; General &gt; Sign-in restrictions &gt; Allow password authentication for Git over HTTP(S)</strong> and enable two-factor authentication for root (GitLab refuses both for 2FA accounts).</li>
+</ul>
+<p><strong>Identity:</strong> OIDC identities are keyed on <code>preferred_username</code> (<code>uid_field</code>, the immutable LLDAP username) and <code>omniauth_auto_link_user</code> is false, so an email match never attaches an OIDC login to an existing GitLab account (GitLab instead asks for that account's password). The email is not synced from Keycloak after the account is created.</p>
+<p><strong>CA trust:</strong> GitLab's embedded OpenSSL uses the Hub's <code>certs/ca-bundle.crt</code> (system CAs + Portcullis' internal CA) in place of its bundled <code>cacert.pem</code>, so OIDC to <code>auth.&lt;domain&gt;</code> verifies with an ACME or internal certificate.</p>
+<p><strong>Upgrades:</strong> the image is pinned; GitLab must be upgraded along its documented upgrade path (required stops between versions), never by jumping straight to the newest release.</p>
+</div>
 
 ## Routing
 
@@ -28,8 +51,8 @@ Traefik routers from `compose.yml`. The Hub replaces the TLS tier with the one d
 
 | Router | Host | Paths | TLS tier | Forward-auth + group-gate |
 |--------|------|-------|----------|---------------------------|
-| `gitlab` | `git.<domain>` | all | `authaware@file` | :x: |
-| `gitlab-login` | `git.<domain>` | `/users` | `authaware@file` | :white_check_mark: |
+| `gitlab` | `git.<domain>` | all | `default` | :x: |
+| `gitlab-login` | `git.<domain>` | `/users` | `default` | :white_check_mark: |
 
 ## AI support
 

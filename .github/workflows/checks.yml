@@ -1,0 +1,65 @@
+name: Checks
+
+# Nit 7 (ux3 final review): the checks deploy.yml runs before publishing,
+# on every pull request and branch push, without publishing anything.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The same-named templates branch if there is one, else main.
+      - name: Templates ref
+        id: tref
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          ref=main
+          url=https://github.com/porelli/portcullis-templates
+          if [[ "$REF" =~ ^[A-Za-z0-9._/-]+$ ]] && [ "$REF" != main ] && git ls-remote --exit-code --heads "$url" "$REF" >/dev/null; then ref="$REF"; fi
+          echo "portcullis-templates: $ref" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      # Read as data only: nothing from this checkout is ever run.
+      - name: Clone templates repo (for manifest-based catalog)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: porelli/portcullis-templates
+          ref: ${{ steps.tref.outputs.ref }}
+          path: portcullis-templates
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check -r requirements.txt
+
+      - name: svgsafe copy matches the templates repo
+        run: python scripts/check-svgsafe-copy.py portcullis-templates
+
+      - name: Generator tests
+        run: python -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Generate app catalog from manifests
+        run: python scripts/generate-app-docs.py --source portcullis-templates
+
+      - name: Branding copies
+        run: bash scripts/check-branding.sh
+
+      - name: Build
+        run: zensical build --strict --clean
+
+      - name: No literal list markers
+        run: python scripts/check-lists.py site

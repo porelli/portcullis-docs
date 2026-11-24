@@ -35,7 +35,7 @@ services:
       traefik.enable: "true"
       traefik.http.routers.nextcloud.rule: "Host(`nextcloud.${PORTCULLIS_DOMAIN}`)"
       traefik.http.routers.nextcloud.entrypoints: websecure
-      traefik.http.routers.nextcloud.tls.options: authaware@file
+      traefik.http.routers.nextcloud.tls.options: default
       traefik.http.routers.nextcloud.middlewares: security-headers@file
       traefik.http.services.nextcloud.loadbalancer.server.port: "80"
 
