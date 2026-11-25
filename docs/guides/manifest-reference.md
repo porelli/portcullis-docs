@@ -1473,7 +1473,7 @@ notes ([Stalwart](../apps/stalwart.md)).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `label` | single line, 1–64 chars | Yes | The sender's display name, e.g. `Firefox accounts`. Shown as `"<label> <address>"` |
+| `label` | single line, 1–64 chars, no `'` or `\` | Yes | The sender's display name, e.g. `Firefox accounts`. `FROM` is an RFC 5322 name-addr: `"Firefox accounts" <address>` |
 
 The Hub delivers:
 
@@ -1481,9 +1481,9 @@ The Hub delivers:
 - `PORTCULLIS_MAIL_SENDER_PORT` (`587`, STARTTLS: the normal submission listener; the sender follows LAN-only like everyone, and the provider limits it to 10 messages a minute and 60 an hour)
 - `PORTCULLIS_MAIL_SENDER_USER` (= the sender's address, `portcullis-app-<instance>@<primary_domain>`)
 - `PORTCULLIS_MAIL_SENDER_PASSWORD` (the credential's password, also written to the 0600 `.env`; never logged or audited)
-- `PORTCULLIS_MAIL_SENDER_FROM` (`"<label> <address>"`)
+- `PORTCULLIS_MAIL_SENDER_FROM` (an RFC 5322 name-addr of the label and the address, the label quoted as needed)
 
-All five are **empty while no provider is wired or mail is off**. The doctor kind `mail_sender_unwired` (Warning) names the instance.
+All five are **empty while no provider is wired or mail is off**. The doctor kind `mail_sender_unwired` (Warning) names the instance; it fires even while mail is off, and never on Kubernetes (mail can't be wired there).
 
 ```yaml
 # manifest.yaml
