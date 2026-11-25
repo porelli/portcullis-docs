@@ -7412,6 +7412,16 @@ The nodeagent serves **`https://<its mesh ip>:7443/v1`** only (no other listener
 - **The Hub** takes `portcullis-hub` before any write. Its fence answers "standing by" once the last successful renewal is older than **10 s**, measured locally with a monotonic clock, before client-go's own callback fires. Every file write goes through `fsutil`, whose gate returns the fence's error first; the state, the ops, the audit, the publishes (§4) and every apply to the cluster check it. While standing by, every request but `GET` and `HEAD` answers **`503`** `{"error": "this Hub is standing by: another Hub is the active writer"}`; `GET /healthz` reports `{"leading": bool}`; the doctor shows `ha_lease_lost`. Writes in flight stop too: standing by is final (the elector is cancelled, the Hub exits after 15 s of `503`s), the background loops stop at once, and a long writer (an exec'd git, a tree removal, a request to Keycloak, LLDAP, domains, enroll, the mail provider or a worker agent) is cancelled mid-flight. A request the other service had already applied stays applied. Start order: the data directory's lock (§6), the write gate, waiting to lead, then the start-time sweeps. The Hub on Docker and Podman always leads.
 - **The front door** without its Lease computes but never writes DNS (§20.8); it stops trying within the RenewDeadline and its status says "standing by".
 - **nodeadm** without its Lease answers every write `503` `not_leader` (§20.2).
+- **Vault** has no Lease: its three voters' raft decides the active node. In HA its raft runs at `performance_multiplier = 1` (`VAULT_RAFT_PERFORMANCE_MULTIPLIER`, the HA chart only; one voter keeps Vault's default timing), so losing the active voter normally means a new active node within **seconds** (CI measured 1.6–2.5 s). Vault has a known failure mode, the signature of hashicorp/vault#10361: the new raft leader never takes the HA lock and every standby keeps the lost active's address. The voters' readiness and liveness probe, `vault/serving.sh`, then fails on every voter; a voter that can't serve for **60 s** (`liveGrace`) is restarted. That clears it, and a voter is active again within about **90 s**. The active node always passes the probe, which never seals or steps anything down, and the startup probe (`vault status`) still guards the unseal. While no Vault node is active, every request that needs Vault waits or fails:
+    - certificates: a new browser certificate, a YubiKey renewal, a revocation, and the Sign-in page's certificate list (`503`, §9.4);
+    - SSH certificates (§18) and a node's join, which needs `pki_node` (§20.2);
+    - Vault's raft snapshot in a backup.
+
+    Sign-in with a passkey, a security key, a password or an authenticator code doesn't use Vault. Certificate sign-in (YubiKey and browser certificates) checks revocation against CRLs read from Vault:
+    - group-gate keeps its last lists (it refuses certificates only once a list is over 1 h past its next update);
+    - Keycloak caches each list until its next update.
+
+    So certificate sign-in goes on, except on a Keycloak pod started during the outage, which has no list yet.
 
 ### 20.6 Priority and *Runs on*
 
