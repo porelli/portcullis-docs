@@ -6,7 +6,7 @@ tests and signs its image.
 
 | Repo | Workflow | Jobs |
 |------|----------|------|
-| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-mail`, `e2e-ai`, `e2e-podman`, `e2e-vpn`, `e2e-k3s`, `e2e-servers`, `e2e-servers-podman`, `e2e-ssh`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
+| core (`porelli/portcullis`) | `.github/workflows/ci.yml`, `release.yml` | `unit-tests`, `build-and-test`, `e2e`, `e2e-instances`, `e2e-signin`, `e2e-settings`, `e2e-folders`, `e2e-filesharing`, `e2e-mail`, `e2e-fxa`, `e2e-ai`, `e2e-podman`, `e2e-vpn`, `e2e-k3s`, `e2e-servers`, `e2e-servers-podman`, `e2e-ssh`; release: `preflight` → `ci` (reusable `ci.yml`) → `release` |
 | templates (`porelli/portcullis-templates`) | `lint.yml`, `test-apps.yml`, `docs-dispatch.yml` | `lint`; `gate` → `changes` → `fetch-core` (+ `app-images` on push to `main`) → `test`; `dispatch` |
 | Hub (`porelli/portcullis-hub`) | `build.yml` | `test`, `build` |
 | Keycloak image (`porelli/portcullis-keycloak`) | `build.yml` | `test`, `vectors`, `smoke`, `publish` |
@@ -1052,6 +1052,73 @@ and there are no Playwright traces). One scenario on its own:
 `.github/ci/local/run-job.sh e2e-mail --scenario 11 --local <checkout>` on a
 Docker host, or `-f scenarios="11 switch_provider"` on GitHub
 ([below](#single-scenario-reruns-scenarios)).
+
+### `e2e-fxa` (Firefox Sync + own accounts)
+
+`e2e-mail`'s stack (the same start script, with the templates repo's
+`firefox-sync-fxa` added to the Hub's source, same-named templates branch)
+and its remote Stalwart, where every person's mailbox is (`remote.test`):
+each code the Hub or the accounts server sends crosses the path it takes
+on a server, through Portcullis's submission listener (the sender's
+password, STARTTLS required), its outbound queue and the remote's MX, which
+checks DKIM. Two things make the runner behave like a server:
+
+- **The server's names resolve for containers.** `.github/ci/e2e-fxa-dns.sh`
+  (first, before any container) gives systemd-resolved a stub listener on
+  the runner's address and makes it Docker's DNS server; the e2e hostnames
+  are in `/etc/hosts` at that address (where Traefik's 443 and the mail
+  ports are published). fxa-auth and the Hub reach `mail.<d>:587`, the admin
+  UI reaches Keycloak at `auth.<d>`.
+- **Mail's certificate is trusted like a public one.** `.github/ci/e2e-fxa-trust.sh`
+  adds Pebble's root to the runner's system store and runs
+  `./portcullis config apply --bundle-only`, the documented way for a mail
+  server with its own CA: fxa-auth and the Hub check the certificate
+  against `certs/ca-bundle.crt`. On a server with `ACME_STAGING=true` the
+  bundle carries Let's Encrypt's staging root instead.
+
+`tests/e2e/e2e_fxa.py` (PyFxA, Mozilla's client library, from
+`tests/e2e/requirements-fxa.txt` with hashes; Playwright only for the admin
+UI) runs, in order:
+
+- **setup**: alice and bob in the access group, carol outside it, root in
+  both groups and `lldap_admin`; mail on for `ci.example.org` with DKIM
+  active; the instance enabled through the Hub (its mail sender is made
+  before the first start) and routed.
+- **email_verify_by_code**: alice asks for a code (`POST /api/me/email/verify`
+  on the people listener, as her People page does); a message from
+  `portcullis-hub-mail@<d>` with `dkim=pass` reaches her inbox; her code
+  makes her email verified.
+- **unverified_not_listed**: bob is the instance page's one member without
+  a verified email; his sign-up is refused (errno 125) and makes no account.
+- **signup_code_via_provider**: alice's sign-up; within 120 s a message from
+  `portcullis-app-firefox-sync-fxa@<d>` with `dkim=pass` reaches her inbox,
+  and its code verifies the account.
+- **nonmember_refused**: carol, admin-verified but not in the group: refused,
+  no account, no code sent.
+- **leave_disables_via_hub**, **rejoin_enables_via_hub**: removed through the
+  Hub, alice's session token answers 401 within 180 s; added again, she
+  signs in within 180 s.
+- **email_change_disables**: alice's email changed in LLDAP: within the
+  periodic run (10 minutes) her account is disabled, neither address is on
+  the sign-up list, and the new one shows as unverified.
+- **email_changed_in_fxa_before_block**: skipped until porelli/firefox-sync
+  publishes `ffs.disable_accounts_not_allowed`.
+- **admin_disable_survives_routine_run**: bob, admin-verified, signs up; root
+  disables him in the admin UI (Portcullis sign-in, then its own OIDC
+  sign-in); the settings **Retry** (`POST /api/instances/<id>/settings/retry`)
+  runs the access-sync hook, and bob stays disabled.
+- **bypass_badges**: four whole-host badges (`public@file`, each with its
+  host's reason), the accounts host's four paths, and the sign-up and
+  token routers, each path router with its host's reason.
+- **mail_unwired_refuses**: `./portcullis mail disable --force`:
+  `mail_sender_unwired` is listed, `POST /api/me/email/verify` answers 409,
+  and the instance's restart stops at `fxa-mail-check` (exit 1).
+
+The accounts database is read as root inside `fxa-db` (the password stays
+in that container's environment). Every password, code and token is masked
+as soon as it is known; on failure the job uploads the core, provider and
+remote logs and firefox-sync-fxa's (its long-running services' lines that
+name a code, token, password, key or session are dropped).
 
 ### `e2e-ai` (AI support through mcp-gate)
 
