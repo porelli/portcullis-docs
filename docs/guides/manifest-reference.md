@@ -1569,6 +1569,36 @@ that must not be on the page: the app's own denial, e.g. DokuWiki's
 "Permission Denied" for a session without rights). Strings may use
 `{username}`, `{email}`, `{access_group}` and `{admin_group}`.
 
+**NEW (Firefox own accounts): an admin UI on a host of its own.** The `admin`
+check may also set:
+
+- `host` (`{{HOST_<ROUTER>}}`): run the admin check, and the member's "not
+  admin" check, on that host router instead of `tests.signin.host`. The
+  outsider must also be refused there with group-gate's own 403
+  (`outsider_admin_host`).
+- `refused`: the text the member's refusal on that host must show (who
+  refuses, e.g. the app's own gate), so the member's check can't pass on
+  some other refusal.
+
+Both are allowed on `admin` only (validate.py `check_signin_test`). An app
+whose stack needs something before it starts in CI (firefox-sync-fxa's test
+SMTP server) ships `tests/e2e/prep/<app>.sh` in the templates repo
+(CONTRIBUTING.md "Sign-in test").
+
+```yaml
+tests:
+  signin:
+    host: "{{HOST_FIREFOX_SYNC_FXA_ACCOUNTS}}"
+    path: /settings
+    signed_in: {html: "Mozilla accounts", wait: 60}
+    admin:
+      host: "{{HOST_FIREFOX_SYNC_FXA_ADMIN}}"
+      reach: /auth/login
+      text: "Access managed elsewhere"
+      refused: "fxa-gate: the admin UI is for the instance's admin group only"
+      wait: 60
+```
+
 ```yaml
 tests:
   signin:
