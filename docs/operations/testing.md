@@ -1064,11 +1064,12 @@ password, STARTTLS required), its outbound queue and the remote's MX, which
 checks DKIM. Two things make the runner behave like a server:
 
 - **The server's names resolve for containers.** `.github/ci/e2e-fxa-dns.sh`
-  (first, before any container) gives systemd-resolved a stub listener on
-  the runner's address and makes it Docker's DNS server; the e2e hostnames
-  are in `/etc/hosts` at that address (where Traefik's 443 and the mail
-  ports are published). fxa-auth and the Hub reach `mail.<d>:587`, the admin
-  UI reaches Keycloak at `auth.<d>`.
+  (first, before any other container) runs a CoreDNS container published on
+  the runner's address :53, which answers every name under the domain with
+  that address (where Traefik's 443 and the mail ports are published),
+  forwards every other name upstream, and is Docker's DNS server. fxa-auth
+  and the Hub reach `mail.<d>:587`, the admin UI reaches Keycloak at
+  `auth.<d>`; the runner itself uses `/etc/hosts` with the same address.
 - **Mail's certificate is trusted like a public one.** `.github/ci/e2e-fxa-trust.sh`
   adds Pebble's root to the runner's system store and runs
   `./portcullis config apply --bundle-only`, the documented way for a mail
