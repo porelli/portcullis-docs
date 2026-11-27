@@ -67,7 +67,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `mealie` | `ghcr.io/mealie-recipes/mealie:v3.30.0` | `sha256:90f83da6f3ab…` |
-| `mealie-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
+| `mealie-db` | `postgres:17.12-alpine` | `sha256:f9cf3e1f0066…` |
 | `mealie-init` | `ghcr.io/mealie-recipes/mealie:v3.30.0` | `sha256:90f83da6f3ab…` |
 | `mealie-perms` | `ghcr.io/mealie-recipes/mealie:v3.30.0` | `sha256:90f83da6f3ab…` |
 

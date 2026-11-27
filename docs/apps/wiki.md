@@ -74,8 +74,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `wiki` | `requarks/wiki:2.5.317` | `sha256:e4708eed80c0…` |
-| `wiki-db` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
-| `wiki-init` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
+| `wiki-db` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
+| `wiki-init` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
 | `wiki-setup` | `python:3.15.2-alpine` | `sha256:0f9552bb2871…` |
 
 ## Environment Variables

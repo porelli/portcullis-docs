@@ -97,8 +97,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `gitea` | `gitea/gitea:28.3.0-rootless` | `sha256:40c5a68a0463…` |
-| `gitea-auth` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
-| `gitea-db` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
+| `gitea-auth` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
+| `gitea-db` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
 | `gitea-mcp` | `docker.gitea.com/gitea-mcp-server:1.12.0` | `sha256:7abff2c58718…` |
 | `gitea-migrate` | `gitea/gitea:28.3.0-rootless` | `sha256:40c5a68a0463…` |
 

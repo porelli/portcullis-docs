@@ -42,7 +42,8 @@
 </ul>
 <p><strong>Who may have an account:</strong> the members of the instance's access group with a <strong>verified</strong> Portcullis email. Each person verifies their email with a code sent to it (this needs the server's mail provider): verify it on your People page. An admin can also mark someone else's email verified there. A member without a verified email can't sign up: no verified email, no account. <code>fxa-access-sync</code> writes the verified emails to the sign-up list at every start and whenever the group changes.</p>
 <ul>
-<li>Someone who leaves the group, or whose email changes or stops being verified, is taken off the list. Their account is disabled and signed out everywhere. Firefox can keep syncing for up to about 75 minutes after that: the sign-out can't take back an access token Firefox already holds (it lasts up to 60 minutes), and the Sync token Firefox gets for it lasts another 15.</li>
+<li>Someone who leaves the group, or whose email changes or stops being verified, is taken off the list. Their account is disabled and signed out everywhere, and within about 5 seconds the admin UI revokes the access tokens their Firefox holds. Firefox can keep syncing for up to about 20 minutes after that: nothing can take back a Sync token it already has (it lasts up to 15 minutes), and the Sync server trusts an access token it already checked for up to 5 more minutes.</li>
+<li>The admin UI does that revoking, for every disable and sign-out. It always runs with the instance and restarts on its own. If it's down (stopped by hand, or failing), a held access token stays valid until the admin UI starts again, or up to 60 minutes, and Firefox can sync for up to about 20 minutes after that.</li>
 <li>Every run also disables and signs out any enabled account whose <strong>current</strong> primary email isn't on the list. An account's email can't be changed here, but if one was changed some other way, this catches it.</li>
 <li>That sweep has a brake: if it would disable more accounts than the run expects (the people who left, plus 2), it disables none. The run is then reported as failed with the numbers only, and isn't tried with a higher limit. Check the accounts in the admin UI.</li>
 <li>When they come back, their account is enabled again, even one an admin disabled before the person left.</li>
@@ -108,7 +109,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `ffs-admin` | `ghcr.io/porelli/firefox-sync:admin-68ea7b80db3a` | `sha256:bab736d6a61e…` |
+| `ffs-admin` | `ghcr.io/porelli/firefox-sync:admin-a3227424a9c6` | `sha256:34ad815d983a…` |
 | `firefox-sync-fxa` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.2` | `sha256:e31d2d17d136…` |
 | `firefox-sync-fxa-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
 | `firefox-sync-fxa-db-init` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-init-0.25.1-20261124T171959` | `sha256:a43d7e844d66…` |
@@ -125,7 +126,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | `fxa-mail-check` | `redis:8.12.0-alpine` | `sha256:5af80107c1ee…` |
 | `fxa-migrations` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
 | `fxa-pairing` | `ghcr.io/porelli/firefox-sync:fxa-channelserver-1.6.0` | `sha256:cfc3319d79ba…` |
-| `fxa-policy` | `ghcr.io/porelli/firefox-sync:admin-68ea7b80db3a` | `sha256:bab736d6a61e…` |
+| `fxa-policy` | `ghcr.io/porelli/firefox-sync:admin-a3227424a9c6` | `sha256:34ad815d983a…` |
 | `fxa-profile` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
 | `fxa-profile-static` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
 | `fxa-profile-worker` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |

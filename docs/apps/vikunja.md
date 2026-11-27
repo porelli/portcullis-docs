@@ -72,8 +72,8 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `vikunja` | `vikunja/vikunja:2.7.1` | `sha256:f7dc8428d10a…` |
-| `vikunja-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
-| `vikunja-perms` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
+| `vikunja-db` | `postgres:17.12-alpine` | `sha256:f9cf3e1f0066…` |
+| `vikunja-perms` | `postgres:17.12-alpine` | `sha256:f9cf3e1f0066…` |
 
 ## Settings
 

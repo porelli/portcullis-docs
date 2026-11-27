@@ -54,7 +54,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `litellm` | `ghcr.io/berriai/litellm:v1.108.0` | `sha256:c560d3171368…` |
-| `litellm-db` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
+| `litellm-db` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
 
 ## Environment Variables
 

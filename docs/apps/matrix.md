@@ -80,7 +80,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `element` | `vectorim/element-web:v1.12.33` | `sha256:b0aa4b5a4fc1…` |
-| `matrix-db` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
+| `matrix-db` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
 | `synapse` | `ghcr.io/element-hq/synapse:v1.164.2` | `sha256:f0df87cff259…` |
 | `synapse-init` | `ghcr.io/element-hq/synapse:v1.164.2` | `sha256:f0df87cff259…` |
 

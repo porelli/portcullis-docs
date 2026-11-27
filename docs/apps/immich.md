@@ -91,9 +91,9 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | `immich-db` | `ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0` | `sha256:1a078b237c1d…` |
 | `immich-init` | `alpine:3.24.4` | `sha256:f59abe656b69…` |
 | `immich-lock-local-users` | `ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0` | `sha256:1a078b237c1d…` |
-| `immich-machine-learning` | `ghcr.io/immich-app/immich-machine-learning:v3.4.1` | `sha256:8adebf414256…` |
+| `immich-machine-learning` | `ghcr.io/immich-app/immich-machine-learning:v3.4.2` | `sha256:739405742a79…` |
 | `immich-redis` | `redis:7.4.12-alpine` | `sha256:8da19c7399dc…` |
-| `immich-server` | `ghcr.io/immich-app/immich-server:v3.4.1` | `sha256:7c489add298f…` |
+| `immich-server` | `ghcr.io/immich-app/immich-server:v3.4.2` | `sha256:fc880c1bf665…` |
 | `immich-setup` | `alpine:3.24.4` | `sha256:f59abe656b69…` |
 
 ## Settings

@@ -80,7 +80,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `paperless` | `ghcr.io/paperless-ngx/paperless-ngx:3.4.1` | `sha256:1a08d8dfc2b5…` |
-| `paperless-db` | `postgres:18.6-alpine` | `sha256:123b17998cca…` |
+| `paperless-db` | `postgres:18.7-alpine` | `sha256:0115267ab5a5…` |
 | `paperless-init` | `ghcr.io/paperless-ngx/paperless-ngx:3.4.1` | `sha256:1a08d8dfc2b5…` |
 | `paperless-redis` | `redis:8.10.3-alpine` | `sha256:21090af93f83…` |
 

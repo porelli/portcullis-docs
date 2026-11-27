@@ -129,7 +129,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | `nextcloud-cron` | `nextcloud:34.0.5-apache` | `sha256:515c072ea1cf…` |
 | `nextcloud-mariadb` | `mariadb:11.8.9` | `sha256:c4124d1afa87…` |
 | `nextcloud-mcp` | `ghcr.io/cbcoutinho/nextcloud-mcp-server:0.205.3` | `sha256:c8b613f9f1c6…` |
-| `nextcloud-postgres` | `postgres:17.11-alpine` | `sha256:266d3c257594…` |
+| `nextcloud-postgres` | `postgres:17.12-alpine` | `sha256:f9cf3e1f0066…` |
 
 ## Settings
 

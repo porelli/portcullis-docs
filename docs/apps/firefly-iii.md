@@ -57,7 +57,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `firefly-db` | `postgres:16.15-alpine` | `sha256:aa6cb33cf4c1…` |
+| `firefly-db` | `postgres:16.16-alpine` | `sha256:f2f98726820d…` |
 | `firefly-iii` | `fireflyiii/core:version-6.7.9` | `sha256:d51ab6a3a7b9…` |
 
 ## Environment Variables

@@ -87,7 +87,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | Service | Image | Digest |
 |---------|-------|--------|
 | `mattermost` | `mattermost/mattermost-team-edition:12.0.2` | `sha256:0e435f339739…` |
-| `mattermost-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
+| `mattermost-db` | `postgres:17.12-alpine` | `sha256:f9cf3e1f0066…` |
 | `mattermost-gate` | `nginx:1.31.8-alpine` | `sha256:fed7e14be83c…` |
 | `mattermost-init` | `python:3.15.2-alpine` | `sha256:0f9552bb2871…` |
 | `mattermost-plugins` | `python:3.15.2-trixie` | `sha256:2a01fe7b84cc…` |

@@ -62,7 +62,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `cloudbeaver` | `dbeaver/cloudbeaver:26.2.4` | `sha256:1b9e645bbbf4…` |
+| `cloudbeaver` | `dbeaver/cloudbeaver:26.2.5.1` | `sha256:405c02ef10ef…` |
 | `cloudbeaver-config` | `python:3.15.2-alpine` | `sha256:0f9552bb2871…` |
 | `cloudbeaver-gate` | `nginx:1.31.8-alpine` | `sha256:fed7e14be83c…` |
 
