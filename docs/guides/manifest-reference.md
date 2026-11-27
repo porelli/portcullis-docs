@@ -1749,7 +1749,8 @@ added as an extra domain). A restore into a new id keeps the archive's
 hostname for such routers
 ([contract §11.3, §11.6](integration-contracts.md#11-app-instances-hub-new-instances)).
 `tests/validate.py` requires the list where it knows the app needs it
-(`IMMUTABLE_HOSTS`: matrix).
+(`IMMUTABLE_HOSTS`: matrix; firefox-sync-fxa's Sync, API and accounts hosts, which the
+tokenserver's stored users and every Firefox's setup depend on).
 
 ### hosts.reasons
 

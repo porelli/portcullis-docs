@@ -31,7 +31,7 @@
 <div class="admonition info">
 <p class="admonition-title">Auth Notes</p>
 <p>A self-hosted Firefox Sync server. People sign in to Firefox with their Mozilla account, and only the Mozilla accounts on this instance's allowlist can sync; the sync host is open to the internet, with no Portcullis sign-in, because Firefox can't pass one. Its admin UI is on a host of its own, behind Portcullis sign-in for the instance's admins.</p>
-<p><strong>What runs:</strong> Mozilla's syncstorage-rs 0.25.1 (Sync storage + tokenserver; upstream <a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/mozilla-services/syncstorage-rs">https://github.com/mozilla-services/syncstorage-rs</a>), as built by porelli/firefox-sync (PostgreSQL image; <code>links.source</code>). Firefox signs in with a Mozilla account at accounts.firefox.com, then calls this server's tokenserver with that account's OAuth token, which the tokenserver verifies with Mozilla and exchanges for a short-lived storage token (1 h).</p>
+<p><strong>What runs:</strong> Mozilla's syncstorage-rs 0.25.2 (Sync storage + tokenserver; upstream <a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/mozilla-services/syncstorage-rs">https://github.com/mozilla-services/syncstorage-rs</a>), as built by porelli/firefox-sync (PostgreSQL image; <code>links.source</code>). Firefox signs in with a Mozilla account at accounts.firefox.com, then calls this server's tokenserver with that account's OAuth token, which the tokenserver verifies with Mozilla and exchanges for a short-lived storage token (1 h).</p>
 <p><strong>Why no Portcullis sign-in</strong> (<code>method: custom</code>, no <code>native_login</code>): Firefox makes every Sync and tokenserver request in the background as an anonymous request, without cookies, HTTP authentication or a client certificate (RESTRequest <code>LOAD_ANONYMOUS</code>, <code>resource.sys.mjs</code> fetch; tested by porelli/firefox-sync with a sign-in proxy and with mTLS: <code>no_node_found</code> / <code>NS_ERROR_NET_UNCLEAN_SHUTDOWN</code>). Portcullis sign-in, group-gate or a client-certificate tier in front of this host would break every Firefox, so the host is open (<code>public@file</code>, <code>rate-limit</code>; the tokenserver path <code>/1.0/</code> the stricter <code>rate-limit-auth</code>; syncstorage-rs enforces its own request size limits) and access is decided by the server itself.</p>
 <p><strong>Exposed on the sync host</strong> (anonymous, as Firefox calls it):</p>
 <ul>
@@ -98,12 +98,12 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `firefox-sync` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.1` | `sha256:e67e05fab539…` |
-| `firefox-sync-admin` | `ghcr.io/porelli/firefox-sync:admin-37a15d0a5ba2` | `sha256:fb1c3d96136d…` |
+| `firefox-sync` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.2` | `sha256:e31d2d17d136…` |
+| `firefox-sync-admin` | `ghcr.io/porelli/firefox-sync:admin-68ea7b80db3a` | `sha256:bab736d6a61e…` |
 | `firefox-sync-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
 | `firefox-sync-db-init` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-init-0.25.1-20261124T171959` | `sha256:a43d7e844d66…` |
 | `firefox-sync-init` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
-| `firefox-sync-migrate` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.1` | `sha256:e67e05fab539…` |
+| `firefox-sync-migrate` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.2` | `sha256:e31d2d17d136…` |
 
 ## Settings
 

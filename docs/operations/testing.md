@@ -1105,11 +1105,17 @@ UI) runs, in order:
 - **leave_disables_via_hub**, **rejoin_enables_via_hub**: removed through the
   Hub, alice's session token answers 401 within 180 s; added again, she
   signs in within 180 s.
+- **email_changed_in_fxa_before_block**: alice's primary email is changed
+  behind fxa-gate's back (stand-in: root updates her `fxa.emails` row;
+  `fxa.accounts` keeps the sign-up email, which the procedures by email
+  match). The settings **Retry** runs the access-sync hook, whose sweep
+  (`ffs.disable_accounts_not_allowed`, by the current primary email)
+  disables her: her session token answers 401 and she stays on the sign-up
+  list. Put back and enabled again, the next Retry keeps her, and she signs
+  in again.
 - **email_change_disables**: alice's email changed in LLDAP: within the
   periodic run (10 minutes) her account is disabled, neither address is on
   the sign-up list, and the new one shows as unverified.
-- **email_changed_in_fxa_before_block**: skipped until porelli/firefox-sync
-  publishes `ffs.disable_accounts_not_allowed`.
 - **admin_disable_survives_routine_run**: bob, admin-verified, signs up; root
   disables him in the admin UI (Portcullis sign-in, then its own OIDC
   sign-in); the settings **Retry** (`POST /api/instances/<id>/settings/retry`)
@@ -1125,7 +1131,9 @@ The accounts database is read as root inside `fxa-db` (the password stays
 in that container's environment). Every password, code and token is masked
 as soon as it is known; on failure the job uploads the core, provider and
 remote logs and firefox-sync-fxa's (its long-running services' lines that
-name a code, token, password, key or session are dropped).
+name a code, token, password, key or session are dropped; fxa-gate's too,
+and every gate line with a query string or a request line, where the mail
+links' codes would be).
 
 ### `e2e-ai` (AI support through mcp-gate)
 

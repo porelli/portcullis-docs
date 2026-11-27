@@ -1177,7 +1177,8 @@ An instance's hostnames can be changed at any time (enabled or not) on the
 Some templates mark host routers as **immutable** (`hosts.immutable` in the
 manifest): their hostnames cannot be changed after the instance is created. This
 is for apps that store their own URL in their database (e.g. Matrix homeserver
-domain).
+domain; Firefox Sync + own accounts' Sync, API and accounts hosts, which its
+Sync users and every Firefox's setup depend on).
 
 When you save, the Hub:
 
@@ -1200,7 +1201,7 @@ operations, so a backup in between doesn't hide the failure).
 **Changing the main domain** (`PORTCULLIS_DOMAIN` in core's `.env`) moves every
 default instance's hostnames to the new domain, which **breaks apps that store
 their own URL** (e.g. GitLab). Default instances of templates with
-`hosts.immutable` (Matrix) are the exception: their hostnames are pinned on
+`hosts.immutable` (Matrix, Firefox Sync + own accounts) are the exception: their hostnames are pinned on
 their first enable and never moved; such an instance is listed as error (and
 stays denied) until you add the old domain as an extra domain or fix its
 hostnames. See [DNS Configuration](../setup/dns.md).

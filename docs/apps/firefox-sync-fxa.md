@@ -38,10 +38,13 @@
 <li>Open to the internet, because Firefox calls them in the background without cookies: <code>firefox-sync-fxa-api.&lt;domain&gt;</code> (the accounts API), <code>firefox-sync-fxa-profile.&lt;domain&gt;</code> (profiles and avatars), <code>firefox-sync-fxa.&lt;domain&gt;</code> (Sync storage, each request signed with the account's own keys) and <code>firefox-sync-fxa-pairing.&lt;domain&gt;</code> (an encrypted relay for pairing a phone by QR code).</li>
 <li>On the accounts host, the start page <code>/</code>, <code>/.well-known/fxa-client-configuration</code>, <code>/.well-known/change-password</code> and <code>/metrics-flow</code> stay open too: Firefox reads them before anyone has signed in.</li>
 <li>Every open host is rate-limited; creating an account and getting a Sync token have a stricter limit.</li>
+<li><strong>The Sync, API and accounts hostnames are fixed</strong> once the instance exists. The Sync data depends on them: the Sync server keeps every account as <code>&lt;account id&gt;@&lt;API host&gt;</code> on its node, the Sync host, and every Firefox keeps the accounts and API addresses it was set up with. A new name would leave every Sync store behind and every Firefox calling the old addresses. The profile, pairing and admin hostnames can change. A change of Portcullis's main domain doesn't move them either: the instance is listed as error until the old domain is added as an extra domain. A restore into a new instance id keeps the archive's fixed hostnames, so the old instance must be gone first; the other three get the new id's own. Other fixed hostnames mean a new instance, with new accounts.</li>
 </ul>
 <p><strong>Who may have an account:</strong> the members of the instance's access group with a <strong>verified</strong> Portcullis email. Each person verifies their email with a code sent to it (this needs the server's mail provider): verify it on your People page. An admin can also mark someone else's email verified there. A member without a verified email can't sign up: no verified email, no account. <code>fxa-access-sync</code> writes the verified emails to the sign-up list at every start and whenever the group changes.</p>
 <ul>
-<li>Someone who leaves the group, or whose email changes or stops being verified, is taken off the list. Their account is disabled and signed out everywhere. Tokens Firefox already holds can keep working for up to about 1 h.</li>
+<li>Someone who leaves the group, or whose email changes or stops being verified, is taken off the list. Their account is disabled and signed out everywhere. Firefox can keep syncing for up to about 2 hours after that: the sign-out can't take back an access token Firefox already holds (it lasts up to 60 minutes), and the Sync token Firefox gets for it lasts another hour.</li>
+<li>Every run also disables and signs out any enabled account whose <strong>current</strong> primary email isn't on the list. An account's email can't be changed here, but if one was changed some other way, this catches it.</li>
+<li>That sweep has a brake: if it would disable more accounts than the run expects (the people who left, plus 2), it disables none. The run is then reported as failed with the numbers only, and isn't tried with a higher limit. Check the accounts in the admin UI.</li>
 <li>When they come back, their account is enabled again, even one an admin disabled before the person left.</li>
 <li>An account an admin disables stays disabled while its owner stays in the group: routine runs never enable it.</li>
 <li>If the list delivered by Portcullis can't be read, nothing changes and the run is reported as failed.</li>
@@ -49,7 +52,8 @@
 <p><strong>Admin UI</strong> (porelli/firefox-sync's admin UI), for the instance's <strong>admin group</strong> only. Others get 403 at the gateway, members of the access group included. After the Portcullis sign-in, the admin UI signs in by OpenID Connect with Portcullis's Keycloak (client <code>firefox-sync-fxa-admin</code>, redirect URI exactly <code>https://&lt;admin host&gt;/auth/callback</code>), which admits only the admin group (<code>admin_firefox-sync-fxa</code>, from the <code>groups</code> claim, never by email). There is no password sign-in.</p>
 <ul>
 <li><strong>Portcullis decides who may sign up and sync, not the admin UI</strong> (<em>access managed elsewhere</em>): the sign-up policy, its allowlist, invitations, the account cap and Sync's max users are shown read-only, and their forms answer 403. The account cap is the instance setting <strong>Maximum accounts</strong>.</li>
-<li>Kept for incidents: monitoring, the event log, account pages and notes, per-account sign-out, disable and enable, deleting an account, and the Sync data tools. <strong>Enable refuses an account whose email isn't on the list</strong> (&quot;not on the access list managed elsewhere&quot;). <strong>Deleting an account leaves the list alone</strong>, so a member whose account was deleted can sign up again.</li>
+<li>Kept for incidents: monitoring, the event log, account pages and notes, per-account sign-out, disable and enable, deleting an account, and the Sync data tools. <strong>Enable refuses an account whose current primary email isn't on the list</strong> (&quot;not on the access list managed elsewhere&quot;). <strong>Deleting an account leaves the list alone</strong>, so a member whose account was deleted can sign up again.</li>
+<li><strong>Confirm email and Confirm this sign-in are refused</strong> (403 at the gateway). Only the code sent to the address proves an account's email, so an admin can't vouch for one. Someone who signed up with a member's address, or signed in with a stolen password, would get in without that mailbox.</li>
 <li>Its Connect a device page shows the Firefox setup below with this server's values.</li>
 </ul>
 <p><strong>Mail:</strong> the sign-up and sign-in codes go out through the server's mail provider (Settings, Mail) by default, at most 10 messages a minute and 60 an hour; or through another SMTP server (the instance's Mail settings). Without either, the accounts server doesn't start, and <code>fxa-mail-check</code> says why.</p>
@@ -60,6 +64,7 @@
 <p><strong>What's refused, and why:</strong></p>
 <ul>
 <li><strong>Adding a second email or changing an account's email</strong> is refused at the gateway (403). An account's email is its Portcullis email, and access follows that email.</li>
+<li><strong>Confirming an email or a sign-in in the admin UI</strong> is refused at the gateway (403): only the code sent to the address counts.</li>
 <li><strong>Passwordless sign-in and Google or Apple sign-in</strong> are refused (403). Every account is created through the sign-up gate, which checks the list.</li>
 <li><strong>Email addresses that aren't plain ASCII</strong> are refused by the accounts database. Emails are compared byte for byte, so a look-alike address (an accent or a full-width letter) never matches a member's. An existing account with such an email is disabled and signed out at every start.</li>
 </ul>
@@ -103,7 +108,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `ffs-admin` | `ghcr.io/porelli/firefox-sync:admin-213576ce106e` | `sha256:432aba9c2f7a…` |
+| `ffs-admin` | `ghcr.io/porelli/firefox-sync:admin-68ea7b80db3a` | `sha256:bab736d6a61e…` |
 | `firefox-sync-fxa` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.2` | `sha256:e31d2d17d136…` |
 | `firefox-sync-fxa-db` | `postgres:17.11-alpine` | `sha256:3540c0362c80…` |
 | `firefox-sync-fxa-db-init` | `ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-init-0.25.1-20261124T171959` | `sha256:a43d7e844d66…` |
@@ -120,7 +125,7 @@ Pinned by version tag and digest; Dependabot proposes updates.
 | `fxa-mail-check` | `redis:8.12.0-alpine` | `sha256:5af80107c1ee…` |
 | `fxa-migrations` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
 | `fxa-pairing` | `ghcr.io/porelli/firefox-sync:fxa-channelserver-1.6.0` | `sha256:cfc3319d79ba…` |
-| `fxa-policy` | `ghcr.io/porelli/firefox-sync:admin-213576ce106e` | `sha256:432aba9c2f7a…` |
+| `fxa-policy` | `ghcr.io/porelli/firefox-sync:admin-68ea7b80db3a` | `sha256:bab736d6a61e…` |
 | `fxa-profile` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
 | `fxa-profile-static` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
 | `fxa-profile-worker` | `ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0` | `sha256:0ec0804fe9a0…` |
