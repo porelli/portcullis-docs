@@ -1075,7 +1075,13 @@ checks DKIM. Two things make the runner behave like a server:
   `./portcullis config apply --bundle-only`, the documented way for a mail
   server with its own CA: fxa-auth and the Hub check the certificate
   against `certs/ca-bundle.crt`. On a server with `ACME_STAGING=true` the
-  bundle carries Let's Encrypt's staging root instead.
+  bundle carries Let's Encrypt's staging root X1 in addition to the system
+  CAs; mail-cert's certificate is always ECDSA, and staging issues those
+  from its X2 hierarchy, so check STARTTLS against the bundle after each
+  issue. Switching `ACME_STAGING` back to false drops the staging root
+  while mail's certificate stays the staging one until its renewal (below
+  30 days; `./portcullis mail cert` has no forced re-issue): until then no
+  code goes out.
 
 `tests/e2e/e2e_fxa.py` (PyFxA, Mozilla's client library, from
 `tests/e2e/requirements-fxa.txt` with hashes; Playwright only for the admin
