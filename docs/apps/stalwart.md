@@ -176,7 +176,8 @@ The job runs before `stalwart` and the adapter
    missing key gets a new key only. After a change of the Stalwart image
    the normal start also updates the role's permissions
    (`STALWART_UPDATE_ROLE_PERMISSIONS`); when the server was running during
-   that `up`, the update waits for the next cold start.
+   that `up`, the update waits for the next cold start. A store made before
+   [app mail senders](#app-mail-senders) gets their RCPT rule here too.
 
 The job exits 0 only once the recovery login is refused, and no container
 keeps a recovery variable.
@@ -253,7 +254,7 @@ the adapter reports three checks of its own, shown by the doctor as
 | Check | Title | Not ok when | Steps |
 |-------|-------|-------------|-------|
 | `x-spam_rules` | Spam filter rules | Problem: "Stalwart has no spam rules: the import hasn't run yet (the adapter retries every minute; the spam filter scores nothing meanwhile)", with the import's error | Check mailctl's log (the stalwart instance's adapter logs) for "spam rules"; restarting the stalwart instance asks for the import again. |
-| `x-sender_rcpt` | App mail senders refuse inbound mail | Problem: "the mail server accepts mail for the app sender address <address> (<reply>): its store has no RCPT rule for app mail senders" (asked on the MX listener for the first sender's address and a sub-address of it, null sender, never DATA; also a line in mailctl's log); Info when the server couldn't be asked; ok without senders | Add the senders' RCPT rule by hand (below), or rebuild the store. |
+| `x-sender_rcpt` | App mail senders refuse inbound mail | Problem: "the mail server accepts mail for the app sender address <address> (<reply>): its store has no RCPT rule for app mail senders" (asked on the MX listener for the first sender's address and a sub-address of it, null sender, never DATA; also a line in mailctl's log); Info when the server couldn't be asked; ok without senders | Restart the stalwart instance (stop, then start): its bootstrap job adds the rule ([below](#stores-made-before-app-mail-senders)). If the job's log says the RCPT script isn't the expected shape, add the rule by hand. |
 | `x-external_lookups` | Spam filter external lookups | Problem: "the spam rules' external lookups may be on and couldn't be turned off (the spam filter may contact outside feeds)", with the error; Info before the first check | Check mailctl's log (the stalwart instance's adapter logs) for "spam rules"; the adapter retries every minute. |
 
 DMARC and TLS aggregate reports are display-only with this provider:
@@ -263,17 +264,27 @@ acted on".
 
 ### App mail senders
 
-App mail senders (contracts §19.14) are Stalwart accounts `portcullis-sender:<uuid>` whose permissions replace every inherited one with `authenticate` and `emailSend`; their one address is their login. Each sender's address and the glob `<local>+*@<domain>` (Stalwart's sub-addressing is on by default) are keys of the lookup namespace `portcullis-senders`, which the base plan's RCPT rule refuses with `550 5.1.1`. Two `MtaInboundThrottle`s limit each sender, keyed on the login: `portcullis: sender messages per minute` (10) and `portcullis: sender messages per hour` (60); over either, `452 4.4.5`.
+App mail senders ([contracts §19.14](../guides/integration-contracts.md#1914-app-mail-senders-new-firefox-own-accounts)) are Stalwart accounts `portcullis-sender:<uuid>` whose permissions replace every inherited one with `authenticate` and `emailSend`; their one address is their login. Each sender's address and the glob `<local>+*@<domain>` (Stalwart's sub-addressing is on by default) are keys of the lookup namespace `portcullis-senders`, which the base plan's RCPT rule refuses with `550 5.1.1`. Two `MtaInboundThrottle`s limit each sender, keyed on the login: `portcullis: sender messages per minute` (10) and `portcullis: sender messages per hour` (60); over either, `452 4.4.5`.
 
-#### Stores bootstrapped before app mail senders
+#### Stores made before app mail senders
 
-The bootstrap job writes the base plan only into a new store, so a store bootstrapped by an older adapter lacks the senders' RCPT rule (check `x-sender_rcpt`): mail to a sender is accepted and bounced later. Add it by hand as the recovery admin (the adapter's key can't): set the singleton `x:MtaStageRcpt`'s field `script` to
+The base plan is written only into a new store, so a store bootstrapped by an older adapter lacks the senders' RCPT rule (check `x-sender_rcpt`): mail to a sender is accepted and bounced later. The bootstrap job adds it at every start of a marked store: when the singleton `x:MtaStageRcpt`'s `script` is the usual `{match, else}` form and no rule touches `portcullis-senders`, it puts the base plan's rule first, keeps every other rule in its order and the `else`, then runs `ReloadSettings`. Its log says "the RCPT script had no rule refusing mail to app mail senders: put it first". A rule already in place changes nothing.
+
+The job does this only when it opens the store itself: while the server runs, a later `up` finds the store in use and does nothing. Restart the stalwart instance (stop, then start) once. The check keeps its last result until the checks are next refreshed (the instance's Mail tab).
+
+**By hand**, only when the job's log says "the RCPT script isn't the expected shape" (it then writes nothing): as the recovery admin (the adapter's key can't), set `x:MtaStageRcpt`'s field `script` so that this rule comes first, every other rule of the store kept after it:
+
+```json
+{"if":"key_exists('portcullis-senders', rcpt)","then":"'parked-reject'"}
+```
+
+For a store made with the base plan, the whole script is
 
 ```json
 {"else":"false","match":{"0":{"if":"key_exists('portcullis-senders', rcpt)","then":"'parked-reject'"},"1":{"if":"rcpt_domain == 'portcullis-former.internal'","then":"'parked-reject'"},"2":{"if":"key_exists('list-members-only', rcpt) && !key_exists('list-posters', rcpt + '|' + authenticated_as)","then":"'list-reject'"}}}
 ```
 
-then run the action `ReloadSettings`. Rules 1 and 2 are the store's own; only rule 0 is new.
+then run the action `ReloadSettings`.
 
 ### Updates
 
@@ -293,11 +304,11 @@ Pinned by version tag and digest; Dependabot proposes updates.
 
 | Service | Image | Digest |
 |---------|-------|--------|
-| `adapter` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
-| `adapter-bin` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
-| `admin-view` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
+| `adapter` | `ghcr.io/porelli/portcullis-mailctl:main-6954964` | `sha256:0253e6db57b8…` |
+| `adapter-bin` | `ghcr.io/porelli/portcullis-mailctl:main-6954964` | `sha256:0253e6db57b8…` |
+| `admin-view` | `ghcr.io/porelli/portcullis-mailctl:main-6954964` | `sha256:0253e6db57b8…` |
 | `bootstrap` | `docker.io/stalwartlabs/stalwart:v1.1.0` | `sha256:f772aa6ef8cd…` |
-| `key-init` | `ghcr.io/porelli/portcullis-mailctl:main-3ab5e17` | `sha256:246a27dbfab0…` |
+| `key-init` | `ghcr.io/porelli/portcullis-mailctl:main-6954964` | `sha256:0253e6db57b8…` |
 | `resolver` | `docker.io/klutchell/unbound:v1.26.2` | `sha256:50cbeb32b583…` |
 | `stalwart` | `docker.io/stalwartlabs/stalwart:v1.1.0` | `sha256:f772aa6ef8cd…` |
 

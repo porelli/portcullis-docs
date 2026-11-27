@@ -43,7 +43,8 @@ see the [Manifest Reference](../guides/manifest-reference.md) for the fields.
 | 🔍 [Craft Anything](craft-anything.md) | `craft-anything` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📽 [DeckCraft](deckcraft.md) | `deckcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📝 [DokuWiki](dokuwiki.md) | `dokuwiki` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :x: |
-| 🦊 [Firefox Sync](firefox-sync.md) | `firefox-sync` | productivity | `custom` | :x: No | :x: | :x: | :x: |
+| 🦊 [Firefox Sync](firefox-sync.md) | `firefox-sync`, `firefox-sync-admin` | productivity | `custom` | :warning: Partial | :x: | :white_check_mark: | :x: |
+| 🦊 [Firefox Sync + own accounts](firefox-sync-fxa.md) | `firefox-sync-fxa`, `firefox-sync-fxa-accounts`, `firefox-sync-fxa-admin`, `firefox-sync-fxa-api`, `firefox-sync-fxa-pairing`, `firefox-sync-fxa-profile` | productivity | `forward-auth` | :warning: Partial | :white_check_mark: | :white_check_mark: | :x: |
 | 🧮 [GridCraft](gridcraft.md) | `gridcraft` | productivity | `forward-auth` | :x: No | :white_check_mark: | :x: | :x: |
 | 📋 [Kanboard](kanboard.md) | `kanboard` | productivity | `header-auth` | :warning: Partial | :white_check_mark: | :x: | :x: |
 | 🍽 [Mealie](mealie.md) | `recipes` | productivity | `native-oidc` | :white_check_mark: Yes | :white_check_mark: | :white_check_mark: | :x: |
