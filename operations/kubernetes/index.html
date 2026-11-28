@@ -1,0 +1,3829 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/operations/kubernetes/">
+      
+      
+      
+        <link rel="prev" href="../rootless-podman/">
+      
+      
+        <link rel="next" href="../vpn/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>Kubernetes (experimental) - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Kubernetes (experimental)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../apps/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/stalwart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📬 Stalwart
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/firefox-sync-fxa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync + own accounts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apps/netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  The Portcullis CLI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubernetes (experimental)
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubernetes (experimental)
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Namespaces
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Requirements
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#host-preparation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host preparation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Install
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#day-to-day" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Day to day
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apps-on-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apps on Kubernetes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-on-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage on Kubernetes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-cluster-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The cluster guard
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#moving-to-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Moving to Kubernetes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#postgres-never-starts-apparmor-stacking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Postgres never starts (AppArmor stacking)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Multiple Servers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ssh-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SSH Access
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Namespaces
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Requirements
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#host-preparation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host preparation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Install
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#day-to-day" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Day to day
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apps-on-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apps on Kubernetes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-on-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage on Kubernetes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-cluster-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The cluster guard
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        VPN
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#moving-to-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Moving to Kubernetes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Troubleshooting
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#postgres-never-starts-apparmor-stacking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Postgres never starts (AppArmor stacking)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h1>
+<div class="admonition warning">
+<p class="admonition-title">EXPERIMENTAL</p>
+<p>Kubernetes support is experimental. It is tested in CI on one pinned
+<abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> release, on a single node, and it can change without notice. Few
+marketplace apps run on it yet (<a href="#apps-on-kubernetes">Apps on Kubernetes</a>).
+For a production install, use rootful Docker or
+<a href="../rootless-podman/"><abbr title="Podman run by an unprivileged account: container root is that account, not host root">rootless Podman</abbr></a>.</p>
+</div>
+<p>Portcullis can run on a <strong>single-node <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> cluster</strong> instead of a container
+engine. Core runs as the Helm chart <code>charts/portcullis</code>, and the Hub deploys
+app <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr> as Kubernetes objects. Templates don't change: the Hub
+translates each <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s compose project into Deployments, Services,
+<abbr title="PersistentVolumeClaims: Kubernetes volumes; Portcullis's take their owner, group and mode from annotations">PVCs</abbr>, <abbr title="Kubernetes rules that say which pods may connect to which pods and ports">NetworkPolicies</abbr> and <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> objects.</p>
+<p>The runtime is chosen once by <code>./portcullis init --runtime kubernetes</code> and
+kept in <code>.env</code> as <code>CONTAINER_RUNTIME=kubernetes</code>. It is never detected and
+never switched afterwards. To move an install between runtimes, back it up,
+run a fresh <code>init</code> and restore (<a href="#moving-to-kubernetes">below</a>).</p>
+<p>The interfaces are pinned in the
+<a href="../../guides/integration-contracts/">integration contracts</a>: §3.4 (the
+translation), §5 "<abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> on Kubernetes", §6 "On Kubernetes" (the Roles,
+the <abbr title="The Hub's checks on Kubernetes (apps namespace, exact Role, admission self-test, NetworkPolicy probe) at start, every 60 s and before every deploy; until they hold every runtime operation answers 503">cluster guard</abbr>, the admission policies), §11.2 (object names), §11.10
+(compatibility) and §16.1 (the VPN).</p>
+<h2 id="namespaces">Namespaces<a class="headerlink" href="#namespaces" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>Holds</th>
+<th>Pod security (<abbr title="Pod Security Admission: Kubernetes's built-in pod security levels (privileged, baseline, restricted) per namespace">PSA</abbr>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>portcullis</code> (<code>PORTCULLIS_NAMESPACE</code>)</td>
+<td>core's services, its Secrets and ConfigMaps, the admission params</td>
+<td><code>restricted</code></td>
+</tr>
+<tr>
+<td><code>portcullis-apps</code> (<code>PORTCULLIS_APPS_NAMESPACE</code>)</td>
+<td>the app <abbr title="Independent deployments of a template with their own data, settings, and groups">instances</abbr>' Deployments, Jobs, Services, <abbr title="PersistentVolumeClaims: Kubernetes volumes; Portcullis's take their owner, group and mode from annotations">PVCs</abbr>, Secrets, ConfigMaps and <abbr title="Kubernetes rules that say which pods may connect to which pods and ports">NetworkPolicies</abbr>, and the Hub's helper and probe pods</td>
+<td><code>enforce: privileged</code>, <code>warn</code> and <code>audit: baseline</code>; the admission policies enforce the baseline instead (built-in <abbr title="Pod Security Admission: Kubernetes's built-in pod security levels (privileged, baseline, restricted) per namespace">PSA</abbr> can't allow <code>hostPath</code> under a prefix)</td>
+</tr>
+<tr>
+<td><code>portcullis-edge</code></td>
+<td>every <abbr title="Traefik's Kubernetes object for one router (rule, entrypoints, middlewares, TLS options)">IngressRoute</abbr> and Middleware, core's and the apps', and the apps' pinned ExternalName Services. It is the only namespace <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> watches, and it holds no Secret</td>
+<td><code>restricted</code></td>
+</tr>
+<tr>
+<td><code>portcullis-storage</code></td>
+<td>the volume provisioner and its <abbr title="Short-lived pods from the Hub's own image that copy volumes or run the folder fixer over exec; no network (except the NetworkPolicy probe's pods), no token">helper pods</abbr></td>
+<td><code>enforce: privileged</code>, <code>warn</code> and <code>audit: baseline</code>, plus core's own admission policy <code>portcullis-storage-pods</code></td>
+</tr>
+</tbody>
+</table>
+<p>Portcullis never adopts a namespace it didn't create. Each one carries the
+label <code>app.kubernetes.io/managed-by=portcullis</code> and the annotation
+<code>portcullis.io/install</code> = <code>PORTCULLIS_KUBE_INSTALL_ID</code>. A namespace of the
+same name without them stops <code>init</code>.</p>
+<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>One <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> node</strong>, Kubernetes <strong>1.33 or later</strong>, the first release with
+  <code>supplementalGroupsPolicy</code> on by default (host-path pods need it, below;
+  an older cluster is refused: <code>Portcullis needs &gt;= 1.33
+  (supplementalGroupsPolicy Strict for host-folder pods)</code>). CI runs <code>v1.37.2+k3s1</code>,
+  the default; the oldest supported line is pinned at <code>v1.33.13+k3s2</code>.
+  Both are tested. Another
+  distribution only gets a warning ("should work, not CI-tested"), but the
+  checks below assume <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>'s flags and <abbr title="k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node">ServiceLB</abbr>.</li>
+<li><strong>IPv4 single-stack</strong>, with one pod CIDR and one service CIDR. Dual-stack
+  and IPv6 clusters are refused.</li>
+<li><strong>No AppArmor stacking of containerd's profile.</strong> On hosts with
+  <code>kernel.apparmor_restrict_unprivileged_unconfined=1</code> (Ubuntu 26.04 and
+  similar), containerd's AppArmor profile denies the signals Postgres sends
+  between its own processes, so Postgres never finishes starting
+  (containerd#14485, <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>#13625). Portcullis refuses such a host; see
+  <a href="#postgres-never-starts-apparmor-stacking">Troubleshooting</a> for the two
+  ways out.</li>
+<li>On the node, for the operator: <code>kubectl</code>, <code>helm</code>, <code>jq</code> and <code>curl</code>. The
+  CLI runs on the node itself: it compares the node's local addresses with
+  the public one.</li>
+<li><strong>Off-host backups:</strong> the host's <code>restic</code>, version 0.19.1 or later
+  (<a href="../backups/#kubernetes">Backups</a>).</li>
+<li><strong>Local images only</strong> (<code>PORTCULLIS_KUBE_IMAGES=local</code>, for development):
+  <code>docker</code> or <code>podman</code> to build, and <code>sudo</code> for <code>k3s ctr images import</code>.</li>
+</ul>
+<h2 id="host-preparation">Host preparation<a class="headerlink" href="#host-preparation" title="Permanent link">&para;</a></h2>
+<p>Install <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> with these server flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--disable=traefik</code></td>
+<td>core ships its own <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr></td>
+</tr>
+<tr>
+<td><code>--secrets-encryption</code></td>
+<td>Secrets are encrypted in <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>'s datastore</td>
+</tr>
+<tr>
+<td><code>--kubelet-arg=pod-max-pids=1024</code></td>
+<td>the only per-pod process limit (compose's <code>pids_limit</code> isn't carried)</td>
+</tr>
+<tr>
+<td><code>--node-external-ip=&lt;public IPv4&gt;</code></td>
+<td>only when the public address is a second address on the node: otherwise <abbr title="k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node">ServiceLB</abbr> rewrites client addresses</td>
+</tr>
+</tbody>
+</table>
+<p>Keep the network policy controller and <abbr title="k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node">ServiceLB</abbr> on: don't pass
+<code>--disable-network-policy</code> or <code>--disable=servicelb</code>.</p>
+<p>For example, as a systemd unit (the shape CI uses, with the binary
+downloaded from the <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> release and checked against its sha256):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># As root.</span>
+/usr/local/bin/k3s<span class="w"> </span>server<span class="w"> </span>--disable<span class="o">=</span>traefik<span class="w"> </span>--secrets-encryption<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--kubelet-arg<span class="o">=</span>pod-max-pids<span class="o">=</span><span class="m">1024</span><span class="w"> </span>--write-kubeconfig-mode<span class="o">=</span><span class="m">0600</span>
+</code></pre></div>
+<p>Then give the operator the kubeconfig:</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kube
+sudo<span class="w"> </span>cat<span class="w"> </span>/etc/rancher/k3s/k3s.yaml<span class="w"> </span>&gt;<span class="w"> </span>~/.kube/config<span class="w">   </span><span class="c1"># context "default"</span>
+chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span>~/.kube/config
+kubectl<span class="w"> </span>--context<span class="w"> </span>default<span class="w"> </span>get<span class="w"> </span>nodes
+</code></pre></div>
+<p><strong>Firewall.</strong> Allow ports 6443 (the Kubernetes API) and 10250 (the kubelet)
+only from the addresses that administer the cluster. <code>status</code> and the Hub's
+doctor (<code>kube_api_public</code>) warn when either answers on the public address.
+Portcullis never changes a firewall.</p>
+<h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/porelli/portcullis.git<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>portcullis
+./portcullis<span class="w"> </span>init<span class="w"> </span>--runtime<span class="w"> </span>kubernetes<span class="w"> </span>--kube-context<span class="w"> </span>default<span class="w"> </span>--domain<span class="w"> </span>example.com
+</code></pre></div>
+<p><code>--kube-context</code> is required. The CLI never uses the current context:
+every <code>kubectl</code> and <code>helm</code> call names <code>PORTCULLIS_KUBE_CONTEXT</code>. <code>init</code>
+detects the cluster's networks and writes these keys into <code>.env</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PORTCULLIS_KUBE_CONTEXT</code></td>
+<td>the context you named</td>
+</tr>
+<tr>
+<td><code>PORTCULLIS_NAMESPACE</code>, <code>PORTCULLIS_APPS_NAMESPACE</code></td>
+<td><code>portcullis</code>, <code>portcullis-apps</code></td>
+</tr>
+<tr>
+<td><code>PORTCULLIS_POD_CIDR</code>, <code>PORTCULLIS_SERVICE_CIDR</code>, <code>PORTCULLIS_KUBE_API_ENDPOINTS</code></td>
+<td>detected. Every later command checks them against the cluster and refuses a different network, naming both values</td>
+</tr>
+<tr>
+<td><code>PORTCULLIS_KUBE_INSTALL_ID</code></td>
+<td>a new UUID: the namespaces' owner</td>
+</tr>
+<tr>
+<td><code>PORTCULLIS_KUBE_IMAGES</code></td>
+<td><code>registry</code> (below)</td>
+</tr>
+<tr>
+<td><code>PORTCULLIS_TRAEFIK_SERVICE_IP</code>, <code>PORTCULLIS_TRAEFIK_VPN_SERVICE_IP</code>, <code>PORTCULLIS_WG_EDGE_SERVICE_IP</code></td>
+<td>fixed ClusterIPs: the service network's address + 20, 21 and 22, in its static band</td>
+</tr>
+</tbody>
+</table>
+<p>Before deploying anything, <code>init</code>, <code>up</code>, <code>upgrade</code> and <code>restore</code> run the
+<strong>host checks</strong>. They refuse while one fails, listing every failure under
+<code>this cluster isn't ready for Portcullis (docs: operations/kubernetes):</code>.
+They check:</p>
+<ul>
+<li><code>kubectl</code> and <code>helm</code> are present, the context exists and the cluster answers;</li>
+<li>Kubernetes 1.33 or later;</li>
+<li><abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>'s flags (read from the node's <code>k3s.io/node-args</code>): <code>--secrets-encryption</code>, <code>--disable=traefik</code>, no <code>--disable-network-policy</code>, <abbr title="k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node">ServiceLB</abbr> on. On <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>, node-args it can't read fail the check; on another distribution they only warn;</li>
+<li>the kubelet's <code>podPidsLimit</code> is 1024;</li>
+<li>IPv4 single-stack with one pod CIDR and one service CIDR, the same as <code>.env</code>;</li>
+<li>the three fixed ClusterIPs are inside the static band and not taken by another Service (a Services list it can't read fails);</li>
+<li>the four namespaces are absent or this install's;</li>
+<li>AppArmor: <code>kernel.apparmor_restrict_unprivileged_unconfined</code> isn't <code>1</code>
+  while AppArmor is on and containerd's profile is loaded
+  (<a href="#postgres-never-starts-apparmor-stacking">Troubleshooting</a>). This is
+  checked on this host when the node is this host; otherwise it only warns
+  that you must check the node yourself.</li>
+</ul>
+<p>Two more checks only warn: client addresses (a public address that is
+local but not published by <abbr title="k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node">ServiceLB</abbr> suggests <code>--node-external-ip=&lt;pub&gt;</code>),
+and ports 6443 or 10250 answering on the public address.</p>
+<p><code>init</code> writes the default namespaces. To use other ones, run
+<code>init --env-only --runtime kubernetes --kube-context &lt;ctx&gt;</code> first, change
+<code>PORTCULLIS_NAMESPACE</code> or <code>PORTCULLIS_APPS_NAMESPACE</code> in <code>.env</code>, then run
+<code>init</code>: the admission bindings follow the apps namespace. The edge and
+storage namespaces are fixed.</p>
+<p>Then comes the <strong>cluster setup</strong>, idempotent and server-side:</p>
+<ol>
+<li>the four namespaces with their <abbr title="Pod Security Admission: Kubernetes's built-in pod security levels (privileged, baseline, restricted) per namespace">PSA</abbr> labels;</li>
+<li>the storage: the provisioner <code>portcullis.io/local-path</code> in
+   <code>portcullis-storage</code> (its only egress is the API endpoints) and two
+   StorageClasses, <code>portcullis-core</code> (reclaim <code>Retain</code>) and
+   <code>portcullis-apps</code> (reclaim <code>Delete</code>). Volumes live under
+   <code>/var/lib/portcullis-storage</code> on the node;</li>
+<li><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>'s CRDs (the chart's pinned bundle);</li>
+<li>the admission policies and their params
+   (<a href="../hardening/#kubernetes">Security &amp; Hardening → Kubernetes</a>): new
+   bindings are created first and proved live, and only then are the old
+   ones removed;</li>
+<li>a check that <code>portcullis-edge</code> holds no Secret.</li>
+</ol>
+<p>After that the CLI must prove that the cluster <strong>enforces
+<abbr title="Kubernetes rules that say which pods may connect to which pods and ports">NetworkPolicies</abbr></strong>: its probe pods, in the namespace
+<code>portcullis-netpol-probe</code>, need a denied and an allowed connection. Until
+the probe passes, nothing is deployed (<code>NetworkPolicy enforcement isn't
+proven (see above): nothing is deployed</code>). Finally <code>init</code> installs the
+release and runs the usual steps: Vault, PKI, <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr>, <abbr title="OpenID Connect - authentication layer on top of OAuth 2.0">OIDC</abbr> clients and
+the Hub. Last, it installs <strong><code>portcullis-kube-check.timer</code></strong>, which
+refreshes the cluster check every 6 hours (<a href="#day-to-day">Day to day</a>).</p>
+<p><strong>Images.</strong> With <code>PORTCULLIS_KUBE_IMAGES=registry</code> (the default) every
+image is resolved to a digest before anything is deployed, and the release
+runs by digest. Core's own images (<code>group-gate</code>, <code>enroll</code>, <code>domains</code>,
+<code>mcp-gate</code>, <code>wg</code>) come from <code>ghcr.io/porelli/portcullis-&lt;service&gt;</code>, because
+<abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> has no image builder. With <code>local</code> (CI and development) the CLI builds
+them from the checkout with <code>docker build</code>, or <code>podman build --format
+docker</code>, and imports them into <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>'s containerd.</p>
+<h2 id="day-to-day">Day to day<a class="headerlink" href="#day-to-day" title="Permanent link">&para;</a></h2>
+<p>The commands are the same as on Docker:</p>
+<ul>
+<li><strong><code>up</code></strong> syncs <code>.env</code>, the secrets and the config files into Secrets and
+  ConfigMaps, re-runs the cluster setup and the <abbr title="A Kubernetes rule that says which pods may connect to which pods and ports">NetworkPolicy</abbr> probe, and
+  runs <code>helm upgrade --install --wait</code> (up to 10 minutes). Then it writes
+  the <strong>cluster check</strong> the Hub reads (the ConfigMap
+  <code>portcullis-cluster-check</code>: the apps namespace's <abbr title="Pod Security Admission: Kubernetes's built-in pod security levels (privileged, baseline, restricted) per namespace">PSA</abbr> labels and the six
+  admission bindings).</li>
+<li><strong>The cluster check expires.</strong> The Hub refuses every runtime operation
+  once the check is more than 24 hours old. <code>init</code> installs
+  <code>portcullis-kube-check.timer</code> (system units, every 6 hours, after
+  <code>k3s.service</code> when this host runs <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>), which runs
+  <a href="../cli/#kube-check"><code>./portcullis kube check</code></a>. Check it with
+  <code>systemctl list-timers portcullis-kube-check.timer</code>. Without systemd,
+  <code>init</code> warns: run <code>./portcullis kube check</code> from cron at least every
+  20 hours.</li>
+<li><strong><code>down</code></strong> scales every Deployment of the core and apps namespaces to 0.
+  It never runs <code>helm uninstall</code>: the release, its <abbr title="PersistentVolumeClaims: Kubernetes volumes; Portcullis's take their owner, group and mode from annotations">PVCs</abbr> and its Secrets
+  stay.</li>
+<li><strong><code>upgrade</code></strong> works as on Docker, with the release applied again.</li>
+<li><strong><code>status</code></strong> prints <code>runtime: kubernetes &lt;version&gt; (context &lt;ctx&gt;)</code>, the
+  host checks' warnings and failures, and the core pods. It fails while the
+  <abbr title="A Kubernetes rule that says which pods may connect to which pods and ports">NetworkPolicy</abbr> probe isn't proven, an admission binding is missing, an
+  app Service has a core Service's name, or a Deployment of the core or
+  apps namespace is crashing: a container waiting in <code>CrashLoopBackOff</code>,
+  <code>Error</code> or an image-pull backoff, or restarted in the last 10 minutes and
+  not ready again (<code>kubernetes: &lt;ns&gt;/&lt;deployment&gt; is crashing (&lt;reason&gt;,
+  &lt;n&gt; restarts): kubectl -n &lt;ns&gt; logs deploy/&lt;deployment&gt; --previous</code>). A
+  pod list it can't read fails closed. It also warns once the cluster check
+  is 20 hours old, and fails when it is missing, failed or 24 hours old.</li>
+<li>The CLI reaches Vault and <abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> through <code>kubectl port-forward</code> on the
+  server's loopback. <code>lldap-ui</code> is a port-forward to <abbr title="Light LDAP directory server storing users and groups">LLDAP</abbr>'s UI.</li>
+</ul>
+<h2 id="apps-on-kubernetes">Apps on Kubernetes<a class="headerlink" href="#apps-on-kubernetes" title="Permanent link">&para;</a></h2>
+<p>The Hub judges every template and <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> before it deploys it. The
+Marketplace card shows <strong>Kubernetes: works</strong>, <strong>limited</strong> or <strong>not
+available</strong>, with the reasons in its tooltip, and the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> page lists
+them. Creating, restoring into a new id, enabling or restarting an app
+that isn't available is refused before anything is created:
+<code>&lt;id&gt; can't run on Kubernetes: &lt;reasons&gt;</code>. Limited apps run. The reasons
+are listed in
+<a href="../../guides/integration-contracts/#34-compose-on-kubernetes-new-kubernetes">contract §3.4</a>.</p>
+<p><strong>Today 5 of 51 templates work:</strong> <code>docs</code>, <code>firefox-sync</code>, <code>mealie</code>,
+<code>paperless</code> and <code>vikunja</code> (the templates repo's <code>tests/runtime.txt</code>). Most
+of the others are refused for one reason only: a service mounts a named
+volume but has no numeric <code>user:</code>. On Kubernetes a volume is owned by the
+service's uid, so such a template needs a <code>user:</code> before it can run.
+Others use host networking (<code>netbird</code>), <code>extra_hosts</code> (<code>ai-chat</code>,
+<code>headscale</code>), a non-numeric user (<code>nextcloud</code>), or host devices and
+<code>/run/udev</code> (<code>scrutiny</code>, <code>zigbee2mqtt</code>).</p>
+<p>How the parts of an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> map:</p>
+<ul>
+<li><strong>Volumes</strong> are <abbr title="PersistentVolumeClaims: Kubernetes volumes; Portcullis's take their owner, group and mode from annotations">PVCs</abbr> of the StorageClass <code>portcullis-apps</code>. The
+  provisioner creates each volume's directory with the owner, group and
+  mode from the <abbr title="PersistentVolumeClaim: a Kubernetes volume; Portcullis's take their owner, group and mode from annotations">PVC</abbr>'s annotations, and leaves a <abbr title="PersistentVolumeClaim: a Kubernetes volume; Portcullis's take their owner, group and mode from annotations">PVC</abbr> without valid
+  annotations <code>Pending</code> (<code>portcullis-setup REFUSED: &lt;why&gt;</code> in its log). A
+  new <abbr title="PersistentVolumeClaim: a Kubernetes volume; Portcullis's take their owner, group and mode from annotations">PVC</abbr> is seeded from the image, as Docker seeds a named volume.</li>
+<li><strong>Template files</strong> become one ConfigMap per <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>,
+  <code>&lt;instance&gt;--tpl-&lt;hash&gt;</code>, mounted read-only.</li>
+<li><strong>Shared folders</strong> are <code>hostPath</code> mounts, only under the bind roots
+  (<code>HUB_OVERRIDE_BIND_ROOTS</code>). A pod with a host path runs non-root: every
+  container needs a numeric user above 0, a group above 0 (never group 0,
+  also not as <code>fsGroup</code> or a supplemental group) and no privilege
+  escalation, and the pod sets <code>supplementalGroupsPolicy: Strict</code> (the Hub
+  does), so no group from the image's <code>/etc/group</code> is added, so a service that binds a shared folder needs a numeric
+  non-root <code>user:</code>.</li>
+<li><strong>Published ports</strong> are <code>LoadBalancer</code> Services on <abbr title="k3s's built-in LoadBalancer: it publishes every port of a LoadBalancer Service on the node">ServiceLB</abbr>, with
+  <code>externalTrafficPolicy: Local</code> and no node port. A <strong><abbr title="A template port that should be reachable only from the local networks; the Hub's doctor judges its binding">LAN only</abbr></strong> port gets
+  source ranges from the Local networks' IPv4 entries, and no Service at
+  all when there are none. A core port (80, 443, the VPN port, 8000, 8081,
+  8443, 8444) is refused.</li>
+<li><strong>Routes</strong>: the Hub renders an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> labels as on Docker and
+  converts them into <abbr title="Traefik's Kubernetes objects, one per router (rule, entrypoints, middlewares, TLS options)">IngressRoutes</abbr> and Middlewares in <code>portcullis-edge</code>.
+  App routes are on <code>websecure</code> or <code>vpnsecure</code> only.</li>
+<li><strong>Backends</strong>: <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> can't read the apps namespace, so for each Service
+  a route uses the Hub writes an ExternalName Service <code>&lt;instance&gt;--&lt;svc&gt;</code>
+  in <code>portcullis-edge</code>, pointing at exactly
+  <code>&lt;instance&gt;--&lt;svc&gt;.portcullis-apps.svc.cluster.local</code>, the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s own
+  Service there. Routes name it without a namespace: <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> runs with
+  cross-namespace references off, ExternalName Services on and safe naming
+  on, and the edge admission policy admits only that exact shape.</li>
+<li><strong>Isolation</strong>: each <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> gets its own <abbr title="Kubernetes rules that say which pods may connect to which pods and ports">NetworkPolicies</abbr> (deny by
+  default). Routed ports admit only <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>, an AI <abbr title="The MCP server of an app (built in, or the upstream's or a vetted community image) that the AI talks to through mcp-gate">companion</abbr>'s port only
+  <code>mcp-gate</code>, and egress to the internet excludes the cluster's networks
+  and the nodes.</li>
+<li>
+<p><strong>Backups</strong> in the Hub work as on Docker: the Hub copies a volume
+  through a short-lived <abbr title="A short-lived pod from the Hub's own image that copies a volume or runs the folder fixer over exec; no network (except the NetworkPolicy probe's pods), no token">helper pod</abbr> and streams it over <code>exec</code>.</p>
+</li>
+<li>
+<p><strong>Instance ids</strong> may not contain <code>--</code> (on every runtime): it separates
+  an <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> from its objects' names, so another <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s names could
+  otherwise equal this one's.</p>
+</li>
+</ul>
+<h2 id="usage-on-kubernetes">Usage on Kubernetes<a class="headerlink" href="#usage-on-kubernetes" title="Permanent link">&para;</a></h2>
+<p>The Hub's <a href="../hub/#usage">Usage</a> page reads each app container's CPU and
+memory from the cluster's metrics API (metrics-server, which <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> bundles;
+the Hub's Role may read pod metrics in the apps namespace, nothing else).
+Network, disk IO and processes stay <strong>not measured</strong>: they need
+node-level access the Hub is never given. Without metrics-server the page
+and the doctor say "the cluster has no metrics API (metrics-server)".
+Storage: each volume is measured by a read-only <abbr title="A short-lived pod from the Hub's own image that copies a volume or runs the folder fixer over exec; no network (except the NetworkPolicy probe's pods), no token">helper pod</abbr>; writable layers
+and images are not measured. The core services show <strong>not measured on
+Kubernetes yet</strong> (the Hub has no access to the core namespace).</p>
+<h2 id="the-cluster-guard">The <abbr title="The Hub's checks on Kubernetes (apps namespace, exact Role, admission self-test, NetworkPolicy probe) at start, every 60 s and before every deploy; until they hold every runtime operation answers 503">cluster guard</abbr><a class="headerlink" href="#the-cluster-guard" title="Permanent link">&para;</a></h2>
+<p>The Hub doesn't trust the cluster until its own checks hold, at start,
+every 60 seconds and before every deploy:</p>
+<ol>
+<li>the in-cluster configuration loads, and the CLI's cluster check says
+   <code>ok</code> and is at most 24 hours old;</li>
+<li>its permissions in the apps and edge namespaces are exactly its two
+   Roles, and it has nothing in the core namespace;</li>
+<li>the <abbr title="The Hub's dry run of one forbidden object per admission binding: each must be denied by its own binding (portcullis-apps-guard-* or portcullis-edge-guard-routes), or every runtime operation is refused">admission self-test</abbr>: forbidden objects, dry-run, are each rejected
+   by their own binding;</li>
+<li>its own <abbr title="A Kubernetes rule that says which pods may connect to which pods and ports">NetworkPolicy</abbr> probe: a denied and an allowed connection.</li>
+</ol>
+<p>Until all four hold, every runtime operation answers <code>503 the cluster is
+not verified: &lt;why&gt;</code>. <code>GET /api/runtime</code> (admins) shows the context, the
+admission result and the probe result
+(<a href="../hub/#kubernetes">Hub → Kubernetes</a>).</p>
+<h2 id="vpn">VPN<a class="headerlink" href="#vpn" title="Permanent link">&para;</a></h2>
+<p>The VPN service works on Kubernetes with the same commands. One <code>wg</code> pod
+serves every role, <abbr title="Kubernetes rules that say which pods may connect to which pods and ports">NetworkPolicies</abbr> keep the roles apart, and the built-in
+WireGuard port is a LoadBalancer Service. See
+<a href="../vpn/#kubernetes">VPN → Kubernetes</a>.</p>
+<h2 id="moving-to-kubernetes">Moving to Kubernetes<a class="headerlink" href="#moving-to-kubernetes" title="Permanent link">&para;</a></h2>
+<p>A backup taken on Docker or Podman restores onto Kubernetes (CI tests
+Docker → Kubernetes):</p>
+<ol>
+<li>On the old install, take a backup: <code>./portcullis backup</code> (or <code>--offsite</code>).</li>
+<li>Prepare the node as in <a href="#host-preparation">Host preparation</a>, clone core
+   and run <code>./portcullis init --runtime kubernetes --kube-context &lt;ctx&gt;</code>
+   with the same domain.</li>
+<li>Copy the backup directory over and run
+   <code>./portcullis restore --yes &lt;backup-dir&gt;</code>, or
+   <code>./portcullis restore --from-offsite</code>.</li>
+</ol>
+<p><code>init</code> must come first: the runtime is never detected as <code>kubernetes</code>, and
+the restore always keeps this host's <code>CONTAINER_RUNTIME</code> and every
+<code>PORTCULLIS_KUBE_*</code> key (<a href="../backups/#moving-between-runtimes">Backups → Moving between runtimes</a>).
+Check <a href="#apps-on-kubernetes">Apps on Kubernetes</a> first: an app that isn't
+available there can't be started after the move.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="postgres-never-starts-apparmor-stacking">Postgres never starts (AppArmor stacking)<a class="headerlink" href="#postgres-never-starts-apparmor-stacking" title="Permanent link">&para;</a></h3>
+<p>On a host with <code>kernel.apparmor_restrict_unprivileged_unconfined=1</code>, <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>'s
+containerd gives each container a stacked AppArmor label that its profile's
+signal rules don't match. Every signal inside a container is denied, and
+Postgres, which signals its own processes, never finishes recovery. This is
+upstream bug containerd#14485 (<abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr>#13625). The host checks refuse such a
+host with:</p>
+<div class="highlight"><pre><span></span><code>this cluster isn't ready for Portcullis (docs: operations/kubernetes):
+  - kernel.apparmor_restrict_unprivileged_unconfined=1 with containerd's AppArmor profile: containers get a stacked label its signal rules don't match, so signals inside them are denied and Postgres never finishes starting (containerd#14485, k3s#13625). Either run sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 and keep it in /etc/sysctl.d/ (this relaxes an Ubuntu hardening for unprivileged profile changes), or wait for a k3s with the fix
+</code></pre></div>
+<p>While containerd's profile isn't loaded yet (<abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> loads it when it starts),
+the same setting only gets a warning. Portcullis never changes this setting
+itself. Pick one:</p>
+<ul>
+<li>
+<p><strong>Set the sysctl to 0</strong>, now and at boot. This relaxes an Ubuntu
+  hardening that restricts unprivileged processes from changing AppArmor
+  profiles:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>kernel.apparmor_restrict_unprivileged_unconfined<span class="o">=</span><span class="m">0</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">'kernel.apparmor_restrict_unprivileged_unconfined = 0'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/etc/sysctl.d/60-portcullis-apparmor.conf
+</code></pre></div>
+</li>
+<li>
+<p><strong>Use a <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> release that has the fix</strong>: one whose bundled containerd
+  includes the fix for containerd#14485. Then reinstall <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> with the flags
+  of <a href="#host-preparation">Host preparation</a>.</p>
+</li>
+</ul>
+<p>Then run <code>./portcullis init</code> (or <code>up</code>) again.</p>
+<h2 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p><strong>Deleting the apps or <abbr title="portcullis-edge on Kubernetes: the only namespace Traefik watches; it holds every IngressRoute and Middleware and the apps' pinned ExternalName Services, never a Secret">edge namespace</abbr> by hand hangs.</strong> The cluster's
+  namespace controller isn't exempt from the admission policies, so a
+  manual <code>kubectl delete ns portcullis-apps</code> (or <code>portcullis-edge</code>) waits
+  on core's objects there (<code>portcullis.io/owner: core</code>, such as
+  <code>default-deny</code>) until you delete them with the CLI's identity (the
+  kubeconfig context in <code>.env</code>). No Portcullis command deletes those
+  namespaces.</p>
+</li>
+<li>
+<p>One node, IPv4 only, <abbr title="A small single-binary Kubernetes distribution; Portcullis's supported Kubernetes target (one node)">k3s</abbr> as the tested distribution.</p>
+</li>
+<li>Most marketplace templates are refused today (above).</li>
+<li>No <code>extra_hosts</code>, host networking, host devices, <code>privileged</code>, TUN or
+  <code>NET_ADMIN</code>, replicas above 1, or binds outside the shared-folder roots.</li>
+<li><code>pids_limit</code> isn't carried: the kubelet's 1024 per pod applies.</li>
+<li>The VPN's <code>link</code> role and <abbr title="An app reachable only through a Portcullis-wired VPN and still behind sign-in, never from the internet">VPN-only</abbr> access to the Kubernetes API aren't
+  available.</li>
+<li><code>./portcullis backup schedule</code> still writes units that require
+  <code>docker.service</code>, and <code>lldap-ui</code> still checks for the <code>docker</code> command.
+  On a host without Docker, schedule <code>./portcullis backup --offsite</code> with
+  your own timer for now.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

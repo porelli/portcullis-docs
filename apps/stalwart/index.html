@@ -1,0 +1,3906 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/apps/stalwart/">
+      
+      
+      
+        <link rel="prev" href="../motioneye/">
+      
+      
+        <link rel="next" href="../immich/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>📬 Stalwart - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              📬 Stalwart
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📬 Stalwart
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📬 Stalwart
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#about" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        About
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mail-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mail provider
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mail provider">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Services
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-start-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The start gate
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-bootstrap-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The bootstrap job
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stalwarts-api-key-and-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Stalwart's API key and role
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spam-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Spam filter
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Provider checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-mail-senders" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App mail senders
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App mail senders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stores-made-before-app-mail-senders" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Stores made before app mail senders
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Updates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Images
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firefox-sync-fxa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync + own accounts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  The Portcullis CLI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubernetes (experimental)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Multiple Servers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ssh-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SSH Access
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#about" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        About
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mail-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mail provider
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mail provider">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Services
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-start-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The start gate
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-bootstrap-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The bootstrap job
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stalwarts-api-key-and-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Stalwart's API key and role
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spam-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Spam filter
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Provider checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-mail-senders" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        App mail senders
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="App mail senders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stores-made-before-app-mail-senders" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Stores made before app mail senders
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Updates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Images
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="stalwart">📬 <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr><a class="headerlink" href="#stalwart" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Mail server for every person and mail domain (SMTP, IMAP, spam filter, <abbr title="DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS">DKIM</abbr>, <abbr title="Mail Transfer Agent Strict Transport Security: a policy telling other servers to deliver only over valid TLS">MTA-STS</abbr>), wired as the server's <abbr title="The app instance wired into the mail slot (a Marketplace template with a mail: block, e.g. Stalwart); only the wired instance gets the slot's ports, secrets and certificate">mail provider</abbr></p>
+</blockquote>
+<p><strong>Category:</strong> mail<br />
+<strong>Tags:</strong> <code>mail</code>, <code>smtp</code>, <code>imap</code>, <code>email</code>, <code>stalwart</code><br />
+<strong>Website:</strong> <a href="https://stalw.art/">https://stalw.art/</a><br />
+<strong>Source:</strong> <a href="https://github.com/stalwartlabs/stalwart">https://github.com/stalwartlabs/stalwart</a></p>
+<h2 id="about">About<a class="headerlink" href="#about" title="Permanent link">&para;</a></h2>
+<div class="app-long-description">
+<p>Stalwart is a mail server: SMTP for sending and receiving, IMAP for mail clients, a spam filter, DKIM signing and MTA-STS.</p>
+<p>Here it is a mail provider. Installing it changes nothing until a full administrator wires it as the server's mail in Settings → Mail. Portcullis then manages every person's mailbox, address and mail password, the mail domains and their DNS records. Full administrators can open Stalwart's own admin screen read-only.</p>
+</div>
+
+<h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Method</strong></td>
+<td><code>custom</code></td>
+</tr>
+<tr>
+<td><strong>SSO</strong></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /> No</td>
+</tr>
+<tr>
+<td><strong><abbr title="Restricts an instance's hostnames to members of its access group via group-gate">Group Access</abbr></strong></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><strong><abbr title="Maps the admin group to the app's admin role">Group Admin</abbr></strong></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Stalwart is a mail provider (contract §3.5, §19): installing it grants nothing. A full administrator wires it into the server's one mail slot in <strong>Settings → Mail</strong>; only then does the Hub publish its ports and hand it the mail certificate.</p>
+<p>Once wired, the Hub publishes host ports 25, 465, 587 and 993 onto its listeners, attaches its adapter to the provider API network, routes the MTA-STS / autoconfig / autodiscover hosts to it and hands it the mail certificate and its secrets.</p>
+<ul>
+<li><code>instances: single</code> because of those host ports and the one mail slot.</li>
+<li>The mailbox population is the Hub's <code>mail_users</code> group, never this template's.</li>
+<li>Mail passwords go through the provider API only (no <code>person_secret</code> here).</li>
+</ul>
+<p><strong>Services:</strong></p>
+<ul>
+<li><code>stalwart</code>: the Stalwart mail server. uid 2000, read-only, <code>cap_drop: ALL</code> plus <code>NET_BIND_SERVICE</code> (which the image's binary carries as a file capability). Listeners 10025 / 10465 / 10587 / 10993 behind the Hub's published ports.</li>
+<li><code>adapter</code>: Portcullis' mailctl, uid 10010. The provider API, the well-known files, the spam rules, the checks and metrics; the only holder of Stalwart's API key.</li>
+<li><code>resolver</code>: Unbound, a validating recursive resolver for the two.</li>
+</ul>
+<p><strong>One-off jobs:</strong></p>
+<ul>
+<li><code>adapter-bin</code> copies the pinned mailctl into a volume.</li>
+<li><code>key-init</code> prepares the key volume (it holds the API key alone).</li>
+<li><code>bootstrap</code> runs Stalwart in recovery mode inside its own container only (a random recovery password made in the job, a job-only session nonce). It applies the base plan once per store (only on an empty store; a store with data but no marker fails closed), writes the API key (0640, group <code>mailkey</code>, in the key volume only the job and the adapter mount) and exits 0 only once the recovery login is refused.
+<ul>
+<li>It runs as Stalwart's uid and adds only <code>NET_BIND_SERVICE</code> (the Stalwart binary's file capability; no other), and is gated like the server.</li>
+<li>It re-runs on every cold start: a recovery start that checks the API key, then a normal start. A lost key gets a new key only, the settings untouched.</li>
+<li>It does nothing while the server holds the store lock.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Start gate:</strong> <code>stalwart</code> starts only when the Hub's slot files say so (<code>.present</code>, or the Hub's void mode with its session nonce); a raw <code>compose up</code> after a core restore stays stopped. A recovery-mode start outside the <code>bootstrap</code> job is refused.</p>
+<p><strong>Networks:</strong></p>
+<ul>
+<li><code>internal</code>: no internet; pinned 172.31.255.2 / .3 / .4 in the fixed subnet <code>172.31.255.0/28</code>. An existing network on that range stops the start.</li>
+<li><code>egress</code>: <code>stalwart</code> and the resolver only.</li>
+</ul>
+<p>Mail over IPv6 isn't supported.</p>
+<p>The <code>dqs_key</code> setting reaches the adapter as an environment variable (the adapter moves it to a file before mailctl starts), so it shows in the adapter container's configuration (<code>docker inspect</code>): a third-party lookup key, not a Portcullis credential.</p>
+<p><strong>Updates:</strong> Stalwart is pinned. Any change to this template (an image bump included) holds the wired provider until an admin re-confirms it on the instance's <strong>Mail</strong> tab.</p>
+</div>
+
+<h2 id="mail-provider">Mail provider<a class="headerlink" href="#mail-provider" title="Permanent link">&para;</a></h2>
+<p>This template is a <strong><abbr title="The app instance wired into the mail slot (a Marketplace template with a mail: block, e.g. Stalwart); only the wired instance gets the slot's ports, secrets and certificate">mail provider</abbr></strong> (<a href="../../guides/integration-contracts/#35-mail-providers-the-mail-block-new-mail-provider">contracts §3.5</a>): installing it grants nothing. A full administrator wires one <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> into the server's <abbr title="The one place a mail server plugs into Portcullis: core's certificate, TLSA, networks and volumes plus the Hub's provider API client; open while PORTCULLIS_MAIL=on">mail slot</abbr> (<a href="../../operations/mail/#wiring-a-provider">Mail operations → Wiring a provider</a>), and only that <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> gets the slot's powers: the public ports, the provider API network, the mail certificate, the slot files and the well-known router.</p>
+<table>
+<thead>
+<tr>
+<th><code>mail:</code> field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>label</code></td>
+<td><abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr></td>
+</tr>
+<tr>
+<td><code>api_version</code></td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>api</code></td>
+<td><code>adapter</code> port <code>8080</code>: the provider API the Hub dials on <code>portcullis-mail-api</code></td>
+</tr>
+<tr>
+<td><code>listeners</code></td>
+<td><code>stalwart</code>: host port 25 → <code>10025</code>, 465 → <code>10465</code>, 587 → <code>10587</code>, 993 → <code>10993</code> (published by the Hub, IPv4 only)</td>
+</tr>
+<tr>
+<td><code>wellknown</code></td>
+<td><code>adapter</code> port <code>8081</code>: <abbr title="Mail Transfer Agent Strict Transport Security: a policy telling other servers to deliver only over valid TLS">MTA-STS</abbr>, autoconfig and autodiscover</td>
+</tr>
+<tr>
+<td><code>metrics</code></td>
+<td><code>adapter</code> port <code>9100</code></td>
+</tr>
+<tr>
+<td><code>server_metrics</code></td>
+<td><code>stalwart</code> port <code>9180</code>, path <code>/metrics/prometheus</code></td>
+</tr>
+<tr>
+<td><code>tls</code></td>
+<td><code>stalwart</code>, <code>adapter</code>, <code>bootstrap</code></td>
+</tr>
+<tr>
+<td><code>gated</code></td>
+<td><code>stalwart</code>, <code>adapter</code>, <code>bootstrap</code></td>
+</tr>
+<tr>
+<td><code>sessions.restart</code></td>
+<td><code>stalwart</code>: restarted after every removal and every revoked <abbr title="A per-device password for mail apps only (IMAP and submission), created by the person on their Sign-in page, shown once">mail password</abbr></td>
+</tr>
+<tr>
+<td><code>export</code></td>
+<td><code>adapter</code>: <code>mailctl export --former {former_id}</code> (<code>./portcullis mail export</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>This page is normative for the <code>stalwart</code> template only
+(<a href="../../guides/integration-contracts/#19-mail-provider-api-new-mail-provider">contracts §19</a>
+is the provider-neutral part). The adapter is Portcullis' <code>mailctl</code>, built
+from core's <code>mailctl/</code> and published as <code>ghcr.io/porelli/portcullis-mailctl</code>
+(cosign-signed, pinned by digest here).</p>
+<h3 id="services">Services<a class="headerlink" href="#services" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Image</th>
+<th>Runs as</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>adapter-bin</code> (job)</td>
+<td><abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr></td>
+<td><code>10010:10010</code>, no network</td>
+<td>Copies the pinned image's static <code>mailctl</code> into the <code>mailctl_bin</code> volume on every start, so the bootstrap job runs the same binary next to <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr></td>
+</tr>
+<tr>
+<td><code>key-init</code> (job)</td>
+<td><abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr></td>
+<td><code>10010:10010</code> + group 2010, no network</td>
+<td>Makes the key volume <code>adapter_key</code> <code>2770 10010:2010</code>; refuses to go on when it holds anything but <code>api-key</code></td>
+</tr>
+<tr>
+<td><code>bootstrap</code> (job)</td>
+<td><abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr></td>
+<td><code>2000:2010</code> (primary group 2010, <code>mailkey</code>), <code>NET_BIND_SERVICE</code> only, the internal network only</td>
+<td>The base plan and <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s API key (<a href="#the-bootstrap-job">below</a>). In <code>tls</code> and <code>gated</code>: the base plan reads the certificate and the slot's metrics secret</td>
+</tr>
+<tr>
+<td><code>stalwart</code></td>
+<td><code>stalwartlabs/stalwart</code> (upstream, unmodified)</td>
+<td><code>2000:2000</code>, <code>NET_BIND_SERVICE</code> only</td>
+<td>The mail server: SMTP 10025, submissions 10465, submission 10587, IMAPS 10993, management 8080 (the adapter only), metrics 9180. <code>mem_limit</code> 1g</td>
+</tr>
+<tr>
+<td><code>adapter</code></td>
+<td><abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr></td>
+<td><code>10010:10010</code> + group 2010, no capability</td>
+<td>The provider API (8080), the well-known pages (8081), the vendored spam rules (8082, internal only), metrics (9100), the checks. The only holder of <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s API key besides the job. <code>mem_limit</code> 256m</td>
+</tr>
+<tr>
+<td><code>resolver</code></td>
+<td><code>klutchell/unbound</code></td>
+<td><code>101:102</code> (the image's)</td>
+<td>A validating recursive resolver (from the root servers, <abbr title="DNS Security Extensions: signed DNS records that validating resolvers check">DNSSEC</abbr> with the image's trust anchor) on port 5353 for <code>stalwart</code> and the adapter. <code>mem_limit</code> 128m</td>
+</tr>
+</tbody>
+</table>
+<p>Every service has <code>cap_drop: [ALL]</code>, <code>no-new-privileges</code>, a read-only root
+and an explicit <code>pids_limit</code>; none publishes a port or carries a <abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr>
+label (the Hub's override adds both for the wired <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>). <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s
+binary carries <code>NET_BIND_SERVICE</code> as a file capability and can't be
+executed without it in the bounding set, so <code>stalwart</code> and <code>bootstrap</code> add
+that one capability back; <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> still binds only ports ≥ 8080.</p>
+<p><strong>Networks.</strong> <code>internal</code> (<code>internal: true</code>, fixed subnet <code>172.31.255.0/28</code>:
+<code>stalwart</code> at <code>.2</code>, the adapter at <code>.3</code>, the resolver at <code>.4</code>, the bootstrap
+job a dynamic address from <code>172.31.255.8/29</code>; an existing network on that
+range stops the start) and <code>egress</code> (<code>stalwart</code> and the resolver only:
+outbound delivery, DNS, the blocklists). The adapter has no egress. Mail
+over IPv6 isn't supported.</p>
+<p><strong>Volumes.</strong> <code>data</code> (<abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s RocksDB store), <code>job_data</code> (the job's own
+files, such as the last server image), <code>adapter_data</code> (<abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr>'s state
+machines: <abbr title="DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS">DKIM</abbr>, <abbr title="Mail Transfer Agent Strict Transport Security: a policy telling other servers to deliver only over valid TLS">MTA-STS</abbr>, <abbr title="A DNS policy telling receivers what to do with mail that fails SPF and DKIM alignment (none, quarantine, reject)">DMARC</abbr>, <abbr title="DNS-based Authentication of Named Entities: TLSA records, trusted through DNSSEC, pinning a server's TLS key">DANE</abbr>, the spam rules' import),
+<code>adapter_key</code> (the API key alone, <code>0640</code> group <code>mailkey</code> 2010, mounted only
+by the job read-write and the adapter read-only) and <code>mailctl_bin</code>. The
+store is in <code>data</code>, so a <a href="../../operations/backups/">backup</a> of the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>
+holds every mailbox and the <abbr title="DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS">DKIM</abbr> keys.</p>
+<h3 id="the-start-gate">The start gate<a class="headerlink" href="#the-start-gate" title="Permanent link">&para;</a></h3>
+<p><code>stalwart</code>, the adapter and the bootstrap job are <code>gated</code>: each checks the
+slot files (<code>PORTCULLIS_MAIL_SLOT_DIR</code>) before its server starts
+(<a href="../../guides/integration-contracts/#194-the-provider-environment-gate-and-obligations">contracts §19.4</a>).
+<code>stalwart</code> and the job use the template's <code>gate/entrypoint.sh</code>
+(<code>entrypoint.sh --check</code> runs only the check, for the job); the adapter
+uses <abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr>'s own check. A start goes on only when <code>void-pending</code> is
+absent and <code>.present</code> is exactly <code>portcullis-mail-gate</code>, or in the Hub's
+void mode with its session nonce. Otherwise it stops before the server
+opens the store, with one of:</p>
+<ul>
+<li>"the mail gate isn't readable: the slot's files are missing (is this <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> wired?)" (an unwired <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>, or a raw <code>up</code> after a core restore emptied the slot volume);</li>
+<li>"the mail gate is closed: .present isn't the gate sentinel";</li>
+<li>"the mail gate is closed: a void is owed and this isn't the Hub's void mode".</li>
+</ul>
+<p>The adapter also refuses a slot mount that shows anything but the slot
+files: "the <abbr title="The one place a mail server plugs into Portcullis: core's certificate, TLSA, networks and volumes plus the Hub's provider API client; open while PORTCULLIS_MAIL=on">mail slot</abbr> mount shows "&lt;name&gt;": not the wired provider's
+slot files (the mail_provider_slot volume's root)".</p>
+<p><strong>Recovery mode</strong> (<abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s one-time admin) starts only inside the
+bootstrap job: the job writes a session nonce into its own tmpfs
+(<code>/run/portcullis/bootstrap</code>, which no other service has) and passes the
+same nonce to its server child. Any other recovery-mode start is refused
+("a recovery-mode start outside the bootstrap job"). The job's normal
+starts are let through by the job's mark in the same tmpfs. Every other
+start takes the store lock first and waits up to 600 s while the job holds
+it, so two processes never open the store at once. Forging either needs a
+compose change, which is a template change: it <a href="../../operations/mail/#template-updates-hold">holds</a>
+the wired provider until an admin confirms it.</p>
+<h3 id="the-bootstrap-job">The bootstrap job<a class="headerlink" href="#the-bootstrap-job" title="Permanent link">&para;</a></h3>
+<p>The job runs before <code>stalwart</code> and the adapter
+(<code>service_completed_successfully</code>), on every start of the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>:</p>
+<ol>
+<li>The gate check (above): unwired, or a void owed outside the Hub's void
+   mode, it exits 1 and nothing else starts.</li>
+<li>The store lock. When it is busy, the server is running on this store (a
+   later <code>up</code> re-runs the job): it says "bootstrap: the store is in use (the
+   server is running): nothing to do" and exits 0.</li>
+<li><strong>An unmarked store</strong> gets the base plan only when it is empty (no
+   account but <abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr>'s, no foreign domain); a store with data but no
+   marker fails the job, and the adapter never starts. The plan runs with
+   <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> in recovery mode as the job's own child, a recovery password
+   made inside the job: the listeners, the caches cut to fit 1 GiB, the
+   certificate files, no <abbr title="Automated Certificate Management Environment - protocol for issuing certificates">ACME</abbr> and manual DNS and <abbr title="DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS">DKIM</abbr> management on every
+   domain, the resolver, the management access rule, the metrics login, the
+   SMTP rules, the spam settings, the parking domain
+   <code>portcullis-former.internal</code>, the role and account below and one API
+   key, written <code>0640</code> group <code>mailkey</code> to the key volume. Then a normal
+   start must refuse the recovery login, and only then is the store marked.</li>
+<li><strong>A marked store</strong> gets a recovery start that checks the key, then the
+   normal start that must refuse the recovery login. The settings are never
+   planned again (the adapter applies the Hub's document on every pass). A
+   missing key gets a new key only. After a change of the <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> image
+   the normal start also updates the role's permissions
+   (<code>STALWART_UPDATE_ROLE_PERMISSIONS</code>); when the server was running during
+   that <code>up</code>, the update waits for the next cold start. A store made before
+   <a href="#app-mail-senders">app mail senders</a> gets their RCPT rule here too.</li>
+</ol>
+<p>The job exits 0 only once the recovery login is refused, and no container
+keeps a recovery variable.</p>
+<h3 id="stalwarts-api-key-and-role"><abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s API key and role<a class="headerlink" href="#stalwarts-api-key-and-role" title="Permanent link">&para;</a></h3>
+<p>The key has the custom role <strong><code>portcullis-mailctl</code></strong>, on the account
+<code>portcullis-mailctl@portcullis-former.internal</code> (a random password, never
+kept): accounts, domains, <abbr title="DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS">DKIM</abbr> signatures, <abbr title="Per-device passwords for mail apps only (IMAP and submission), created by each person on their Sign-in page, shown once">mail passwords</abbr> (app passwords),
+lists, the queue (read), <abbr title="A DNS policy telling receivers what to do with mail that fails SPF and DKIM alignment (none, quarantine, reject)">DMARC</abbr> and TLS reports (read), the spam settings,
+rules and lookups, the DNSBL servers, sender authentication, the outbound
+and inbound throttles, the TLS strategies, the routes, the system and
+security settings, the spam rules' import task and the reload actions, plus
+exactly the permission sets it grants (a <abbr title="A per-device password for mail apps only (IMAP and submission), created by the person on their Sign-in page, shown once">mail password</abbr>'s, the export's),
+because <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> refuses to grant a permission the caller lacks. Never
+<code>sysApiKey*</code>, <code>sysRole*</code>, JMAP, DAV, Sieve or POP3: the key can't widen
+itself. <code>impersonate</code> plus creating app passwords already amounts to
+mailbox access, so the key admits only the adapter's address (<code>allowedIps</code>
+its <code>/32</code>).</p>
+<p><strong>The management listener</strong> answers only the adapter's pinned address on
+<code>/jmap</code>, <code>/api</code> and <code>/.well-known/jmap</code> (and the metrics path on the
+metrics listener), <code>404</code> otherwise. That rule fails open (<abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> treats an
+expression error as allow, and loopback bypasses it), so the real control is
+the network: only this template's services are on <code>internal</code>, and core CI
+checks that another address there gets <code>404</code>.</p>
+<h3 id="spam-filter">Spam filter<a class="headerlink" href="#spam-filter" title="Permanent link">&para;</a></h3>
+<p><abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s built-in filter with the vendored rules
+(<code>stalwartlabs/spam-filter</code> v3.0.4, sha256
+<code>604cc4386b1574e95185d37cb9c194ac20d360cca3865960b6ed0edf70475562</code>), served by
+the adapter on <code>172.31.255.3:8082</code> only, so the filter never downloads them.
+The adapter imports them itself: it starts <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s spam-filter
+maintenance task with its own copy, checks that every vendored rule is
+present, and only then records the import (check <code>x-spam_rules</code>); until then
+it asks again every minute. After every import it turns the rules' external
+phishing and domain lookups off again, and checks that they stay off every
+minute for 30 minutes after a start or an import, then every 15 minutes
+(check <code>x-external_lookups</code>).</p>
+<p>The filter scores at DATA: at least the <strong>Reject</strong> score (15) is refused
+with <code>550 5.7.1</code>, at least the <strong>Junk</strong> score (5) goes to Junk with
+<code>X-Spam-*</code> headers (Settings → Mail sets both). It has the statistical
+classifier, trained by moving messages into and out of Junk, and the DNS
+blocklists through the template's resolver. Greylisting, the AI classifier,
+Pyzor and <abbr title="A DNS policy telling receivers what to do with mail that fails SPF and DKIM alignment (none, quarantine, reject)">DMARC</abbr> report forwarding are off.</p>
+<p><strong><abbr title="The standard spam test string: a message carrying it in the Subject must be refused">GTUBE</abbr>.</strong> <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> v1.1.0 recognises the <abbr title="The standard spam test string: a message carrying it in the Subject must be refused">GTUBE</abbr> test string only in the
+<strong>Subject</strong>, not in the body. Send a message whose Subject is
+<code>XJS*C4JDBQADN1.NSBN3*2IDNEN*GTUBE-STANDARD-ANTI-UBE-TEST-EMAIL*C.34X</code> from
+another mail server: it is refused with <code>550 5.7.1</code> at DATA. If it is
+accepted, the spam rules aren't imported yet (<code>x-spam_rules</code>).</p>
+<p><strong>The Spamhaus DQS key</strong> (setting <code>dqs_key</code>, below). Spamhaus's public
+mirrors refuse queries from many cloud resolvers and from large volumes; a
+refused query is a Warning of the <code>blocklist</code> check, never "ok". With a free
+<a href="https://www.spamhaus.com/free-trial/sign-up-for-a-free-data-query-service-account/">Spamhaus DQS</a>
+key (8–64 letters and digits, read in lowercase) the filter and the
+<code>blocklist</code> check query your key's zones instead. The key reaches the
+adapter as the environment variable <code>STALWART_DQS_KEY</code>, which the adapter
+moves into a <code>0600</code> file before <abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr> starts, so it shows in the adapter
+container's configuration (<code>docker inspect</code>): it is a third-party lookup
+key, not a Portcullis credential. A changed key applies at the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s
+next restart.</p>
+<h3 id="provider-checks">Provider checks<a class="headerlink" href="#provider-checks" title="Permanent link">&para;</a></h3>
+<p>Besides the neutral catalog
+(<a href="../../guides/integration-contracts/#198-checks-report-trust-spam-outbound-and-metrics">contracts §19.8</a>),
+the adapter reports three checks of its own, shown by the doctor as
+<code>mail_provider_check</code> (explain-only, never a one-click fix):</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Title</th>
+<th>Not ok when</th>
+<th>Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x-spam_rules</code></td>
+<td>Spam filter rules</td>
+<td>Problem: "<abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> has no spam rules: the import hasn't run yet (the adapter retries every minute; the spam filter scores nothing meanwhile)", with the import's error</td>
+<td>Check <abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr>'s log (the stalwart <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s adapter logs) for "spam rules"; restarting the stalwart <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> asks for the import again.</td>
+</tr>
+<tr>
+<td><code>x-sender_rcpt</code></td>
+<td>App mail senders refuse inbound mail</td>
+<td>Problem: "the mail server accepts mail for the app sender address <address> (<reply>): its store has no RCPT rule for app mail senders" (asked on the <abbr title="Mail exchanger: the DNS record naming the server that receives a domain's mail">MX</abbr> listener for the first sender's address and a sub-address of it, null sender, never DATA; also a line in <abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr>'s log); Info when the server couldn't be asked; ok without senders</td>
+<td>Restart the stalwart <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (stop, then start): its bootstrap job adds the rule (<a href="#stores-made-before-app-mail-senders">below</a>). If the job's log says the RCPT script isn't the expected shape, add the rule by hand.</td>
+</tr>
+<tr>
+<td><code>x-external_lookups</code></td>
+<td>Spam filter external lookups</td>
+<td>Problem: "the spam rules' external lookups may be on and couldn't be turned off (the spam filter may contact outside feeds)", with the error; Info before the first check</td>
+<td>Check <abbr title="The Portcullis service that alone configures Stalwart: mailboxes, DNS records, DKIM keys, policies and checks">mailctl</abbr>'s log (the stalwart <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s adapter logs) for "spam rules"; the adapter retries every minute.</td>
+</tr>
+</tbody>
+</table>
+<p><abbr title="A DNS policy telling receivers what to do with mail that fails SPF and DKIM alignment (none, quarantine, reject)">DMARC</abbr> and TLS aggregate reports are display-only with this provider:
+<abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> v1.1.0 gives no <abbr title="DomainKeys Identified Mail: a signature on each message, checked against a public key in DNS">DKIM</abbr> result for report messages, so none is
+authenticated, and <code>dmarc_reports</code> / <code>tlsrpt_reports</code> say "shown only, never
+acted on".</p>
+<h3 id="app-mail-senders">App mail senders<a class="headerlink" href="#app-mail-senders" title="Permanent link">&para;</a></h3>
+<p>App mail senders (<a href="../../guides/integration-contracts/#1914-app-mail-senders-new-firefox-own-accounts">contracts §19.14</a>) are <abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr> accounts <code>portcullis-sender:&lt;uuid&gt;</code> whose permissions replace every inherited one with <code>authenticate</code> and <code>emailSend</code>; their one address is their login. Each sender's address and the glob <code>&lt;local&gt;+*@&lt;domain&gt;</code> (<abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>'s sub-addressing is on by default) are keys of the lookup namespace <code>portcullis-senders</code>, which the base plan's RCPT rule refuses with <code>550 5.1.1</code>. Two <code>MtaInboundThrottle</code>s limit each sender, keyed on the login: <code>portcullis: sender messages per minute</code> (10) and <code>portcullis: sender messages per hour</code> (60); over either, <code>452 4.4.5</code>.</p>
+<h4 id="stores-made-before-app-mail-senders">Stores made before app mail senders<a class="headerlink" href="#stores-made-before-app-mail-senders" title="Permanent link">&para;</a></h4>
+<p>The base plan is written only into a new store, so a store bootstrapped by an older adapter lacks the senders' RCPT rule (check <code>x-sender_rcpt</code>): mail to a sender is accepted and bounced later. The bootstrap job adds it at every start of a marked store: when the singleton <code>x:MtaStageRcpt</code>'s <code>script</code> is the usual <code>{match, else}</code> form and no rule touches <code>portcullis-senders</code>, it puts the base plan's rule first, keeps every other rule in its order and the <code>else</code>, then runs <code>ReloadSettings</code>. Its log says "the RCPT script had no rule refusing mail to app mail senders: put it first". A rule already in place changes nothing.</p>
+<p>The job does this only when it opens the store itself: while the server runs, a later <code>up</code> finds the store in use and does nothing. Restart the stalwart <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr> (stop, then start) once. The check keeps its last result until the checks are next refreshed (the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s Mail tab).</p>
+<p><strong>By hand</strong>, only when the job's log says "the RCPT script isn't the expected shape" (it then writes nothing): as the recovery admin (the adapter's key can't), set <code>x:MtaStageRcpt</code>'s field <code>script</code> so that this rule comes first, every other rule of the store kept after it:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"if"</span><span class="p">:</span><span class="s2">"key_exists('portcullis-senders', rcpt)"</span><span class="p">,</span><span class="nt">"then"</span><span class="p">:</span><span class="s2">"'parked-reject'"</span><span class="p">}</span>
+</code></pre></div>
+<p>For a store made with the base plan, the whole script is</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"else"</span><span class="p">:</span><span class="s2">"false"</span><span class="p">,</span><span class="nt">"match"</span><span class="p">:{</span><span class="nt">"0"</span><span class="p">:{</span><span class="nt">"if"</span><span class="p">:</span><span class="s2">"key_exists('portcullis-senders', rcpt)"</span><span class="p">,</span><span class="nt">"then"</span><span class="p">:</span><span class="s2">"'parked-reject'"</span><span class="p">},</span><span class="nt">"1"</span><span class="p">:{</span><span class="nt">"if"</span><span class="p">:</span><span class="s2">"rcpt_domain == 'portcullis-former.internal'"</span><span class="p">,</span><span class="nt">"then"</span><span class="p">:</span><span class="s2">"'parked-reject'"</span><span class="p">},</span><span class="nt">"2"</span><span class="p">:{</span><span class="nt">"if"</span><span class="p">:</span><span class="s2">"key_exists('list-members-only', rcpt) &amp;&amp; !key_exists('list-posters', rcpt + '|' + authenticated_as)"</span><span class="p">,</span><span class="nt">"then"</span><span class="p">:</span><span class="s2">"'list-reject'"</span><span class="p">}}}</span>
+</code></pre></div>
+<p>then run the action <code>ReloadSettings</code>.</p>
+<h3 id="updates">Updates<a class="headerlink" href="#updates" title="Permanent link">&para;</a></h3>
+<p><abbr title="The first mail provider app (Marketplace template stalwart): SMTP, submission and IMAP, with a built-in spam filter">Stalwart</abbr>, Unbound and the adapter are pinned by digest. Any change to this
+template, an image bump included, changes the wired <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s block hash:
+the Hub <a href="../../operations/mail/#template-updates-hold">holds</a> the provider
+until a full administrator confirms the update on the <abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr>'s Mail tab.
+The confirmation voids no <abbr title="A per-device password for mail apps only (IMAP and submission), created by the person on their Sign-in page, shown once">mail password</abbr> (the same mailbox store).</p>
+<h2 id="ai-support">AI support<a class="headerlink" href="#ai-support" title="Permanent link">&para;</a></h2>
+<p><strong>No AI support:</strong> A mail server reached only by mail clients and the Hub's provider API; mailboxes stay out of AI reach (surveyed 2026-11-17).</p>
+<h2 id="images">Images<a class="headerlink" href="#images" title="Permanent link">&para;</a></h2>
+<p>Pinned by version tag and digest; Dependabot proposes updates.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Image</th>
+<th>Digest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>adapter</code></td>
+<td><code>ghcr.io/porelli/portcullis-mailctl:main-6954964</code></td>
+<td><code>sha256:0253e6db57b8…</code></td>
+</tr>
+<tr>
+<td><code>adapter-bin</code></td>
+<td><code>ghcr.io/porelli/portcullis-mailctl:main-6954964</code></td>
+<td><code>sha256:0253e6db57b8…</code></td>
+</tr>
+<tr>
+<td><code>admin-view</code></td>
+<td><code>ghcr.io/porelli/portcullis-mailctl:main-6954964</code></td>
+<td><code>sha256:0253e6db57b8…</code></td>
+</tr>
+<tr>
+<td><code>bootstrap</code></td>
+<td><code>docker.io/stalwartlabs/stalwart:v1.1.0</code></td>
+<td><code>sha256:f772aa6ef8cd…</code></td>
+</tr>
+<tr>
+<td><code>key-init</code></td>
+<td><code>ghcr.io/porelli/portcullis-mailctl:main-6954964</code></td>
+<td><code>sha256:0253e6db57b8…</code></td>
+</tr>
+<tr>
+<td><code>resolver</code></td>
+<td><code>docker.io/klutchell/unbound:v1.26.2</code></td>
+<td><code>sha256:50cbeb32b583…</code></td>
+</tr>
+<tr>
+<td><code>stalwart</code></td>
+<td><code>docker.io/stalwartlabs/stalwart:v1.1.0</code></td>
+<td><code>sha256:f772aa6ef8cd…</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p>Options an admin sets in the Hub's <a href="../../operations/hub/#app-settings">settings panel</a> (<abbr title="A setting each person enters for themselves on My apps (scope person_entered)">person-entered</abbr> ones: each person, on <a href="../../operations/hub/#my-apps"><abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr></a>). <strong>Scope</strong> and <strong>Applies</strong> are explained in the <a href="../../guides/manifest-reference/#settings">Manifest Reference</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Scope</th>
+<th>Applies</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Spamhaus DQS key</strong></td>
+<td><code>secret</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Optional free Spamhaus Data Query Service key (8-64 letters and digits). Spamhaus refuses blocklist queries from large public resolvers; with a key the spam filter and the blocklist check use the DQS zones instead.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

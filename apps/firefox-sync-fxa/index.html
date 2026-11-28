@@ -1,0 +1,3815 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted YubiKey authentication gateway">
+      
+      
+      
+        <link rel="canonical" href="https://porelli.github.io/portcullis-docs/apps/firefox-sync-fxa/">
+      
+      
+      
+        <link rel="prev" href="../firefox-sync/">
+      
+      
+        <link rel="next" href="../gridcraft/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="zensical-0.0.74">
+    
+    
+      
+        <title>🦊 Firefox Sync + own accounts - Portcullis</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Portcullis" class="md-header__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Portcullis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              🦊 Firefox Sync + own accounts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Portcullis" class="md-nav__button md-logo" aria-label="Portcullis" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="Portcullis">
+
+    </a>
+    Portcullis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/porelli/portcullis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    porelli/portcullis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Setup
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/certificates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Certificates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  App Catalog
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  App Catalog
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 AI Chat
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🤖 LiteLLM
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Matrix (Synapse + Element)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mattermost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💬 Mattermost
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cadcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📏 CADCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../designcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📐 DesignCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../effectcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 EffectCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../figcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧩 FigCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../filmcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎞 FilmCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lightcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌅 LightCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../photocraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 PhotoCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../soundcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎚 SoundCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../texturecraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧱 TextureCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vectorcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖋 VectorCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloudbeaver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗃 CloudBeaver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitlab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 GitLab
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍵 Gitea
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../actual-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💰 Actual Budget
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firefly-iii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💸 Firefly III
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../esphome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📟 ESPHome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homeassistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🏠 Home Assistant
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zigbee2mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐝 Zigbee2MQTT
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../motioneye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📹 motionEye
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stalwart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📬 Stalwart
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../immich/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📷 Immich
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📺 Jellyfin
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🎬 Plex
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📊 Grafana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scrutiny/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  💾 Scrutiny
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adguard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🛡 AdGuard Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pihole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🚫 Pi-hole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../craft-anything/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔍 Craft Anything
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deckcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📽 DeckCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dokuwiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 DokuWiki
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firefox-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync + own accounts
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🦊 Firefox Sync + own accounts
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#about" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        About
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Routing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Images
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Environment Variables
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keycloak-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keycloak Clients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access URLs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gridcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🧮 GridCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kanboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📋 Kanboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mealie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🍽 Mealie
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nextcloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ☁️ Nextcloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oxicloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🗂 OxiCloud
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../paperless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Paperless-ngx
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pdfcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 PdfCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vikunja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ✅ Vikunja
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📖 Wiki.js
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wordcraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📝 WordCraft
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📄 Docs Site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guacamole/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🖥 Apache Guacamole
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vaultwarden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🔐 Vaultwarden
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samba/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  📂 Samba
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timemachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🕰 Time Machine
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🌐 Headscale
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbird/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  🐦 NetBird
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Guides
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  The Portcullis CLI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-an-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding an App
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Manifest Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/saml-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SAML Integration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/header-auth-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Header Auth Pattern
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-your-ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Connect Your AI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/third-party-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Third-Party Apps
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integration-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Integration Contracts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Operations
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CLI Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Upgrading & Releases
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/rootless-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rootless Podman
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubernetes (experimental)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/vpn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  VPN
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Multiple Servers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ssh-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SSH Access
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security & Hardening
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Groups & Access Control
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/auth-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sign-in Methods & Templates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Hub Management
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/file-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  File Sharing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/mail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Mail
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AI Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing & CI
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#about" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        About
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Routing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AI support
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Images
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Environment Variables
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keycloak-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keycloak Clients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access URLs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="firefox-sync-own-accounts">🦊 Firefox Sync + own accounts<a class="headerlink" href="#firefox-sync-own-accounts" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Firefox Sync with its own self-hosted Mozilla accounts, for the access group by verified email; nothing depends on Mozilla</p>
+</blockquote>
+<p><strong>Category:</strong> productivity<br />
+<strong>Tags:</strong> <code>firefox</code>, <code>sync</code>, <code>bookmarks</code>, <code>browser</code>, <code>mozilla</code>, <code>accounts</code><br />
+<strong>Website:</strong> <a href="https://mozilla-services.github.io/syncstorage-rs/">https://mozilla-services.github.io/syncstorage-rs/</a><br />
+<strong>Source:</strong> <a href="https://github.com/porelli/firefox-sync">https://github.com/porelli/firefox-sync</a><br />
+<strong>Minimum resources:</strong> 4 GiB RAM, 18 GiB disk</p>
+<h2 id="about">About<a class="headerlink" href="#about" title="Permanent link">&para;</a></h2>
+<div class="app-long-description">
+<p>Firefox Sync keeps bookmarks, passwords, history, open tabs and add-ons in step across a person's Firefox browsers, on desktop and phone. This template runs the whole stack on your server, Mozilla's account service included, so nothing depends on Mozilla and the data is stored only on your server.</p>
+<p>Sync data is end-to-end encrypted with keys from each person's account: the server stores it but can't read it.</p>
+<p>Portcullis decides who may have an account: the instance's access group, matched by each person's verified Portcullis email. The accounts of people who leave the group are disabled and signed out, and the account pages and the admin UI sit behind Portcullis sign-in.</p>
+<p>Needs about 4 GB of RAM and 18 GB of disk (upstream's sizes), plus about 5 GB for Mozilla's accounts image.</p>
+</div>
+
+<h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Method</strong></td>
+<td><code>forward-auth</code></td>
+</tr>
+<tr>
+<td><strong>SSO</strong></td>
+<td><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/26a0.svg" title=":warning:" /> Partial</td>
+</tr>
+<tr>
+<td><strong><abbr title="Restricts an instance's hostnames to members of its access group via group-gate">Group Access</abbr></strong></td>
+<td><img alt="✅" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2705.svg" title=":white_check_mark:" /></td>
+</tr>
+<tr>
+<td><strong><abbr title="Maps the admin group to the app's admin role">Group Admin</abbr></strong></td>
+<td><img alt="✅" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2705.svg" title=":white_check_mark:" /></td>
+</tr>
+<tr>
+<td><strong>Access Group</strong></td>
+<td><code>users_firefox-sync-fxa</code></td>
+</tr>
+<tr>
+<td><strong>Admin Group</strong></td>
+<td><code>admin_firefox-sync-fxa</code></td>
+</tr>
+<tr>
+<td><strong>Subdomain</strong></td>
+<td><code>firefox-sync-fxa</code>, <code>firefox-sync-fxa-accounts</code>, <code>firefox-sync-fxa-admin</code>, <code>firefox-sync-fxa-api</code>, <code>firefox-sync-fxa-pairing</code>, <code>firefox-sync-fxa-profile</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition info">
+<p class="admonition-title">Auth Notes</p>
+<p>Firefox Sync with its own, self-hosted Mozilla accounts: Firefox signs in and syncs on this server, and nothing depends on Mozilla. Only members of the instance's access group with a <strong>verified</strong> Portcullis email can have an account.</p>
+<p><strong>Hosts</strong> (the default instance's names; each instance has its own, shown on its page):</p>
+<ul>
+<li>Behind Portcullis sign-in: <code>firefox-sync-fxa-accounts.&lt;domain&gt;</code>, the account pages (sign-up, sign-in, settings), for the access group; and <code>firefox-sync-fxa-admin.&lt;domain&gt;</code>, the admin UI, for the admin group only.</li>
+<li>Open to the internet, because Firefox calls them in the background without cookies: <code>firefox-sync-fxa-api.&lt;domain&gt;</code> (the accounts API), <code>firefox-sync-fxa-profile.&lt;domain&gt;</code> (profiles and avatars), <code>firefox-sync-fxa.&lt;domain&gt;</code> (Sync storage, each request signed with the account's own keys) and <code>firefox-sync-fxa-pairing.&lt;domain&gt;</code> (an encrypted relay for pairing a phone by QR code).</li>
+<li>On the accounts host, the start page <code>/</code>, <code>/.well-known/fxa-client-configuration</code>, <code>/.well-known/change-password</code> and <code>/metrics-flow</code> stay open too: Firefox reads them before anyone has signed in.</li>
+<li>Every open host is rate-limited; creating an account and getting a Sync token have a stricter limit.</li>
+<li><strong>The Sync, API and accounts hostnames are fixed</strong> once the instance exists. The Sync data depends on them: the Sync server keeps every account as <code>&lt;account id&gt;@&lt;API host&gt;</code> on its node, the Sync host, and every Firefox keeps the accounts and API addresses it was set up with. A new name would leave every Sync store behind and every Firefox calling the old addresses. The profile, pairing and admin hostnames can change. A change of Portcullis's main domain doesn't move them either: the instance is listed as error until the old domain is added as an extra domain. A restore into a new instance id keeps the archive's fixed hostnames, so the old instance must be gone first; the other three get the new id's own. Other fixed hostnames mean a new instance, with new accounts.</li>
+</ul>
+<p><strong>Who may have an account:</strong> the members of the instance's access group with a <strong>verified</strong> Portcullis email. Each person verifies their email with a code sent to it (this needs the server's mail provider): verify it on your People page. An admin can also mark someone else's email verified there. A member without a verified email can't sign up: no verified email, no account. <code>fxa-access-sync</code> writes the verified emails to the sign-up list at every start and whenever the group changes.</p>
+<ul>
+<li>Someone who leaves the group, or whose email changes or stops being verified, is taken off the list. Their account is disabled and signed out everywhere, and within about 5 seconds the admin UI revokes the access tokens their Firefox holds. Firefox can keep syncing for up to about 20 minutes after that: nothing can take back a Sync token it already has (it lasts up to 15 minutes), and the Sync server trusts an access token it already checked for up to 5 more minutes.</li>
+<li>The admin UI does that revoking, for every disable and sign-out. It always runs with the instance and restarts on its own. If it's down (stopped by hand, or failing), a held access token stays valid until the admin UI starts again, or up to 60 minutes, and Firefox can sync for up to about 20 minutes after that.</li>
+<li>Every run also disables and signs out any enabled account whose <strong>current</strong> primary email isn't on the list. An account's email can't be changed here, but if one was changed some other way, this catches it.</li>
+<li>That sweep has a brake: if it would disable more accounts than the run expects (the people who left, plus 2), it disables none. The run is then reported as failed with the numbers only, and isn't tried with a higher limit. Check the accounts in the admin UI.</li>
+<li>When they come back, their account is enabled again, even one an admin disabled before the person left.</li>
+<li>An account an admin disables stays disabled while its owner stays in the group: routine runs never enable it.</li>
+<li>If the list delivered by Portcullis can't be read, nothing changes and the run is reported as failed.</li>
+</ul>
+<p><strong>Admin UI</strong> (porelli/firefox-sync's admin UI), for the instance's <strong>admin group</strong> only. Others get 403 at the gateway, members of the access group included. After the Portcullis sign-in, the admin UI signs in by OpenID Connect with Portcullis's Keycloak (client <code>firefox-sync-fxa-admin</code>, redirect URI exactly <code>https://&lt;admin host&gt;/auth/callback</code>), which admits only the admin group (<code>admin_firefox-sync-fxa</code>, from the <code>groups</code> claim, never by email). There is no password sign-in.</p>
+<ul>
+<li><strong>Portcullis decides who may sign up and sync, not the admin UI</strong> (<em>access managed elsewhere</em>): the sign-up policy, its allowlist, invitations, the account cap and Sync's max users are shown read-only, and their forms answer 403. The account cap is the instance setting <strong>Maximum accounts</strong>.</li>
+<li>Kept for incidents: monitoring, the event log, account pages and notes, per-account sign-out, disable and enable, deleting an account, and the Sync data tools. <strong>Enable refuses an account whose current primary email isn't on the list</strong> (&quot;not on the access list managed elsewhere&quot;). <strong>Deleting an account leaves the list alone</strong>, so a member whose account was deleted can sign up again.</li>
+<li><strong>Confirm email and Confirm this sign-in are refused</strong> (403 at the gateway). Only the code sent to the address proves an account's email, so an admin can't vouch for one. Someone who signed up with a member's address, or signed in with a stolen password, would get in without that mailbox.</li>
+<li>Its Connect a device page shows the Firefox setup below with this server's values.</li>
+</ul>
+<p><strong>Mail:</strong> the sign-up and sign-in codes go out through the server's mail provider (Settings, Mail) by default, at most 10 messages a minute and 60 an hour; or through another SMTP server (the instance's Mail settings). Without either, the accounts server doesn't start, and <code>fxa-mail-check</code> says why.</p>
+<ul>
+<li>STARTTLS on 587 is required, never opportunistic: a server that doesn't offer it gets no mail and never sees the password. Use TLS from the start on 465. TLS on 587 or STARTTLS on 465 stops the start.</li>
+<li>The mail server's certificate is checked against the server's CA bundle (<code>certs/ca-bundle.crt</code>: the host's system CAs, Portcullis's own CA, and Let's Encrypt staging while <code>ACME_STAGING=true</code>). For a mail server with a self-signed certificate, add its CA to the host's system trust store, run <code>./portcullis config apply --bundle-only</code>, then restart the instance.</li>
+</ul>
+<p><strong>What's refused, and why:</strong></p>
+<ul>
+<li><strong>Adding a second email or changing an account's email</strong> is refused at the gateway (403). An account's email is its Portcullis email, and access follows that email.</li>
+<li><strong>Confirming an email or a sign-in in the admin UI</strong> is refused at the gateway (403): only the code sent to the address counts.</li>
+<li><strong>Passwordless sign-in and Google or Apple sign-in</strong> are refused (403). Every account is created through the sign-up gate, which checks the list.</li>
+<li><strong>Email addresses that aren't plain ASCII</strong> are refused by the accounts database. Emails are compared byte for byte, so a look-alike address (an accent or a full-width letter) never matches a member's. An existing account with such an email is disabled and signed out at every start.</li>
+</ul>
+<p><strong>Backups:</strong> the <code>fxa-keys</code> volume holds the accounts' signing keys; a Hub instance backup copies it with the databases. Losing it signs everyone out: every Firefox must sign in again.</p>
+<p><strong>Firefox setup</strong> (the accounts URL is the instance's accounts host, <code>https://firefox-sync-fxa-accounts.&lt;domain&gt;</code> for the default one). Sign out of Firefox first, if it's signed in.</p>
+<ul>
+<li><strong>Desktop:</strong> in <code>about:config</code>, set <code>identity.fxaccounts.autoconfig.uri</code> to the accounts URL. Restart Firefox, then sign in and turn on Sync.</li>
+<li><strong>Android:</strong> Settings, About Firefox, tap the logo 5 times. Back in Settings, open Sync Debug and set <strong>Custom Mozilla account server</strong> to the accounts URL. Leave <strong>Custom Sync server</strong> empty. Restart Firefox when it asks, then sign in.</li>
+<li><strong>iOS:</strong> in Settings, tap the version number 5 times. Open Advanced Sync Settings, turn on <strong>Use Custom FxA Content Server</strong> and set <strong>Custom Account Content Server URI</strong> to the accounts URL. Then sign in.</li>
+<li>A phone can also pair from a signed-in desktop (Settings, Sync, Connect another device) once its accounts URL is set.</li>
+</ul>
+<p><strong>What runs:</strong> Mozilla's accounts (auth, content and profile servers, v1.350.0) on MySQL with Redis, the pairing channel server, syncstorage-rs 0.25.2 on PostgreSQL, and porelli/firefox-sync's admin UI and sign-up gate, as built by porelli/firefox-sync (<code>links.source</code>; upstream <a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/mozilla/fxa">https://github.com/mozilla/fxa</a> and <a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/mozilla-services/syncstorage-rs">https://github.com/mozilla-services/syncstorage-rs</a>). <code>fxa-gate</code>, an nginx that answers only Traefik, is in front of every host; no other service of the instance is reachable from other apps.</p>
+</div>
+
+<h2 id="routing">Routing<a class="headerlink" href="#routing" title="Permanent link">&para;</a></h2>
+<p><abbr title="Reverse proxy terminating TLS and routing requests by hostname">Traefik</abbr> routers from <code>compose.yml</code>. The Hub replaces the TLS tier with the one derived from the app's <a href="../../operations/auth-policies/#traefik-tls-tier">access policy</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Router</th>
+<th>Host</th>
+<th>Paths</th>
+<th>TLS tier</th>
+<th>Forward-auth + <abbr title="Per-request authorization middleware checking revocation, groups and path groups, then the sign-in template">group-gate</abbr></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>firefox-sync-fxa</code></td>
+<td><code>firefox-sync-fxa.&lt;domain&gt;</code></td>
+<td>all</td>
+<td><code>public@file</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-accounts</code></td>
+<td><code>firefox-sync-fxa-accounts.&lt;domain&gt;</code></td>
+<td>all</td>
+<td><code>default</code></td>
+<td><img alt="✅" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2705.svg" title=":white_check_mark:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-accounts-change-password</code></td>
+<td><code>firefox-sync-fxa-accounts.&lt;domain&gt;</code></td>
+<td><code>/.well-known/change-password (exact)</code></td>
+<td><code>default</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-accounts-config</code></td>
+<td><code>firefox-sync-fxa-accounts.&lt;domain&gt;</code></td>
+<td><code>/.well-known/fxa-client-configuration (exact)</code></td>
+<td><code>default</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-accounts-metrics</code></td>
+<td><code>firefox-sync-fxa-accounts.&lt;domain&gt;</code></td>
+<td><code>/metrics-flow (exact)</code></td>
+<td><code>default</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-accounts-root</code></td>
+<td><code>firefox-sync-fxa-accounts.&lt;domain&gt;</code></td>
+<td><code>/ (exact)</code></td>
+<td><code>default</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-admin</code></td>
+<td><code>firefox-sync-fxa-admin.&lt;domain&gt;</code></td>
+<td>all</td>
+<td><code>default</code></td>
+<td><img alt="✅" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2705.svg" title=":white_check_mark:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-api</code></td>
+<td><code>firefox-sync-fxa-api.&lt;domain&gt;</code></td>
+<td>all</td>
+<td><code>public@file</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-pairing</code></td>
+<td><code>firefox-sync-fxa-pairing.&lt;domain&gt;</code></td>
+<td>all</td>
+<td><code>public@file</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-profile</code></td>
+<td><code>firefox-sync-fxa-profile.&lt;domain&gt;</code></td>
+<td>all</td>
+<td><code>public@file</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-signup</code></td>
+<td><code>firefox-sync-fxa-api.&lt;domain&gt;</code></td>
+<td><code>/v1/account/create (exact)</code></td>
+<td><code>public@file</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-token</code></td>
+<td><code>firefox-sync-fxa.&lt;domain&gt;</code></td>
+<td><code>/1.0/</code></td>
+<td><code>public@file</code></td>
+<td><img alt="❌" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/274c.svg" title=":x:" /></td>
+</tr>
+</tbody>
+</table>
+<h2 id="ai-support">AI support<a class="headerlink" href="#ai-support" title="Permanent link">&para;</a></h2>
+<p><strong>No AI support:</strong> Signs people in with its own Mozilla accounts, not Portcullis identities, and Sync data is end-to-end encrypted; no <abbr title="Model Context Protocol - how AI clients such as Claude call tools of an app">MCP</abbr> server known (surveyed 2026-11-26).</p>
+<h2 id="images">Images<a class="headerlink" href="#images" title="Permanent link">&para;</a></h2>
+<p>Pinned by version tag and digest; Dependabot proposes updates.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Image</th>
+<th>Digest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ffs-admin</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:admin-a3227424a9c6</code></td>
+<td><code>sha256:34ad815d983a…</code></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.2</code></td>
+<td><code>sha256:e31d2d17d136…</code></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-db</code></td>
+<td><code>postgres:17.11-alpine</code></td>
+<td><code>sha256:3540c0362c80…</code></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-db-init</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-init-0.25.1-20261124T171959</code></td>
+<td><code>sha256:a43d7e844d66…</code></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-init</code></td>
+<td><code>postgres:17.11-alpine</code></td>
+<td><code>sha256:3540c0362c80…</code></td>
+</tr>
+<tr>
+<td><code>firefox-sync-fxa-migrate</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:syncstorage-rs-postgres-0.25.2</code></td>
+<td><code>sha256:e31d2d17d136…</code></td>
+</tr>
+<tr>
+<td><code>fxa-access-sync</code></td>
+<td><code>mysql:9.7.4</code></td>
+<td><code>sha256:1f2ca53a9e94…</code></td>
+</tr>
+<tr>
+<td><code>fxa-auth</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-content</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-db</code></td>
+<td><code>mysql:9.7.4</code></td>
+<td><code>sha256:1f2ca53a9e94…</code></td>
+</tr>
+<tr>
+<td><code>fxa-db-guard</code></td>
+<td><code>mysql:9.7.4</code></td>
+<td><code>sha256:1f2ca53a9e94…</code></td>
+</tr>
+<tr>
+<td><code>fxa-db-users</code></td>
+<td><code>mysql:9.7.4</code></td>
+<td><code>sha256:1f2ca53a9e94…</code></td>
+</tr>
+<tr>
+<td><code>fxa-gate</code></td>
+<td><code>nginx:1.31.8-alpine</code></td>
+<td><code>sha256:fed7e14be83c…</code></td>
+</tr>
+<tr>
+<td><code>fxa-keys-owner</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-mail-check</code></td>
+<td><code>redis:8.12.0-alpine</code></td>
+<td><code>sha256:5af80107c1ee…</code></td>
+</tr>
+<tr>
+<td><code>fxa-migrations</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-pairing</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-channelserver-1.6.0</code></td>
+<td><code>sha256:cfc3319d79ba…</code></td>
+</tr>
+<tr>
+<td><code>fxa-policy</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:admin-a3227424a9c6</code></td>
+<td><code>sha256:34ad815d983a…</code></td>
+</tr>
+<tr>
+<td><code>fxa-profile</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-profile-static</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-profile-worker</code></td>
+<td><code>ghcr.io/porelli/firefox-sync:fxa-mono-v1.350.0</code></td>
+<td><code>sha256:0ec0804fe9a0…</code></td>
+</tr>
+<tr>
+<td><code>fxa-redis</code></td>
+<td><code>redis:8.12.0-alpine</code></td>
+<td><code>sha256:5af80107c1ee…</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p>Options an admin sets in the Hub's <a href="../../operations/hub/#app-settings">settings panel</a> (<abbr title="A setting each person enters for themselves on My apps (scope person_entered)">person-entered</abbr> ones: each person, on <a href="../../operations/hub/#my-apps"><abbr title="Tab on people.&lt;domain&gt; where each person sees their own app settings and enters their own values">My apps</abbr></a>). <strong>Scope</strong> and <strong>Applies</strong> are explained in the <a href="../../guides/manifest-reference/#settings">Manifest Reference</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Scope</th>
+<th>Applies</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Send mail through</strong></td>
+<td><code>enum</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Where the sign-up and sign-in codes go out. The server's <abbr title="The app instance wired into the mail slot (a Marketplace template with a mail: block, e.g. Stalwart); only the wired instance gets the slot's ports, secrets and certificate">mail provider</abbr> needs one wired (Settings, Mail); without a working mail server the accounts server doesn't start. Choices: <code>provider</code>, <code>external</code>. Default: <code>provider</code>.</td>
+</tr>
+<tr>
+<td><strong>SMTP server</strong></td>
+<td><code>string</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Another SMTP server only. Its host name.</td>
+</tr>
+<tr>
+<td><strong>SMTP port</strong></td>
+<td><code>int</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Another SMTP server only. 587 for STARTTLS, 465 for TLS; the accounts server doesn't start with TLS on 587 or STARTTLS on 465. Default: <code>587</code>.</td>
+</tr>
+<tr>
+<td><strong>SMTP security</strong></td>
+<td><code>enum</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Another SMTP server only. STARTTLS on 587 or TLS from the start on 465. Choices: <code>starttls</code>, <code>tls</code>. Default: <code>starttls</code>.</td>
+</tr>
+<tr>
+<td><strong>SMTP user</strong></td>
+<td><code>string</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Another SMTP server only. Empty when it takes mail without signing in.</td>
+</tr>
+<tr>
+<td><strong>SMTP password</strong></td>
+<td><code>secret</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Another SMTP server only. The password of the SMTP user; it can't contain ', \ or a line break.</td>
+</tr>
+<tr>
+<td><strong>Sender address</strong></td>
+<td><code>string</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Another SMTP server only. The address the mail comes from, shown as Firefox accounts.</td>
+</tr>
+<tr>
+<td><strong>Maximum accounts</strong></td>
+<td><code>int</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>At most this many accounts; sign-ups are refused once they exist. Empty: no limit, the access group decides.</td>
+</tr>
+<tr>
+<td><strong>Account email</strong></td>
+<td><code>verified_email</code></td>
+<td><abbr title="An independent deployment of a template with its own data, settings, and groups">instance</abbr></td>
+<td><code>restart</code></td>
+<td>Each member's verified Portcullis email: the email they may create their Firefox account with. Members without a verified email can't.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>Per-app variables in the generated <code>.env</code>; <code>random</code> ones are generated by the Hub on first enable:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Generation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FXA_MYSQL_PASSWORD</code></td>
+<td>Accounts database (MySQL) root password, for the one-shots only (migrations, policy, database users)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_AUTH_DB_PASSWORD</code></td>
+<td>Accounts database password of the auth server (fxa_auth; not root, nothing on ffs)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_PROFILE_DB_PASSWORD</code></td>
+<td>Accounts database password of the profile server (fxa_profile; its own database only)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_ADMIN_DB_PASSWORD</code></td>
+<td>Accounts database password of the admin UI (ffs_admin)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_ACCESS_DB_PASSWORD</code></td>
+<td>Accounts database password of Portcullis's access sync (ffs_access, the sign-up allowlist)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_OAUTH_SECRET</code></td>
+<td>Accounts OAuth server secret (also the key the MFA JWT key is derived from)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_AUTH_SECRET</code></td>
+<td>Accounts auth server shared secret</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_PROFILE_SECRET</code></td>
+<td>Accounts profile server bearer token</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_FLOW_ID_KEY</code></td>
+<td>Accounts flow id key</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_SESSION_TOKEN_HANDLE_KEY</code></td>
+<td>Accounts session token handle key</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FXA_CONTENT_SESSION_SECRET</code></td>
+<td>Account pages' session cookie secret</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FIREFOX_SYNC_FXA_DB_PASSWORD</code></td>
+<td>Sync database owner password (migrations, init)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FIREFOX_SYNC_FXA_APP_DB_PASSWORD</code></td>
+<td>Sync database password of the server's own role (no owner rights)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FIREFOX_SYNC_FXA_ADMIN_DB_PASSWORD</code></td>
+<td>Sync database password of the admin UI's own roles (its database, its reader of the Sync data)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FIREFOX_SYNC_FXA_MASTER_SECRET</code></td>
+<td>syncstorage-rs master secret (signs the storage tokens)</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FIREFOX_SYNC_FXA_METRICS_SECRET</code></td>
+<td>tokenserver metrics hash secret</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>FIREFOX_SYNC_FXA_ADMIN_OIDC_SECRET</code></td>
+<td>OpenID Connect client secret of the admin UI (<abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> client firefox-sync-fxa-admin)</td>
+<td><code>random</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="keycloak-clients"><abbr title="Identity provider handling passkeys, YubiKey and browser certificates, and OIDC/SAML">Keycloak</abbr> Clients<a class="headerlink" href="#keycloak-clients" title="Permanent link">&para;</a></h2>
+<p><strong>Firefox Sync + own accounts admin UI</strong> (<code>firefox-sync-fxa-admin</code>)</p>
+<p>Redirect URI: <code>https://{{HOST_FIREFOX_SYNC_FXA_ADMIN}}/auth/callback</code></p>
+<h2 id="access-urls">Access URLs<a class="headerlink" href="#access-urls" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Accounts (Firefox's identity.fxaccounts.autoconfig.uri)</strong>: <code>https://{{HOST_FIREFOX_SYNC_FXA_ACCOUNTS}}</code></li>
+<li><strong>Admin UI</strong>: <code>https://{{HOST_FIREFOX_SYNC_FXA_ADMIN}}/</code></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.sections","navigation.expand","navigation.indexes","navigation.top","content.code.copy","content.tooltips","search.highlight"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>
